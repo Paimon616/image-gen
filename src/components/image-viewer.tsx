@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { getModelConfig } from "@/lib/types";
 
 export function ImageViewer() {
   const { selectedImage, setSelectedImage, loadParamsFromImage, removeImage } =
@@ -75,6 +76,11 @@ export function ImageViewer() {
                   </div>
                 )}
                 <div className="flex flex-wrap gap-1.5">
+                  {selectedImage.params.model && (
+                    <Badge variant="outline">
+                      {getModelConfig(selectedImage.params.model).name}
+                    </Badge>
+                  )}
                   <Badge variant="secondary">
                     {selectedImage.params.width}×{selectedImage.params.height}
                   </Badge>

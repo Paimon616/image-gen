@@ -3,6 +3,7 @@ import { fal } from "@/lib/fal";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { randomUUID } from "crypto";
+import { getModelConfig } from "@/lib/types";
 
 const OUTPUT_DIR = join(process.cwd(), "output");
 
@@ -10,86 +11,84 @@ async function ensureOutputDir() {
   await mkdir(OUTPUT_DIR, { recursive: true });
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildInput(body: Record<string, any>): { endpoint: string; input: Record<string, any> } {
+  const {
+    model,
+    prompt,
+    negative_prompt,
+    num_inference_steps,
+    guidance_scale,
+    width,
+    height,
+    seed,
+    loras,
+    style_image,
+    character_image,
+    enable_safety_checker,
+  } = body;
+
+  const modelConfig = getModelConfig(model);
+  const endpoint = modelConfig.id;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const input: Record<string, any> = { prompt };
+
+  if (modelConfig.supports.negative_prompt && negative_prompt) {
+    input.negative_prompt = negative_prompt;
+  }
+
+  input.num_inference_steps = num_inference_steps;
+
+  if (guidance_scale > 0) {
+    input.guidance_scale = guidance_scale;
+  }
+
+  input.enable_safety_checker = enable_safety_checker;
+
+  if (seed != null) {
+    input.seed = seed;
+  }
+
+  if (modelConfig.supports.lora && loras?.length > 0) {
+    input.loras = loras;
+  }
+
+  if (modelConfig.supports.face_id && character_image) {
+    input.face_image_url = character_image;
+  }
+
+  if (modelConfig.supports.ip_adapter && style_image) {
+    input.ip_adapter_image_url = style_image;
+  }
+
+  // Size format varies by model
+  switch (endpoint) {
+    case "fal-ai/fast-sdxl":
+      input.image_size = { width, height };
+      break;
+    case "fal-ai/flux/dev":
+    case "fal-ai/flux/schnell":
+    case "fal-ai/flux-lora":
+      input.image_size = { width, height };
+      break;
+    case "fal-ai/stable-diffusion-v35-large":
+      input.image_size = { width, height };
+      break;
+    default:
+      input.width = width;
+      input.height = height;
+      break;
+  }
+
+  return { endpoint, input };
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const {
-      prompt,
-      negative_prompt,
-      num_inference_steps,
-      guidance_scale,
-      width,
-      height,
-      seed,
-      loras,
-      style_image,
-      character_image,
-      enable_safety_checker,
-    } = body;
 
-    const hasStyleImage = !!style_image;
-    const hasCharacterImage = !!character_image;
-
-    let endpoint: string;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let input: Record<string, any>;
-
-    if (hasCharacterImage && hasStyleImage) {
-      endpoint = "fal-ai/ip-adapter-face-id";
-      input = {
-        prompt,
-        negative_prompt,
-        face_image_url: character_image,
-        ip_adapter_image_url: style_image,
-        num_inference_steps,
-        guidance_scale,
-        width,
-        height,
-        enable_safety_checker,
-        ...(seed != null && { seed }),
-        ...(loras.length > 0 && { loras }),
-      };
-    } else if (hasCharacterImage) {
-      endpoint = "fal-ai/ip-adapter-face-id";
-      input = {
-        prompt,
-        negative_prompt,
-        face_image_url: character_image,
-        num_inference_steps,
-        guidance_scale,
-        width,
-        height,
-        enable_safety_checker,
-        ...(seed != null && { seed }),
-        ...(loras.length > 0 && { loras }),
-      };
-    } else if (hasStyleImage) {
-      endpoint = "fal-ai/ip-adapter";
-      input = {
-        prompt,
-        negative_prompt,
-        ip_adapter_image_url: style_image,
-        num_inference_steps,
-        guidance_scale,
-        width,
-        height,
-        enable_safety_checker,
-        ...(seed != null && { seed }),
-        ...(loras.length > 0 && { loras }),
-      };
-    } else {
-      endpoint = "fal-ai/fast-sdxl";
-      input = {
-        prompt,
-        negative_prompt,
-        num_inference_steps,
-        guidance_scale,
-        image_size: { width, height },
-        enable_safety_checker,
-        ...(seed != null && { seed }),
-        ...(loras.length > 0 && { loras }),
-      };
-    }
+    const { endpoint, input } = buildInput(body);
 
     const result = await fal.subscribe(endpoint, {
       input,
@@ -98,7 +97,7 @@ export async function POST(req: NextRequest) {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data = result.data as any;
-    const images = data?.images || data?.image ? [data.image] : [];
+    const images = data?.images || (data?.image ? [data.image] : []);
 
     if (!images.length) {
       return NextResponse.json(

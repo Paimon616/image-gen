@@ -8,8 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { ImageUpload } from "@/components/image-upload";
 import { GenerationParams } from "@/components/generation-params";
+import { ModelSelector } from "@/components/model-selector";
 import { Gallery } from "@/components/gallery";
 import { ImageViewer } from "@/components/image-viewer";
+import { getModelConfig } from "@/lib/types";
 
 export default function Home() {
   const { params, setParams, status, setStatus, addImage } = useStore();
@@ -45,6 +47,7 @@ export default function Home() {
   }, [params, setStatus, addImage]);
 
   const isGenerating = status.state === "generating";
+  const currentModel = getModelConfig(params.model);
 
   return (
     <div className="flex h-screen bg-background">
@@ -52,10 +55,15 @@ export default function Home() {
       <aside className="w-80 border-r border-border flex flex-col overflow-hidden">
         <div className="p-4 border-b border-border">
           <h1 className="text-lg font-semibold">Image Gen</h1>
-          <p className="text-xs text-muted-foreground">SDXL + IP-Adapter + LoRA</p>
+          <p className="text-xs text-muted-foreground">{currentModel.name}</p>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* Model Selector */}
+          <ModelSelector />
+
+          <Separator />
+
           {/* Prompt */}
           <div>
             <Label className="text-xs text-muted-foreground mb-2 block">Prompt</Label>
