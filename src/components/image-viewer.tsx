@@ -36,17 +36,17 @@ export function ImageViewer() {
 
   return (
     <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
-      <DialogContent className="h-[94vh] max-h-[94vh] w-[96vw] max-w-[96vw] overflow-hidden p-3">
+      <DialogContent className="h-[96vh] max-h-[96vh] w-[96vw] max-w-[96vw] overflow-hidden p-0">
         <DialogTitle className="sr-only">Image Details</DialogTitle>
-        <div className="grid h-full min-h-0 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_20rem]">
-          <div className="flex min-h-0 min-w-0 items-center justify-center overflow-auto rounded-lg bg-black/5">
+        <div className="flex h-full min-h-0 flex-col lg:flex-row">
+          <div className="flex h-[68vh] min-h-[24rem] min-w-0 flex-1 items-center justify-center overflow-auto bg-black lg:h-full">
             <img
               src={selectedImage.url}
               alt="Generated"
-              className="h-auto max-h-full w-auto max-w-full object-contain"
+              className="block h-auto max-h-full w-auto max-w-full object-contain"
             />
           </div>
-          <div className="min-h-0 space-y-4 overflow-y-auto pr-1">
+          <div className="h-[28vh] min-h-0 space-y-4 overflow-y-auto border-t border-border p-4 lg:h-full lg:w-80 lg:border-l lg:border-t-0">
             <div className="flex gap-2 flex-wrap">
               <Button size="sm" onClick={handleReuse}>
                 Reuse Params
