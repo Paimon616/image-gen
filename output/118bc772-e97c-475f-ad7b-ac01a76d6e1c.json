@@ -1,0 +1,27 @@
+{
+  "id": "118bc772-e97c-475f-ad7b-ac01a76d6e1c",
+  "filename": "118bc772-e97c-475f-ad7b-ac01a76d6e1c.jpeg",
+  "params": {
+    "model": "fal-ai/flux/dev",
+    "model_name": "stabilityai/stable-diffusion-xl-base-1.0",
+    "prompt": "anime style, full body nude",
+    "negative_prompt": "low quality, blurry, deformed, ugly, bad anatomy, bad hands, missing fingers",
+    "num_inference_steps": 28,
+    "guidance_scale": 3.5,
+    "width": 1024,
+    "height": 1024,
+    "num_images": 1,
+    "output_format": "jpeg",
+    "seed": null,
+    "loras": [],
+    "embeddings": [],
+    "prompt_weighting": true,
+    "style_image": null,
+    "character_image": null,
+    "enable_safety_checker": false
+  },
+  "endpoint": "fal-ai/flux/dev",
+  "timestamp": 1781000893236,
+  "original_url": "https://v3b.fal.media/files/b/0a9d9778/OMiirVAPbdrMIlNb50QZI.jpg",
+  "index": 0
+}

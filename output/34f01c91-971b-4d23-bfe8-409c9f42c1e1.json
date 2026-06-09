@@ -1,0 +1,32 @@
+{
+  "id": "34f01c91-971b-4d23-bfe8-409c9f42c1e1",
+  "filename": "34f01c91-971b-4d23-bfe8-409c9f42c1e1.jpeg",
+  "params": {
+    "model": "fal-ai/fast-sdxl",
+    "model_name": "stabilityai/stable-diffusion-xl-base-1.0",
+    "prompt": "portrait photo, abc_character, cinematic lighting, detailed skin, soft background, full body, boob, tits",
+    "negative_prompt": "low quality, blurry, deformed, ugly, bad anatomy, bad hands, missing fingers",
+    "num_inference_steps": 30,
+    "guidance_scale": 7.5,
+    "width": 1024,
+    "height": 1024,
+    "num_images": 1,
+    "output_format": "jpeg",
+    "seed": null,
+    "loras": [
+      {
+        "path": "",
+        "scale": 0.8
+      }
+    ],
+    "embeddings": [],
+    "prompt_weighting": true,
+    "style_image": null,
+    "character_image": null,
+    "enable_safety_checker": false
+  },
+  "endpoint": "fal-ai/fast-sdxl",
+  "timestamp": 1781001026503,
+  "original_url": "https://v3b.fal.media/files/b/0a9d978b/LemNf6maiOkHstRgPKpH5.jpg",
+  "index": 0
+}

@@ -1,0 +1,32 @@
+{
+  "id": "bb291990-ead5-486a-b901-16006be86d7e",
+  "filename": "bb291990-ead5-486a-b901-16006be86d7e.jpeg",
+  "params": {
+    "model": "fal-ai/fast-sdxl",
+    "model_name": "stabilityai/stable-diffusion-xl-base-1.0",
+    "prompt": "robot",
+    "negative_prompt": "low quality, blurry, deformed, ugly, bad anatomy, bad hands, missing fingers",
+    "num_inference_steps": 30,
+    "guidance_scale": 7.5,
+    "width": 1024,
+    "height": 1024,
+    "num_images": 1,
+    "output_format": "jpeg",
+    "seed": null,
+    "loras": [
+      {
+        "path": "",
+        "scale": 0.8
+      }
+    ],
+    "embeddings": [],
+    "prompt_weighting": true,
+    "style_image": null,
+    "character_image": null,
+    "enable_safety_checker": false
+  },
+  "endpoint": "fal-ai/fast-sdxl",
+  "timestamp": 1781001050012,
+  "original_url": "https://v3b.fal.media/files/b/0a9d9788/C-NnjdnSzBXACr0oBL6OH.jpg",
+  "index": 0
+}

@@ -12,6 +12,13 @@ async function ensureOutputDir() {
   await mkdir(OUTPUT_DIR, { recursive: true });
 }
 
+function isLikelyBlankPlaceholder(buffer: Buffer, width: number, height: number) {
+  const megapixels = (width * height) / 1_000_000;
+  const bytesPerMegapixel = buffer.byteLength / Math.max(megapixels, 0.1);
+
+  return width >= 512 && height >= 512 && bytesPerMegapixel < 35_000;
+}
+
 function compactLoras(loras: LoraConfig[] | undefined) {
   return (loras ?? [])
     .map((lora) => ({
@@ -144,6 +151,9 @@ export async function POST(req: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data = result.data as any;
     const images = data?.images || (data?.image ? [data.image] : []);
+    const nsfwFlags = Array.isArray(data?.has_nsfw_concepts)
+      ? data.has_nsfw_concepts
+      : [];
 
     if (!images.length) {
       return NextResponse.json(
@@ -164,6 +174,38 @@ export async function POST(req: NextRequest) {
 
           const response = await fetch(img.url);
           const buffer = Buffer.from(await response.arrayBuffer());
+          const isBlankPlaceholder = isLikelyBlankPlaceholder(
+            buffer,
+            body.width,
+            body.height
+          );
+          const wasFlagged = Boolean(nsfwFlags[i]);
+
+          if (isBlankPlaceholder || wasFlagged) {
+            const metaFilename = `${id}.json`;
+            await writeFile(
+              join(OUTPUT_DIR, metaFilename),
+              JSON.stringify(
+                {
+                  id,
+                  filename,
+                  params: body,
+                  endpoint,
+                  timestamp: Date.now(),
+                  original_url: img.url,
+                  index: i,
+                  rejected: true,
+                  likely_blank_placeholder: isBlankPlaceholder,
+                  has_nsfw_concepts: wasFlagged,
+                },
+                null,
+                2
+              )
+            );
+
+            return null;
+          }
+
           await writeFile(join(OUTPUT_DIR, filename), buffer);
 
           const metaFilename = `${id}.json`;
@@ -178,6 +220,7 @@ export async function POST(req: NextRequest) {
                 timestamp: Date.now(),
                 original_url: img.url,
                 index: i,
+                has_nsfw_concepts: wasFlagged,
               },
               null,
               2
@@ -195,7 +238,19 @@ export async function POST(req: NextRequest) {
       )
     );
 
-    return NextResponse.json({ images: savedImages });
+    const validImages = savedImages.filter(Boolean);
+
+    if (!validImages.length) {
+      return NextResponse.json(
+        {
+          error:
+            "The model returned a blank or filtered image. Try a less restricted prompt, a different model, or remove conflicting LoRA/embedding inputs.",
+        },
+        { status: 422 }
+      );
+    }
+
+    return NextResponse.json({ images: validImages });
   } catch (error) {
     console.error("Generation error:", error);
     const message =
