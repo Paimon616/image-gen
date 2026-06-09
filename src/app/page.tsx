@@ -52,26 +52,27 @@ export default function Home() {
   return (
     <div className="flex h-screen bg-background">
       {/* Left Sidebar - Controls */}
-      <aside className="w-[28rem] xl:w-[34rem] max-w-[48vw] border-r border-border flex flex-col overflow-hidden">
-        <div className="p-4 border-b border-border">
+      <aside className="w-[44rem] xl:w-[54rem] max-w-[68vw] border-r border-border flex flex-col overflow-hidden">
+        <div className="px-4 py-3 border-b border-border">
           <h1 className="text-lg font-semibold">Image Gen</h1>
           <p className="text-xs text-muted-foreground">{currentModel.name}</p>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {/* Model Selector */}
           <ModelSelector />
 
           <Separator />
 
           {/* Prompt */}
+          <div className="grid gap-3 xl:grid-cols-2">
           <div>
             <Label className="text-xs text-muted-foreground mb-2 block">Prompt</Label>
             <Textarea
               placeholder="Describe the image you want to generate..."
               value={params.prompt}
               onChange={(e) => setParams({ prompt: e.target.value })}
-              className="min-h-[100px] text-sm resize-none"
+              className="h-36 text-sm resize-none"
             />
           </div>
 
@@ -83,38 +84,46 @@ export default function Home() {
               placeholder="What to exclude..."
               value={params.negative_prompt}
               onChange={(e) => setParams({ negative_prompt: e.target.value })}
-              className="min-h-[60px] text-sm resize-none"
+              className="h-36 text-sm resize-none"
             />
           </div>
-
-          <Separator />
+          </div>
 
           {/* Reference Images */}
-          <div>
-            <Label className="text-xs text-muted-foreground mb-2 block">
-              Style Reference
-            </Label>
-            <ImageUpload
-              label="Style Image"
-              description="Drop or click to upload style reference"
-              value={params.style_image}
-              onChange={(url) => setParams({ style_image: url })}
-            />
-          </div>
+          {(currentModel.supports.ip_adapter || currentModel.supports.face_id) && (
+            <>
+              <Separator />
+              <div className="grid gap-3 xl:grid-cols-2">
+                {currentModel.supports.ip_adapter && (
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-2 block">
+                      Style Reference
+                    </Label>
+                    <ImageUpload
+                      label="Style Image"
+                      description="Drop or click to upload style reference"
+                      value={params.style_image}
+                      onChange={(url) => setParams({ style_image: url })}
+                    />
+                  </div>
+                )}
 
-          <div>
-            <Label className="text-xs text-muted-foreground mb-2 block">
-              Character Reference
-            </Label>
-            <ImageUpload
-              label="Character Image"
-              description="Drop or click to upload character reference"
-              value={params.character_image}
-              onChange={(url) => setParams({ character_image: url })}
-            />
-          </div>
-
-          <Separator />
+                {currentModel.supports.face_id && (
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-2 block">
+                      Character Reference
+                    </Label>
+                    <ImageUpload
+                      label="Character Image"
+                      description="Drop or click to upload character reference"
+                      value={params.character_image}
+                      onChange={(url) => setParams({ character_image: url })}
+                    />
+                  </div>
+                )}
+              </div>
+            </>
+          )}
 
           {/* Generation Parameters */}
           <GenerationParams />
