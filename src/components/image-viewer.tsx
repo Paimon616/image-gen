@@ -36,17 +36,17 @@ export function ImageViewer() {
 
   return (
     <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="h-[94vh] max-h-[94vh] w-[96vw] max-w-[96vw] overflow-hidden p-3">
         <DialogTitle className="sr-only">Image Details</DialogTitle>
-        <div className="flex flex-col lg:flex-row gap-4">
-          <div className="flex-1 min-w-0">
+        <div className="grid h-full min-h-0 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_20rem]">
+          <div className="flex min-h-0 min-w-0 items-center justify-center overflow-auto rounded-lg bg-black/5">
             <img
               src={selectedImage.url}
               alt="Generated"
-              className="w-full rounded-lg"
+              className="h-auto max-h-full w-auto max-w-full object-contain"
             />
           </div>
-          <div className="lg:w-72 space-y-4">
+          <div className="min-h-0 space-y-4 overflow-y-auto pr-1">
             <div className="flex gap-2 flex-wrap">
               <Button size="sm" onClick={handleReuse}>
                 Reuse Params

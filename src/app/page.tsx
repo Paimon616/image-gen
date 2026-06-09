@@ -52,7 +52,7 @@ export default function Home() {
   return (
     <div className="flex h-screen bg-background">
       {/* Left Sidebar - Controls */}
-      <aside className="w-80 border-r border-border flex flex-col overflow-hidden">
+      <aside className="w-[28rem] xl:w-[34rem] max-w-[48vw] border-r border-border flex flex-col overflow-hidden">
         <div className="p-4 border-b border-border">
           <h1 className="text-lg font-semibold">Image Gen</h1>
           <p className="text-xs text-muted-foreground">{currentModel.name}</p>
@@ -123,7 +123,7 @@ export default function Home() {
         {/* Generate Button */}
         <div className="p-4 border-t border-border">
           {status.state === "error" && (
-            <p className="text-xs text-destructive mb-2 truncate">{status.message}</p>
+            <p className="text-xs text-destructive mb-2">{status.message}</p>
           )}
           {status.state === "completed" && (
             <p className="text-xs text-green-500 mb-2">{status.message}</p>
