@@ -36,9 +36,19 @@ export function ModelSelector() {
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">{model.name}</span>
               <div className="flex gap-1">
+                {model.supports.custom_model && (
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                    Custom
+                  </Badge>
+                )}
                 {model.supports.lora && (
                   <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                     LoRA
+                  </Badge>
+                )}
+                {model.supports.embeddings && (
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                    Embed
                   </Badge>
                 )}
                 {model.supports.face_id && (
@@ -74,6 +84,11 @@ export function ModelSelector() {
       {params.loras.length > 0 && !currentModel.supports.lora && (
         <p className="text-xs text-yellow-500 mt-2">
           {currentModel.name} doesn&apos;t support LoRA — they will be ignored
+        </p>
+      )}
+      {params.embeddings.length > 0 && !currentModel.supports.embeddings && (
+        <p className="text-xs text-yellow-500 mt-2">
+          {currentModel.name} doesn&apos;t support embeddings — they will be ignored
         </p>
       )}
     </div>

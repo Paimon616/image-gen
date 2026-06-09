@@ -4,6 +4,7 @@ import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { randomUUID } from "crypto";
 import { getModelConfig } from "@/lib/types";
+import type { EmbeddingConfig, LoraConfig } from "@/lib/types";
 
 const OUTPUT_DIR = join(process.cwd(), "output");
 
@@ -11,18 +12,44 @@ async function ensureOutputDir() {
   await mkdir(OUTPUT_DIR, { recursive: true });
 }
 
+function compactLoras(loras: LoraConfig[] | undefined) {
+  return (loras ?? [])
+    .map((lora) => ({
+      path: lora.path.trim(),
+      scale: Number.isFinite(lora.scale) ? lora.scale : 1,
+    }))
+    .filter((lora) => lora.path.length > 0);
+}
+
+function compactEmbeddings(embeddings: EmbeddingConfig[] | undefined) {
+  return (embeddings ?? [])
+    .map((embedding) => ({
+      path: embedding.path.trim(),
+      tokens: embedding.tokens
+        .split(",")
+        .map((token) => token.trim())
+        .filter(Boolean),
+    }))
+    .filter((embedding) => embedding.path.length > 0);
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function buildInput(body: Record<string, any>): { endpoint: string; input: Record<string, any> } {
   const {
     model,
+    model_name,
     prompt,
     negative_prompt,
     num_inference_steps,
     guidance_scale,
     width,
     height,
+    num_images,
+    output_format,
     seed,
     loras,
+    embeddings,
+    prompt_weighting,
     style_image,
     character_image,
     enable_safety_checker,
@@ -33,6 +60,13 @@ function buildInput(body: Record<string, any>): { endpoint: string; input: Recor
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const input: Record<string, any> = { prompt };
+  const cleanLoras = compactLoras(loras);
+  const cleanEmbeddings = compactEmbeddings(embeddings);
+
+  if (modelConfig.supports.custom_model) {
+    input.model_name = model_name || "stabilityai/stable-diffusion-xl-base-1.0";
+    input.prompt_weighting = prompt_weighting !== false;
+  }
 
   if (modelConfig.supports.negative_prompt && negative_prompt) {
     input.negative_prompt = negative_prompt;
@@ -45,13 +79,18 @@ function buildInput(body: Record<string, any>): { endpoint: string; input: Recor
   }
 
   input.enable_safety_checker = enable_safety_checker;
+  input.num_images = Math.min(Math.max(Number(num_images) || 1, 1), 4);
 
   if (seed != null) {
     input.seed = seed;
   }
 
-  if (modelConfig.supports.lora && loras?.length > 0) {
-    input.loras = loras;
+  if (modelConfig.supports.lora && cleanLoras.length > 0) {
+    input.loras = cleanLoras;
+  }
+
+  if (modelConfig.supports.embeddings && cleanEmbeddings.length > 0) {
+    input.embeddings = cleanEmbeddings;
   }
 
   if (modelConfig.supports.face_id && character_image) {
@@ -66,14 +105,21 @@ function buildInput(body: Record<string, any>): { endpoint: string; input: Recor
   switch (endpoint) {
     case "fal-ai/fast-sdxl":
       input.image_size = { width, height };
+      input.format = output_format || "jpeg";
+      break;
+    case "fal-ai/lora":
+      input.image_size = { width, height };
+      input.image_format = output_format || "jpeg";
       break;
     case "fal-ai/flux/dev":
     case "fal-ai/flux/schnell":
     case "fal-ai/flux-lora":
       input.image_size = { width, height };
+      input.output_format = output_format || "jpeg";
       break;
     case "fal-ai/stable-diffusion-v35-large":
       input.image_size = { width, height };
+      input.output_format = output_format || "jpeg";
       break;
     default:
       input.width = width;

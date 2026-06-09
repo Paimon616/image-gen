@@ -14,7 +14,7 @@ import { ImageViewer } from "@/components/image-viewer";
 import { getModelConfig } from "@/lib/types";
 
 export default function Home() {
-  const { params, setParams, status, setStatus, addImage } = useStore();
+  const { params, setParams, status, setStatus, addImage, images } = useStore();
 
   const generate = useCallback(async () => {
     if (!params.prompt.trim()) return;
@@ -151,7 +151,7 @@ export default function Home() {
         <div className="p-4 border-b border-border flex items-center justify-between">
           <h2 className="text-sm font-medium">Gallery</h2>
           <span className="text-xs text-muted-foreground">
-            {useStore.getState().images.length} images
+            {images.length} images
           </span>
         </div>
         <Gallery />
