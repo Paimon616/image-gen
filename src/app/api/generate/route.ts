@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fal } from "@/lib/fal";
+import { generateWithComfyUI } from "@/lib/comfyui";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { randomUUID } from "crypto";
 import { getModelConfig } from "@/lib/types";
-import type { EmbeddingConfig, LoraConfig } from "@/lib/types";
+import type { EmbeddingConfig, GenerationParams, LoraConfig } from "@/lib/types";
 
 const OUTPUT_DIR = join(process.cwd(), "output");
 
@@ -17,6 +18,10 @@ function isLikelyBlankPlaceholder(buffer: Buffer, width: number, height: number)
   const bytesPerMegapixel = buffer.byteLength / Math.max(megapixels, 0.1);
 
   return width >= 512 && height >= 512 && bytesPerMegapixel < 35_000;
+}
+
+function extensionForContentType(contentType: string) {
+  return contentType === "image/png" ? "png" : "jpeg";
 }
 
 function compactLoras(loras: LoraConfig[] | undefined) {
@@ -38,6 +43,53 @@ function compactEmbeddings(embeddings: EmbeddingConfig[] | undefined) {
         .filter(Boolean),
     }))
     .filter((embedding) => embedding.path.length > 0);
+}
+
+async function saveBufferedImages({
+  images,
+  params,
+  endpoint,
+}: {
+  images: { buffer: Buffer; contentType: string; originalUrl: string }[];
+  params: GenerationParams;
+  endpoint: string;
+}) {
+  await ensureOutputDir();
+
+  return Promise.all(
+    images.map(async (img, i) => {
+      const id = randomUUID();
+      const filename = `${id}.${extensionForContentType(img.contentType)}`;
+
+      await writeFile(join(OUTPUT_DIR, filename), img.buffer);
+
+      const metaFilename = `${id}.json`;
+      await writeFile(
+        join(OUTPUT_DIR, metaFilename),
+        JSON.stringify(
+          {
+            id,
+            filename,
+            params,
+            endpoint,
+            timestamp: Date.now(),
+            original_url: img.originalUrl,
+            index: i,
+          },
+          null,
+          2
+        )
+      );
+
+      return {
+        id,
+        url: `/api/images/${filename}`,
+        filename,
+        params,
+        timestamp: Date.now(),
+      };
+    })
+  );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -139,7 +191,19 @@ function buildInput(body: Record<string, any>): { endpoint: string; input: Recor
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const body = (await req.json()) as GenerationParams;
+    const modelConfig = getModelConfig(body.model);
+
+    if (modelConfig.provider === "comfyui") {
+      const images = await generateWithComfyUI(body);
+      const savedImages = await saveBufferedImages({
+        images,
+        params: body,
+        endpoint: modelConfig.id,
+      });
+
+      return NextResponse.json({ images: savedImages });
+    }
 
     const { endpoint, input } = buildInput(body);
 
@@ -168,8 +232,7 @@ export async function POST(req: NextRequest) {
       images.map(
         async (img: { url: string; content_type?: string }, i: number) => {
           const id = randomUUID();
-          const ext =
-            img.content_type === "image/png" ? "png" : "jpeg";
+          const ext = extensionForContentType(img.content_type ?? "image/jpeg");
           const filename = `${id}.${ext}`;
 
           const response = await fetch(img.url);

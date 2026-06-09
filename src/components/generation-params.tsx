@@ -56,7 +56,11 @@ export function GenerationParams() {
               Base Model
             </Label>
             <Input
-              placeholder="Hugging Face repo or checkpoint URL"
+              placeholder={
+                currentModel.provider === "comfyui"
+                  ? "sd_xl_base_1.0.safetensors"
+                  : "Hugging Face repo or checkpoint URL"
+              }
               value={params.model_name}
               onChange={(e) => setParams({ model_name: e.target.value })}
               className="h-8 text-xs"
@@ -158,25 +162,27 @@ export function GenerationParams() {
         />
       </div>
 
-      <div>
-        <Label className="text-xs text-muted-foreground mb-2 block">Format</Label>
-        <div className="grid grid-cols-2 gap-1.5">
-          {(["jpeg", "png"] as const).map((format) => (
-            <button
-              key={format}
-              type="button"
-              onClick={() => setParams({ output_format: format })}
-              className={`text-xs py-1.5 px-2 rounded-md border uppercase transition-colors ${
-                params.output_format === format
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border hover:border-muted-foreground/50"
-              }`}
-            >
-              {format}
-            </button>
-          ))}
+      {currentModel.provider === "fal" && (
+        <div>
+          <Label className="text-xs text-muted-foreground mb-2 block">Format</Label>
+          <div className="grid grid-cols-2 gap-1.5">
+            {(["jpeg", "png"] as const).map((format) => (
+              <button
+                key={format}
+                type="button"
+                onClick={() => setParams({ output_format: format })}
+                className={`text-xs py-1.5 px-2 rounded-md border uppercase transition-colors ${
+                  params.output_format === format
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border hover:border-muted-foreground/50"
+                }`}
+              >
+                {format}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="flex items-center justify-between">
         <Label className="text-xs text-muted-foreground">Prompt Weighting</Label>
@@ -188,14 +194,16 @@ export function GenerationParams() {
         />
       </div>
 
-      <div className="flex items-center justify-between">
-        <Label className="text-xs text-muted-foreground">Safety Checker</Label>
-        <Switch
-          size="sm"
-          checked={params.enable_safety_checker}
-          onCheckedChange={(checked) => setParams({ enable_safety_checker: checked })}
-        />
-      </div>
+      {currentModel.provider === "fal" && (
+        <div className="flex items-center justify-between">
+          <Label className="text-xs text-muted-foreground">Safety Checker</Label>
+          <Switch
+            size="sm"
+            checked={params.enable_safety_checker}
+            onCheckedChange={(checked) => setParams({ enable_safety_checker: checked })}
+          />
+        </div>
+      )}
 
       <Separator />
 
@@ -209,7 +217,11 @@ export function GenerationParams() {
         {params.loras.map((lora, i) => (
           <div key={i} className="flex gap-2 mb-2">
             <Input
-              placeholder="huggingface/lora-name"
+              placeholder={
+                currentModel.provider === "comfyui"
+                  ? "my-lora.safetensors"
+                  : "huggingface/lora-name"
+              }
               value={lora.path}
               onChange={(e) => updateLora(i, "path", e.target.value)}
               className="h-8 text-xs flex-1"
@@ -253,7 +265,11 @@ export function GenerationParams() {
           <div key={i} className="space-y-1.5 mb-3">
             <div className="flex gap-2">
               <Input
-                placeholder="embedding .safetensors URL or repo path"
+                placeholder={
+                  currentModel.provider === "comfyui"
+                    ? "embedding file name"
+                    : "embedding .safetensors URL or repo path"
+                }
                 value={embedding.path}
                 onChange={(e) => updateEmbedding(i, "path", e.target.value)}
                 className="h-8 text-xs flex-1"

@@ -11,8 +11,16 @@ export function ModelSelector() {
 
   const handleSelect = (modelId: string) => {
     const model = getModelConfig(modelId);
+    const modelName =
+      model.provider === "comfyui"
+        ? "sd_xl_base_1.0.safetensors"
+        : model.id === "fal-ai/lora"
+          ? "stabilityai/stable-diffusion-xl-base-1.0"
+          : params.model_name;
+
     setParams({
       model: modelId,
+      model_name: modelName,
       num_inference_steps: model.defaults.num_inference_steps,
       guidance_scale: model.defaults.guidance_scale,
     });
@@ -36,6 +44,11 @@ export function ModelSelector() {
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">{model.name}</span>
               <div className="flex gap-1">
+                {model.provider === "comfyui" && (
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                    Local
+                  </Badge>
+                )}
                 {model.supports.custom_model && (
                   <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                     Custom
