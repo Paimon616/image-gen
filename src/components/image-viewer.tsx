@@ -36,41 +36,40 @@ export function ImageViewer() {
 
   return (
     <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
-      <DialogContent className="h-[96vh] max-h-[96vh] w-[96vw] max-w-[96vw] overflow-hidden p-0">
+      <DialogContent className="!block h-[96vh] max-h-[96vh] w-[96vw] max-w-[96vw] overflow-hidden bg-black p-0">
         <DialogTitle className="sr-only">Image Details</DialogTitle>
-        <div className="flex h-full min-h-0 flex-col lg:flex-row">
-          <div className="flex h-[68vh] min-h-[24rem] min-w-0 flex-1 items-center justify-center overflow-auto bg-black lg:h-full">
-            <img
-              src={selectedImage.url}
-              alt="Generated"
-              className="block h-auto max-h-full w-auto max-w-full object-contain"
-            />
-          </div>
-          <div className="h-[28vh] min-h-0 space-y-4 overflow-y-auto border-t border-border p-4 lg:h-full lg:w-80 lg:border-l lg:border-t-0">
-            <div className="flex gap-2 flex-wrap">
-              <Button size="sm" onClick={handleReuse}>
-                Reuse Params
-              </Button>
-              <Button size="sm" variant="secondary" onClick={handleDownload}>
-                Download
-              </Button>
-              <Button size="sm" variant="destructive" onClick={handleDelete}>
-                Delete
-              </Button>
-            </div>
+        <div className="relative h-full w-full">
+          <img
+            src={selectedImage.url}
+            alt="Generated"
+            className="absolute inset-0 m-auto block h-auto max-h-full w-auto max-w-full object-contain"
+          />
 
+          <div className="absolute left-4 top-4 right-20 flex gap-2 flex-wrap">
+            <Button size="sm" onClick={handleReuse}>
+              Reuse Params
+            </Button>
+            <Button size="sm" variant="secondary" onClick={handleDownload}>
+              Download
+            </Button>
+            <Button size="sm" variant="destructive" onClick={handleDelete}>
+              Delete
+            </Button>
+          </div>
+
+          <div className="absolute bottom-4 left-4 max-h-[40vh] w-[min(34rem,calc(100vw-3rem))] overflow-y-auto rounded-lg border border-white/10 bg-black/75 p-4 text-white shadow-xl backdrop-blur">
             {selectedImage.params && (
               <div className="space-y-3 text-sm">
                 <div>
-                  <span className="text-muted-foreground text-xs">Prompt</span>
+                  <span className="text-xs text-white/60">Prompt</span>
                   <p className="mt-1">{selectedImage.params.prompt}</p>
                 </div>
                 {selectedImage.params.negative_prompt && (
                   <div>
-                    <span className="text-muted-foreground text-xs">
+                    <span className="text-xs text-white/60">
                       Negative Prompt
                     </span>
-                    <p className="mt-1 text-muted-foreground text-xs">
+                    <p className="mt-1 text-xs text-white/60">
                       {selectedImage.params.negative_prompt}
                     </p>
                   </div>
@@ -98,17 +97,17 @@ export function ImageViewer() {
                 </div>
                 {selectedImage.params.loras?.length > 0 && (
                   <div>
-                    <span className="text-muted-foreground text-xs">LoRAs</span>
+                    <span className="text-xs text-white/60">LoRAs</span>
                     {selectedImage.params.loras.map(
                       (l: { path: string; scale: number }, i: number) => (
-                        <p key={i} className="text-xs font-mono mt-1">
+                        <p key={i} className="mt-1 text-xs font-mono">
                           {l.path} ({l.scale})
                         </p>
                       )
                     )}
                   </div>
                 )}
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-white/60">
                   {new Date(selectedImage.timestamp).toLocaleString()}
                 </div>
               </div>
