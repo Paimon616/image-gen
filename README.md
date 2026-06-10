@@ -2,6 +2,8 @@
 
 Local image generation UI built with Next.js and ComfyUI.
 
+![Image Gen screenshot](public/screenshot.png)
+
 ## Requirements
 
 - Node.js
