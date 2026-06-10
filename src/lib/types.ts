@@ -254,6 +254,25 @@ export const IMAGE_SIZES = [
   { label: "1024×1024", width: 1024, height: 1024 },
 ] as const;
 
+export const IMAGE_SIZE_CONSTRAINTS = {
+  min: 256,
+  max: 2048,
+  step: 8,
+} as const;
+
+export function normalizeImageDimension(value: unknown) {
+  const numericValue = Number(value);
+
+  if (!Number.isFinite(numericValue)) {
+    return DEFAULT_PARAMS.width;
+  }
+
+  const { min, max, step } = IMAGE_SIZE_CONSTRAINTS;
+  const steppedValue = Math.round(numericValue / step) * step;
+
+  return Math.min(Math.max(steppedValue, min), max);
+}
+
 export function getModelConfig(modelId: string): ModelConfig {
   return AVAILABLE_MODELS.find((m) => m.id === modelId) ?? AVAILABLE_MODELS[0];
 }

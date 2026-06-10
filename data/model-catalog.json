@@ -22,5 +22,35 @@
     "version": "vXXX Rating",
     "base_model": "Pony",
     "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/1d7adf5d-ce34-476e-93e0-527d765faa8f/original=true/7603310.jpeg"
+  },
+  "vae/vaeKlF8Anime2_klF8Anime2VAE.safetensors": {
+    "name": "VAE-kl-f8-anime2",
+    "version": "vkl-f8-anime2 VAE",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/cef0de43-694a-4b02-38bb-68f861596c00/original=true/576872.jpeg"
+  },
+  "loras/Alastor_(hazbin_hotel).safetensors": {
+    "name": "Alastor | Charlie (hazbin hotel)",
+    "version": "v1.0",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/8516df52-7167-4de8-9568-560c996a7bf5/original=true/11152579.jpeg"
+  },
+  "checkpoints/redLilyIllu_v10.safetensors": {
+    "name": "Red Lily | Illu",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/4390444f-5ea0-441f-a2b5-952d7b4c25f2/original=true/107413153.jpeg"
+  },
+  "loras/USNR STYLE_XL_lokr.safetensors": {
+    "name": "薄塗り / USNR STYLE",
+    "version": "vSDXL_Illustrious-XL",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/42d872a7-acd3-43bb-b203-258b5a281567/original=true/34753131.jpeg"
+  },
+  "loras/Detailer_NoobAI_Incrs_v1.safetensors": {
+    "name": "Detailer | Tool / Concept LoRA IllustriousXL",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/c6a910e7-8f98-46a3-8103-2b32862fc389/original=true/46971638.jpeg"
   }
 }

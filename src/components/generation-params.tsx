@@ -2,7 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useStore } from "@/lib/store";
-import { getModelConfig, IMAGE_SIZES } from "@/lib/types";
+import {
+  getModelConfig,
+  IMAGE_SIZE_CONSTRAINTS,
+  IMAGE_SIZES,
+  normalizeImageDimension,
+} from "@/lib/types";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,10 +26,23 @@ const SAMPLER_PRESETS = [
   { label: "UniPC", sampler: "uni_pc", scheduler: "normal" },
 ] as const;
 
+function greatestCommonDivisor(a: number, b: number): number {
+  return b === 0 ? a : greatestCommonDivisor(b, a % b);
+}
+
+function getAspectRatioLabel(width: number, height: number) {
+  const divisor = greatestCommonDivisor(width, height);
+
+  return `${width / divisor}:${height / divisor}`;
+}
+
 export function GenerationParams() {
   const { params, setParams } = useStore();
   const currentModel = getModelConfig(params.model);
   const isLocal = currentModel.provider === "comfyui";
+  const [draftSize, setDraftSize] = useState<
+    Partial<Record<"width" | "height", string>>
+  >({});
   const [localModels, setLocalModels] = useState<{
     vaes: string[];
     controlnets: string[];
@@ -44,6 +62,36 @@ export function GenerationParams() {
 
   const controlnets = params.controlnets ?? [];
   const selectedSamplerValue = `${params.sampler_name}:${params.scheduler}`;
+  const selectedPreset = IMAGE_SIZES.find(
+    (size) => size.width === params.width && size.height === params.height
+  );
+  const aspectRatioLabel = getAspectRatioLabel(params.width, params.height);
+  const sizeInput = {
+    width: draftSize.width ?? String(params.width),
+    height: draftSize.height ?? String(params.height),
+  };
+
+  const updateImageSize = (dimension: "width" | "height", value: string) => {
+    setDraftSize((current) => ({ ...current, [dimension]: value }));
+
+    if (!value.trim()) return;
+
+    const numericValue = Number(value);
+
+    if (Number.isFinite(numericValue)) {
+      setParams({ [dimension]: numericValue });
+    }
+  };
+
+  const commitImageSize = (dimension: "width" | "height") => {
+    const normalizedValue = normalizeImageDimension(sizeInput[dimension]);
+
+    setDraftSize((current) => ({
+      ...current,
+      [dimension]: undefined,
+    }));
+    setParams({ [dimension]: normalizedValue });
+  };
 
   const addControlNet = () => {
     if (controlnets.length >= 4) return;
@@ -80,13 +128,21 @@ export function GenerationParams() {
     <div className="space-y-3">
       <div className="grid gap-4 lg:grid-cols-2">
         <div>
-          <Label className="text-xs text-muted-foreground mb-2 block">Size</Label>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <Label className="text-xs text-muted-foreground">Size</Label>
+            <span className="text-xs font-mono text-muted-foreground">
+              {selectedPreset?.label ?? "Custom"} · {aspectRatioLabel}
+            </span>
+          </div>
           <div className="grid grid-cols-3 gap-1.5">
             {IMAGE_SIZES.map((size) => (
               <button
                 key={size.label}
                 type="button"
-                onClick={() => setParams({ width: size.width, height: size.height })}
+                onClick={() => {
+                  setDraftSize({});
+                  setParams({ width: size.width, height: size.height });
+                }}
                 className={`text-xs py-1.5 px-2 rounded-md border transition-colors ${
                   params.width === size.width && params.height === size.height
                     ? "border-primary bg-primary/10 text-primary"
@@ -96,6 +152,41 @@ export function GenerationParams() {
                 {size.label}
               </button>
             ))}
+          </div>
+          <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-2">
+            <div>
+              <Label className="mb-1 block text-[10px] text-muted-foreground">
+                W
+              </Label>
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={IMAGE_SIZE_CONSTRAINTS.min}
+                max={IMAGE_SIZE_CONSTRAINTS.max}
+                step={IMAGE_SIZE_CONSTRAINTS.step}
+                value={sizeInput.width}
+                onChange={(e) => updateImageSize("width", e.target.value)}
+                onBlur={() => commitImageSize("width")}
+                className="h-8 text-sm"
+              />
+            </div>
+            <span className="pb-2 text-xs text-muted-foreground">×</span>
+            <div>
+              <Label className="mb-1 block text-[10px] text-muted-foreground">
+                H
+              </Label>
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={IMAGE_SIZE_CONSTRAINTS.min}
+                max={IMAGE_SIZE_CONSTRAINTS.max}
+                step={IMAGE_SIZE_CONSTRAINTS.step}
+                value={sizeInput.height}
+                onChange={(e) => updateImageSize("height", e.target.value)}
+                onBlur={() => commitImageSize("height")}
+                className="h-8 text-sm"
+              />
+            </div>
           </div>
         </div>
 

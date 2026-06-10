@@ -4,7 +4,7 @@ import { generateWithComfyUI } from "@/lib/comfyui";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { randomUUID } from "crypto";
-import { getModelConfig } from "@/lib/types";
+import { getModelConfig, normalizeImageDimension } from "@/lib/types";
 import type { EmbeddingConfig, GenerationParams, LoraConfig } from "@/lib/types";
 
 const OUTPUT_DIR = join(process.cwd(), "output");
@@ -191,7 +191,12 @@ function buildInput(body: Record<string, any>): { endpoint: string; input: Recor
 
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json()) as GenerationParams;
+    const rawBody = (await req.json()) as GenerationParams;
+    const body: GenerationParams = {
+      ...rawBody,
+      width: normalizeImageDimension(rawBody.width),
+      height: normalizeImageDimension(rawBody.height),
+    };
     const modelConfig = getModelConfig(body.model);
 
     if (
