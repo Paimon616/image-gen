@@ -8,6 +8,55 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
+interface LocalModelAsset {
+  path: string;
+  name: string;
+  version: string;
+  base_model: string;
+  thumbnail_url: string | null;
+}
+
+function assetLabel(asset: LocalModelAsset) {
+  return asset.version ? `${asset.name} (${asset.version})` : asset.name;
+}
+
+function AssetThumbnail({
+  asset,
+  className = "h-12 w-12",
+}: {
+  asset: LocalModelAsset | undefined;
+  className?: string;
+}) {
+  if (asset?.thumbnail_url) {
+    return (
+      <img
+        src={asset.thumbnail_url}
+        alt={asset.name}
+        className={`${className} shrink-0 rounded-md object-cover`}
+      />
+    );
+  }
+
+  return (
+    <div
+      className={`${className} flex shrink-0 items-center justify-center rounded-md border border-border bg-muted text-xs font-medium text-muted-foreground`}
+    >
+      {asset?.name.slice(0, 2).toUpperCase() ?? "M"}
+    </div>
+  );
+}
+
+function AssetText({ asset }: { asset: LocalModelAsset }) {
+  return (
+    <div className="min-w-0">
+      <div className="truncate text-sm font-medium text-primary">{asset.name}</div>
+      <div className="truncate text-xs text-muted-foreground">
+        {[asset.version, asset.base_model].filter(Boolean).join(" · ") || asset.path}
+      </div>
+    </div>
+  );
+}
+
 export function ModelSelector() {
   const { params, setParams } = useStore();
   const currentModel = getModelConfig(params.model);
@@ -16,7 +65,17 @@ export function ModelSelector() {
     checkpoints: string[];
     loras: string[];
     embeddings: string[];
-  }>({ checkpoints: [], loras: [], embeddings: [] });
+    checkpointAssets: LocalModelAsset[];
+    loraAssets: LocalModelAsset[];
+    embeddingAssets: LocalModelAsset[];
+  }>({
+    checkpoints: [],
+    loras: [],
+    embeddings: [],
+    checkpointAssets: [],
+    loraAssets: [],
+    embeddingAssets: [],
+  });
 
   useEffect(() => {
     fetch("/api/models")
@@ -26,6 +85,9 @@ export function ModelSelector() {
           checkpoints: data.checkpoints ?? [],
           loras: data.loras ?? [],
           embeddings: data.embeddings ?? [],
+          checkpointAssets: data.checkpointAssets ?? [],
+          loraAssets: data.loraAssets ?? [],
+          embeddingAssets: data.embeddingAssets ?? [],
         })
       )
       .catch(() => {});
@@ -82,6 +144,9 @@ export function ModelSelector() {
     setParams({ embeddings: params.embeddings.filter((_, i) => i !== index) });
   };
 
+  const findAsset = (assets: LocalModelAsset[], path: string) =>
+    assets.find((asset) => asset.path === path);
+
   return (
     <div className="space-y-3">
       <Label className="text-xs text-muted-foreground block">Model</Label>
@@ -122,18 +187,24 @@ export function ModelSelector() {
           <Label className="text-xs text-muted-foreground mb-1.5 block">
             Base Model
           </Label>
-          {localModels.checkpoints.length > 0 ? (
-            <select
-              value={params.model_name}
-              onChange={(e) => setParams({ model_name: e.target.value })}
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-            >
-              {localModels.checkpoints.map((checkpoint) => (
-                <option key={checkpoint} value={checkpoint}>
-                  {checkpoint}
-                </option>
+          {localModels.checkpointAssets.length > 0 ? (
+            <div className="grid gap-2 sm:grid-cols-2">
+              {localModels.checkpointAssets.map((checkpoint) => (
+                <button
+                  key={checkpoint.path}
+                  type="button"
+                  onClick={() => setParams({ model_name: checkpoint.path })}
+                  className={`flex min-w-0 items-center gap-3 rounded-md border p-2 text-left transition-colors ${
+                    params.model_name === checkpoint.path
+                      ? "border-primary bg-primary/10"
+                      : "border-border hover:border-muted-foreground/50 hover:bg-muted/40"
+                  }`}
+                >
+                  <AssetThumbnail asset={checkpoint} className="h-14 w-14" />
+                  <AssetText asset={checkpoint} />
+                </button>
               ))}
-            </select>
+            </div>
           ) : (
             <Input
               placeholder="checkpoint.safetensors"
@@ -181,49 +252,84 @@ export function ModelSelector() {
                 </p>
               )}
               {params.loras.map((lora, i) => (
-                <div key={i} className="flex gap-2">
-                  {isLocal && localModels.loras.length > 0 ? (
-                    <select
-                      value={lora.path}
-                      onChange={(e) => updateLora(i, "path", e.target.value)}
-                      className="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                    >
-                      <option value="">Select LoRA...</option>
-                      {localModels.loras.map((localLora) => (
-                        <option key={localLora} value={localLora}>
-                          {localLora}
-                        </option>
-                      ))}
-                    </select>
+                <div key={i} className="space-y-2 rounded-md border border-border p-2">
+                  {isLocal && localModels.loraAssets.length > 0 ? (
+                    <>
+                      {lora.path && findAsset(localModels.loraAssets, lora.path) && (
+                        <div className="flex items-center gap-3">
+                          <AssetThumbnail
+                            asset={findAsset(localModels.loraAssets, lora.path)}
+                          />
+                          <AssetText
+                            asset={findAsset(localModels.loraAssets, lora.path)!}
+                          />
+                        </div>
+                      )}
+                      <div className="flex gap-2">
+                        <select
+                          value={lora.path}
+                          onChange={(e) => updateLora(i, "path", e.target.value)}
+                          className="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                        >
+                          <option value="">Select LoRA...</option>
+                          {localModels.loraAssets.map((localLora) => (
+                            <option key={localLora.path} value={localLora.path}>
+                              {assetLabel(localLora)}
+                            </option>
+                          ))}
+                        </select>
+                        <Input
+                          type="number"
+                          value={lora.scale}
+                          onChange={(e) =>
+                            updateLora(i, "scale", parseFloat(e.target.value) || 0)
+                          }
+                          className="h-8 w-16 text-xs"
+                          min={0}
+                          max={2}
+                          step={0.1}
+                        />
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0 text-destructive"
+                          onClick={() => removeLora(i)}
+                        >
+                          ×
+                        </Button>
+                      </div>
+                    </>
                   ) : (
-                    <Input
-                      placeholder={
-                        isLocal ? "my-lora.safetensors" : "huggingface/lora-name"
-                      }
-                      value={lora.path}
-                      onChange={(e) => updateLora(i, "path", e.target.value)}
-                      className="h-8 min-w-0 flex-1 text-xs"
-                    />
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder={
+                          isLocal ? "my-lora.safetensors" : "huggingface/lora-name"
+                        }
+                        value={lora.path}
+                        onChange={(e) => updateLora(i, "path", e.target.value)}
+                        className="h-8 min-w-0 flex-1 text-xs"
+                      />
+                      <Input
+                        type="number"
+                        value={lora.scale}
+                        onChange={(e) =>
+                          updateLora(i, "scale", parseFloat(e.target.value) || 0)
+                        }
+                        className="h-8 w-16 text-xs"
+                        min={0}
+                        max={2}
+                        step={0.1}
+                      />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 p-0 text-destructive"
+                        onClick={() => removeLora(i)}
+                      >
+                        ×
+                      </Button>
+                    </div>
                   )}
-                  <Input
-                    type="number"
-                    value={lora.scale}
-                    onChange={(e) =>
-                      updateLora(i, "scale", parseFloat(e.target.value) || 0)
-                    }
-                    className="h-8 w-16 text-xs"
-                    min={0}
-                    max={2}
-                    step={0.1}
-                  />
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 w-8 p-0 text-destructive"
-                    onClick={() => removeLora(i)}
-                  >
-                    ×
-                  </Button>
                 </div>
               ))}
             </div>
@@ -260,9 +366,9 @@ export function ModelSelector() {
                         className="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                       >
                         <option value="">Select embedding...</option>
-                        {localModels.embeddings.map((localEmbedding) => (
-                          <option key={localEmbedding} value={localEmbedding}>
-                            {localEmbedding}
+                        {localModels.embeddingAssets.map((localEmbedding) => (
+                          <option key={localEmbedding.path} value={localEmbedding.path}>
+                            {assetLabel(localEmbedding)}
                           </option>
                         ))}
                       </select>

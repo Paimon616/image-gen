@@ -1,7 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  outputFileTracingExcludes: {
+    "/*": ["./ComfyUI/**/*"],
+    "/api/models": ["./ComfyUI/**/*"],
+    "/api/models/thumbnail": ["./ComfyUI/**/*"],
+  },
 };
 
 export default nextConfig;
