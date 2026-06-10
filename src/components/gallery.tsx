@@ -3,9 +3,17 @@
 import { useEffect } from "react";
 import { useStore } from "@/lib/store";
 import type { GeneratedImage } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import { CopyPlus, Trash2 } from "lucide-react";
 
 export function Gallery() {
-  const { images, setSelectedImage, addImage } = useStore();
+  const {
+    images,
+    setSelectedImage,
+    addImage,
+    loadParamsFromImage,
+    removeImage,
+  } = useStore();
 
   useEffect(() => {
     fetch("/api/images")
@@ -21,6 +29,15 @@ export function Gallery() {
       })
       .catch(() => {});
   }, [addImage]);
+
+  const handleReuse = (img: GeneratedImage) => {
+    loadParamsFromImage(img);
+  };
+
+  const handleDelete = async (img: GeneratedImage) => {
+    await fetch(`/api/images/${img.filename}`, { method: "DELETE" });
+    removeImage(img.id);
+  };
 
   if (images.length === 0) {
     return (
@@ -50,26 +67,52 @@ export function Gallery() {
     <div className="flex-1 overflow-y-auto p-3">
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
         {images.map((img) => (
-          <button
+          <div
             key={img.id}
-            type="button"
-            className="group relative aspect-square overflow-hidden rounded-lg border border-border hover:border-primary/50 transition-colors cursor-pointer"
-            onClick={() => setSelectedImage(img)}
+            className="group relative aspect-square overflow-hidden rounded-lg border border-border transition-colors hover:border-primary/50"
           >
-            <img
-              src={img.url}
-              alt=""
-              className="w-full h-full object-cover"
-              loading="lazy"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              type="button"
+              className="absolute inset-0 cursor-pointer"
+              onClick={() => setSelectedImage(img)}
+              aria-label="Open image details"
+            >
+              <img
+                src={img.url}
+                alt=""
+                className="h-full w-full object-cover"
+                loading="lazy"
+              />
+            </button>
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent opacity-0 transition-opacity group-hover:opacity-100">
+              <div className="absolute left-2 right-2 top-2 flex gap-1.5">
+                <Button
+                  type="button"
+                  size="sm"
+                  className="pointer-events-auto min-w-0 flex-1 bg-white/90 px-1.5 text-[11px] text-black hover:bg-white"
+                  onClick={() => handleReuse(img)}
+                >
+                  <CopyPlus />
+                  정보 그대로 가져다쓰기
+                </Button>
+                <Button
+                  type="button"
+                  size="icon-sm"
+                  variant="destructive"
+                  className="pointer-events-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={() => handleDelete(img)}
+                  aria-label="Delete image"
+                >
+                  <Trash2 />
+                </Button>
+              </div>
               <div className="absolute bottom-2 left-2 right-2">
                 <p className="text-white text-xs truncate">
                   {img.params?.prompt || "No prompt"}
                 </p>
               </div>
             </div>
-          </button>
+          </div>
         ))}
       </div>
     </div>

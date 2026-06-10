@@ -52,5 +52,35 @@
     "version": "v1.0",
     "base_model": "Illustrious",
     "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/c6a910e7-8f98-46a3-8103-2b32862fc389/original=true/46971638.jpeg"
+  },
+  "loras/Pb0y.safetensors": {
+    "name": "BL-Manhwa Styles",
+    "version": "vPb0y",
+    "base_model": "Pony",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/b807179a-83d6-4f48-b45b-fbfb8e6f2fda/original=true/51202927.jpeg"
+  },
+  "loras/AFAE-000010.safetensors": {
+    "name": "Handsome Boy.1",
+    "version": "v1.0",
+    "base_model": "Pony",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/88fdf3cd-a805-4025-81dc-261f5c7a378c/anim=false,width=450,optimized=true/111_05769_.jpeg"
+  },
+  "loras/MuseInDark_IL-NAI-Tweak-3.0.safetensors": {
+    "name": "[Styles] Muses in Dark | Semi-real Style - Illustrious/PonyXL - Illustrious|NAI",
+    "version": "v3.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/70cf13a4-0318-4b21-8c0a-2515f7454868/anim=false,width=450,optimized=true/ComfyUI_00788_.jpeg"
+  },
+  "checkpoints/illustrij_v19.safetensors": {
+    "name": "Illustrij",
+    "version": "v19",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/3cf106f2-8d15-4b0a-8945-64f8434e3e78/anim=false,width=450,optimized=true/00536-2832935049.jpeg"
+  },
+  "loras/5byue5dnijistyleE291.cNux.safetensors": {
+    "name": "Niji-male-style①",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/2e834f10-0522-4512-b09b-198f14c263c2/original=true/44947989.jpeg"
   }
 }

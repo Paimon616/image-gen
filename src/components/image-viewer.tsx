@@ -39,11 +39,15 @@ export function ImageViewer() {
       <DialogContent className="!block h-[96vh] max-h-[96vh] w-[96vw] max-w-[96vw] overflow-hidden bg-black p-0">
         <DialogTitle className="sr-only">Image Details</DialogTitle>
         <div className="relative h-full w-full">
-          <img
-            src={selectedImage.url}
-            alt="Generated"
-            className="absolute inset-0 m-auto block h-auto max-h-full w-auto max-w-full object-contain"
-          />
+          <div className="absolute inset-0 overflow-auto">
+            <div className="flex min-h-full min-w-full p-4">
+              <img
+                src={selectedImage.url}
+                alt="Generated"
+                className="m-auto block h-auto max-h-none w-auto max-w-none shrink-0"
+              />
+            </div>
+          </div>
 
           <div className="absolute left-4 top-4 right-20 flex gap-2 flex-wrap">
             <Button size="sm" onClick={handleReuse}>
