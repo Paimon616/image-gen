@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useStore } from "@/lib/store";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -13,12 +13,60 @@ import { Gallery } from "@/components/gallery";
 import { ImageViewer } from "@/components/image-viewer";
 import { AppSidebar } from "@/components/app-sidebar";
 import { getModelConfig } from "@/lib/types";
+import { ImageIcon, ScanLine } from "lucide-react";
+
+function choosePoseControlNet(controlnets: string[]) {
+  return (
+    controlnets.find((model) => /open\s*pose|openpose|pose/i.test(model)) ??
+    controlnets[0] ??
+    ""
+  );
+}
 
 export default function Home() {
   const { params, setParams, status, setStatus, addImage, images } = useStore();
+  const [localControlnets, setLocalControlnets] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetch("/api/models")
+      .then((res) => res.json())
+      .then((data) => {
+        const controlnets = data.controlnets ?? [];
+        setLocalControlnets(controlnets);
+        if (!params.pose_reference_model && controlnets.length > 0) {
+          setParams({ pose_reference_model: choosePoseControlNet(controlnets) });
+        }
+      })
+      .catch(() => {});
+  }, [params.pose_reference_model, setParams]);
+
+  const currentModel = getModelConfig(params.model);
+  const supportsPoseReference = currentModel.provider === "comfyui";
+  const poseReferenceError = useMemo(() => {
+    if (params.generation_mode !== "pose_reference") return "";
+    if (!supportsPoseReference) {
+      return "Pose Reference mode requires Local ComfyUI.";
+    }
+    if (!params.pose_reference_image) {
+      return "Add a pose reference image before generating.";
+    }
+    if (!params.pose_reference_model.trim()) {
+      return "Select an OpenPose/pose ControlNet model first.";
+    }
+    return "";
+  }, [
+    params.generation_mode,
+    params.pose_reference_image,
+    params.pose_reference_model,
+    supportsPoseReference,
+  ]);
 
   const generate = useCallback(async () => {
     if (!params.prompt.trim()) return;
+    if (poseReferenceError) {
+      setStatus({ state: "error", progress: 0, message: poseReferenceError });
+      return;
+    }
 
     setStatus({ state: "generating", progress: 0, message: "Generating..." });
 
@@ -45,10 +93,9 @@ export default function Home() {
       const message = err instanceof Error ? err.message : "Unknown error";
       setStatus({ state: "error", progress: 0, message });
     }
-  }, [params, setStatus, addImage]);
+  }, [params, poseReferenceError, setStatus, addImage]);
 
   const isGenerating = status.state === "generating";
-  const currentModel = getModelConfig(params.model);
 
   return (
     <div className="flex h-screen bg-background">
@@ -66,6 +113,43 @@ export default function Home() {
           <ModelSelector />
 
           <Separator />
+
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">Mode</Label>
+            <div className="grid grid-cols-2 gap-1.5 rounded-md border border-border bg-card/30 p-1">
+              {[
+                {
+                  mode: "text_to_image" as const,
+                  label: "Text to Image",
+                  icon: ImageIcon,
+                },
+                {
+                  mode: "pose_reference" as const,
+                  label: "Pose Reference",
+                  icon: ScanLine,
+                },
+              ].map((item) => {
+                const Icon = item.icon;
+                const active = params.generation_mode === item.mode;
+
+                return (
+                  <button
+                    key={item.mode}
+                    type="button"
+                    onClick={() => setParams({ generation_mode: item.mode })}
+                    className={`flex h-9 items-center justify-center gap-2 rounded px-2 text-sm font-medium transition-colors ${
+                      active
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           {/* Prompt */}
           <div className="grid gap-3 xl:grid-cols-2">
@@ -91,6 +175,93 @@ export default function Home() {
             />
           </div>
           </div>
+
+          {params.generation_mode === "pose_reference" && (
+            <>
+              <Separator />
+              <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_16rem]">
+                <div>
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <Label className="text-xs text-muted-foreground">
+                      Pose Reference
+                    </Label>
+                    {!supportsPoseReference && (
+                      <span className="text-xs text-yellow-500">
+                        Local ComfyUI only
+                      </span>
+                    )}
+                  </div>
+                  <ImageUpload
+                    label="Pose Image"
+                    description="Drop or click to upload a pose reference"
+                    value={params.pose_reference_image}
+                    onChange={(url) => setParams({ pose_reference_image: url })}
+                  />
+                </div>
+
+                <div className="space-y-3 rounded-md border border-border bg-card/30 p-3">
+                  <div>
+                    <Label className="mb-2 block text-xs text-muted-foreground">
+                      ControlNet
+                    </Label>
+                    {localControlnets.length > 0 ? (
+                      <select
+                        value={params.pose_reference_model}
+                        onChange={(e) =>
+                          setParams({ pose_reference_model: e.target.value })
+                        }
+                        className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                      >
+                        <option value="">Select pose ControlNet...</option>
+                        {localControlnets.map((model) => (
+                          <option key={model} value={model}>
+                            {model}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        value={params.pose_reference_model}
+                        onChange={(e) =>
+                          setParams({ pose_reference_model: e.target.value })
+                        }
+                        placeholder="openpose controlnet file"
+                        className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                      />
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="mb-2 flex items-center justify-between">
+                      <Label className="text-xs text-muted-foreground">
+                        Strength
+                      </Label>
+                      <span className="text-xs font-mono">
+                        {params.pose_reference_strength.toFixed(2)}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={2}
+                      step={0.05}
+                      value={params.pose_reference_strength}
+                      onChange={(e) =>
+                        setParams({
+                          pose_reference_strength: parseFloat(e.target.value),
+                        })
+                      }
+                      className="w-full accent-primary"
+                    />
+                  </div>
+
+                  {poseReferenceError && (
+                    <p className="text-xs text-yellow-500">{poseReferenceError}</p>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Reference Images */}
           {(currentModel.supports.ip_adapter || currentModel.supports.face_id) && (
@@ -144,7 +315,7 @@ export default function Home() {
             className="w-full"
             size="lg"
             onClick={generate}
-            disabled={isGenerating || !params.prompt.trim()}
+            disabled={isGenerating || !params.prompt.trim() || Boolean(poseReferenceError)}
           >
             {isGenerating ? (
               <span className="flex items-center gap-2">

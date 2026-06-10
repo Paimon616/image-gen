@@ -166,6 +166,7 @@ export interface GenerationParams {
   height: number;
   num_images: number;
   output_format: "jpeg" | "png";
+  generation_mode: "text_to_image" | "pose_reference";
   seed: number | null;
   sampler_name: string;
   scheduler: string;
@@ -177,6 +178,9 @@ export interface GenerationParams {
   prompt_weighting: boolean;
   style_image: string | null;
   character_image: string | null;
+  pose_reference_image: string | null;
+  pose_reference_model: string;
+  pose_reference_strength: number;
   enable_safety_checker: boolean;
 }
 
@@ -223,6 +227,7 @@ export const DEFAULT_PARAMS: GenerationParams = {
   height: 1024,
   num_images: 1,
   output_format: "jpeg",
+  generation_mode: "text_to_image",
   seed: null,
   sampler_name: "dpmpp_2m",
   scheduler: "karras",
@@ -234,6 +239,9 @@ export const DEFAULT_PARAMS: GenerationParams = {
   prompt_weighting: true,
   style_image: null,
   character_image: null,
+  pose_reference_image: null,
+  pose_reference_model: "",
+  pose_reference_strength: 0.8,
   enable_safety_checker: false,
 };
 

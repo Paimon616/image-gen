@@ -319,7 +319,7 @@ export function GenerationParams() {
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  로컬 ControlNet 슬롯입니다. workflow 적용은 다음 단계에서 연결합니다.
+                  로컬 ComfyUI workflow에 ControlNet conditioning을 연결합니다.
                 </p>
               </div>
               <Button

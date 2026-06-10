@@ -194,6 +194,26 @@ export async function POST(req: NextRequest) {
     const body = (await req.json()) as GenerationParams;
     const modelConfig = getModelConfig(body.model);
 
+    if (
+      body.generation_mode === "pose_reference" &&
+      modelConfig.provider !== "comfyui"
+    ) {
+      return NextResponse.json(
+        { error: "Pose Reference mode requires Local ComfyUI." },
+        { status: 400 }
+      );
+    }
+
+    if (
+      body.generation_mode === "pose_reference" &&
+      (!body.pose_reference_image || !body.pose_reference_model?.trim())
+    ) {
+      return NextResponse.json(
+        { error: "Pose Reference mode requires an image and a ControlNet model." },
+        { status: 400 }
+      );
+    }
+
     if (modelConfig.provider === "comfyui") {
       const images = await generateWithComfyUI(body);
       const savedImages = await saveBufferedImages({

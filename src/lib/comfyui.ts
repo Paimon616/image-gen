@@ -1,4 +1,9 @@
-import type { EmbeddingConfig, GenerationParams, LoraConfig } from "./types";
+import type {
+  ControlNetConfig,
+  EmbeddingConfig,
+  GenerationParams,
+  LoraConfig,
+} from "./types";
 
 const DEFAULT_COMFYUI_URL = "http://127.0.0.1:8188";
 const COMFYUI_BASE_URL =
@@ -29,6 +34,10 @@ interface ComfyGeneratedImage {
   originalUrl: string;
 }
 
+interface ResolvedControlNetConfig extends ControlNetConfig {
+  image: string;
+}
+
 function cleanLoras(loras: LoraConfig[]) {
   return loras
     .map((lora) => ({
@@ -54,8 +63,91 @@ function withEmbeddingTokens(prompt: string, embeddings: EmbeddingConfig[]) {
   return tokens ? `${prompt}, ${tokens}` : prompt;
 }
 
-function buildDefaultWorkflow(params: GenerationParams) {
+function isRemoteImageRef(image: string) {
+  return /^https?:\/\//i.test(image);
+}
+
+function extensionForContentType(contentType: string | null) {
+  if (contentType?.includes("png")) return "png";
+  if (contentType?.includes("webp")) return "webp";
+  return "jpg";
+}
+
+async function uploadImageToComfyUI(imageUrl: string) {
+  const imageRes = await fetch(imageUrl);
+
+  if (!imageRes.ok) {
+    throw new Error(`Failed to fetch reference image: ${imageRes.status}`);
+  }
+
+  const contentType = imageRes.headers.get("content-type") ?? "image/jpeg";
+  const blob = new Blob([await imageRes.arrayBuffer()], { type: contentType });
+  const filename = `image-gen-ref-${crypto.randomUUID()}.${extensionForContentType(
+    contentType
+  )}`;
+  const formData = new FormData();
+
+  formData.append("image", blob, filename);
+  formData.append("type", "input");
+  formData.append("overwrite", "true");
+
+  const uploadRes = await comfyFetch("/upload/image", {
+    method: "POST",
+    body: formData,
+  });
+  const uploaded = (await uploadRes.json()) as { name?: string };
+
+  return uploaded.name ?? filename;
+}
+
+async function resolveControlNetImage(image: string) {
+  if (!isRemoteImageRef(image)) return image;
+  return uploadImageToComfyUI(image);
+}
+
+async function cleanControlnets(params: GenerationParams) {
+  const controlnets: ControlNetConfig[] = [];
+
+  if (params.generation_mode === "pose_reference" && params.pose_reference_image) {
+    controlnets.push({
+      model: params.pose_reference_model,
+      image: params.pose_reference_image,
+      strength: params.pose_reference_strength,
+      start_percent: 0,
+      end_percent: 1,
+    });
+  }
+
+  controlnets.push(...(params.controlnets ?? []));
+
+  const resolved = await Promise.all(
+    controlnets
+      .map((controlnet) => ({
+        model: controlnet.model.trim(),
+        image: controlnet.image?.trim() ?? "",
+        strength: Number.isFinite(controlnet.strength)
+          ? controlnet.strength
+          : 0.8,
+        start_percent: Number.isFinite(controlnet.start_percent)
+          ? controlnet.start_percent
+          : 0,
+        end_percent: Number.isFinite(controlnet.end_percent)
+          ? controlnet.end_percent
+          : 1,
+      }))
+      .filter((controlnet) => controlnet.model && controlnet.image)
+      .map(async (controlnet) => ({
+        ...controlnet,
+        image: await resolveControlNetImage(controlnet.image),
+      }))
+  );
+
+  return resolved satisfies ResolvedControlNetConfig[];
+}
+
+async function buildDefaultWorkflow(params: GenerationParams) {
   const loras = cleanLoras(params.loras);
+  const controlnets = await cleanControlnets(params);
   const checkpoint = params.model_name.trim() || "sd_xl_base_1.0.safetensors";
   const seed = params.seed ?? Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
   const workflow: Record<string, unknown> = {
@@ -130,6 +222,44 @@ function buildDefaultWorkflow(params: GenerationParams) {
       batch_size: Math.min(Math.max(Number(params.num_images) || 1, 1), 4),
     },
   };
+
+  let positiveRef: [string, number] = ["2", 0];
+  let negativeRef: [string, number] = ["3", 0];
+
+  controlnets.forEach((controlnet, index) => {
+    const imageNodeId = String(30 + index * 3);
+    const loaderNodeId = String(31 + index * 3);
+    const applyNodeId = String(32 + index * 3);
+
+    workflow[imageNodeId] = {
+      class_type: "LoadImage",
+      inputs: {
+        image: controlnet.image,
+      },
+    };
+    workflow[loaderNodeId] = {
+      class_type: "ControlNetLoader",
+      inputs: {
+        control_net_name: controlnet.model,
+      },
+    };
+    workflow[applyNodeId] = {
+      class_type: "ControlNetApplyAdvanced",
+      inputs: {
+        strength: controlnet.strength,
+        start_percent: controlnet.start_percent,
+        end_percent: controlnet.end_percent,
+        positive: positiveRef,
+        negative: negativeRef,
+        control_net: [loaderNodeId, 0],
+        image: [imageNodeId, 0],
+      },
+    };
+
+    positiveRef = [applyNodeId, 0];
+    negativeRef = [applyNodeId, 1];
+  });
+
   workflow["5"] = {
     class_type: "KSampler",
     inputs: {
@@ -140,8 +270,8 @@ function buildDefaultWorkflow(params: GenerationParams) {
       scheduler: params.scheduler || "karras",
       denoise: 1,
       model: modelRef,
-      positive: ["2", 0],
-      negative: ["3", 0],
+      positive: positiveRef,
+      negative: negativeRef,
       latent_image: ["4", 0],
     },
   };
@@ -176,12 +306,13 @@ async function comfyFetch(path: string, init?: RequestInit) {
 
 async function queuePrompt(params: GenerationParams) {
   const clientId = crypto.randomUUID();
+  const prompt = await buildDefaultWorkflow(params);
   const res = await comfyFetch("/prompt", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       client_id: clientId,
-      prompt: buildDefaultWorkflow(params),
+      prompt,
     }),
   });
 

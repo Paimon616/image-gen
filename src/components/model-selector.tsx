@@ -598,6 +598,12 @@ export function ModelSelector() {
           {currentModel.name} doesn&apos;t support character reference — it will be ignored
         </p>
       )}
+      {params.generation_mode === "pose_reference" &&
+        currentModel.provider !== "comfyui" && (
+          <p className="text-xs text-yellow-500 mt-2">
+            Pose Reference mode requires Local ComfyUI.
+          </p>
+        )}
       {params.loras.length > 0 && !currentModel.supports.lora && (
         <p className="text-xs text-yellow-500 mt-2">
           {currentModel.name} doesn&apos;t support LoRA — they will be ignored
