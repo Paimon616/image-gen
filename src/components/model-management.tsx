@@ -19,6 +19,7 @@ interface ModelsResponse {
   checkpointAssets: ModelAsset[];
   loraAssets: ModelAsset[];
   embeddingAssets: ModelAsset[];
+  vaeAssets: ModelAsset[];
 }
 
 interface CivitaiImportModel {
@@ -45,6 +46,7 @@ const GROUPS = [
   { id: "checkpoints", label: "Checkpoints", folder: "checkpoints", key: "checkpointAssets" },
   { id: "loras", label: "LoRA", folder: "loras", key: "loraAssets" },
   { id: "embeddings", label: "Embeddings", folder: "embeddings", key: "embeddingAssets" },
+  { id: "vae", label: "VAE", folder: "vae", key: "vaeAssets" },
 ] as const;
 
 function ModelInitial({ asset }: { asset: ModelAsset }) {
@@ -242,6 +244,7 @@ export function ModelManagement() {
       checkpoints: models?.checkpointAssets.length ?? 0,
       loras: models?.loraAssets.length ?? 0,
       embeddings: models?.embeddingAssets.length ?? 0,
+      vae: models?.vaeAssets.length ?? 0,
     }),
     [models]
   );
@@ -251,7 +254,7 @@ export function ModelManagement() {
       <header className="border-b border-border px-5 py-4">
         <h1 className="text-lg font-semibold">Model Management</h1>
         <p className="text-xs text-muted-foreground">
-          체크포인트, LoRA, embedding의 표시 이름, 버전, 썸네일을 관리합니다.
+          체크포인트, LoRA, embedding, VAE의 표시 이름, 버전, 썸네일을 관리합니다.
         </p>
       </header>
 
