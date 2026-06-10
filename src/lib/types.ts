@@ -167,6 +167,8 @@ export interface GenerationParams {
   num_images: number;
   output_format: "jpeg" | "png";
   seed: number | null;
+  sampler_name: string;
+  scheduler: string;
   clip_skip: number;
   vae_name: string;
   loras: LoraConfig[];
@@ -222,6 +224,8 @@ export const DEFAULT_PARAMS: GenerationParams = {
   num_images: 1,
   output_format: "jpeg",
   seed: null,
+  sampler_name: "dpmpp_2m",
+  scheduler: "karras",
   clip_skip: 1,
   vae_name: "",
   loras: [],

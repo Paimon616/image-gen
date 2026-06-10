@@ -9,6 +9,18 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 
+const SAMPLER_PRESETS = [
+  { label: "Euler a", sampler: "euler_ancestral", scheduler: "normal" },
+  { label: "Euler", sampler: "euler", scheduler: "normal" },
+  { label: "Heun", sampler: "heun", scheduler: "normal" },
+  { label: "LMS", sampler: "lms", scheduler: "normal" },
+  { label: "DDIM", sampler: "ddim", scheduler: "normal" },
+  { label: "DPM++ 2M Karras", sampler: "dpmpp_2m", scheduler: "karras" },
+  { label: "DPM++ SDE Karras", sampler: "dpmpp_sde", scheduler: "karras" },
+  { label: "DPM++ 2M SDE Karras", sampler: "dpmpp_2m_sde", scheduler: "karras" },
+  { label: "UniPC", sampler: "uni_pc", scheduler: "normal" },
+] as const;
+
 export function GenerationParams() {
   const { params, setParams } = useStore();
   const currentModel = getModelConfig(params.model);
@@ -31,6 +43,7 @@ export function GenerationParams() {
   }, []);
 
   const controlnets = params.controlnets ?? [];
+  const selectedSamplerValue = `${params.sampler_name}:${params.scheduler}`;
 
   const addControlNet = () => {
     if (controlnets.length >= 4) return;
@@ -139,6 +152,31 @@ export function GenerationParams() {
               />
             </div>
 
+            <div>
+              <Label className="text-xs text-muted-foreground mb-2 block">
+                Sampler
+              </Label>
+              <select
+                value={selectedSamplerValue}
+                onChange={(e) => {
+                  const [sampler_name, scheduler] = e.target.value.split(":");
+                  setParams({ sampler_name, scheduler });
+                }}
+                className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
+                {SAMPLER_PRESETS.map((preset) => (
+                  <option
+                    key={`${preset.sampler}:${preset.scheduler}`}
+                    value={`${preset.sampler}:${preset.scheduler}`}
+                  >
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
             <div>
               <div className="flex justify-between items-center mb-2">
                 <Label className="text-xs text-muted-foreground">Steps</Label>
