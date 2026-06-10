@@ -21,30 +21,24 @@ interface ModelsResponse {
   embeddingAssets: ModelAsset[];
 }
 
-interface CivitaiImportFile {
-  id: number;
-  name: string;
-  primary: boolean;
-  sizeKB: number | null;
-  sha256: string | null;
-  format: string;
-  precision: string;
-  localPath: string | null;
-  isDownloaded: boolean;
-}
-
 interface CivitaiImportModel {
   id: number;
   modelId: number;
   name: string;
   version: string;
   type: string;
-  folder: string;
   baseModel: string;
   trainedWords: string[];
   nsfw: boolean;
   thumbnailUrl: string | null;
-  files: CivitaiImportFile[];
+  primaryFile: {
+    name: string;
+    sizeKB: number | null;
+    sha256: string | null;
+    format: string;
+    precision: string;
+    inferredName: string;
+  } | null;
 }
 
 const GROUPS = [
@@ -78,197 +72,6 @@ function formatSize(sizeKB: number | null) {
   return `${Math.round(sizeKB)} KB`;
 }
 
-function CivitaiImportPanel({ onImported }: { onImported: () => void }) {
-  const [url, setUrl] = useState("");
-  const [model, setModel] = useState<CivitaiImportModel | null>(null);
-  const [selectedFileId, setSelectedFileId] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [downloading, setDownloading] = useState(false);
-  const [message, setMessage] = useState("");
-
-  const selectedFile =
-    model?.files.find((file) => file.id === selectedFileId) ??
-    model?.files.find((file) => file.primary) ??
-    model?.files[0] ??
-    null;
-
-  const inspect = async () => {
-    setLoading(true);
-    setMessage("");
-    try {
-      const res = await fetch("/api/models/civitai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url, action: "preview" }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Civitai 조회 실패");
-
-      setModel(data.model);
-      const primaryFile =
-        data.model.files.find((file: CivitaiImportFile) => file.primary) ??
-        data.model.files[0] ??
-        null;
-      setSelectedFileId(primaryFile?.id ?? null);
-    } catch (error) {
-      setModel(null);
-      setSelectedFileId(null);
-      setMessage(error instanceof Error ? error.message : "Civitai 조회 실패");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const download = async () => {
-    if (!selectedFile) return;
-
-    setDownloading(true);
-    setMessage("");
-    try {
-      const res = await fetch("/api/models/civitai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          url,
-          action: "download",
-          fileId: selectedFile.id,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "다운로드 실패");
-
-      setModel(data.model);
-      setMessage(
-        data.result.downloaded
-          ? `${data.result.folder}/${data.result.path} 저장 완료`
-          : `${data.result.folder}/${data.result.path} 이미 보유 중`
-      );
-      onImported();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "다운로드 실패");
-    } finally {
-      setDownloading(false);
-    }
-  };
-
-  return (
-    <section className="mb-5 rounded-md border border-border p-4">
-      <div className="mb-3">
-        <h2 className="text-sm font-semibold">Civitai URL Import</h2>
-        <p className="text-xs text-muted-foreground">
-          civitai.red 또는 civitai.com 모델 URL을 붙여 넣어 metadata를 가져오고 ComfyUI 폴더로 다운로드합니다.
-        </p>
-      </div>
-
-      <form
-        className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_8rem]"
-        onSubmit={(event) => {
-          event.preventDefault();
-          inspect();
-        }}
-      >
-        <Input
-          value={url}
-          onChange={(event) => setUrl(event.target.value)}
-          placeholder="https://civitai.red/models/827184/wai-illustrious-sdxl?modelVersionId=1761560"
-        />
-        <Button type="submit" disabled={loading || !url.trim()}>
-          {loading ? "Fetching..." : "Fetch"}
-        </Button>
-      </form>
-
-      {model && (
-        <div className="mt-4 grid gap-4 lg:grid-cols-[6rem_minmax(0,1fr)]">
-          {model.thumbnailUrl ? (
-            <img
-              src={model.thumbnailUrl}
-              alt={model.name}
-              className="h-24 w-24 rounded-md object-cover"
-            />
-          ) : (
-            <div className="flex h-24 w-24 items-center justify-center rounded-md border border-border bg-muted text-xs text-muted-foreground">
-              No Image
-            </div>
-          )}
-
-          <div className="min-w-0 space-y-3">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className="truncate text-base font-semibold">{model.name}</h3>
-                <Badge variant="secondary">{model.version}</Badge>
-                <Badge variant="outline">{model.type}</Badge>
-                {model.nsfw && <Badge variant="destructive">NSFW</Badge>}
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Base: {model.baseModel || "Unknown"} · Target: ComfyUI/models/{model.folder}
-              </p>
-              {model.trainedWords.length > 0 && (
-                <p className="mt-1 truncate text-xs text-muted-foreground">
-                  Trigger: {model.trainedWords.join(", ")}
-                </p>
-              )}
-            </div>
-
-            {model.files.length > 0 ? (
-              <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_8rem]">
-                <select
-                  className="h-8 rounded-md border border-input bg-background px-2 text-sm"
-                  value={selectedFile?.id ?? ""}
-                  onChange={(event) => setSelectedFileId(Number(event.target.value))}
-                >
-                  {model.files.map((file) => (
-                    <option key={file.id} value={file.id}>
-                      {file.name}
-                      {file.primary ? " · primary" : ""}
-                      {file.sizeKB ? ` · ${formatSize(file.sizeKB)}` : ""}
-                    </option>
-                  ))}
-                </select>
-                <Button
-                  type="button"
-                  onClick={download}
-                  disabled={downloading || !selectedFile || selectedFile.isDownloaded}
-                >
-                  {selectedFile?.isDownloaded
-                    ? "Downloaded"
-                    : downloading
-                      ? "Downloading..."
-                      : "Download"}
-                </Button>
-              </div>
-            ) : (
-              <div className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">
-                다운로드 가능한 모델 파일이 없습니다.
-              </div>
-            )}
-
-            {selectedFile && (
-              <div className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
-                <div className="truncate">File: {selectedFile.name}</div>
-                <div>
-                  Status:{" "}
-                  {selectedFile.isDownloaded
-                    ? `보유 중 (${selectedFile.localPath})`
-                    : "로컬 파일 없음"}
-                </div>
-                {[selectedFile.format, selectedFile.precision, selectedFile.sha256]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {message && (
-        <div className="mt-3 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
-          {message}
-        </div>
-      )}
-    </section>
-  );
-}
-
 function EditableAsset({
   asset,
   folder,
@@ -282,10 +85,15 @@ function EditableAsset({
   const [version, setVersion] = useState(asset.version);
   const [baseModel, setBaseModel] = useState(asset.base_model);
   const [thumbnailUrl, setThumbnailUrl] = useState(asset.thumbnail_url ?? "");
+  const [civitaiUrl, setCivitaiUrl] = useState("");
+  const [civitaiModel, setCivitaiModel] = useState<CivitaiImportModel | null>(null);
   const [saving, setSaving] = useState(false);
+  const [fetchingCivitai, setFetchingCivitai] = useState(false);
+  const [message, setMessage] = useState("");
 
   const save = async () => {
     setSaving(true);
+    setMessage("");
     try {
       const res = await fetch("/api/models", {
         method: "PATCH",
@@ -302,9 +110,39 @@ function EditableAsset({
       });
 
       if (!res.ok) throw new Error("Failed to save model metadata");
+      setMessage("저장 완료");
       onSaved();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "저장 실패");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const applyCivitaiMetadata = async () => {
+    setFetchingCivitai(true);
+    setMessage("");
+    try {
+      const res = await fetch("/api/models/civitai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: civitaiUrl }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Civitai 조회 실패");
+
+      const model = data.model as CivitaiImportModel;
+      setCivitaiModel(model);
+      setName(model.name || model.primaryFile?.inferredName || name);
+      setVersion(model.version || version);
+      setBaseModel(model.baseModel || baseModel);
+      setThumbnailUrl(model.thumbnailUrl ?? thumbnailUrl);
+      setMessage("Civitai 정보가 입력되었습니다. 확인 후 저장하세요.");
+    } catch (error) {
+      setCivitaiModel(null);
+      setMessage(error instanceof Error ? error.message : "Civitai 조회 실패");
+    } finally {
+      setFetchingCivitai(false);
     }
   };
 
@@ -331,6 +169,55 @@ function EditableAsset({
         <div className="truncate text-xs text-muted-foreground xl:col-span-2">
           {asset.path}
         </div>
+        <form
+          className="grid gap-2 xl:col-span-2 xl:grid-cols-[minmax(0,1fr)_7.5rem]"
+          onSubmit={(event) => {
+            event.preventDefault();
+            applyCivitaiMetadata();
+          }}
+        >
+          <div>
+            <Label className="mb-1 block text-xs text-muted-foreground">Civitai URL</Label>
+            <Input
+              value={civitaiUrl}
+              onChange={(e) => setCivitaiUrl(e.target.value)}
+              placeholder="https://civitai.red/models/...?...modelVersionId=..."
+              className="h-8"
+            />
+          </div>
+          <Button
+            type="submit"
+            variant="outline"
+            disabled={fetchingCivitai || !civitaiUrl.trim()}
+            className="self-end"
+          >
+            {fetchingCivitai ? "Fetching..." : "Fill"}
+          </Button>
+        </form>
+        {civitaiModel && (
+          <div className="flex flex-wrap gap-2 text-xs xl:col-span-2">
+            <Badge variant="secondary">{civitaiModel.type || "Civitai"}</Badge>
+            {civitaiModel.nsfw && <Badge variant="destructive">NSFW</Badge>}
+            {civitaiModel.primaryFile?.name && (
+              <Badge variant="outline">
+                {civitaiModel.primaryFile.name}
+                {civitaiModel.primaryFile.sizeKB
+                  ? ` · ${formatSize(civitaiModel.primaryFile.sizeKB)}`
+                  : ""}
+              </Badge>
+            )}
+            {civitaiModel.trainedWords.length > 0 && (
+              <Badge variant="outline">
+                Trigger: {civitaiModel.trainedWords.slice(0, 3).join(", ")}
+              </Badge>
+            )}
+          </div>
+        )}
+        {message && (
+          <div className="text-xs text-muted-foreground xl:col-span-2">
+            {message}
+          </div>
+        )}
       </div>
       <Button onClick={save} disabled={saving || !name.trim()} className="self-end">
         {saving ? "Saving..." : "Save"}
@@ -369,8 +256,6 @@ export function ModelManagement() {
       </header>
 
       <main className="flex-1 overflow-y-auto p-5">
-        <CivitaiImportPanel onImported={() => setRefreshKey((key) => key + 1)} />
-
         <Tabs defaultValue="checkpoints">
           <TabsList>
             {GROUPS.map((group) => (
