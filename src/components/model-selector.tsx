@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import {
   Dialog,
   DialogContent,
@@ -224,8 +225,38 @@ function AssetPickerDialog({
 type PickerTarget =
   | { type: "checkpoint" }
   | { type: "lora"; index: number }
+  | { type: "lora-new" }
   | { type: "embedding"; index: number }
+  | { type: "embedding-new" }
   | null;
+
+function LoraScaleSlider({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <div className="grid min-w-28 gap-1">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[10px] text-muted-foreground">Weight</span>
+        <span className="font-mono text-[10px] text-muted-foreground">
+          {value.toFixed(1)}
+        </span>
+      </div>
+      <Slider
+        value={[value]}
+        onValueChange={(nextValue) =>
+          onChange(Array.isArray(nextValue) ? nextValue[0] ?? value : nextValue)
+        }
+        min={0}
+        max={2}
+        step={0.1}
+      />
+    </div>
+  );
+}
 
 export function ModelSelector() {
   const { params, setParams } = useStore();
@@ -264,8 +295,17 @@ export function ModelSelector() {
       .catch(() => {});
   }, []);
 
-  const addLora = () => {
+  const addEmptyLora = () => {
     setParams({ loras: [...params.loras, { path: "", scale: 0.8 }] });
+  };
+
+  const addLora = () => {
+    if (isLocal && localModels.loraAssets.length > 0) {
+      setPickerTarget({ type: "lora-new" });
+      return;
+    }
+
+    addEmptyLora();
   };
 
   const updateLora = (index: number, field: "path" | "scale", value: string | number) => {
@@ -279,8 +319,17 @@ export function ModelSelector() {
     setParams({ loras: params.loras.filter((_, i) => i !== index) });
   };
 
-  const addEmbedding = () => {
+  const addEmptyEmbedding = () => {
     setParams({ embeddings: [...params.embeddings, { path: "", tokens: "" }] });
+  };
+
+  const addEmbedding = () => {
+    if (isLocal && localModels.embeddingAssets.length > 0) {
+      setPickerTarget({ type: "embedding-new" });
+      return;
+    }
+
+    addEmptyEmbedding();
   };
 
   const updateEmbedding = (
@@ -309,9 +358,10 @@ export function ModelSelector() {
   const pickerAssets =
     pickerTarget?.type === "checkpoint"
       ? localModels.checkpointAssets
-      : pickerTarget?.type === "lora"
+      : pickerTarget?.type === "lora" || pickerTarget?.type === "lora-new"
         ? localModels.loraAssets
-        : pickerTarget?.type === "embedding"
+        : pickerTarget?.type === "embedding" ||
+            pickerTarget?.type === "embedding-new"
           ? localModels.embeddingAssets
           : [];
 
@@ -327,7 +377,7 @@ export function ModelSelector() {
   const pickerTitle =
     pickerTarget?.type === "checkpoint"
       ? "Select Checkpoint"
-      : pickerTarget?.type === "lora"
+      : pickerTarget?.type === "lora" || pickerTarget?.type === "lora-new"
         ? "Select LoRA"
         : "Select Embedding";
 
@@ -340,8 +390,18 @@ export function ModelSelector() {
       updateLora(pickerTarget.index, "path", asset.path);
     }
 
+    if (pickerTarget?.type === "lora-new") {
+      setParams({ loras: [...params.loras, { path: asset.path, scale: 0.8 }] });
+    }
+
     if (pickerTarget?.type === "embedding") {
       updateEmbedding(pickerTarget.index, "path", asset.path);
+    }
+
+    if (pickerTarget?.type === "embedding-new") {
+      setParams({
+        embeddings: [...params.embeddings, { path: asset.path, tokens: "" }],
+      });
     }
 
     setPickerTarget(null);
@@ -393,57 +453,43 @@ export function ModelSelector() {
               {params.loras.map((lora, i) => (
                 <div key={i} className="space-y-2 rounded-md border border-border p-2">
                   {isLocal && localModels.loraAssets.length > 0 ? (
-                    <div className="flex gap-2">
+                    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_7rem_2rem]">
                       <AssetChoiceButton
                         asset={findAsset(localModels.loraAssets, lora.path)}
                         placeholder="Select LoRA"
                         onClick={() => setPickerTarget({ type: "lora", index: i })}
                       />
-                        <Input
-                          type="number"
-                          value={lora.scale}
-                          onChange={(e) =>
-                            updateLora(i, "scale", parseFloat(e.target.value) || 0)
-                          }
-                          className="h-8 w-16 text-xs"
-                          min={0}
-                          max={2}
-                          step={0.1}
-                        />
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 w-8 p-0 text-destructive"
-                          onClick={() => removeLora(i)}
-                        >
-                          ×
-                        </Button>
-                      </div>
+                      <LoraScaleSlider
+                        value={lora.scale}
+                        onChange={(value) => updateLora(i, "scale", value)}
+                      />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 self-end p-0 text-destructive"
+                        onClick={() => removeLora(i)}
+                      >
+                        ×
+                      </Button>
+                    </div>
                   ) : (
-                    <div className="flex gap-2">
+                    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_7rem_2rem]">
                       <Input
                         placeholder={
                           isLocal ? "my-lora.safetensors" : "huggingface/lora-name"
                         }
                         value={lora.path}
                         onChange={(e) => updateLora(i, "path", e.target.value)}
-                        className="h-8 min-w-0 flex-1 text-xs"
+                        className="h-8 min-w-0 text-xs"
                       />
-                      <Input
-                        type="number"
+                      <LoraScaleSlider
                         value={lora.scale}
-                        onChange={(e) =>
-                          updateLora(i, "scale", parseFloat(e.target.value) || 0)
-                        }
-                        className="h-8 w-16 text-xs"
-                        min={0}
-                        max={2}
-                        step={0.1}
+                        onChange={(value) => updateLora(i, "scale", value)}
                       />
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-8 w-8 p-0 text-destructive"
+                        className="h-8 w-8 self-end p-0 text-destructive"
                         onClick={() => removeLora(i)}
                       >
                         ×
