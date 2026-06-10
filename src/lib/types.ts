@@ -167,8 +167,11 @@ export interface GenerationParams {
   num_images: number;
   output_format: "jpeg" | "png";
   seed: number | null;
+  clip_skip: number;
+  vae_name: string;
   loras: LoraConfig[];
   embeddings: EmbeddingConfig[];
+  controlnets: ControlNetConfig[];
   prompt_weighting: boolean;
   style_image: string | null;
   character_image: string | null;
@@ -183,6 +186,14 @@ export interface LoraConfig {
 export interface EmbeddingConfig {
   path: string;
   tokens: string;
+}
+
+export interface ControlNetConfig {
+  model: string;
+  image: string | null;
+  strength: number;
+  start_percent: number;
+  end_percent: number;
 }
 
 export interface GeneratedImage {
@@ -211,8 +222,11 @@ export const DEFAULT_PARAMS: GenerationParams = {
   num_images: 1,
   output_format: "jpeg",
   seed: null,
+  clip_skip: 1,
+  vae_name: "",
   loras: [],
   embeddings: [],
+  controlnets: [],
   prompt_weighting: true,
   style_image: null,
   character_image: null,

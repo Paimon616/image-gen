@@ -1,15 +1,67 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useStore } from "@/lib/store";
 import { getModelConfig, IMAGE_SIZES } from "@/lib/types";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
 
 export function GenerationParams() {
   const { params, setParams } = useStore();
   const currentModel = getModelConfig(params.model);
+  const isLocal = currentModel.provider === "comfyui";
+  const [localModels, setLocalModels] = useState<{
+    vaes: string[];
+    controlnets: string[];
+  }>({ vaes: [], controlnets: [] });
+
+  useEffect(() => {
+    fetch("/api/models")
+      .then((res) => res.json())
+      .then((data) =>
+        setLocalModels({
+          vaes: data.vaes ?? [],
+          controlnets: data.controlnets ?? [],
+        })
+      )
+      .catch(() => {});
+  }, []);
+
+  const controlnets = params.controlnets ?? [];
+
+  const addControlNet = () => {
+    if (controlnets.length >= 4) return;
+    setParams({
+      controlnets: [
+        ...controlnets,
+        {
+          model: localModels.controlnets[0] ?? "",
+          image: null,
+          strength: 0.8,
+          start_percent: 0,
+          end_percent: 1,
+        },
+      ],
+    });
+  };
+
+  const updateControlNet = (
+    index: number,
+    update: Partial<(typeof controlnets)[number]>
+  ) => {
+    setParams({
+      controlnets: controlnets.map((controlnet, i) =>
+        i === index ? { ...controlnet, ...update } : controlnet
+      ),
+    });
+  };
+
+  const removeControlNet = (index: number) => {
+    setParams({ controlnets: controlnets.filter((_, i) => i !== index) });
+  };
 
   return (
     <div className="space-y-3">
@@ -55,107 +107,298 @@ export function GenerationParams() {
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <Label className="text-xs text-muted-foreground">Steps</Label>
-            <span className="text-xs font-mono">{params.num_inference_steps}</span>
+      <details
+        open
+        className="group overflow-hidden rounded-md border border-border bg-card/30"
+      >
+        <summary className="flex cursor-pointer list-none items-center justify-between border-b border-border px-3 py-2 text-sm font-medium">
+          <span>Advanced</span>
+          <span className="text-muted-foreground transition-transform group-open:rotate-180">
+            ⌃
+          </span>
+        </summary>
+
+        <div className="space-y-4 p-3">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <Label className="text-xs text-muted-foreground">CFG Scale</Label>
+                <span className="text-xs font-mono">
+                  {params.guidance_scale.toFixed(1)}
+                </span>
+              </div>
+              <Slider
+                value={[params.guidance_scale]}
+                onValueChange={(v) => {
+                  const val = Array.isArray(v) ? v[0] : v;
+                  setParams({ guidance_scale: val });
+                }}
+                min={1}
+                max={20}
+                step={0.5}
+              />
+            </div>
+
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <Label className="text-xs text-muted-foreground">Steps</Label>
+                <span className="text-xs font-mono">
+                  {params.num_inference_steps}
+                </span>
+              </div>
+              <Slider
+                value={[params.num_inference_steps]}
+                onValueChange={(v) => {
+                  const val = Array.isArray(v) ? v[0] : v;
+                  setParams({ num_inference_steps: val });
+                }}
+                min={1}
+                max={100}
+                step={1}
+              />
+            </div>
           </div>
-          <Slider
-            value={[params.num_inference_steps]}
-            onValueChange={(v) => {
-              const val = Array.isArray(v) ? v[0] : v;
-              setParams({ num_inference_steps: val });
-            }}
-            min={1}
-            max={100}
-            step={1}
-          />
-        </div>
 
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <Label className="text-xs text-muted-foreground">CFG Scale</Label>
-            <span className="text-xs font-mono">
-              {params.guidance_scale.toFixed(1)}
-            </span>
-          </div>
-          <Slider
-            value={[params.guidance_scale]}
-            onValueChange={(v) => {
-              const val = Array.isArray(v) ? v[0] : v;
-              setParams({ guidance_scale: val });
-            }}
-            min={1}
-            max={20}
-            step={0.5}
-          />
-        </div>
-      </div>
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div>
+              <Label className="text-xs text-muted-foreground mb-2 block">Seed</Label>
+              <Input
+                type="number"
+                placeholder="Random"
+                value={params.seed ?? ""}
+                onChange={(e) =>
+                  setParams({
+                    seed: e.target.value ? parseInt(e.target.value) : null,
+                  })
+                }
+                className="h-8 text-sm"
+              />
+            </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div>
-          <Label className="text-xs text-muted-foreground mb-2 block">Seed</Label>
-          <Input
-            type="number"
-            placeholder="Random"
-            value={params.seed ?? ""}
-            onChange={(e) =>
-              setParams({
-                seed: e.target.value ? parseInt(e.target.value) : null,
-              })
-            }
-            className="h-8 text-sm"
-          />
-        </div>
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <Label className="text-xs text-muted-foreground">CLIP Skip</Label>
+                <span className="text-xs font-mono">{params.clip_skip}</span>
+              </div>
+              <Slider
+                value={[params.clip_skip]}
+                onValueChange={(v) => {
+                  const val = Array.isArray(v) ? v[0] : v;
+                  setParams({ clip_skip: val });
+                }}
+                min={1}
+                max={12}
+                step={1}
+                disabled={!isLocal}
+              />
+            </div>
 
-        {currentModel.provider === "fal" && (
-          <div>
-            <Label className="text-xs text-muted-foreground mb-2 block">Format</Label>
-            <div className="grid grid-cols-2 gap-1.5">
-              {(["jpeg", "png"] as const).map((format) => (
-                <button
-                  key={format}
-                  type="button"
-                  onClick={() => setParams({ output_format: format })}
-                  className={`text-xs py-1.5 px-2 rounded-md border uppercase transition-colors ${
-                    params.output_format === format
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border hover:border-muted-foreground/50"
-                  }`}
+            <div>
+              <Label className="text-xs text-muted-foreground mb-2 block">VAE</Label>
+              {isLocal && localModels.vaes.length > 0 ? (
+                <select
+                  value={params.vae_name}
+                  onChange={(e) => setParams({ vae_name: e.target.value })}
+                  className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                 >
-                  {format}
+                  <option value="">Automatic</option>
+                  {localModels.vaes.map((vae) => (
+                    <option key={vae} value={vae}>
+                      {vae}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <Input
+                  placeholder={isLocal ? "vae file name" : "Local ComfyUI only"}
+                  value={params.vae_name}
+                  onChange={(e) => setParams({ vae_name: e.target.value })}
+                  className="h-8 text-xs"
+                  disabled={!isLocal}
+                />
+              )}
+            </div>
+
+            {currentModel.provider === "fal" && (
+              <div>
+                <Label className="text-xs text-muted-foreground mb-2 block">
+                  Format
+                </Label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {(["jpeg", "png"] as const).map((format) => (
+                    <button
+                      key={format}
+                      type="button"
+                      onClick={() => setParams({ output_format: format })}
+                      className={`text-xs py-1.5 px-2 rounded-md border uppercase transition-colors ${
+                        params.output_format === format
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border hover:border-muted-foreground/50"
+                      }`}
+                    >
+                      {format}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="grid gap-3 lg:grid-cols-2">
+            <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
+              <Label className="text-xs text-muted-foreground">Prompt Weighting</Label>
+              <Switch
+                size="sm"
+                checked={params.prompt_weighting}
+                onCheckedChange={(checked) =>
+                  setParams({ prompt_weighting: checked })
+                }
+                disabled={!currentModel.supports.custom_model}
+              />
+            </div>
+
+            {currentModel.provider === "fal" && (
+              <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
+                <Label className="text-xs text-muted-foreground">Safety Checker</Label>
+                <Switch
+                  size="sm"
+                  checked={params.enable_safety_checker}
+                  onCheckedChange={(checked) =>
+                    setParams({ enable_safety_checker: checked })
+                  }
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-md border border-border p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs text-muted-foreground">ControlNets</Label>
+                  <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                    {controlnets.length}/4
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  로컬 ControlNet 슬롯입니다. workflow 적용은 다음 단계에서 연결합니다.
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 text-xs"
+                onClick={addControlNet}
+                disabled={!isLocal || controlnets.length >= 4}
+              >
+                + Add
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              {controlnets.length === 0 && (
+                <button
+                  type="button"
+                  onClick={addControlNet}
+                  disabled={!isLocal}
+                  className="w-full rounded-md border border-dashed border-border px-3 py-5 text-sm text-muted-foreground transition-colors hover:bg-muted/40 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  + Add ControlNet
                 </button>
+              )}
+
+              {controlnets.map((controlnet, i) => (
+                <div key={i} className="grid gap-2 rounded-md border border-border p-2">
+                  <div className="flex gap-2">
+                    {localModels.controlnets.length > 0 ? (
+                      <select
+                        value={controlnet.model}
+                        onChange={(e) =>
+                          updateControlNet(i, { model: e.target.value })
+                        }
+                        className="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                      >
+                        <option value="">Select ControlNet...</option>
+                        {localModels.controlnets.map((model) => (
+                          <option key={model} value={model}>
+                            {model}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <Input
+                        placeholder="controlnet model file"
+                        value={controlnet.model}
+                        onChange={(e) =>
+                          updateControlNet(i, { model: e.target.value })
+                        }
+                        className="h-8 min-w-0 flex-1 text-xs"
+                      />
+                    )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0 text-destructive"
+                      onClick={() => removeControlNet(i)}
+                    >
+                      ×
+                    </Button>
+                  </div>
+                  <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_5rem_5rem_5rem]">
+                    <Input
+                      placeholder="reference image URL or local filename"
+                      value={controlnet.image ?? ""}
+                      onChange={(e) =>
+                        updateControlNet(i, { image: e.target.value || null })
+                      }
+                      className="h-8 text-xs"
+                    />
+                    <Input
+                      type="number"
+                      value={controlnet.strength}
+                      onChange={(e) =>
+                        updateControlNet(i, {
+                          strength: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      className="h-8 text-xs"
+                      min={0}
+                      max={2}
+                      step={0.1}
+                    />
+                    <Input
+                      type="number"
+                      value={controlnet.start_percent}
+                      onChange={(e) =>
+                        updateControlNet(i, {
+                          start_percent: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      className="h-8 text-xs"
+                      min={0}
+                      max={1}
+                      step={0.05}
+                    />
+                    <Input
+                      type="number"
+                      value={controlnet.end_percent}
+                      onChange={(e) =>
+                        updateControlNet(i, {
+                          end_percent: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      className="h-8 text-xs"
+                      min={0}
+                      max={1}
+                      step={0.05}
+                    />
+                  </div>
+                </div>
               ))}
             </div>
           </div>
-        )}
-      </div>
-
-      <div className="grid gap-3 lg:grid-cols-2">
-        <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
-          <Label className="text-xs text-muted-foreground">Prompt Weighting</Label>
-          <Switch
-            size="sm"
-            checked={params.prompt_weighting}
-            onCheckedChange={(checked) => setParams({ prompt_weighting: checked })}
-            disabled={!currentModel.supports.custom_model}
-          />
         </div>
-
-        {currentModel.provider === "fal" && (
-          <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
-            <Label className="text-xs text-muted-foreground">Safety Checker</Label>
-            <Switch
-              size="sm"
-              checked={params.enable_safety_checker}
-              onCheckedChange={(checked) =>
-                setParams({ enable_safety_checker: checked })
-              }
-            />
-          </div>
-        )}
-      </div>
+      </details>
     </div>
   );
 }

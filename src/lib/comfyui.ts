@@ -69,6 +69,7 @@ function buildDefaultWorkflow(params: GenerationParams) {
 
   let modelRef: [string, number] = ["1", 0];
   let clipRef: [string, number] = ["1", 1];
+  let vaeRef: [string, number] = ["1", 2];
 
   loras.forEach((lora, index) => {
     const nodeId = String(10 + index);
@@ -85,6 +86,27 @@ function buildDefaultWorkflow(params: GenerationParams) {
     modelRef = [nodeId, 0];
     clipRef = [nodeId, 1];
   });
+
+  if (params.clip_skip > 1) {
+    workflow["20"] = {
+      class_type: "CLIPSetLastLayer",
+      inputs: {
+        stop_at_clip_layer: -Math.max(Math.min(params.clip_skip, 12), 1),
+        clip: clipRef,
+      },
+    };
+    clipRef = ["20", 0];
+  }
+
+  if (params.vae_name.trim()) {
+    workflow["21"] = {
+      class_type: "VAELoader",
+      inputs: {
+        vae_name: params.vae_name.trim(),
+      },
+    };
+    vaeRef = ["21", 0];
+  }
 
   workflow["2"] = {
     class_type: "CLIPTextEncode",
@@ -127,7 +149,7 @@ function buildDefaultWorkflow(params: GenerationParams) {
     class_type: "VAEDecode",
     inputs: {
       samples: ["5", 0],
-      vae: ["1", 2],
+      vae: vaeRef,
     },
   };
   workflow["7"] = {

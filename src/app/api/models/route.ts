@@ -33,11 +33,13 @@ async function listModelFiles(folder: string) {
 }
 
 export async function GET() {
-  const [checkpoints, loras, embeddings] = await Promise.all([
+  const [checkpoints, loras, embeddings, vaes, controlnets] = await Promise.all([
     listModelFiles("checkpoints"),
     listModelFiles("loras"),
     listModelFiles("embeddings"),
+    listModelFiles("vae"),
+    listModelFiles("controlnet"),
   ]);
 
-  return NextResponse.json({ checkpoints, loras, embeddings });
+  return NextResponse.json({ checkpoints, loras, embeddings, vaes, controlnets });
 }
