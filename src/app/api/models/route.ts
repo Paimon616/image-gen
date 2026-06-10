@@ -1,13 +1,15 @@
 import { execFile } from "child_process";
+import { mkdir, readFile, writeFile } from "fs/promises";
 import { basename, extname } from "path";
 import { promisify } from "util";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 const execFileAsync = promisify(execFile);
 const MODEL_EXTENSIONS = new Set([".ckpt", ".pt", ".safetensors"]);
 const COMFYUI_MODELS_DIR =
   process.env.COMFYUI_MODELS_DIR ??
   [`Comfy${"UI"}`, "models"].join("/");
+const MODEL_CATALOG_PATH = "data/model-catalog.json";
 
 interface LocalModelMetadata {
   name: string;
@@ -16,7 +18,7 @@ interface LocalModelMetadata {
   thumbnail_url?: string | null;
 }
 
-const LOCAL_MODEL_CATALOG: Record<string, LocalModelMetadata> = {
+const DEFAULT_MODEL_CATALOG: Record<string, LocalModelMetadata> = {
   "checkpoints/waiIllustriousSDXL_v140.safetensors": {
     name: "WAI-illustrious-SDXL",
     version: "v1.4.0",
@@ -36,6 +38,22 @@ const LOCAL_MODEL_CATALOG: Record<string, LocalModelMetadata> = {
     thumbnail_url: null,
   },
 };
+
+async function readCatalog() {
+  try {
+    return JSON.parse(await readFile(MODEL_CATALOG_PATH, "utf8")) as Record<
+      string,
+      LocalModelMetadata
+    >;
+  } catch {
+    return DEFAULT_MODEL_CATALOG;
+  }
+}
+
+async function writeCatalog(catalog: Record<string, LocalModelMetadata>) {
+  await mkdir("data", { recursive: true });
+  await writeFile(MODEL_CATALOG_PATH, JSON.stringify(catalog, null, 2));
+}
 
 function hasModelExtension(filename: string) {
   return [...MODEL_EXTENSIONS].some((ext) => filename.endsWith(ext));
@@ -67,7 +85,10 @@ function humanizeFilename(filePath: string) {
   };
 }
 
-async function listModelAssets(folder: string) {
+async function listModelAssets(
+  folder: string,
+  catalog: Record<string, LocalModelMetadata>
+) {
   try {
     const root = modelRoot(folder);
     const { stdout } = await execFileAsync("find", [root, "-type", "f"], {
@@ -83,7 +104,7 @@ async function listModelAssets(folder: string) {
       .filter((name) => !name.startsWith("put_"));
 
     const assets = files.map((path) => {
-      const metadata = LOCAL_MODEL_CATALOG[`${folder}/${path}`];
+      const metadata = catalog[`${folder}/${path}`];
       const fallback = humanizeFilename(path);
 
       return {
@@ -102,12 +123,13 @@ async function listModelAssets(folder: string) {
 }
 
 export async function GET() {
+  const catalog = await readCatalog();
   const [checkpointAssets, loraAssets, embeddingAssets, vaeAssets, controlnetAssets] = await Promise.all([
-    listModelAssets("checkpoints"),
-    listModelAssets("loras"),
-    listModelAssets("embeddings"),
-    listModelAssets("vae"),
-    listModelAssets("controlnet"),
+    listModelAssets("checkpoints", catalog),
+    listModelAssets("loras", catalog),
+    listModelAssets("embeddings", catalog),
+    listModelAssets("vae", catalog),
+    listModelAssets("controlnet", catalog),
   ]);
 
   return NextResponse.json({
@@ -122,4 +144,29 @@ export async function GET() {
     vaeAssets,
     controlnetAssets,
   });
+}
+
+export async function PATCH(req: NextRequest) {
+  const body = (await req.json()) as {
+    key?: string;
+    metadata?: Partial<LocalModelMetadata>;
+  };
+
+  if (!body.key || !body.metadata?.name) {
+    return NextResponse.json(
+      { error: "key and metadata.name are required" },
+      { status: 400 }
+    );
+  }
+
+  const catalog = await readCatalog();
+  catalog[body.key] = {
+    name: body.metadata.name,
+    version: body.metadata.version ?? "",
+    base_model: body.metadata.base_model ?? "",
+    thumbnail_url: body.metadata.thumbnail_url ?? null,
+  };
+  await writeCatalog(catalog);
+
+  return NextResponse.json({ ok: true, catalog });
 }

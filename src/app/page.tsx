@@ -11,6 +11,7 @@ import { GenerationParams } from "@/components/generation-params";
 import { ModelSelector } from "@/components/model-selector";
 import { Gallery } from "@/components/gallery";
 import { ImageViewer } from "@/components/image-viewer";
+import { AppSidebar } from "@/components/app-sidebar";
 import { getModelConfig } from "@/lib/types";
 
 export default function Home() {
@@ -51,8 +52,10 @@ export default function Home() {
 
   return (
     <div className="flex h-screen bg-background">
+      <AppSidebar />
+
       {/* Left Sidebar - Controls */}
-      <aside className="w-[44rem] xl:w-[54rem] max-w-[68vw] border-r border-border flex flex-col overflow-hidden">
+      <aside className="w-[42rem] xl:w-[52rem] max-w-[64vw] border-r border-border flex flex-col overflow-hidden">
         <div className="px-4 py-3 border-b border-border">
           <h1 className="text-lg font-semibold">Image Gen</h1>
           <p className="text-xs text-muted-foreground">{currentModel.name}</p>

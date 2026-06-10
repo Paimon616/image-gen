@@ -7,6 +7,13 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface LocalModelAsset {
   path: string;
@@ -14,10 +21,6 @@ interface LocalModelAsset {
   version: string;
   base_model: string;
   thumbnail_url: string | null;
-}
-
-function assetLabel(asset: LocalModelAsset) {
-  return asset.version ? `${asset.name} (${asset.version})` : asset.name;
 }
 
 function AssetThumbnail({
@@ -57,10 +60,178 @@ function AssetText({ asset }: { asset: LocalModelAsset }) {
   );
 }
 
+function AssetChoiceButton({
+  asset,
+  placeholder,
+  onClick,
+}: {
+  asset: LocalModelAsset | undefined;
+  placeholder: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex w-full min-w-0 flex-1 items-center gap-3 rounded-md border p-2 text-left transition-colors ${
+        asset
+          ? "border-border hover:border-primary/60 hover:bg-muted/40"
+          : "border-dashed border-border text-muted-foreground hover:border-primary/60 hover:bg-muted/30"
+      }`}
+    >
+      <AssetThumbnail asset={asset} className="h-12 w-12" />
+      {asset ? (
+        <AssetText asset={asset} />
+      ) : (
+        <div className="min-w-0">
+          <div className="text-sm font-medium">{placeholder}</div>
+          <div className="text-xs text-muted-foreground">Click to choose</div>
+        </div>
+      )}
+    </button>
+  );
+}
+
+function AssetPickerDialog({
+  title,
+  description,
+  assets,
+  selectedPath,
+  open,
+  onOpenChange,
+  onSelect,
+}: {
+  title: string;
+  description: string;
+  assets: LocalModelAsset[];
+  selectedPath: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSelect: (asset: LocalModelAsset) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const filteredAssets = assets.filter((asset) => {
+    const haystack = [
+      asset.name,
+      asset.version,
+      asset.base_model,
+      asset.path,
+    ]
+      .join(" ")
+      .toLowerCase();
+    return haystack.includes(query.toLowerCase());
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="grid h-[88vh] max-w-[96vw] grid-rows-[auto_auto_minmax(0,1fr)] gap-0 overflow-hidden p-0 sm:max-w-[86rem]">
+        <DialogHeader className="border-b border-border px-5 py-4">
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
+
+        <div className="flex items-center gap-2 border-b border-border px-5 py-3">
+          <div className="flex gap-1">
+            {["All", "Featured", "Recent", "Mine"].map((label, index) => (
+              <button
+                key={label}
+                type="button"
+                className={`rounded-md px-3 py-1.5 text-xs font-medium ${
+                  index === 0
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search model name, version, base model..."
+            className="ml-auto h-9 max-w-sm text-xs"
+          />
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5">
+          {filteredAssets.length === 0 ? (
+            <div className="flex h-full min-h-72 items-center justify-center rounded-md border border-dashed border-border text-sm text-muted-foreground">
+              표시할 모델이 없습니다.
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {filteredAssets.map((asset) => {
+                const selected = asset.path === selectedPath;
+
+                return (
+                  <div
+                    key={asset.path}
+                    className={`overflow-hidden rounded-md border bg-card ${
+                      selected ? "border-primary ring-2 ring-primary/25" : "border-border"
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => onSelect(asset)}
+                      className="block w-full text-left"
+                    >
+                      <div className="relative aspect-[4/3] bg-muted">
+                        {asset.thumbnail_url ? (
+                          <img
+                            src={asset.thumbnail_url}
+                            alt={asset.name}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-3xl font-semibold text-muted-foreground">
+                            {asset.name.slice(0, 2).toUpperCase()}
+                          </div>
+                        )}
+                        <Badge className="absolute left-2 top-2 bg-background/80 text-foreground backdrop-blur">
+                          {asset.base_model || "Local"}
+                        </Badge>
+                      </div>
+                    </button>
+                    <div className="space-y-3 p-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold">
+                          {asset.name}
+                        </div>
+                        <div className="truncate text-xs text-muted-foreground">
+                          {[asset.version, asset.path].filter(Boolean).join(" · ")}
+                        </div>
+                      </div>
+                      <Button
+                        className="w-full"
+                        variant={selected ? "secondary" : "default"}
+                        onClick={() => onSelect(asset)}
+                      >
+                        {selected ? "Selected" : "Select"}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+type PickerTarget =
+  | { type: "checkpoint" }
+  | { type: "lora"; index: number }
+  | { type: "embedding"; index: number }
+  | null;
+
 export function ModelSelector() {
   const { params, setParams } = useStore();
   const currentModel = getModelConfig(params.model);
   const isLocal = currentModel.provider === "comfyui";
+  const [pickerTarget, setPickerTarget] = useState<PickerTarget>(null);
   const [localModels, setLocalModels] = useState<{
     checkpoints: string[];
     loras: string[];
@@ -147,6 +318,52 @@ export function ModelSelector() {
   const findAsset = (assets: LocalModelAsset[], path: string) =>
     assets.find((asset) => asset.path === path);
 
+  const selectedCheckpoint = findAsset(
+    localModels.checkpointAssets,
+    params.model_name
+  );
+
+  const pickerAssets =
+    pickerTarget?.type === "checkpoint"
+      ? localModels.checkpointAssets
+      : pickerTarget?.type === "lora"
+        ? localModels.loraAssets
+        : pickerTarget?.type === "embedding"
+          ? localModels.embeddingAssets
+          : [];
+
+  const pickerSelectedPath =
+    pickerTarget?.type === "checkpoint"
+      ? params.model_name
+      : pickerTarget?.type === "lora"
+        ? params.loras[pickerTarget.index]?.path ?? ""
+        : pickerTarget?.type === "embedding"
+          ? params.embeddings[pickerTarget.index]?.path ?? ""
+          : "";
+
+  const pickerTitle =
+    pickerTarget?.type === "checkpoint"
+      ? "Select Checkpoint"
+      : pickerTarget?.type === "lora"
+        ? "Select LoRA"
+        : "Select Embedding";
+
+  const handlePickerSelect = (asset: LocalModelAsset) => {
+    if (pickerTarget?.type === "checkpoint") {
+      setParams({ model_name: asset.path });
+    }
+
+    if (pickerTarget?.type === "lora") {
+      updateLora(pickerTarget.index, "path", asset.path);
+    }
+
+    if (pickerTarget?.type === "embedding") {
+      updateEmbedding(pickerTarget.index, "path", asset.path);
+    }
+
+    setPickerTarget(null);
+  };
+
   return (
     <div className="space-y-3">
       <Label className="text-xs text-muted-foreground block">Model</Label>
@@ -188,23 +405,11 @@ export function ModelSelector() {
             Base Model
           </Label>
           {localModels.checkpointAssets.length > 0 ? (
-            <div className="grid gap-2 sm:grid-cols-2">
-              {localModels.checkpointAssets.map((checkpoint) => (
-                <button
-                  key={checkpoint.path}
-                  type="button"
-                  onClick={() => setParams({ model_name: checkpoint.path })}
-                  className={`flex min-w-0 items-center gap-3 rounded-md border p-2 text-left transition-colors ${
-                    params.model_name === checkpoint.path
-                      ? "border-primary bg-primary/10"
-                      : "border-border hover:border-muted-foreground/50 hover:bg-muted/40"
-                  }`}
-                >
-                  <AssetThumbnail asset={checkpoint} className="h-14 w-14" />
-                  <AssetText asset={checkpoint} />
-                </button>
-              ))}
-            </div>
+            <AssetChoiceButton
+              asset={selectedCheckpoint}
+              placeholder="Select checkpoint"
+              onClick={() => setPickerTarget({ type: "checkpoint" })}
+            />
           ) : (
             <Input
               placeholder="checkpoint.safetensors"
@@ -254,30 +459,12 @@ export function ModelSelector() {
               {params.loras.map((lora, i) => (
                 <div key={i} className="space-y-2 rounded-md border border-border p-2">
                   {isLocal && localModels.loraAssets.length > 0 ? (
-                    <>
-                      {lora.path && findAsset(localModels.loraAssets, lora.path) && (
-                        <div className="flex items-center gap-3">
-                          <AssetThumbnail
-                            asset={findAsset(localModels.loraAssets, lora.path)}
-                          />
-                          <AssetText
-                            asset={findAsset(localModels.loraAssets, lora.path)!}
-                          />
-                        </div>
-                      )}
-                      <div className="flex gap-2">
-                        <select
-                          value={lora.path}
-                          onChange={(e) => updateLora(i, "path", e.target.value)}
-                          className="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                        >
-                          <option value="">Select LoRA...</option>
-                          {localModels.loraAssets.map((localLora) => (
-                            <option key={localLora.path} value={localLora.path}>
-                              {assetLabel(localLora)}
-                            </option>
-                          ))}
-                        </select>
+                    <div className="flex gap-2">
+                      <AssetChoiceButton
+                        asset={findAsset(localModels.loraAssets, lora.path)}
+                        placeholder="Select LoRA"
+                        onClick={() => setPickerTarget({ type: "lora", index: i })}
+                      />
                         <Input
                           type="number"
                           value={lora.scale}
@@ -298,7 +485,6 @@ export function ModelSelector() {
                           ×
                         </Button>
                       </div>
-                    </>
                   ) : (
                     <div className="flex gap-2">
                       <Input
@@ -357,21 +543,14 @@ export function ModelSelector() {
               {params.embeddings.map((embedding, i) => (
                 <div key={i} className="space-y-1.5">
                   <div className="flex gap-2">
-                    {isLocal && localModels.embeddings.length > 0 ? (
-                      <select
-                        value={embedding.path}
-                        onChange={(e) =>
-                          updateEmbedding(i, "path", e.target.value)
+                    {isLocal && localModels.embeddingAssets.length > 0 ? (
+                      <AssetChoiceButton
+                        asset={findAsset(localModels.embeddingAssets, embedding.path)}
+                        placeholder="Select embedding"
+                        onClick={() =>
+                          setPickerTarget({ type: "embedding", index: i })
                         }
-                        className="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                      >
-                        <option value="">Select embedding...</option>
-                        {localModels.embeddingAssets.map((localEmbedding) => (
-                          <option key={localEmbedding.path} value={localEmbedding.path}>
-                            {assetLabel(localEmbedding)}
-                          </option>
-                        ))}
-                      </select>
+                      />
                     ) : (
                       <Input
                         placeholder={
@@ -429,6 +608,18 @@ export function ModelSelector() {
           {currentModel.name} doesn&apos;t support embeddings — they will be ignored
         </p>
       )}
+
+      <AssetPickerDialog
+        title={pickerTitle}
+        description="썸네일, 이름, 버전 기준으로 사용할 모델을 선택하세요."
+        assets={pickerAssets}
+        selectedPath={pickerSelectedPath}
+        open={pickerTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setPickerTarget(null);
+        }}
+        onSelect={handlePickerSelect}
+      />
     </div>
   );
 }
