@@ -59,13 +59,13 @@ function ModelInitial({ asset }: { asset: ModelAsset }) {
       <img
         src={asset.thumbnail_url}
         alt={asset.name}
-        className="h-16 w-16 rounded-md object-cover"
+        className="h-20 w-20 rounded-md object-cover"
       />
     );
   }
 
   return (
-    <div className="flex h-16 w-16 items-center justify-center rounded-md border border-border bg-muted text-sm font-semibold text-muted-foreground">
+    <div className="flex h-20 w-20 items-center justify-center rounded-md border border-border bg-muted text-sm font-semibold text-muted-foreground">
       {asset.name.slice(0, 2).toUpperCase()}
     </div>
   );
@@ -104,6 +104,7 @@ function EditableAsset({
   const [saving, setSaving] = useState(false);
   const [fetchingCivitai, setFetchingCivitai] = useState(false);
   const [message, setMessage] = useState("");
+  const currentTags = parseTags(tags);
 
   const save = async () => {
     setSaving(true);
@@ -165,39 +166,81 @@ function EditableAsset({
   };
 
   return (
-    <div className="grid gap-3 rounded-md border border-border p-3 xl:grid-cols-[4rem_minmax(0,1fr)_8rem]">
-      <ModelInitial asset={{ ...asset, name, thumbnail_url: thumbnailUrl || null }} />
-      <div className="grid gap-2 xl:grid-cols-2">
-        <div>
-          <Label className="mb-1 block text-xs text-muted-foreground">Name</Label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} className="h-8" />
+    <div className="grid gap-4 rounded-md border border-border bg-card p-3 md:grid-cols-[5rem_minmax(0,1fr)] xl:grid-cols-[5rem_minmax(0,1fr)_6.5rem]">
+      <div className="md:pt-1">
+        <ModelInitial asset={{ ...asset, name, thumbnail_url: thumbnailUrl || null }} />
+      </div>
+
+      <div className="min-w-0 space-y-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="min-w-0 truncate text-sm font-semibold">{name}</h3>
+            {version && <Badge variant="secondary">{version}</Badge>}
+            {baseModel && <Badge variant="outline">{baseModel}</Badge>}
+            {civitaiModel?.type && <Badge variant="outline">{civitaiModel.type}</Badge>}
+            {civitaiModel?.nsfw && <Badge variant="destructive">NSFW</Badge>}
+          </div>
+          <div className="mt-1 truncate text-xs text-muted-foreground">
+            {asset.path}
+          </div>
         </div>
-        <div>
-          <Label className="mb-1 block text-xs text-muted-foreground">Version</Label>
-          <Input value={version} onChange={(e) => setVersion(e.target.value)} className="h-8" />
+
+        {currentTags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {currentTags.slice(0, 12).map((tag) => (
+              <Badge key={tag} variant="outline" className="h-5 rounded-md">
+                {tag}
+              </Badge>
+            ))}
+            {currentTags.length > 12 && (
+              <Badge variant="secondary" className="h-5 rounded-md">
+                +{currentTags.length - 12}
+              </Badge>
+            )}
+          </div>
+        )}
+
+        {civitaiModel?.primaryFile?.name && (
+          <div className="text-xs text-muted-foreground">
+            {civitaiModel.primaryFile.name}
+            {civitaiModel.primaryFile.sizeKB
+              ? ` · ${formatSize(civitaiModel.primaryFile.sizeKB)}`
+              : ""}
+            {civitaiModel.trainedWords.length > 0
+              ? ` · Trigger: ${civitaiModel.trainedWords.slice(0, 3).join(", ")}`
+              : ""}
+          </div>
+        )}
+
+        <div className="grid gap-2 xl:grid-cols-4">
+          <div className="xl:col-span-2">
+            <Label className="mb-1 block text-xs text-muted-foreground">Name</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} className="h-8" />
+          </div>
+          <div>
+            <Label className="mb-1 block text-xs text-muted-foreground">Version</Label>
+            <Input value={version} onChange={(e) => setVersion(e.target.value)} className="h-8" />
+          </div>
+          <div>
+            <Label className="mb-1 block text-xs text-muted-foreground">Base Model</Label>
+            <Input value={baseModel} onChange={(e) => setBaseModel(e.target.value)} className="h-8" />
+          </div>
+          <div className="xl:col-span-2">
+            <Label className="mb-1 block text-xs text-muted-foreground">Thumbnail URL</Label>
+            <Input value={thumbnailUrl} onChange={(e) => setThumbnailUrl(e.target.value)} className="h-8" />
+          </div>
+          <div className="xl:col-span-2">
+            <Input
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              placeholder="style, lycoris, artist"
+              className="h-8"
+            />
+          </div>
         </div>
-        <div>
-          <Label className="mb-1 block text-xs text-muted-foreground">Base Model</Label>
-          <Input value={baseModel} onChange={(e) => setBaseModel(e.target.value)} className="h-8" />
-        </div>
-        <div>
-          <Label className="mb-1 block text-xs text-muted-foreground">Thumbnail URL</Label>
-          <Input value={thumbnailUrl} onChange={(e) => setThumbnailUrl(e.target.value)} className="h-8" />
-        </div>
-        <div className="xl:col-span-2">
-          <Label className="mb-1 block text-xs text-muted-foreground">Tags</Label>
-          <Input
-            value={tags}
-            onChange={(e) => setTags(e.target.value)}
-            placeholder="style, lycoris, artist"
-            className="h-8"
-          />
-        </div>
-        <div className="truncate text-xs text-muted-foreground xl:col-span-2">
-          {asset.path}
-        </div>
+
         <form
-          className="grid gap-2 xl:col-span-2 xl:grid-cols-[minmax(0,1fr)_7.5rem]"
+          className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_6.5rem]"
           onSubmit={(event) => {
             event.preventDefault();
             applyCivitaiMetadata();
@@ -221,37 +264,15 @@ function EditableAsset({
             {fetchingCivitai ? "Fetching..." : "Fill"}
           </Button>
         </form>
-        {civitaiModel && (
-          <div className="flex flex-wrap gap-2 text-xs xl:col-span-2">
-            <Badge variant="secondary">{civitaiModel.type || "Civitai"}</Badge>
-            {civitaiModel.nsfw && <Badge variant="destructive">NSFW</Badge>}
-            {civitaiModel.primaryFile?.name && (
-              <Badge variant="outline">
-                {civitaiModel.primaryFile.name}
-                {civitaiModel.primaryFile.sizeKB
-                  ? ` · ${formatSize(civitaiModel.primaryFile.sizeKB)}`
-                  : ""}
-              </Badge>
-            )}
-            {civitaiModel.trainedWords.length > 0 && (
-              <Badge variant="outline">
-                Trigger: {civitaiModel.trainedWords.slice(0, 3).join(", ")}
-              </Badge>
-            )}
-            {civitaiModel.tags.slice(0, 8).map((tag) => (
-              <Badge key={tag} variant="outline">
-                {tag}
-              </Badge>
-            ))}
-          </div>
-        )}
+
         {message && (
-          <div className="text-xs text-muted-foreground xl:col-span-2">
+          <div className="text-xs text-muted-foreground">
             {message}
           </div>
         )}
       </div>
-      <Button onClick={save} disabled={saving || !name.trim()} className="self-end">
+
+      <Button onClick={save} disabled={saving || !name.trim()} className="self-start xl:mt-1">
         {saving ? "Saving..." : "Save"}
       </Button>
     </div>

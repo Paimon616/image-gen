@@ -3,7 +3,12 @@
     "name": "WAI-illustrious-SDXL",
     "version": "v14.0",
     "base_model": "Illustrious",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/244bc929-9bbc-44b2-8a26-7622a1669f4a/original=true/74972532.jpeg"
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/244bc929-9bbc-44b2-8a26-7622a1669f4a/original=true/74972532.jpeg",
+    "civitai_url": "https://civitai.red/models/827184/wai-illustrious-sdxl?modelVersionId=1761560",
+    "tags": [
+      "base model",
+      "anime"
+    ]
   },
   "loras/p0nyd1sney1ncasev1x0n2-v2.safetensors": {
     "name": "Incase + Vixon's Gothic Neon + Disney Style [Anima | IL]",
@@ -39,13 +44,52 @@
     "name": "Red Lily | Illu",
     "version": "v1.0",
     "base_model": "Illustrious",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/4390444f-5ea0-441f-a2b5-952d7b4c25f2/original=true/107413153.jpeg"
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/4390444f-5ea0-441f-a2b5-952d7b4c25f2/original=true/107413153.jpeg",
+    "civitai_url": "https://civitai.red/models/2070771/red-lily-or-illu?modelVersionId=2343145",
+    "tags": [
+      "art",
+      "geometry",
+      "color",
+      "style",
+      "girls",
+      "woman",
+      "paint",
+      "male",
+      "background plate",
+      "manga artist",
+      "background pony",
+      "flowers",
+      "realistic",
+      "artist",
+      "manga",
+      "anime",
+      "artstyle",
+      "cartoon",
+      "backgrounds",
+      "shiiro",
+      "shapes",
+      "lora",
+      "game character",
+      "detail",
+      "art style",
+      "styles",
+      "photorealistic",
+      "nsfw",
+      "abstract painting",
+      "man"
+    ]
   },
   "loras/USNR STYLE_XL_lokr.safetensors": {
     "name": "薄塗り / USNR STYLE",
     "version": "vSDXL_Illustrious-XL",
     "base_model": "Illustrious",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/42d872a7-acd3-43bb-b203-258b5a281567/original=true/34753131.jpeg"
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/42d872a7-acd3-43bb-b203-258b5a281567/original=true/34753131.jpeg",
+    "civitai_url": "https://civitai.red/models/176554/usnr-style?modelVersionId=959419",
+    "tags": [
+      "anime",
+      "girls",
+      "style"
+    ]
   },
   "loras/Detailer_NoobAI_Incrs_v1.safetensors": {
     "name": "Detailer | Tool / Concept LoRA IllustriousXL",
@@ -69,18 +113,123 @@
     "name": "[Styles] Muses in Dark | Semi-real Style - Illustrious/PonyXL - Illustrious|NAI",
     "version": "v3.0",
     "base_model": "Illustrious",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/70cf13a4-0318-4b21-8c0a-2515f7454868/anim=false,width=450,optimized=true/ComfyUI_00788_.jpeg"
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/70cf13a4-0318-4b21-8c0a-2515f7454868/anim=false,width=450,optimized=true/ComfyUI_00788_.jpeg",
+    "civitai_url": "https://civitai.red/models/1300603/styles-muses-in-dark-or-semi-real-style-illustriousponyxl-illustriousornai?modelVersionId=2182811",
+    "tags": [
+      "aesthetic",
+      "realistic",
+      "semi-real",
+      "women",
+      "style",
+      "men",
+      "portrait",
+      "boys",
+      "girls",
+      "lighting",
+      "male",
+      "gay"
+    ]
   },
   "checkpoints/illustrij_v19.safetensors": {
     "name": "Illustrij",
     "version": "v19",
     "base_model": "Illustrious",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/3cf106f2-8d15-4b0a-8945-64f8434e3e78/anim=false,width=450,optimized=true/00536-2832935049.jpeg"
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/3cf106f2-8d15-4b0a-8945-64f8434e3e78/anim=false,width=450,optimized=true/00536-2832935049.jpeg",
+    "civitai_url": "https://civitai.com/models/1025051/illustrij?modelVersionId=2427287",
+    "tags": [
+      "merge",
+      "base model",
+      "illustrious",
+      "anime",
+      "identity model",
+      "semireal",
+      "id model"
+    ]
   },
   "loras/5byue5dnijistyleE291.cNux.safetensors": {
     "name": "Niji-male-style①",
     "version": "v1.0",
     "base_model": "Illustrious",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/2e834f10-0522-4512-b09b-198f14c263c2/original=true/44947989.jpeg"
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/2e834f10-0522-4512-b09b-198f14c263c2/original=true/44947989.jpeg",
+    "civitai_url": "https://civitai.red/models/1028032/niji-male-style?modelVersionId=1152969",
+    "tags": [
+      "niji",
+      "anime",
+      "male",
+      "style",
+      "boys"
+    ]
+  },
+  "loras/ayori_v1_step3400.safetensors": {
+    "name": "[Anima & SDXL] Ayori Art Style",
+    "version": "v1.0-anima-base1",
+    "base_model": "Anima",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/0ee1c256-6f5a-4a11-999d-f96ac1b683d2/original=true/131740065.jpeg",
+    "civitai_url": "https://civitai.com/models/2033745/anima-and-sdxl-ayori-art-style",
+    "tags": [
+      "lycoris",
+      "ayori",
+      "lora",
+      "styles",
+      "noobai",
+      "artist",
+      "style",
+      "anima"
+    ]
+  },
+  "loras/hansame-000019.safetensors": {
+    "name": "Flower Boy Style",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/f8d08634-b554-4ffc-8c24-a6bc06375530/original=true/42667171.jpeg",
+    "civitai_url": "https://civitai.red/models/991144/flower-boy-style?modelVersionId=1110407",
+    "tags": [
+      "style",
+      "boys"
+    ]
+  },
+  "loras/Dark_Bara-10.safetensors": {
+    "name": "Muscular Male / Bara Mix Styles",
+    "version": "vDark Style",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/2d2730ea-4634-4640-998f-23cd4f225bc6/original=true/99327293.jpeg",
+    "civitai_url": "https://civitai.red/models/1448487/muscular-male-bara-mix-styles?modelVersionId=2198544",
+    "tags": [
+      "male",
+      "gay",
+      "muscle man",
+      "style",
+      "beard",
+      "bara"
+    ]
+  },
+  "loras/MoriiMee_Gothic_Niji_Style_Illustrious_r1.safetensors": {
+    "name": "MoriiMee Gothic Niji | LoRA Style",
+    "version": "V1 Ilustrious",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/284e87af-c913-424f-bde6-4c2543f82bf9/original=true/56443806.jpeg",
+    "civitai_url": "https://civitai.red/models/915918/moriimee-gothic-niji-or-lora-style?modelVersionId=1244133",
+    "tags": [
+      "bdsm",
+      "latex",
+      "style",
+      "nun",
+      "girls",
+      "esthetic",
+      "gothic",
+      "goth",
+      "midjourney",
+      "beautiful face"
+    ]
+  },
+  "loras/Arweverse_-_OC-000007.safetensors": {
+    "name": "Arweverse - [OC]",
+    "version": "V1",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/32340bc7-28b6-4cc4-8fe7-d3591e68b2cc/original=true/71352081.jpeg",
+    "civitai_url": "https://civitai.red/models/1492410/arweverse-oc?modelVersionId=1688253",
+    "tags": [
+      "character"
+    ]
   }
 }
