@@ -83,6 +83,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (body.generation_mode === "image_to_image" && !body.source_image) {
+      return NextResponse.json(
+        { error: "Image to Image mode requires a source image." },
+        { status: 400 }
+      );
+    }
+
     const images = await generateWithComfyUI(body);
     const savedImages = await saveBufferedImages({
       images,

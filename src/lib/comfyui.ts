@@ -6,7 +6,7 @@ import type {
 } from "./types";
 
 const DEFAULT_COMFYUI_URL = "http://127.0.0.1:8188";
-const COMFYUI_BASE_URL =
+export const COMFYUI_BASE_URL =
   process.env.COMFYUI_BASE_URL?.replace(/\/$/, "") ?? DEFAULT_COMFYUI_URL;
 const COMFYUI_TIMEOUT_MS = Number(process.env.COMFYUI_TIMEOUT_MS ?? 300_000);
 
@@ -16,8 +16,9 @@ interface ComfyImageRef {
   type?: string;
 }
 
-interface ComfyQueuedPrompt {
+export interface ComfyQueuedPrompt {
   prompt_id: string;
+  client_id: string;
 }
 
 interface ComfyHistoryOutput {
@@ -28,13 +29,17 @@ interface ComfyHistoryItem {
   outputs?: Record<string, ComfyHistoryOutput>;
 }
 
-interface ComfyGeneratedImage {
+export interface ComfyGeneratedImage {
   buffer: Buffer;
   contentType: string;
   originalUrl: string;
 }
 
-interface ResolvedControlNetConfig extends ControlNetConfig {
+type WorkflowControlNetConfig = ControlNetConfig & {
+  preprocessor?: "openpose";
+};
+
+interface ResolvedControlNetConfig extends WorkflowControlNetConfig {
   image: string;
 }
 
@@ -105,8 +110,18 @@ async function resolveControlNetImage(image: string) {
   return uploadImageToComfyUI(image);
 }
 
+function clampDenoiseStrength(value: unknown) {
+  const numericValue = Number(value);
+
+  if (!Number.isFinite(numericValue)) {
+    return 0.45;
+  }
+
+  return Math.min(Math.max(numericValue, 0.05), 1);
+}
+
 async function cleanControlnets(params: GenerationParams) {
-  const controlnets: ControlNetConfig[] = [];
+  const controlnets: WorkflowControlNetConfig[] = [];
 
   if (params.generation_mode === "pose_reference" && params.pose_reference_image) {
     controlnets.push({
@@ -115,6 +130,7 @@ async function cleanControlnets(params: GenerationParams) {
       strength: params.pose_reference_strength,
       start_percent: 0,
       end_percent: 1,
+      preprocessor: "openpose",
     });
   }
 
@@ -134,6 +150,7 @@ async function cleanControlnets(params: GenerationParams) {
         end_percent: Number.isFinite(controlnet.end_percent)
           ? controlnet.end_percent
           : 1,
+        preprocessor: controlnet.preprocessor,
       }))
       .filter((controlnet) => controlnet.model && controlnet.image)
       .map(async (controlnet) => ({
@@ -214,22 +231,56 @@ async function buildDefaultWorkflow(params: GenerationParams) {
       clip: clipRef,
     },
   };
-  workflow["4"] = {
-    class_type: "EmptyLatentImage",
-    inputs: {
-      width: params.width,
-      height: params.height,
-      batch_size: Math.min(Math.max(Number(params.num_images) || 1, 1), 4),
-    },
-  };
+  let latentRef: [string, number] = ["4", 0];
+  let denoise = 1;
+
+  if (params.generation_mode === "image_to_image" && params.source_image) {
+    const sourceImage = await resolveControlNetImage(params.source_image);
+
+    workflow["4"] = {
+      class_type: "LoadImage",
+      inputs: {
+        image: sourceImage,
+      },
+    };
+    workflow["22"] = {
+      class_type: "ImageScale",
+      inputs: {
+        image: ["4", 0],
+        upscale_method: "lanczos",
+        width: params.width,
+        height: params.height,
+        crop: "center",
+      },
+    };
+    workflow["23"] = {
+      class_type: "VAEEncode",
+      inputs: {
+        pixels: ["22", 0],
+        vae: vaeRef,
+      },
+    };
+    latentRef = ["23", 0];
+    denoise = clampDenoiseStrength(params.denoise_strength);
+  } else {
+    workflow["4"] = {
+      class_type: "EmptyLatentImage",
+      inputs: {
+        width: params.width,
+        height: params.height,
+        batch_size: Math.min(Math.max(Number(params.num_images) || 1, 1), 4),
+      },
+    };
+  }
 
   let positiveRef: [string, number] = ["2", 0];
   let negativeRef: [string, number] = ["3", 0];
 
   controlnets.forEach((controlnet, index) => {
-    const imageNodeId = String(30 + index * 3);
-    const loaderNodeId = String(31 + index * 3);
-    const applyNodeId = String(32 + index * 3);
+    const imageNodeId = String(30 + index * 4);
+    const preprocessorNodeId = String(31 + index * 4);
+    const loaderNodeId = String(32 + index * 4);
+    const applyNodeId = String(33 + index * 4);
 
     workflow[imageNodeId] = {
       class_type: "LoadImage",
@@ -237,6 +288,26 @@ async function buildDefaultWorkflow(params: GenerationParams) {
         image: controlnet.image,
       },
     };
+
+    const controlImageRef: [string, number] =
+      controlnet.preprocessor === "openpose"
+        ? [preprocessorNodeId, 0]
+        : [imageNodeId, 0];
+
+    if (controlnet.preprocessor === "openpose") {
+      workflow[preprocessorNodeId] = {
+        class_type: "OpenposePreprocessor",
+        inputs: {
+          image: [imageNodeId, 0],
+          detect_hand: "enable",
+          detect_body: "enable",
+          detect_face: "disable",
+          resolution: Math.min(Math.max(Math.max(params.width, params.height), 512), 1024),
+          scale_stick_for_xinsr_cn: "disable",
+        },
+      };
+    }
+
     workflow[loaderNodeId] = {
       class_type: "ControlNetLoader",
       inputs: {
@@ -252,7 +323,7 @@ async function buildDefaultWorkflow(params: GenerationParams) {
         positive: positiveRef,
         negative: negativeRef,
         control_net: [loaderNodeId, 0],
-        image: [imageNodeId, 0],
+        image: controlImageRef,
       },
     };
 
@@ -268,11 +339,11 @@ async function buildDefaultWorkflow(params: GenerationParams) {
       cfg: params.guidance_scale,
       sampler_name: params.sampler_name || "dpmpp_2m",
       scheduler: params.scheduler || "karras",
-      denoise: 1,
+      denoise,
       model: modelRef,
       positive: positiveRef,
       negative: negativeRef,
-      latent_image: ["4", 0],
+      latent_image: latentRef,
     },
   };
   workflow["6"] = {
@@ -304,8 +375,7 @@ async function comfyFetch(path: string, init?: RequestInit) {
   return res;
 }
 
-async function queuePrompt(params: GenerationParams) {
-  const clientId = crypto.randomUUID();
+export async function queueComfyPrompt(params: GenerationParams, clientId = crypto.randomUUID()) {
   const prompt = await buildDefaultWorkflow(params);
   const res = await comfyFetch("/prompt", {
     method: "POST",
@@ -316,7 +386,8 @@ async function queuePrompt(params: GenerationParams) {
     }),
   });
 
-  return (await res.json()) as ComfyQueuedPrompt;
+  const queued = (await res.json()) as Omit<ComfyQueuedPrompt, "client_id">;
+  return { ...queued, client_id: clientId };
 }
 
 async function getHistory(promptId: string) {
@@ -328,7 +399,7 @@ function imageRefsFromHistory(history: ComfyHistoryItem | undefined) {
   return Object.values(history?.outputs ?? {}).flatMap((output) => output.images ?? []);
 }
 
-async function waitForImages(promptId: string) {
+export async function waitForComfyImageRefs(promptId: string) {
   const startedAt = Date.now();
 
   while (Date.now() - startedAt < COMFYUI_TIMEOUT_MS) {
@@ -363,9 +434,56 @@ function contentTypeFor(filename: string) {
 }
 
 export async function generateWithComfyUI(params: GenerationParams) {
-  const queued = await queuePrompt(params);
-  const imageRefs = await waitForImages(queued.prompt_id);
+  const queued = await queueComfyPrompt(params);
+  const imageRefs = await waitForComfyImageRefs(queued.prompt_id);
 
+  return fetchComfyImages(imageRefs);
+}
+
+export async function generateOpenPosePreview(imageUrl: string, resolution: number) {
+  const image = await resolveControlNetImage(imageUrl);
+  const prompt: Record<string, unknown> = {
+    "1": {
+      class_type: "LoadImage",
+      inputs: {
+        image,
+      },
+    },
+    "2": {
+      class_type: "OpenposePreprocessor",
+      inputs: {
+        image: ["1", 0],
+        detect_hand: "enable",
+        detect_body: "enable",
+        detect_face: "disable",
+        resolution,
+        scale_stick_for_xinsr_cn: "disable",
+      },
+    },
+    "3": {
+      class_type: "SaveImage",
+      inputs: {
+        filename_prefix: "image-gen-pose-preview",
+        images: ["2", 0],
+      },
+    },
+  };
+  const clientId = crypto.randomUUID();
+  const res = await comfyFetch("/prompt", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      client_id: clientId,
+      prompt,
+    }),
+  });
+  const queued = (await res.json()) as { prompt_id: string };
+  const imageRefs = await waitForComfyImageRefs(queued.prompt_id);
+
+  return fetchComfyImages(imageRefs);
+}
+
+export async function fetchComfyImages(imageRefs: ComfyImageRef[]) {
   return Promise.all(
     imageRefs.map(async (image) => {
       const originalUrl = `${COMFYUI_BASE_URL}${viewPath(image)}`;

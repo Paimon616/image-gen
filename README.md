@@ -19,10 +19,16 @@ Install app dependencies:
 npm install
 ```
 
-Install ComfyUI into the project root:
+Install ComfyUI into the project root on macOS/Linux:
 
 ```bash
 npm run setup:comfyui
+```
+
+On Windows PowerShell:
+
+```powershell
+npm run setup:comfyui:win
 ```
 
 The setup script clones ComfyUI into `ComfyUI/`, creates `ComfyUI/venv`, installs ComfyUI Python dependencies, and creates the expected model directories.
@@ -43,10 +49,16 @@ Files such as `.safetensors` stay local. Model metadata can be committed through
 
 ## Run
 
-Start ComfyUI:
+Start ComfyUI on macOS/Linux:
 
 ```bash
 npm run comfyui
+```
+
+On Windows PowerShell:
+
+```powershell
+npm run comfyui:win
 ```
 
 Start the Next.js app in another terminal:

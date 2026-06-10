@@ -231,5 +231,92 @@
     "tags": [
       "character"
     ]
+  },
+  "checkpoints/waiIllustriousSDXL_v160.safetensors": {
+    "name": "WAI-illustrious-SDXL",
+    "version": "v16.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/20ad2af3-9598-47ed-ad77-d09848a334f2/original=true/114266623.jpeg",
+    "civitai_url": "https://civitai.red/models/827184/wai-illustrious-sdxl?modelVersionId=2514310",
+    "tags": [
+      "base model",
+      "anime"
+    ]
+  },
+  "loras/detailed_pussy-10.safetensors": {
+    "name": "Detailed Pussy [PONY]",
+    "version": "Detailed Pussy",
+    "base_model": "Pony",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/5f617665-8b11-40d8-8075-8460b57cbff7/original=true/32626039.jpeg",
+    "civitai_url": "https://civitai.red/models/821523/detailed-pussy-pony?modelVersionId=918672",
+    "tags": [
+      "anime",
+      "real",
+      "anatomy",
+      "nsfw",
+      "girls",
+      "concept",
+      "realistic",
+      "woman",
+      "vagina"
+    ]
+  },
+  "loras/flux dildo riding.safetensors": {
+    "name": "dildo riding flux",
+    "version": "v1.0 beta",
+    "base_model": "Flux.1 D",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/d7e58c3a-a3a9-4636-a5a6-7c890f2de657/original=true/55558888.jpeg",
+    "civitai_url": "https://civitai.red/models/1048282/dildo-riding-flux?modelVersionId=1176213",
+    "tags": [
+      "cartoon",
+      "dildo",
+      "styles",
+      "dildo riding",
+      "anime",
+      "photorealistic",
+      "girls",
+      "sex",
+      "video game",
+      "lora",
+      "riding",
+      "realistic",
+      "game",
+      "woman",
+      "game character",
+      "concept",
+      "nsfw"
+    ]
+  },
+  "loras/ep5.safetensors": {
+    "name": "Exotic Dildos!",
+    "version": "v2.0 - Long Dildos!",
+    "base_model": "Pony",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/6399a4b7-406b-4234-bace-75a03140e878/original=true/36579801.jpeg",
+    "civitai_url": "https://civitai.red/models/494169/exotic-dildos?modelVersionId=994863",
+    "tags": [
+      "large insertion",
+      "sex toy",
+      "dildo",
+      "concept"
+    ]
+  },
+  "loras/Smooth_Booster_v5.safetensors": {
+    "name": "Smooth Detailer Booster (NoobAI/Illustrious/Pony)",
+    "version": "Smooth Booster v5",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/e52124fe-d0bc-4f74-8480-fb0680c1081a/original=true/123266035.jpeg",
+    "civitai_url": "https://civitai.red/models/1145743/smooth-detailer-booster-noobaiillustriouspony?modelVersionId=2746768",
+    "tags": [
+      "details",
+      "quality enhancer",
+      "detail enhancer",
+      "tool",
+      "art style",
+      "enhancer",
+      "detailer",
+      "detailed art",
+      "quality",
+      "more details"
+    ]
   }
 }

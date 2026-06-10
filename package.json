@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "setup:comfyui": "bash scripts/setup-comfyui.sh",
-    "comfyui": "bash scripts/run-comfyui.sh"
+    "setup:comfyui:win": "powershell -ExecutionPolicy Bypass -File scripts/setup-comfyui.ps1",
+    "comfyui": "bash scripts/run-comfyui.sh",
+    "comfyui:win": "powershell -ExecutionPolicy Bypass -File scripts/run-comfyui.ps1"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

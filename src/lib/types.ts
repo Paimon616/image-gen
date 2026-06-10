@@ -46,7 +46,7 @@ export interface GenerationParams {
   height: number;
   num_images: number;
   output_format: "jpeg" | "png";
-  generation_mode: "text_to_image" | "pose_reference";
+  generation_mode: "text_to_image" | "pose_reference" | "image_to_image";
   seed: number | null;
   sampler_name: string;
   scheduler: string;
@@ -58,6 +58,8 @@ export interface GenerationParams {
   prompt_weighting: boolean;
   style_image: string | null;
   character_image: string | null;
+  source_image: string | null;
+  denoise_strength: number;
   pose_reference_image: string | null;
   pose_reference_model: string;
   pose_reference_strength: number;
@@ -119,6 +121,8 @@ export const DEFAULT_PARAMS: GenerationParams = {
   prompt_weighting: true,
   style_image: null,
   character_image: null,
+  source_image: null,
+  denoise_strength: 0.6,
   pose_reference_image: null,
   pose_reference_model: "",
   pose_reference_strength: 0.8,

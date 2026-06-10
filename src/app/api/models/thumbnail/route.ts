@@ -1,10 +1,10 @@
 import { readFile } from "fs/promises";
-import { extname, join, normalize } from "path";
+import { extname, join, normalize, relative } from "path";
 import { NextRequest, NextResponse } from "next/server";
 
 const COMFYUI_MODELS_DIR =
   process.env.COMFYUI_MODELS_DIR ??
-  [`Comfy${"UI"}`, "models"].join("/");
+  join(`Comfy${"UI"}`, "models");
 const ALLOWED_FOLDERS = new Set([
   "checkpoints",
   "loras",
@@ -28,10 +28,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Invalid thumbnail path" }, { status: 400 });
   }
 
-  const folderRoot = [COMFYUI_MODELS_DIR, folder].join("/");
+  const folderRoot = normalize(join(COMFYUI_MODELS_DIR, folder));
   const requestedPath = normalize(join(folderRoot, file));
+  const relativePath = relative(folderRoot, requestedPath);
 
-  if (!requestedPath.startsWith(folderRoot)) {
+  if (relativePath.startsWith("..") || relativePath === "" || relativePath.includes(":")) {
     return NextResponse.json({ error: "Invalid thumbnail path" }, { status: 400 });
   }
 

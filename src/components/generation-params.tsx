@@ -144,8 +144,8 @@ export function GenerationParams() {
                 }}
                 className={`text-xs py-1.5 px-2 rounded-md border transition-colors ${
                   params.width === size.width && params.height === size.height
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border hover:border-muted-foreground/50"
+                    ? "border-primary bg-primary/10 text-primary shadow-sm"
+                    : "border-border bg-card/70 text-foreground hover:border-primary/40 hover:bg-secondary/70"
                 }`}
               >
                 {size.label}
@@ -199,8 +199,8 @@ export function GenerationParams() {
                 onClick={() => setParams({ num_images: count })}
                 className={`text-xs py-1.5 px-2 rounded-md border transition-colors ${
                   params.num_images === count
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border hover:border-muted-foreground/50"
+                    ? "border-primary bg-primary/10 text-primary shadow-sm"
+                    : "border-border bg-card/70 text-foreground hover:border-primary/40 hover:bg-secondary/70"
                 }`}
               >
                 {count}
@@ -212,7 +212,7 @@ export function GenerationParams() {
 
       <details
         open
-        className="group overflow-hidden rounded-md border border-border bg-card/30"
+        className="group overflow-hidden rounded-md border border-border bg-card/85 shadow-sm"
       >
         <summary className="flex cursor-pointer list-none items-center justify-between border-b border-border px-3 py-2 text-sm font-medium">
           <span>Advanced</span>
@@ -350,7 +350,7 @@ export function GenerationParams() {
           </div>
 
           <div className="grid gap-3 lg:grid-cols-2">
-            <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
+            <div className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2 shadow-sm">
               <Label className="text-xs text-muted-foreground">Prompt Weighting</Label>
               <span className="text-xs text-muted-foreground">
                 ComfyUI prompt syntax
@@ -358,7 +358,7 @@ export function GenerationParams() {
             </div>
           </div>
 
-          <div className="rounded-md border border-border p-3">
+          <div className="rounded-md border border-border bg-card p-3 shadow-sm">
             <div className="mb-2 flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2">
@@ -388,14 +388,14 @@ export function GenerationParams() {
                   type="button"
                   onClick={addControlNet}
                   disabled={!isLocal}
-                  className="w-full rounded-md border border-dashed border-border px-3 py-5 text-sm text-muted-foreground transition-colors hover:bg-muted/40 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="w-full rounded-md border border-dashed border-border bg-background/60 px-3 py-5 text-sm text-muted-foreground transition-colors hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   + Add ControlNet
                 </button>
               )}
 
               {controlnets.map((controlnet, i) => (
-                <div key={i} className="grid gap-2 rounded-md border border-border p-2">
+                <div key={i} className="grid gap-2 rounded-md border border-border bg-background/60 p-2">
                   <div className="flex gap-2">
                     {localModels.controlnets.length > 0 ? (
                       <select

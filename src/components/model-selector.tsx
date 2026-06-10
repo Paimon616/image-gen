@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useStore } from "@/lib/store";
 import { getModelConfig } from "@/lib/types";
 import { Label } from "@/components/ui/label";
@@ -74,10 +74,10 @@ function AssetChoiceButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full min-w-0 flex-1 items-center gap-3 rounded-md border p-2 text-left transition-colors ${
+      className={`flex w-full min-w-0 flex-1 items-center gap-3 rounded-md border p-2 text-left shadow-sm transition-colors ${
         asset
-          ? "border-border hover:border-primary/60 hover:bg-muted/40"
-          : "border-dashed border-border text-muted-foreground hover:border-primary/60 hover:bg-muted/30"
+          ? "border-primary/25 bg-card hover:border-primary/50 hover:bg-secondary/45"
+          : "border-dashed border-border bg-card/70 text-muted-foreground hover:border-primary/60 hover:bg-secondary/70"
       }`}
     >
       <AssetThumbnail asset={asset} className="h-12 w-12" />
@@ -279,8 +279,8 @@ export function ModelSelector() {
     embeddingAssets: [],
   });
 
-  useEffect(() => {
-    fetch("/api/models")
+  const refreshLocalModels = useCallback(() => {
+    fetch("/api/models", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) =>
         setLocalModels({
@@ -294,6 +294,10 @@ export function ModelSelector() {
       )
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    refreshLocalModels();
+  }, [refreshLocalModels]);
 
   const addEmptyLora = () => {
     setParams({ loras: [...params.loras, { path: "", scale: 0.8 }] });
@@ -355,6 +359,12 @@ export function ModelSelector() {
     params.model_name
   );
 
+  useEffect(() => {
+    if (localModels.checkpointAssets.length > 0 && !selectedCheckpoint) {
+      setParams({ model_name: localModels.checkpointAssets[0].path });
+    }
+  }, [localModels.checkpointAssets, selectedCheckpoint, setParams]);
+
   const pickerAssets =
     pickerTarget?.type === "checkpoint"
       ? localModels.checkpointAssets
@@ -410,9 +420,20 @@ export function ModelSelector() {
   return (
     <div className="space-y-3">
       <div>
-        <Label className="text-xs text-muted-foreground mb-1.5 block">
-          Base Model
-        </Label>
+        <div className="mb-1.5 flex items-center justify-between gap-2">
+          <Label className="text-xs text-muted-foreground">
+            Base Model
+          </Label>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-6 px-2 text-xs"
+            onClick={refreshLocalModels}
+          >
+            Refresh
+          </Button>
+        </div>
         {localModels.checkpointAssets.length > 0 ? (
           <AssetChoiceButton
             asset={selectedCheckpoint}
@@ -430,7 +451,7 @@ export function ModelSelector() {
       </div>
 
       {(currentModel.supports.lora || currentModel.supports.embeddings) && (
-        <div className="grid gap-3 rounded-md border border-border p-3 xl:grid-cols-2">
+        <div className="grid gap-3 rounded-md border border-border bg-card/85 p-3 shadow-sm xl:grid-cols-2">
           <div>
             <div className="mb-2 flex items-center justify-between">
               <Label className="text-xs text-muted-foreground">LoRA</Label>
@@ -446,12 +467,12 @@ export function ModelSelector() {
             </div>
             <div className="space-y-2">
               {params.loras.length === 0 && (
-                <p className="rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
+                <p className="rounded-md border border-dashed border-border bg-background/60 px-3 py-2 text-xs text-muted-foreground">
                   + Add로 LoRA를 추가하세요.
                 </p>
               )}
               {params.loras.map((lora, i) => (
-                <div key={i} className="space-y-2 rounded-md border border-border p-2">
+                <div key={i} className="space-y-2 rounded-md border border-border bg-background/60 p-2">
                   {isLocal && localModels.loraAssets.length > 0 ? (
                     <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_7rem_2rem]">
                       <AssetChoiceButton
@@ -516,7 +537,7 @@ export function ModelSelector() {
             </div>
             <div className="space-y-2">
               {params.embeddings.length === 0 && (
-                <p className="rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
+                <p className="rounded-md border border-dashed border-border bg-background/60 px-3 py-2 text-xs text-muted-foreground">
                   + Add로 embedding을 추가하세요.
                 </p>
               )}
