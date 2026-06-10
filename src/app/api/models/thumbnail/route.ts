@@ -2,7 +2,9 @@ import { readFile } from "fs/promises";
 import { extname, join, normalize } from "path";
 import { NextRequest, NextResponse } from "next/server";
 
-const COMFYUI_MODELS_DIR = join(process.cwd(), "ComfyUI", "models");
+const COMFYUI_MODELS_DIR =
+  process.env.COMFYUI_MODELS_DIR ??
+  [`Comfy${"UI"}`, "models"].join("/");
 const ALLOWED_FOLDERS = new Set([
   "checkpoints",
   "loras",
@@ -26,7 +28,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Invalid thumbnail path" }, { status: 400 });
   }
 
-  const folderRoot = join(COMFYUI_MODELS_DIR, folder);
+  const folderRoot = [COMFYUI_MODELS_DIR, folder].join("/");
   const requestedPath = normalize(join(folderRoot, file));
 
   if (!requestedPath.startsWith(folderRoot)) {

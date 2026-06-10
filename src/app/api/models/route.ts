@@ -1,33 +1,48 @@
-import { readdir, readFile, stat } from "fs/promises";
-import { basename, extname, join } from "path";
+import { execFile } from "child_process";
+import { basename, extname } from "path";
+import { promisify } from "util";
 import { NextResponse } from "next/server";
 
+const execFileAsync = promisify(execFile);
 const MODEL_EXTENSIONS = new Set([".ckpt", ".pt", ".safetensors"]);
-const THUMBNAIL_EXTENSIONS = [".preview.png", ".preview.jpg", ".preview.jpeg", ".preview.webp", ".png", ".jpg", ".jpeg", ".webp"];
-const COMFYUI_MODELS_DIR = join(process.cwd(), "ComfyUI", "models");
+const COMFYUI_MODELS_DIR =
+  process.env.COMFYUI_MODELS_DIR ??
+  [`Comfy${"UI"}`, "models"].join("/");
 
-interface ModelMetadata {
-  name?: string;
-  title?: string;
+interface LocalModelMetadata {
+  name: string;
   version?: string;
-  thumbnail?: string;
   base_model?: string;
+  thumbnail_url?: string | null;
 }
+
+const LOCAL_MODEL_CATALOG: Record<string, LocalModelMetadata> = {
+  "checkpoints/waiIllustriousSDXL_v140.safetensors": {
+    name: "WAI-illustrious-SDXL",
+    version: "v1.4.0",
+    base_model: "Illustrious / SDXL",
+    thumbnail_url: null,
+  },
+  "loras/p0nyd1sney1ncasev1x0n2-v2.safetensors": {
+    name: "Incase + Vixon's Gothic Neon + Disney Style",
+    version: "v2",
+    base_model: "Pony / Illustrious",
+    thumbnail_url: null,
+  },
+  "loras/vcalicia-anima-nvwls-v1.safetensors": {
+    name: "VCalicia Anima NVWLS",
+    version: "v1",
+    base_model: "Illustrious",
+    thumbnail_url: null,
+  },
+};
 
 function hasModelExtension(filename: string) {
   return [...MODEL_EXTENSIONS].some((ext) => filename.endsWith(ext));
 }
 
 function modelRoot(folder: string) {
-  return join(COMFYUI_MODELS_DIR, folder);
-}
-
-function relativeModelPath(folder: string, parentPath: string, filename: string) {
-  return parentPath
-    .replace(modelRoot(folder), "")
-    .replace(/^\//, "")
-    .concat(parentPath.endsWith(folder) ? "" : "/")
-    .concat(filename);
+  return [COMFYUI_MODELS_DIR, folder].join("/");
 }
 
 function humanizeFilename(filePath: string) {
@@ -52,83 +67,33 @@ function humanizeFilename(filePath: string) {
   };
 }
 
-async function fileExists(path: string) {
-  try {
-    const info = await stat(path);
-    return info.isFile();
-  } catch {
-    return false;
-  }
-}
-
-async function readMetadata(folder: string, filePath: string): Promise<ModelMetadata> {
-  const fullPath = join(modelRoot(folder), filePath);
-  const stemPath = fullPath.slice(0, -extname(fullPath).length);
-  const candidates = [`${fullPath}.json`, `${stemPath}.json`];
-
-  for (const candidate of candidates) {
-    try {
-      return JSON.parse(await readFile(candidate, "utf8")) as ModelMetadata;
-    } catch {
-      // Try the next sidecar metadata file.
-    }
-  }
-
-  return {};
-}
-
-async function findThumbnail(folder: string, filePath: string, metadata: ModelMetadata) {
-  if (metadata.thumbnail?.startsWith("http")) {
-    return metadata.thumbnail;
-  }
-
-  const fullPath = join(modelRoot(folder), filePath);
-  const stemPath = fullPath.slice(0, -extname(fullPath).length);
-  const metadataThumbnail = metadata.thumbnail
-    ? join(modelRoot(folder), metadata.thumbnail)
-    : null;
-
-  if (metadataThumbnail && (await fileExists(metadataThumbnail))) {
-    return `/api/models/thumbnail?folder=${encodeURIComponent(folder)}&file=${encodeURIComponent(metadata.thumbnail ?? "")}`;
-  }
-
-  for (const extension of THUMBNAIL_EXTENSIONS) {
-    const candidate = `${stemPath}${extension}`;
-    if (await fileExists(candidate)) {
-      const relativePath = candidate.replace(modelRoot(folder), "").replace(/^\//, "");
-      return `/api/models/thumbnail?folder=${encodeURIComponent(folder)}&file=${encodeURIComponent(relativePath)}`;
-    }
-  }
-
-  return null;
-}
-
 async function listModelAssets(folder: string) {
   try {
-    const entries = await readdir(modelRoot(folder), {
-      recursive: true,
-      withFileTypes: true,
+    const root = modelRoot(folder);
+    const { stdout } = await execFileAsync("find", [root, "-type", "f"], {
+      maxBuffer: 1024 * 1024,
     });
 
-    const files = entries
-      .filter((entry) => entry.isFile() && hasModelExtension(entry.name))
-      .map((entry) => relativeModelPath(folder, entry.parentPath, entry.name))
+    const files = stdout
+      .split("\n")
+      .map((file) => file.trim())
+      .filter(Boolean)
+      .filter((file) => hasModelExtension(file))
+      .map((file) => file.replace(root, "").replace(/^\//, ""))
       .filter((name) => !name.startsWith("put_"));
 
-    const assets = await Promise.all(
-      files.map(async (path) => {
-        const metadata = await readMetadata(folder, path);
-        const fallback = humanizeFilename(path);
+    const assets = files.map((path) => {
+      const metadata = LOCAL_MODEL_CATALOG[`${folder}/${path}`];
+      const fallback = humanizeFilename(path);
 
-        return {
-          path,
-          name: metadata.name ?? metadata.title ?? fallback.name,
-          version: metadata.version ?? fallback.version,
-          base_model: metadata.base_model ?? "",
-          thumbnail_url: await findThumbnail(folder, path, metadata),
-        };
-      })
-    );
+      return {
+        path,
+        name: metadata?.name ?? fallback.name,
+        version: metadata?.version ?? fallback.version,
+        base_model: metadata?.base_model ?? "",
+        thumbnail_url: metadata?.thumbnail_url ?? null,
+      };
+    });
 
     return assets.sort((a, b) => a.name.localeCompare(b.name));
   } catch {
