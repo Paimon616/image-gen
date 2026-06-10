@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useStore } from "@/lib/store";
-import { AVAILABLE_MODELS, getModelConfig } from "@/lib/types";
+import { getModelConfig } from "@/lib/types";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -264,18 +264,6 @@ export function ModelSelector() {
       .catch(() => {});
   }, []);
 
-  const handleSelect = (modelId: string) => {
-    const model = getModelConfig(modelId);
-    const modelName = localModels.checkpoints[0] ?? "sd_xl_base_1.0.safetensors";
-
-    setParams({
-      model: modelId,
-      model_name: modelName,
-      num_inference_steps: model.defaults.num_inference_steps,
-      guidance_scale: model.defaults.guidance_scale,
-    });
-  };
-
   const addLora = () => {
     setParams({ loras: [...params.loras, { path: "", scale: 0.8 }] });
   };
@@ -361,60 +349,25 @@ export function ModelSelector() {
 
   return (
     <div className="space-y-3">
-      <Label className="text-xs text-muted-foreground block">Model</Label>
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {AVAILABLE_MODELS.map((model) => (
-          <button
-            key={model.id}
-            type="button"
-            onClick={() => handleSelect(model.id)}
-            className={`min-w-max rounded-md border px-3 py-2 text-left transition-colors ${
-              params.model === model.id
-                ? "border-primary bg-primary/10"
-                : "border-border hover:border-muted-foreground/50 hover:bg-muted/50"
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">{model.name}</span>
-              {model.provider === "comfyui" && (
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                  Local
-                </Badge>
-              )}
-              {model.supports.lora && (
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                  LoRA
-                </Badge>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground mt-0.5 max-w-48 truncate">
-              {model.description}
-            </p>
-          </button>
-        ))}
+      <div>
+        <Label className="text-xs text-muted-foreground mb-1.5 block">
+          Base Model
+        </Label>
+        {localModels.checkpointAssets.length > 0 ? (
+          <AssetChoiceButton
+            asset={selectedCheckpoint}
+            placeholder="Select checkpoint"
+            onClick={() => setPickerTarget({ type: "checkpoint" })}
+          />
+        ) : (
+          <Input
+            placeholder="checkpoint.safetensors"
+            value={params.model_name}
+            onChange={(e) => setParams({ model_name: e.target.value })}
+            className="h-9 text-xs"
+          />
+        )}
       </div>
-
-      {currentModel.provider === "comfyui" && (
-        <div>
-          <Label className="text-xs text-muted-foreground mb-1.5 block">
-            Base Model
-          </Label>
-          {localModels.checkpointAssets.length > 0 ? (
-            <AssetChoiceButton
-              asset={selectedCheckpoint}
-              placeholder="Select checkpoint"
-              onClick={() => setPickerTarget({ type: "checkpoint" })}
-            />
-          ) : (
-            <Input
-              placeholder="checkpoint.safetensors"
-              value={params.model_name}
-              onChange={(e) => setParams({ model_name: e.target.value })}
-              className="h-9 text-xs"
-            />
-          )}
-        </div>
-      )}
 
       {(currentModel.supports.lora || currentModel.supports.embeddings) && (
         <div className="grid gap-3 rounded-md border border-border p-3 xl:grid-cols-2">
