@@ -16,6 +16,8 @@ interface LocalModelMetadata {
   version?: string;
   base_model?: string;
   thumbnail_url?: string | null;
+  civitai_url?: string | null;
+  tags?: string[];
 }
 
 const DEFAULT_MODEL_CATALOG: Record<string, LocalModelMetadata> = {
@@ -113,6 +115,8 @@ async function listModelAssets(
         version: metadata?.version ?? fallback.version,
         base_model: metadata?.base_model ?? "",
         thumbnail_url: metadata?.thumbnail_url ?? null,
+        civitai_url: metadata?.civitai_url ?? null,
+        tags: metadata?.tags ?? [],
       };
     });
 
@@ -165,6 +169,8 @@ export async function PATCH(req: NextRequest) {
     version: body.metadata.version ?? "",
     base_model: body.metadata.base_model ?? "",
     thumbnail_url: body.metadata.thumbnail_url ?? null,
+    civitai_url: body.metadata.civitai_url ?? null,
+    tags: body.metadata.tags ?? [],
   };
   await writeCatalog(catalog);
 

@@ -38,6 +38,15 @@ interface CivitaiModelVersion {
   }>;
 }
 
+interface CivitaiModelDetails {
+  id?: number;
+  name?: string;
+  type?: string;
+  nsfw?: boolean;
+  tags?: string[];
+  modelVersions?: CivitaiModelVersion[];
+}
+
 function civitaiHeaders() {
   const token = process.env.CIVITAI_API_TOKEN;
   return token ? { Authorization: `Bearer ${token}` } : undefined;
@@ -51,6 +60,18 @@ function extractModelVersionId(input: string) {
 
     const apiMatch = url.pathname.match(/\/model-versions\/(\d+)/);
     if (apiMatch) return apiMatch[1];
+  } catch {
+    return /^\d+$/.test(input.trim()) ? input.trim() : null;
+  }
+
+  return /^\d+$/.test(input.trim()) ? input.trim() : null;
+}
+
+function extractModelId(input: string) {
+  try {
+    const url = new URL(input);
+    const modelMatch = url.pathname.match(/\/models\/(\d+)/);
+    if (modelMatch) return modelMatch[1];
   } catch {
     return /^\d+$/.test(input.trim()) ? input.trim() : null;
   }
@@ -73,7 +94,15 @@ function firstThumbnail(images: CivitaiModelVersion["images"]) {
   return safeImage?.url ?? images?.find((image) => image.url)?.url ?? null;
 }
 
-function buildMetadata(version: CivitaiModelVersion) {
+function uniqueTags(tags: string[] = []) {
+  return [...new Set(tags.map((tag) => tag.trim()).filter(Boolean))];
+}
+
+function buildMetadata(
+  version: CivitaiModelVersion,
+  details: CivitaiModelDetails | null,
+  civitaiUrl: string
+) {
   const primaryFile =
     version.files?.find((file) => file.type === "Model" && file.primary) ??
     version.files?.find((file) => file.type === "Model") ??
@@ -82,13 +111,15 @@ function buildMetadata(version: CivitaiModelVersion) {
   return {
     id: version.id,
     modelId: version.modelId,
-    name: version.model?.name ?? `Civitai ${version.modelId}`,
+    civitaiUrl,
+    name: version.model?.name ?? details?.name ?? `Civitai ${version.modelId}`,
     version: normalizeVersion(version.name),
-    type: version.model?.type ?? "",
+    type: version.model?.type ?? details?.type ?? "",
     baseModel: version.baseModel ?? "",
     thumbnailUrl: firstThumbnail(version.images),
     trainedWords: version.trainedWords ?? [],
-    nsfw: Boolean(version.model?.nsfw),
+    tags: uniqueTags(details?.tags),
+    nsfw: Boolean(version.model?.nsfw ?? details?.nsfw),
     primaryFile: primaryFile
       ? {
           id: primaryFile.id,
@@ -103,35 +134,66 @@ function buildMetadata(version: CivitaiModelVersion) {
   };
 }
 
+async function fetchModelDetails(modelId: number | string) {
+  const res = await fetch(`${CIVITAI_API_BASE}/models/${modelId}`, {
+    headers: civitaiHeaders(),
+    cache: "no-store",
+  });
+
+  return res.ok ? ((await res.json()) as CivitaiModelDetails) : null;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as { url?: string };
-    if (!body.url) {
+    const civitaiUrl = body.url?.trim() ?? "";
+    if (!civitaiUrl) {
       return NextResponse.json({ error: "url is required" }, { status: 400 });
     }
 
-    const versionId = extractModelVersionId(body.url);
-    if (!versionId) {
+    const versionId = extractModelVersionId(civitaiUrl);
+    const modelId = extractModelId(civitaiUrl);
+    if (!versionId && !modelId) {
       return NextResponse.json(
-        { error: "Civitai URL에서 modelVersionId를 찾지 못했습니다." },
+        { error: "Civitai URL에서 modelVersionId 또는 model id를 찾지 못했습니다." },
         { status: 400 }
       );
     }
 
-    const res = await fetch(`${CIVITAI_API_BASE}/model-versions/${versionId}`, {
-      headers: civitaiHeaders(),
-      cache: "no-store",
-    });
+    let version: CivitaiModelVersion | null = null;
+    let details: CivitaiModelDetails | null = null;
 
-    if (!res.ok) {
+    if (versionId) {
+      const res = await fetch(`${CIVITAI_API_BASE}/model-versions/${versionId}`, {
+        headers: civitaiHeaders(),
+        cache: "no-store",
+      });
+
+      if (!res.ok) {
+        return NextResponse.json(
+          { error: `Civitai 조회 실패: ${res.status}` },
+          { status: res.status }
+        );
+      }
+
+      version = (await res.json()) as CivitaiModelVersion;
+      details = await fetchModelDetails(version.modelId);
+    } else if (modelId) {
+      details = await fetchModelDetails(modelId);
+      version = details?.modelVersions?.[0] ?? null;
+    }
+
+    if (!version) {
       return NextResponse.json(
-        { error: `Civitai 조회 실패: ${res.status}` },
-        { status: res.status }
+        { error: "Civitai 모델 버전 정보를 찾지 못했습니다." },
+        { status: 404 }
       );
     }
 
-    const version = (await res.json()) as CivitaiModelVersion;
-    return NextResponse.json({ ok: true, model: buildMetadata(version) });
+    return NextResponse.json({
+      ok: true,
+      model: buildMetadata(version, details, civitaiUrl),
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Civitai import failed";
     return NextResponse.json({ error: message }, { status: 500 });

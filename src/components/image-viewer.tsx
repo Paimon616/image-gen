@@ -36,11 +36,11 @@ export function ImageViewer() {
 
   return (
     <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
-      <DialogContent className="!block h-[96vh] max-h-[96vh] w-[96vw] max-w-[96vw] overflow-hidden bg-black p-0">
+      <DialogContent className="!block h-[96vh] max-h-[96vh] w-[96vw] max-w-[96vw] overflow-hidden bg-black p-0 sm:max-w-[96vw]">
         <DialogTitle className="sr-only">Image Details</DialogTitle>
-        <div className="relative h-full w-full">
-          <div className="absolute inset-0 overflow-auto">
-            <div className="flex min-h-full min-w-full p-4">
+        <div className="grid h-full w-full grid-cols-[minmax(0,1fr)_minmax(22rem,34rem)]">
+          <div className="relative min-w-0 overflow-auto">
+            <div className="flex min-h-full min-w-full p-4 pr-6">
               <img
                 src={selectedImage.url}
                 alt="Generated"
@@ -49,21 +49,20 @@ export function ImageViewer() {
             </div>
           </div>
 
-          <div className="absolute left-4 top-4 right-20 flex gap-2 flex-wrap">
-            <Button size="sm" onClick={handleReuse}>
-              Reuse Params
-            </Button>
-            <Button size="sm" variant="secondary" onClick={handleDownload}>
-              Download
-            </Button>
-            <Button size="sm" variant="destructive" onClick={handleDelete}>
-              Delete
-            </Button>
-          </div>
-
-          <div className="absolute bottom-4 left-4 max-h-[40vh] w-[min(34rem,calc(100vw-3rem))] overflow-y-auto rounded-lg border border-white/10 bg-black/75 p-4 text-white shadow-xl backdrop-blur">
+          <div className="flex min-h-0 flex-col border-l border-white/10 bg-black/85 text-white">
+            <div className="flex flex-wrap gap-2 p-4 pr-12">
+              <Button size="sm" onClick={handleReuse}>
+                Reuse Params
+              </Button>
+              <Button size="sm" variant="secondary" onClick={handleDownload}>
+                Download
+              </Button>
+              <Button size="sm" variant="destructive" onClick={handleDelete}>
+                Delete
+              </Button>
+            </div>
             {selectedImage.params && (
-              <div className="space-y-3 text-sm">
+              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 pt-0 text-sm">
                 <div>
                   <span className="text-xs text-white/60">Prompt</span>
                   <p className="mt-1">{selectedImage.params.prompt}</p>

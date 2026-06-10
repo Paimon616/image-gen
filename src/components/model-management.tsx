@@ -13,6 +13,8 @@ interface ModelAsset {
   version: string;
   base_model: string;
   thumbnail_url: string | null;
+  civitai_url: string | null;
+  tags: string[];
 }
 
 interface ModelsResponse {
@@ -28,8 +30,10 @@ interface CivitaiImportModel {
   name: string;
   version: string;
   type: string;
+  civitaiUrl: string;
   baseModel: string;
   trainedWords: string[];
+  tags: string[];
   nsfw: boolean;
   thumbnailUrl: string | null;
   primaryFile: {
@@ -74,6 +78,13 @@ function formatSize(sizeKB: number | null) {
   return `${Math.round(sizeKB)} KB`;
 }
 
+function parseTags(value: string) {
+  return value
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
+
 function EditableAsset({
   asset,
   folder,
@@ -87,7 +98,8 @@ function EditableAsset({
   const [version, setVersion] = useState(asset.version);
   const [baseModel, setBaseModel] = useState(asset.base_model);
   const [thumbnailUrl, setThumbnailUrl] = useState(asset.thumbnail_url ?? "");
-  const [civitaiUrl, setCivitaiUrl] = useState("");
+  const [civitaiUrl, setCivitaiUrl] = useState(asset.civitai_url ?? "");
+  const [tags, setTags] = useState(asset.tags.join(", "));
   const [civitaiModel, setCivitaiModel] = useState<CivitaiImportModel | null>(null);
   const [saving, setSaving] = useState(false);
   const [fetchingCivitai, setFetchingCivitai] = useState(false);
@@ -107,6 +119,8 @@ function EditableAsset({
             version,
             base_model: baseModel,
             thumbnail_url: thumbnailUrl || null,
+            civitai_url: civitaiUrl || null,
+            tags: parseTags(tags),
           },
         }),
       });
@@ -139,6 +153,8 @@ function EditableAsset({
       setVersion(model.version || version);
       setBaseModel(model.baseModel || baseModel);
       setThumbnailUrl(model.thumbnailUrl ?? thumbnailUrl);
+      setCivitaiUrl(model.civitaiUrl || civitaiUrl);
+      setTags(model.tags.join(", "));
       setMessage("Civitai 정보가 입력되었습니다. 확인 후 저장하세요.");
     } catch (error) {
       setCivitaiModel(null);
@@ -167,6 +183,15 @@ function EditableAsset({
         <div>
           <Label className="mb-1 block text-xs text-muted-foreground">Thumbnail URL</Label>
           <Input value={thumbnailUrl} onChange={(e) => setThumbnailUrl(e.target.value)} className="h-8" />
+        </div>
+        <div className="xl:col-span-2">
+          <Label className="mb-1 block text-xs text-muted-foreground">Tags</Label>
+          <Input
+            value={tags}
+            onChange={(e) => setTags(e.target.value)}
+            placeholder="style, lycoris, artist"
+            className="h-8"
+          />
         </div>
         <div className="truncate text-xs text-muted-foreground xl:col-span-2">
           {asset.path}
@@ -213,6 +238,11 @@ function EditableAsset({
                 Trigger: {civitaiModel.trainedWords.slice(0, 3).join(", ")}
               </Badge>
             )}
+            {civitaiModel.tags.slice(0, 8).map((tag) => (
+              <Badge key={tag} variant="outline">
+                {tag}
+              </Badge>
+            ))}
           </div>
         )}
         {message && (
@@ -286,6 +316,8 @@ export function ModelManagement() {
                         asset.version,
                         asset.base_model,
                         asset.thumbnail_url ?? "",
+                        asset.civitai_url ?? "",
+                        asset.tags.join(","),
                       ].join(":")}
                       asset={asset}
                       folder={group.folder}
