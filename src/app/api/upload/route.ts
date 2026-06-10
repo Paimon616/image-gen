@@ -1,5 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fal } from "@/lib/fal";
+import { mkdir, writeFile } from "fs/promises";
+import { randomUUID } from "crypto";
+import { extname, join } from "path";
+
+const UPLOAD_DIR = join(process.cwd(), "uploads");
+
+function safeExtension(file: File) {
+  const fromName = extname(file.name).toLowerCase();
+  if ([".png", ".jpg", ".jpeg", ".webp"].includes(fromName)) return fromName;
+  if (file.type === "image/png") return ".png";
+  if (file.type === "image/webp") return ".webp";
+  return ".jpg";
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,11 +23,14 @@ export async function POST(req: NextRequest) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const blob = new Blob([buffer], { type: file.type });
+    const filename = `${randomUUID()}${safeExtension(file)}`;
 
-    const url = await fal.storage.upload(blob);
+    await mkdir(UPLOAD_DIR, { recursive: true });
+    await writeFile(join(UPLOAD_DIR, filename), buffer);
 
-    return NextResponse.json({ url });
+    return NextResponse.json({
+      url: `${req.nextUrl.origin}/api/uploads/${filename}`,
+    });
   } catch (error) {
     console.error("Upload error:", error);
     const message = error instanceof Error ? error.message : "Upload failed";

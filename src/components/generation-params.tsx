@@ -11,7 +11,6 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 
 const SAMPLER_PRESETS = [
@@ -348,56 +347,15 @@ export function GenerationParams() {
               )}
             </div>
 
-            {currentModel.provider === "fal" && (
-              <div>
-                <Label className="text-xs text-muted-foreground mb-2 block">
-                  Format
-                </Label>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {(["jpeg", "png"] as const).map((format) => (
-                    <button
-                      key={format}
-                      type="button"
-                      onClick={() => setParams({ output_format: format })}
-                      className={`text-xs py-1.5 px-2 rounded-md border uppercase transition-colors ${
-                        params.output_format === format
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border hover:border-muted-foreground/50"
-                      }`}
-                    >
-                      {format}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
           <div className="grid gap-3 lg:grid-cols-2">
             <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
               <Label className="text-xs text-muted-foreground">Prompt Weighting</Label>
-              <Switch
-                size="sm"
-                checked={params.prompt_weighting}
-                onCheckedChange={(checked) =>
-                  setParams({ prompt_weighting: checked })
-                }
-                disabled={!currentModel.supports.custom_model}
-              />
+              <span className="text-xs text-muted-foreground">
+                ComfyUI prompt syntax
+              </span>
             </div>
-
-            {currentModel.provider === "fal" && (
-              <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
-                <Label className="text-xs text-muted-foreground">Safety Checker</Label>
-                <Switch
-                  size="sm"
-                  checked={params.enable_safety_checker}
-                  onCheckedChange={(checked) =>
-                    setParams({ enable_safety_checker: checked })
-                  }
-                />
-              </div>
-            )}
           </div>
 
           <div className="rounded-md border border-border p-3">

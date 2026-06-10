@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Image Gen — SDXL + IP-Adapter + LoRA",
-  description: "NSFW image generation service with fal.ai",
+  description: "Local ComfyUI image generation service",
 };
 
 export default function RootLayout({

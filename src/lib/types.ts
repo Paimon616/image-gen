@@ -2,7 +2,7 @@ export interface ModelConfig {
   id: string;
   name: string;
   description: string;
-  provider: "fal" | "comfyui";
+  provider: "comfyui";
   supports: {
     lora: boolean;
     embeddings: boolean;
@@ -18,126 +18,6 @@ export interface ModelConfig {
 }
 
 export const AVAILABLE_MODELS: ModelConfig[] = [
-  {
-    id: "fal-ai/fast-sdxl",
-    name: "SDXL",
-    description: "Fast SDXL generation",
-    provider: "fal",
-    supports: {
-      lora: true,
-      embeddings: true,
-      custom_model: false,
-      ip_adapter: false,
-      face_id: false,
-      negative_prompt: true,
-    },
-    defaults: { num_inference_steps: 30, guidance_scale: 7.5 },
-  },
-  {
-    id: "fal-ai/lora",
-    name: "Custom SD + LoRA",
-    description: "Custom checkpoint, LoRA, embeddings",
-    provider: "fal",
-    supports: {
-      lora: true,
-      embeddings: true,
-      custom_model: true,
-      ip_adapter: false,
-      face_id: false,
-      negative_prompt: true,
-    },
-    defaults: { num_inference_steps: 30, guidance_scale: 7.5 },
-  },
-  {
-    id: "fal-ai/flux/dev",
-    name: "Flux Dev",
-    description: "High quality, slower",
-    provider: "fal",
-    supports: {
-      lora: false,
-      embeddings: false,
-      custom_model: false,
-      ip_adapter: false,
-      face_id: false,
-      negative_prompt: false,
-    },
-    defaults: { num_inference_steps: 28, guidance_scale: 3.5 },
-  },
-  {
-    id: "fal-ai/flux/schnell",
-    name: "Flux Schnell",
-    description: "Ultra fast, 4 steps",
-    provider: "fal",
-    supports: {
-      lora: false,
-      embeddings: false,
-      custom_model: false,
-      ip_adapter: false,
-      face_id: false,
-      negative_prompt: false,
-    },
-    defaults: { num_inference_steps: 4, guidance_scale: 0 },
-  },
-  {
-    id: "fal-ai/flux-lora",
-    name: "Flux + LoRA",
-    description: "Flux with LoRA support",
-    provider: "fal",
-    supports: {
-      lora: true,
-      embeddings: false,
-      custom_model: false,
-      ip_adapter: false,
-      face_id: false,
-      negative_prompt: false,
-    },
-    defaults: { num_inference_steps: 28, guidance_scale: 3.5 },
-  },
-  {
-    id: "fal-ai/stable-diffusion-v35-large",
-    name: "SD 3.5 Large",
-    description: "Latest SD architecture",
-    provider: "fal",
-    supports: {
-      lora: true,
-      embeddings: false,
-      custom_model: false,
-      ip_adapter: false,
-      face_id: false,
-      negative_prompt: true,
-    },
-    defaults: { num_inference_steps: 28, guidance_scale: 4.5 },
-  },
-  {
-    id: "fal-ai/ip-adapter-face-id",
-    name: "IP-Adapter FaceID",
-    description: "Character reference (needs face image)",
-    provider: "fal",
-    supports: {
-      lora: true,
-      embeddings: false,
-      custom_model: false,
-      ip_adapter: true,
-      face_id: true,
-      negative_prompt: true,
-    },
-    defaults: { num_inference_steps: 30, guidance_scale: 7.5 },
-  },
-  {
-    id: "fal-ai/ip-adapter",
-    name: "IP-Adapter",
-    description: "Style reference (needs style image)",
-    provider: "fal",
-    supports: {
-      lora: true,
-      embeddings: false,
-      custom_model: false,
-      ip_adapter: true,
-      face_id: false,
-      negative_prompt: true,
-    },
-    defaults: { num_inference_steps: 30, guidance_scale: 7.5 },
-  },
   {
     id: "comfyui/local-sdxl",
     name: "Local ComfyUI",
@@ -217,7 +97,7 @@ export interface GenerationStatus {
 }
 
 export const DEFAULT_PARAMS: GenerationParams = {
-  model: "fal-ai/fast-sdxl",
+  model: "comfyui/local-sdxl",
   model_name: "sd_xl_base_1.0.safetensors",
   prompt: "",
   negative_prompt: "low quality, blurry, deformed, ugly, bad anatomy, bad hands, missing fingers",

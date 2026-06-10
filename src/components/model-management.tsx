@@ -24,28 +24,6 @@ interface ModelsResponse {
   vaeAssets: ModelAsset[];
 }
 
-interface CivitaiImportModel {
-  id: number;
-  modelId: number;
-  name: string;
-  version: string;
-  type: string;
-  civitaiUrl: string;
-  baseModel: string;
-  trainedWords: string[];
-  tags: string[];
-  nsfw: boolean;
-  thumbnailUrl: string | null;
-  primaryFile: {
-    name: string;
-    sizeKB: number | null;
-    sha256: string | null;
-    format: string;
-    precision: string;
-    inferredName: string;
-  } | null;
-}
-
 const GROUPS = [
   { id: "checkpoints", label: "Checkpoints", folder: "checkpoints", key: "checkpointAssets" },
   { id: "loras", label: "LoRA", folder: "loras", key: "loraAssets" },
@@ -71,13 +49,6 @@ function ModelInitial({ asset }: { asset: ModelAsset }) {
   );
 }
 
-function formatSize(sizeKB: number | null) {
-  if (!sizeKB) return "";
-  if (sizeKB >= 1024 * 1024) return `${(sizeKB / 1024 / 1024).toFixed(2)} GB`;
-  if (sizeKB >= 1024) return `${(sizeKB / 1024).toFixed(1)} MB`;
-  return `${Math.round(sizeKB)} KB`;
-}
-
 function parseTags(value: string) {
   return value
     .split(",")
@@ -100,9 +71,7 @@ function EditableAsset({
   const [thumbnailUrl, setThumbnailUrl] = useState(asset.thumbnail_url ?? "");
   const [civitaiUrl, setCivitaiUrl] = useState(asset.civitai_url ?? "");
   const [tags, setTags] = useState(asset.tags.join(", "));
-  const [civitaiModel, setCivitaiModel] = useState<CivitaiImportModel | null>(null);
   const [saving, setSaving] = useState(false);
-  const [fetchingCivitai, setFetchingCivitai] = useState(false);
   const [message, setMessage] = useState("");
   const currentTags = parseTags(tags);
 
@@ -136,35 +105,6 @@ function EditableAsset({
     }
   };
 
-  const applyCivitaiMetadata = async () => {
-    setFetchingCivitai(true);
-    setMessage("");
-    try {
-      const res = await fetch("/api/models/civitai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: civitaiUrl }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Civitai 조회 실패");
-
-      const model = data.model as CivitaiImportModel;
-      setCivitaiModel(model);
-      setName(model.name || model.primaryFile?.inferredName || name);
-      setVersion(model.version || version);
-      setBaseModel(model.baseModel || baseModel);
-      setThumbnailUrl(model.thumbnailUrl ?? thumbnailUrl);
-      setCivitaiUrl(model.civitaiUrl || civitaiUrl);
-      setTags(model.tags.join(", "));
-      setMessage("Civitai 정보가 입력되었습니다. 확인 후 저장하세요.");
-    } catch (error) {
-      setCivitaiModel(null);
-      setMessage(error instanceof Error ? error.message : "Civitai 조회 실패");
-    } finally {
-      setFetchingCivitai(false);
-    }
-  };
-
   return (
     <div className="grid gap-4 rounded-md border border-border bg-card p-3 md:grid-cols-[5rem_minmax(0,1fr)] xl:grid-cols-[5rem_minmax(0,1fr)_6.5rem]">
       <div className="md:pt-1">
@@ -177,8 +117,6 @@ function EditableAsset({
             <h3 className="min-w-0 truncate text-sm font-semibold">{name}</h3>
             {version && <Badge variant="secondary">{version}</Badge>}
             {baseModel && <Badge variant="outline">{baseModel}</Badge>}
-            {civitaiModel?.type && <Badge variant="outline">{civitaiModel.type}</Badge>}
-            {civitaiModel?.nsfw && <Badge variant="destructive">NSFW</Badge>}
           </div>
           <div className="mt-1 truncate text-xs text-muted-foreground">
             {asset.path}
@@ -197,18 +135,6 @@ function EditableAsset({
                 +{currentTags.length - 12}
               </Badge>
             )}
-          </div>
-        )}
-
-        {civitaiModel?.primaryFile?.name && (
-          <div className="text-xs text-muted-foreground">
-            {civitaiModel.primaryFile.name}
-            {civitaiModel.primaryFile.sizeKB
-              ? ` · ${formatSize(civitaiModel.primaryFile.sizeKB)}`
-              : ""}
-            {civitaiModel.trainedWords.length > 0
-              ? ` · Trigger: ${civitaiModel.trainedWords.slice(0, 3).join(", ")}`
-              : ""}
           </div>
         )}
 
@@ -239,31 +165,17 @@ function EditableAsset({
           </div>
         </div>
 
-        <form
-          className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_6.5rem]"
-          onSubmit={(event) => {
-            event.preventDefault();
-            applyCivitaiMetadata();
-          }}
-        >
+        <div>
           <div>
             <Label className="mb-1 block text-xs text-muted-foreground">Civitai URL</Label>
             <Input
               value={civitaiUrl}
               onChange={(e) => setCivitaiUrl(e.target.value)}
-              placeholder="https://civitai.red/models/...?...modelVersionId=..."
+              placeholder="Optional reference URL"
               className="h-8"
             />
           </div>
-          <Button
-            type="submit"
-            variant="outline"
-            disabled={fetchingCivitai || !civitaiUrl.trim()}
-            className="self-end"
-          >
-            {fetchingCivitai ? "Fetching..." : "Fill"}
-          </Button>
-        </form>
+        </div>
 
         {message && (
           <div className="text-xs text-muted-foreground">

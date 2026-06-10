@@ -266,12 +266,7 @@ export function ModelSelector() {
 
   const handleSelect = (modelId: string) => {
     const model = getModelConfig(modelId);
-    const modelName =
-      model.provider === "comfyui"
-        ? localModels.checkpoints[0] ?? "sd_xl_base_1.0.safetensors"
-        : model.id === "fal-ai/lora"
-          ? "stabilityai/stable-diffusion-xl-base-1.0"
-          : params.model_name;
+    const modelName = localModels.checkpoints[0] ?? "sd_xl_base_1.0.safetensors";
 
     setParams({
       model: modelId,
@@ -418,20 +413,6 @@ export function ModelSelector() {
               className="h-9 text-xs"
             />
           )}
-        </div>
-      )}
-
-      {currentModel.supports.custom_model && currentModel.provider !== "comfyui" && (
-        <div>
-          <Label className="text-xs text-muted-foreground mb-1.5 block">
-            Base Model
-          </Label>
-          <Input
-            placeholder="Hugging Face repo or checkpoint URL"
-            value={params.model_name}
-            onChange={(e) => setParams({ model_name: e.target.value })}
-            className="h-9 text-xs"
-          />
         </div>
       )}
 
@@ -598,12 +579,6 @@ export function ModelSelector() {
           {currentModel.name} doesn&apos;t support character reference — it will be ignored
         </p>
       )}
-      {params.generation_mode === "pose_reference" &&
-        currentModel.provider !== "comfyui" && (
-          <p className="text-xs text-yellow-500 mt-2">
-            Pose Reference mode requires Local ComfyUI.
-          </p>
-        )}
       {params.loras.length > 0 && !currentModel.supports.lora && (
         <p className="text-xs text-yellow-500 mt-2">
           {currentModel.name} doesn&apos;t support LoRA — they will be ignored
