@@ -503,27 +503,27 @@ export default function Home() {
             <p className="text-xs text-green-500 mb-2">{status.message}</p>
           )}
           <Button
-            className="relative w-full overflow-hidden"
+            className="relative w-full overflow-hidden border border-border bg-zinc-200 text-zinc-950 shadow-sm hover:bg-zinc-300 disabled:bg-zinc-200 disabled:text-zinc-500 disabled:opacity-100 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 dark:disabled:bg-zinc-800 dark:disabled:text-zinc-500"
             size="lg"
             onClick={generate}
             disabled={isGenerating || !params.prompt.trim() || Boolean(generationModeError)}
             aria-busy={isGenerating}
           >
             <span
-              className="absolute inset-y-0 left-0 bg-emerald-400 transition-[width] duration-500 ease-out"
+              className="absolute inset-y-0 left-0 bg-gradient-to-r from-sky-500 via-cyan-400 to-emerald-400 transition-[width] duration-500 ease-out"
               style={{ width: `${generateButtonProgress}%` }}
               aria-hidden="true"
             />
-            <span className="absolute inset-0 bg-black/10 opacity-0 transition-opacity group-disabled/button:opacity-100" />
+            <span className="absolute inset-0 bg-white/20 opacity-0 transition-opacity dark:bg-black/20" />
             {isGenerating ? (
-              <span className="relative z-10 flex min-w-0 items-center gap-2">
+              <span className="relative z-10 flex min-w-0 items-center gap-2 drop-shadow-sm">
                 <span className="tabular-nums">
                   {Math.round(generateButtonProgress)}%
                 </span>
                 <span>Generating...</span>
               </span>
             ) : (
-              <span className="relative z-10">
+              <span className="relative z-10 drop-shadow-sm">
                 {status.state === "completed" ? "Done" : "Generate"}
               </span>
             )}
