@@ -29,6 +29,11 @@ interface ComfyHistoryItem {
   outputs?: Record<string, ComfyHistoryOutput>;
 }
 
+interface ComfyQueue {
+  queue_running?: unknown[];
+  queue_pending?: unknown[];
+}
+
 export interface ComfyGeneratedImage {
   buffer: Buffer;
   contentType: string;
@@ -395,14 +400,65 @@ async function getHistory(promptId: string) {
   return (await res.json()) as Record<string, ComfyHistoryItem>;
 }
 
+async function getQueue() {
+  const res = await comfyFetch("/queue");
+  return (await res.json()) as ComfyQueue;
+}
+
+function promptIdFromQueueItem(item: unknown) {
+  if (Array.isArray(item)) {
+    return typeof item[1] === "string" ? item[1] : "";
+  }
+
+  if (item && typeof item === "object" && "prompt_id" in item) {
+    const promptId = (item as { prompt_id?: unknown }).prompt_id;
+    return typeof promptId === "string" ? promptId : "";
+  }
+
+  return "";
+}
+
+async function isPromptActive(promptId: string) {
+  const queue = await getQueue();
+  const queuedItems = [
+    ...(queue.queue_running ?? []),
+    ...(queue.queue_pending ?? []),
+  ];
+
+  return queuedItems.some((item) => promptIdFromQueueItem(item) === promptId);
+}
+
 function imageRefsFromHistory(history: ComfyHistoryItem | undefined) {
   return Object.values(history?.outputs ?? {}).flatMap((output) => output.images ?? []);
 }
 
-export async function waitForComfyImageRefs(promptId: string) {
-  const startedAt = Date.now();
+function wait(ms: number, signal?: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(resolve, ms);
 
-  while (Date.now() - startedAt < COMFYUI_TIMEOUT_MS) {
+    signal?.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(timeout);
+        reject(new Error("ComfyUI generation canceled"));
+      },
+      { once: true }
+    );
+  });
+}
+
+export async function waitForComfyImageRefs(
+  promptId: string,
+  options: {
+    idleTimeoutMs?: number;
+    getLastActivityAt?: () => number;
+    signal?: AbortSignal;
+  } = {}
+) {
+  const idleTimeoutMs = options.idleTimeoutMs ?? COMFYUI_TIMEOUT_MS;
+  let lastActivityAt = Date.now();
+
+  while (!options.signal?.aborted) {
     const history = await getHistory(promptId);
     const images = imageRefsFromHistory(history[promptId]);
 
@@ -410,10 +466,57 @@ export async function waitForComfyImageRefs(promptId: string) {
       return images;
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    const externalActivityAt = options.getLastActivityAt?.() ?? 0;
+
+    if (externalActivityAt > lastActivityAt) {
+      lastActivityAt = externalActivityAt;
+    }
+
+    try {
+      if (await isPromptActive(promptId)) {
+        lastActivityAt = Date.now();
+      }
+    } catch {
+      // If the queue endpoint is temporarily unavailable, fall back to idle timeout.
+    }
+
+    if (Date.now() - lastActivityAt >= idleTimeoutMs) {
+      throw new Error("ComfyUI generation timed out");
+    }
+
+    await wait(1000, options.signal);
   }
 
-  throw new Error("ComfyUI generation timed out");
+  throw new Error("ComfyUI generation canceled");
+}
+
+export async function cancelComfyPrompt(promptId?: string) {
+  const errors: string[] = [];
+  let canceled = false;
+
+  if (promptId?.trim()) {
+    try {
+      await comfyFetch("/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ delete: [promptId] }),
+      });
+      canceled = true;
+    } catch (error) {
+      errors.push(error instanceof Error ? error.message : "Failed to update queue");
+    }
+  }
+
+  try {
+    await comfyFetch("/interrupt", { method: "POST" });
+    canceled = true;
+  } catch (error) {
+    errors.push(error instanceof Error ? error.message : "Failed to interrupt ComfyUI");
+  }
+
+  if (!canceled && errors.length > 0) {
+    throw new Error(errors.join("; "));
+  }
 }
 
 function viewPath(image: ComfyImageRef) {

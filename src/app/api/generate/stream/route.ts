@@ -4,6 +4,7 @@ import { join } from "path";
 import { NextRequest } from "next/server";
 import {
   COMFYUI_BASE_URL,
+  cancelComfyPrompt,
   fetchComfyImages,
   queueComfyPrompt,
   waitForComfyImageRefs,
@@ -136,12 +137,28 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  let ws: WebSocket | null = null;
+  let promptId = "";
+  let clientDisconnected = false;
+  let lastComfyActivityAt = Date.now();
+  const abortController = new AbortController();
+
+  const abortComfyPrompt = () => {
+    clientDisconnected = true;
+    abortController.abort();
+    ws?.close();
+
+    if (promptId) {
+      void cancelComfyPrompt(promptId).catch(() => {});
+    }
+  };
+
+  req.signal.addEventListener("abort", abortComfyPrompt, { once: true });
+
   const stream = new ReadableStream({
     async start(controller) {
-      let ws: WebSocket | null = null;
-      let promptId = "";
-
       const send = (event: string, data: unknown) => {
+        if (clientDisconnected) return;
         controller.enqueue(encoder.encode(sse(event, data)));
       };
 
@@ -157,6 +174,7 @@ export async function POST(req: NextRequest) {
             if (message.type !== "progress") return;
             if (!promptId || message.data?.prompt_id !== promptId) return;
 
+            lastComfyActivityAt = Date.now();
             const value = Number(message.data.value ?? 0);
             const max = Number(message.data.max ?? body.num_inference_steps);
             const progress =
@@ -176,9 +194,14 @@ export async function POST(req: NextRequest) {
         send("progress", { progress: 1, message: "Queued..." });
         const queued = await queueComfyPrompt(body, clientId);
         promptId = queued.prompt_id;
+        lastComfyActivityAt = Date.now();
+        send("queued", { prompt_id: promptId });
         send("progress", { progress: 2, message: "Waiting for ComfyUI..." });
 
-        const imageRefs = await waitForComfyImageRefs(promptId);
+        const imageRefs = await waitForComfyImageRefs(promptId, {
+          signal: abortController.signal,
+          getLastActivityAt: () => lastComfyActivityAt,
+        });
         const images = await fetchComfyImages(imageRefs);
         const savedImages = await saveBufferedImages({
           images,
@@ -189,13 +212,21 @@ export async function POST(req: NextRequest) {
         send("progress", { progress: 100, message: "Done" });
         send("complete", { images: savedImages });
       } catch (error) {
-        send("error", {
-          error: error instanceof Error ? error.message : "Unknown error",
-        });
+        if (!clientDisconnected) {
+          send("error", {
+            error: error instanceof Error ? error.message : "Unknown error",
+          });
+        }
       } finally {
+        req.signal.removeEventListener("abort", abortComfyPrompt);
         ws?.close();
-        controller.close();
+        if (!clientDisconnected) {
+          controller.close();
+        }
       }
+    },
+    cancel() {
+      abortComfyPrompt();
     },
   });
 

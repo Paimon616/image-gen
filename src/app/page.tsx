@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "@/lib/store";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { Gallery } from "@/components/gallery";
 import { ImageViewer } from "@/components/image-viewer";
 import { AppSidebar } from "@/components/app-sidebar";
 import { getModelConfig } from "@/lib/types";
-import { ImageIcon, ImageUp, ScanLine } from "lucide-react";
+import { ImageIcon, ImageUp, ScanLine, X } from "lucide-react";
 
 function choosePoseControlNet(controlnets: string[]) {
   return (
@@ -49,6 +49,8 @@ export default function Home() {
   const [buttonProgress, setButtonProgress] = useState(0);
   const [posePreviewUrl, setPosePreviewUrl] = useState<string | null>(null);
   const [posePreviewStatus, setPosePreviewStatus] = useState("");
+  const activePromptIdRef = useRef("");
+  const generationAbortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     fetch("/api/models")
@@ -96,6 +98,9 @@ export default function Home() {
       return;
     }
 
+    const abortController = new AbortController();
+    activePromptIdRef.current = "";
+    generationAbortControllerRef.current = abortController;
     setButtonProgress(1);
     setStatus({ state: "generating", progress: 1, message: "Queued..." });
 
@@ -104,6 +109,7 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(params),
+        signal: abortController.signal,
       });
 
       if (!res.ok) {
@@ -132,6 +138,10 @@ export default function Home() {
           if (!rawEvent.trim()) continue;
           const { event, data } = parseSseEvent(rawEvent);
 
+          if (event === "queued") {
+            activePromptIdRef.current = String(data?.prompt_id ?? "");
+          }
+
           if (event === "progress") {
             const progress = Number(data?.progress ?? 0);
             const message = String(data?.message ?? "Generating...");
@@ -159,11 +169,37 @@ export default function Home() {
         setStatus({ state: "idle", progress: 0, message: "" });
       }, 2000);
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        setButtonProgress(0);
+        setStatus({ state: "canceled", progress: 0, message: "Canceled." });
+        return;
+      }
+
       const message = err instanceof Error ? err.message : "Unknown error";
       setButtonProgress(0);
       setStatus({ state: "error", progress: 0, message });
+    } finally {
+      generationAbortControllerRef.current = null;
+      activePromptIdRef.current = "";
     }
   }, [params, generationModeError, setStatus, addImage]);
+
+  const cancelGeneration = useCallback(() => {
+    const promptId = activePromptIdRef.current;
+
+    generationAbortControllerRef.current?.abort();
+
+    if (promptId) {
+      void fetch("/api/generate/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt_id: promptId }),
+      }).catch(() => {});
+    }
+
+    setButtonProgress(0);
+    setStatus({ state: "canceled", progress: 0, message: "Canceled." });
+  }, [setStatus]);
 
   const previewPose = useCallback(async () => {
     if (!params.pose_reference_image) return;
@@ -502,35 +538,57 @@ export default function Home() {
           {status.state === "completed" && (
             <p className="text-xs text-green-500 mb-2">{status.message}</p>
           )}
-          <Button
-            className={`relative w-full overflow-hidden ${
-              isGenerating
-                ? "bg-zinc-800 text-zinc-100 disabled:bg-zinc-800 disabled:text-zinc-100 disabled:opacity-100 dark:bg-zinc-800 dark:disabled:bg-zinc-800"
-                : ""
-            }`}
-            size="lg"
-            onClick={generate}
-            disabled={isGenerating || !params.prompt.trim() || Boolean(generationModeError)}
-            aria-busy={isGenerating}
+          {status.state === "canceled" && (
+            <p className="text-xs text-muted-foreground mb-2">{status.message}</p>
+          )}
+          <div
+            className={
+              isGenerating ? "grid grid-cols-[minmax(0,1fr)_6.5rem] gap-2" : ""
+            }
           >
-            <span
-              className="absolute inset-y-0 left-0 bg-gradient-to-r from-sky-500 via-cyan-400 to-emerald-400 transition-[width] duration-500 ease-out"
-              style={{ width: `${isGenerating ? generateButtonProgress : 0}%` }}
-              aria-hidden="true"
-            />
-            {isGenerating ? (
-              <span className="relative z-10 flex min-w-0 items-center gap-2 drop-shadow-sm">
-                <span className="tabular-nums">
-                  {Math.round(generateButtonProgress)}%
+            <Button
+              className={`relative w-full overflow-hidden ${
+                isGenerating
+                  ? "bg-zinc-800 text-zinc-100 disabled:bg-zinc-800 disabled:text-zinc-100 disabled:opacity-100 dark:bg-zinc-800 dark:disabled:bg-zinc-800"
+                  : ""
+              }`}
+              size="lg"
+              onClick={generate}
+              disabled={isGenerating || !params.prompt.trim() || Boolean(generationModeError)}
+              aria-busy={isGenerating}
+            >
+              <span
+                className="absolute inset-y-0 left-0 bg-gradient-to-r from-sky-500 via-cyan-400 to-emerald-400 transition-[width] duration-500 ease-out"
+                style={{ width: `${isGenerating ? generateButtonProgress : 0}%` }}
+                aria-hidden="true"
+              />
+              {isGenerating ? (
+                <span className="relative z-10 flex min-w-0 items-center gap-2 drop-shadow-sm">
+                  <span className="tabular-nums">
+                    {Math.round(generateButtonProgress)}%
+                  </span>
+                  <span>Generating...</span>
                 </span>
-                <span>Generating...</span>
-              </span>
-            ) : (
-              <span className="relative z-10 drop-shadow-sm">
-                {status.state === "completed" ? "Done" : "Generate"}
-              </span>
+              ) : (
+                <span className="relative z-10 drop-shadow-sm">
+                  {status.state === "completed" ? "Done" : "Generate"}
+                </span>
+              )}
+            </Button>
+
+            {isGenerating && (
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                onClick={cancelGeneration}
+                className="gap-1.5"
+              >
+                <X className="h-4 w-4" />
+                Cancel
+              </Button>
             )}
-          </Button>
+          </div>
         </div>
       </aside>
 

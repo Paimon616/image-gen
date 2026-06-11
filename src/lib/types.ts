@@ -93,7 +93,7 @@ export interface GeneratedImage {
 }
 
 export interface GenerationStatus {
-  state: "idle" | "uploading" | "generating" | "completed" | "error";
+  state: "idle" | "uploading" | "generating" | "completed" | "canceled" | "error";
   progress: number;
   message: string;
 }
