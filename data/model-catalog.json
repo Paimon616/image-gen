@@ -351,5 +351,37 @@
       "mix",
       "illustration"
     ]
+  },
+  "loras/mai_bj_clothing_12.safetensors": {
+    "name": "Clothing: Sexy office lady 3",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/f3e0eee1-c261-4d73-8613-7d29150a531e/original=true/84866621.jpeg",
+    "civitai_url": "https://civitai.red/models/1722449/clothing-sexy-office-lady-3?modelVersionId=1949236",
+    "tags": [
+      "cat girl",
+      "clothing"
+    ]
+  },
+  "loras/Futurabbitstyle_animaV1.5-000016.safetensors": {
+    "name": "Futurabbitstyle_anima",
+    "version": "v1.0",
+    "base_model": "Anima",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/f8e97ade-b33d-4d5b-bde3-da4020bb3862/original=true/132754286.jpeg",
+    "civitai_url": "https://civitai.com/models/2674611/futurabbitstyleanima?modelVersionId=3003138",
+    "tags": [
+      "futurabbit",
+      "style"
+    ]
+  },
+  "checkpoints/waiANIMA_v10Base10.safetensors": {
+    "name": "WAI-ANIMA",
+    "version": "v1.0(base 1.0)",
+    "base_model": "Anima",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/1d8cf074-a5ca-4fdf-8988-68981f2f54d6/original=true/132075530.jpeg",
+    "civitai_url": "https://civitai.com/models/2544636/wai-anima?modelVersionId=2983680",
+    "tags": [
+      "base model"
+    ]
   }
 }

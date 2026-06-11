@@ -1,13 +1,14 @@
 import { mkdir, readdir, readFile, writeFile } from "fs/promises";
 import { basename, extname, join, relative } from "path";
 import { NextRequest, NextResponse } from "next/server";
+import {
+  COMFYUI_MODELS_DIR,
+  getCheckpointCapabilities,
+  hasModelExtension,
+} from "@/lib/comfyui-model-files";
 
 export const dynamic = "force-dynamic";
 
-const MODEL_EXTENSIONS = new Set([".ckpt", ".pt", ".safetensors"]);
-const COMFYUI_MODELS_DIR =
-  process.env.COMFYUI_MODELS_DIR ??
-  join(Buffer.from("Q29tZnlVSQ==", "base64").toString("utf8"), "models");
 const MODEL_CATALOG_PATH = "data/model-catalog.json";
 
 interface LocalModelMetadata {
@@ -54,10 +55,6 @@ async function readCatalog() {
 async function writeCatalog(catalog: Record<string, LocalModelMetadata>) {
   await mkdir("data", { recursive: true });
   await writeFile(MODEL_CATALOG_PATH, JSON.stringify(catalog, null, 2));
-}
-
-function hasModelExtension(filename: string) {
-  return [...MODEL_EXTENSIONS].some((ext) => filename.endsWith(ext));
 }
 
 function modelRoot(folder: string) {
@@ -114,7 +111,19 @@ async function listModelAssets(
       .map((file) => relative(root, file).replaceAll("\\", "/"))
       .filter((name) => !name.startsWith("put_"));
 
-    const assets = files.map((path) => {
+    const supportedFiles =
+      folder === "checkpoints"
+        ? (
+            await Promise.all(
+              files.map(async (path) => {
+                const capabilities = await getCheckpointCapabilities(path);
+                return capabilities?.clip === false ? null : path;
+              })
+            )
+          ).filter((path): path is string => Boolean(path))
+        : files;
+
+    const assets = supportedFiles.map((path) => {
       const metadata = catalog[`${folder}/${path}`];
       const fallback = humanizeFilename(path);
 

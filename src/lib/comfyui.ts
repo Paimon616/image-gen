@@ -4,6 +4,7 @@ import type {
   GenerationParams,
   LoraConfig,
 } from "./types";
+import { getCheckpointCapabilities } from "./comfyui-model-files";
 
 const DEFAULT_COMFYUI_URL = "http://127.0.0.1:8188";
 export const COMFYUI_BASE_URL =
@@ -171,6 +172,21 @@ async function buildDefaultWorkflow(params: GenerationParams) {
   const loras = cleanLoras(params.loras);
   const controlnets = await cleanControlnets(params);
   const checkpoint = params.model_name.trim() || "sd_xl_base_1.0.safetensors";
+  const checkpointCapabilities = await getCheckpointCapabilities(checkpoint);
+
+  if (checkpointCapabilities?.clip === false) {
+    throw new Error(
+      `${checkpoint} is a diffusion-only model without a bundled CLIP text encoder. ` +
+        "Use an SD/SDXL checkpoint in this generator, or move this file to ComfyUI/models/diffusion_models and run it with its matching ComfyUI blueprint."
+    );
+  }
+
+  if (checkpointCapabilities?.vae === false && !params.vae_name.trim()) {
+    throw new Error(
+      `${checkpoint} does not include a bundled VAE. Select a VAE before generating.`
+    );
+  }
+
   const seed = params.seed ?? Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
   const workflow: Record<string, unknown> = {
     "1": {
