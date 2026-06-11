@@ -503,7 +503,11 @@ export default function Home() {
             <p className="text-xs text-green-500 mb-2">{status.message}</p>
           )}
           <Button
-            className="relative w-full overflow-hidden border border-border bg-zinc-200 text-zinc-950 shadow-sm hover:bg-zinc-300 disabled:bg-zinc-200 disabled:text-zinc-500 disabled:opacity-100 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 dark:disabled:bg-zinc-800 dark:disabled:text-zinc-500"
+            className={`relative w-full overflow-hidden ${
+              isGenerating
+                ? "bg-zinc-800 text-zinc-100 disabled:bg-zinc-800 disabled:text-zinc-100 disabled:opacity-100 dark:bg-zinc-800 dark:disabled:bg-zinc-800"
+                : ""
+            }`}
             size="lg"
             onClick={generate}
             disabled={isGenerating || !params.prompt.trim() || Boolean(generationModeError)}
@@ -511,10 +515,9 @@ export default function Home() {
           >
             <span
               className="absolute inset-y-0 left-0 bg-gradient-to-r from-sky-500 via-cyan-400 to-emerald-400 transition-[width] duration-500 ease-out"
-              style={{ width: `${generateButtonProgress}%` }}
+              style={{ width: `${isGenerating ? generateButtonProgress : 0}%` }}
               aria-hidden="true"
             />
-            <span className="absolute inset-0 bg-white/20 opacity-0 transition-opacity dark:bg-black/20" />
             {isGenerating ? (
               <span className="relative z-10 flex min-w-0 items-center gap-2 drop-shadow-sm">
                 <span className="tabular-nums">
