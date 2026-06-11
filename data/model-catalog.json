@@ -318,5 +318,31 @@
       "quality",
       "more details"
     ]
+  },
+  "checkpoints/illustriousXL_v01.safetensors": {
+    "name": "Illustrious-XL",
+    "version": "v0.1",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/ba3f42b7-a4e8-43a7-8b25-8b50708a85cb/original=true/31462610.jpeg",
+    "civitai_url": "https://civitai.com/models/795765/illustrious-xl?modelVersionId=889818",
+    "tags": [
+      "anime",
+      "base model"
+    ]
+  },
+  "loras/atreidsv2style.safetensors": {
+    "name": "Arsnitida Style | Illustrious",
+    "version": "ATRSv2.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/ea677c8c-a3f9-4ec0-9f6b-3e0654d84819/original=true/108457838.jpeg",
+    "civitai_url": "https://civitai.com/models/1576220/arsnitida-style-or-illustrious?modelVersionId=2365679",
+    "tags": [
+      "style",
+      "illustrious",
+      "aesthetic",
+      "digital painting",
+      "mix",
+      "illustration"
+    ]
   }
 }
