@@ -5,6 +5,7 @@ import {
   COMFYUI_MODELS_DIR,
   getCheckpointCapabilities,
   hasModelExtension,
+  isAnimaCheckpointName,
 } from "@/lib/comfyui-model-files";
 
 export const dynamic = "force-dynamic";
@@ -117,7 +118,9 @@ async function listModelAssets(
             await Promise.all(
               files.map(async (path) => {
                 const capabilities = await getCheckpointCapabilities(path);
-                return capabilities?.clip === false ? null : path;
+                return capabilities?.clip === false && !isAnimaCheckpointName(path)
+                  ? null
+                  : path;
               })
             )
           ).filter((path): path is string => Boolean(path))

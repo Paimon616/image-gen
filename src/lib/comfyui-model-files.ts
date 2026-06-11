@@ -1,4 +1,4 @@
-import { open } from "fs/promises";
+import { access, open } from "fs/promises";
 import { join, normalize } from "path";
 
 const MODEL_EXTENSIONS = new Set([".ckpt", ".pt", ".safetensors"]);
@@ -22,6 +22,19 @@ function safeModelPath(folder: string, modelName: string) {
   }
 
   return fullPath;
+}
+
+export function isAnimaCheckpointName(modelName: string) {
+  return /anima/i.test(modelName);
+}
+
+export async function modelFileExists(folder: string, modelName: string) {
+  try {
+    await access(safeModelPath(folder, modelName));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function hasCheckpointClip(keys: string[]) {
