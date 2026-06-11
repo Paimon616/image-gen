@@ -232,7 +232,7 @@ export function CivitaiImport() {
               void importFromCivitai();
             }
           }}
-          placeholder="https://civitai.com/images/115144811"
+          placeholder="https://civitai.com/images/... or https://civitai.red/images/..."
           className="h-9 text-xs"
         />
         <Button

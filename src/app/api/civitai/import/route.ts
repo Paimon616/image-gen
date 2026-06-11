@@ -6,7 +6,9 @@ import {
   type ImportedCivitaiResource,
 } from "@/lib/types";
 
-const CIVITAI_IMAGE_URL_PATTERN = /civitai\.com\/images\/(\d+)/i;
+const CIVITAI_IMAGE_URL_PATTERN =
+  /(?:https?:\/\/)?(?:www\.)?(civitai\.(?:com|red))\/images\/(\d+)/i;
+const DEFAULT_CIVITAI_ORIGIN = "https://civitai.com";
 
 interface CivitaiImageItem {
   id: number;
@@ -42,13 +44,22 @@ interface CivitaiPageGenerationData {
   resources?: CivitaiPageResource[];
 }
 
-function extractImageId(input: string) {
+function extractImageReference(input: string) {
   const trimmed = input.trim();
   const urlMatch = trimmed.match(CIVITAI_IMAGE_URL_PATTERN);
-  if (urlMatch?.[1]) return Number(urlMatch[1]);
+  if (urlMatch?.[1] && urlMatch[2]) {
+    return {
+      id: Number(urlMatch[2]),
+      origin: `https://${urlMatch[1].toLowerCase()}`,
+    };
+  }
 
   const numericId = Number(trimmed);
-  return Number.isInteger(numericId) && numericId > 0 ? numericId : null;
+  if (Number.isInteger(numericId) && numericId > 0) {
+    return { id: numericId, origin: DEFAULT_CIVITAI_ORIGIN };
+  }
+
+  return null;
 }
 
 function stringValue(value: unknown) {
@@ -175,8 +186,8 @@ function extractGenerationDataFromPageHtml(html: string): CivitaiPageGenerationD
   return { meta, resources };
 }
 
-async function fetchGenerationDataFromPage(imageId: number) {
-  const response = await fetch(`https://civitai.com/images/${imageId}`, {
+async function fetchGenerationDataFromPage(imageId: number, origin: string) {
+  const response = await fetch(`${origin}/images/${imageId}`, {
     headers: {
       Accept: "text/html",
       "User-Agent": "image-gen-civitai-import/1.0",
@@ -363,9 +374,9 @@ function parseImportParams(meta: Record<string, unknown>, item: CivitaiImageItem
 
 export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => null)) as { url?: string } | null;
-  const imageId = extractImageId(body?.url ?? "");
+  const imageReference = extractImageReference(body?.url ?? "");
 
-  if (!imageId) {
+  if (!imageReference) {
     return NextResponse.json(
       { error: "Civitai image URL or numeric image ID is required" },
       { status: 400 }
@@ -373,7 +384,7 @@ export async function POST(req: NextRequest) {
   }
 
   const civitaiUrl = new URL("https://civitai.com/api/v1/images");
-  civitaiUrl.searchParams.set("imageId", String(imageId));
+  civitaiUrl.searchParams.set("imageId", String(imageReference.id));
 
   const response = await fetch(civitaiUrl, {
     headers: {
@@ -391,28 +402,21 @@ export async function POST(req: NextRequest) {
 
   const data = (await response.json()) as { items?: CivitaiImageItem[] };
   const item = data.items?.[0];
-
-  if (!item) {
-    return NextResponse.json(
-      { error: "Civitai image was not found or is not available through the API" },
-      { status: 404 }
-    );
-  }
-
-  const pageGenerationData = item.meta
+  const itemForParsing: CivitaiImageItem = item ?? { id: imageReference.id };
+  const pageGenerationData = item?.meta
     ? null
-    : await fetchGenerationDataFromPage(item.id);
-  const meta = item.meta ?? pageGenerationData?.meta;
+    : await fetchGenerationDataFromPage(imageReference.id, imageReference.origin);
+  const meta = item?.meta ?? pageGenerationData?.meta;
 
   if (!meta) {
     return NextResponse.json(
       {
         error:
           "This Civitai image does not expose generation metadata. It may be hidden or unavailable through the API and page data.",
-        imageId: item.id,
-        imageUrl: item.url ?? "",
+        imageId: imageReference.id,
+        imageUrl: item?.url ?? "",
       },
-      { status: 422 }
+      { status: item ? 422 : 404 }
     );
   }
 
@@ -434,7 +438,7 @@ export async function POST(req: NextRequest) {
       tokens: resource.name,
     }));
   const vae = resources.find((resource) => resource.type === "vae");
-  const params = parseImportParams(meta, item);
+  const params = parseImportParams(meta, itemForParsing);
 
   if (checkpoint) params.model_name = checkpoint.name;
   if (loras.length > 0) params.loras = loras;
@@ -442,10 +446,10 @@ export async function POST(req: NextRequest) {
   if (vae && !params.vae_name) params.vae_name = vae.name;
 
   return NextResponse.json({
-    imageId: item.id,
-    imageUrl: item.url ?? "",
-    pageUrl: `https://civitai.com/images/${item.id}`,
-    username: item.username,
+    imageId: itemForParsing.id,
+    imageUrl: itemForParsing.url ?? "",
+    pageUrl: `${imageReference.origin}/images/${itemForParsing.id}`,
+    username: itemForParsing.username,
     params,
     resources,
   } satisfies CivitaiImportResult);
