@@ -99,9 +99,16 @@
   },
   "loras/Pb0y.safetensors": {
     "name": "BL-Manhwa Styles",
-    "version": "vPb0y",
+    "version": "Pb0y",
     "base_model": "Pony",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/b807179a-83d6-4f48-b45b-fbfb8e6f2fda/original=true/51202927.jpeg"
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/b807179a-83d6-4f48-b45b-fbfb8e6f2fda/original=true/51202927.jpeg",
+    "civitai_url": "https://civitai.red/models/764992/bl-manhwa-styles",
+    "tags": [
+      "style",
+      "msngluv",
+      "manhwa",
+      "boyslove"
+    ]
   },
   "loras/AFAE-000010.safetensors": {
     "name": "Handsome Boy.1",
