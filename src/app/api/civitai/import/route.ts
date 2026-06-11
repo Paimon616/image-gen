@@ -27,6 +27,21 @@ interface CivitaiResourceMeta {
   url?: unknown;
 }
 
+interface CivitaiPageResource {
+  modelId?: unknown;
+  modelVersionId?: unknown;
+  modelName?: unknown;
+  modelType?: unknown;
+  versionName?: unknown;
+  baseModel?: unknown;
+  strength?: unknown;
+}
+
+interface CivitaiPageGenerationData {
+  meta?: Record<string, unknown> | null;
+  resources?: CivitaiPageResource[];
+}
+
 function extractImageId(input: string) {
   const trimmed = input.trim();
   const urlMatch = trimmed.match(CIVITAI_IMAGE_URL_PATTERN);
@@ -47,6 +62,12 @@ function numberValue(value: unknown) {
     if (Number.isFinite(parsed)) return parsed;
   }
   return null;
+}
+
+function recordValue(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
 }
 
 function normalizeResourceType(type: string): ImportedCivitaiResource["type"] {
@@ -80,6 +101,92 @@ function resourceUrl(resource: CivitaiResourceMeta, name: string) {
   const searchUrl = new URL("https://civitai.com/search/models");
   searchUrl.searchParams.set("query", name);
   return searchUrl.toString();
+}
+
+function extractNextData(html: string) {
+  const match = html.match(
+    /<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/
+  );
+
+  if (!match?.[1]) return null;
+
+  try {
+    return JSON.parse(match[1]) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+function getNestedRecord(root: Record<string, unknown>, path: string[]) {
+  return path.reduce<Record<string, unknown> | null>((current, key) => {
+    if (!current) return null;
+    return recordValue(current[key]);
+  }, root);
+}
+
+function isGenerationDataQuery(query: Record<string, unknown>) {
+  const queryKey = query.queryKey;
+
+  if (Array.isArray(queryKey) && Array.isArray(queryKey[0])) {
+    const firstKey = queryKey[0];
+    if (firstKey[0] === "image" && firstKey[1] === "getGenerationData") {
+      return true;
+    }
+  }
+
+  const state = recordValue(query.state);
+  const data = state ? recordValue(state.data) : null;
+  const meta = data ? recordValue(data.meta) : null;
+
+  return Boolean(meta && (stringValue(meta.prompt) || Array.isArray(meta.resources)));
+}
+
+function extractGenerationDataFromPageHtml(html: string): CivitaiPageGenerationData | null {
+  const nextData = recordValue(extractNextData(html));
+  if (!nextData) return null;
+
+  const trpcState = getNestedRecord(nextData, [
+    "props",
+    "pageProps",
+    "trpcState",
+    "json",
+  ]);
+  const queries = Array.isArray(trpcState?.queries) ? trpcState.queries : [];
+  const generationQuery = queries
+    .map(recordValue)
+    .find((query): query is Record<string, unknown> => {
+      return Boolean(query && isGenerationDataQuery(query));
+    });
+
+  if (!generationQuery) return null;
+
+  const state = recordValue(generationQuery.state);
+  const data = state ? recordValue(state.data) : null;
+  if (!data) return null;
+
+  const meta = recordValue(data.meta);
+  const resources = Array.isArray(data.resources)
+    ? data.resources.filter(
+        (resource): resource is CivitaiPageResource =>
+          Boolean(resource && typeof resource === "object" && !Array.isArray(resource))
+      )
+    : [];
+
+  return { meta, resources };
+}
+
+async function fetchGenerationDataFromPage(imageId: number) {
+  const response = await fetch(`https://civitai.com/images/${imageId}`, {
+    headers: {
+      Accept: "text/html",
+      "User-Agent": "image-gen-civitai-import/1.0",
+    },
+    next: { revalidate: 0 },
+  });
+
+  if (!response.ok) return null;
+
+  return extractGenerationDataFromPageHtml(await response.text());
 }
 
 function parseResources(meta: Record<string, unknown>) {
@@ -117,6 +224,54 @@ function parseResources(meta: Record<string, unknown>) {
     .filter((resource): resource is ImportedCivitaiResource => resource !== null);
 }
 
+function enrichResourcesWithPageData(
+  metaResources: ImportedCivitaiResource[],
+  pageResources: CivitaiPageResource[] = []
+) {
+  if (pageResources.length === 0) return metaResources;
+
+  const usedMetaIndexes = new Set<number>();
+  const enriched = pageResources
+    .map((pageResource) => {
+      const name =
+        stringValue(pageResource.modelName) || stringValue(pageResource.versionName);
+      if (!name) return null;
+
+      const type = normalizeResourceType(stringValue(pageResource.modelType));
+      const metaIndex = metaResources.findIndex((resource, index) => {
+        return !usedMetaIndexes.has(index) && resource.type === type;
+      });
+      const metaResource = metaIndex >= 0 ? metaResources[metaIndex] : undefined;
+      if (metaIndex >= 0) usedMetaIndexes.add(metaIndex);
+
+      const modelId = numberValue(pageResource.modelId) ?? undefined;
+      const modelVersionId = numberValue(pageResource.modelVersionId) ?? undefined;
+      const weight =
+        numberValue(pageResource.strength) ?? metaResource?.weight ?? undefined;
+      const hash = metaResource?.hash;
+      const importedResource: ImportedCivitaiResource = {
+        type,
+        name,
+        url: resourceUrl({ modelId, modelVersionId }, name),
+      };
+
+      if (weight !== undefined) importedResource.weight = weight;
+      if (hash !== undefined) importedResource.hash = hash;
+      if (modelId !== undefined) importedResource.modelId = modelId;
+      if (modelVersionId !== undefined) {
+        importedResource.modelVersionId = modelVersionId;
+      }
+
+      return importedResource;
+    })
+    .filter((resource): resource is ImportedCivitaiResource => resource !== null);
+  const remainingMetaResources = metaResources.filter((_, index) => {
+    return !usedMetaIndexes.has(index);
+  });
+
+  return [...enriched, ...remainingMetaResources];
+}
+
 function parseSize(meta: Record<string, unknown>, item: CivitaiImageItem) {
   const size = stringValue(meta.Size ?? meta.size);
   const match = size.match(/(\d+)\s*[x×]\s*(\d+)/i);
@@ -129,39 +284,42 @@ function parseSize(meta: Record<string, unknown>, item: CivitaiImageItem) {
   };
 }
 
-function parseSampler(rawSampler: string) {
+function parseSampler(rawSampler: string, rawScheduler = "") {
   const sampler = rawSampler.toLowerCase();
+  const scheduler = rawScheduler.toLowerCase().includes("karras")
+    ? "karras"
+    : "normal";
 
   if (sampler.includes("dpm++ 2m sde")) {
     return {
       sampler_name: "dpmpp_2m_sde",
-      scheduler: sampler.includes("karras") ? "karras" : "normal",
+      scheduler: sampler.includes("karras") ? "karras" : scheduler,
     };
   }
 
   if (sampler.includes("dpm++ sde")) {
     return {
       sampler_name: "dpmpp_sde",
-      scheduler: sampler.includes("karras") ? "karras" : "normal",
+      scheduler: sampler.includes("karras") ? "karras" : scheduler,
     };
   }
 
   if (sampler.includes("dpm++ 2m")) {
     return {
       sampler_name: "dpmpp_2m",
-      scheduler: sampler.includes("karras") ? "karras" : "normal",
+      scheduler: sampler.includes("karras") ? "karras" : scheduler,
     };
   }
 
   if (sampler.includes("euler a")) {
-    return { sampler_name: "euler_ancestral", scheduler: "normal" };
+    return { sampler_name: "euler_ancestral", scheduler };
   }
-  if (sampler.includes("euler")) return { sampler_name: "euler", scheduler: "normal" };
-  if (sampler.includes("heun")) return { sampler_name: "heun", scheduler: "normal" };
-  if (sampler.includes("lms")) return { sampler_name: "lms", scheduler: "normal" };
-  if (sampler.includes("ddim")) return { sampler_name: "ddim", scheduler: "normal" };
+  if (sampler.includes("euler")) return { sampler_name: "euler", scheduler };
+  if (sampler.includes("heun")) return { sampler_name: "heun", scheduler };
+  if (sampler.includes("lms")) return { sampler_name: "lms", scheduler };
+  if (sampler.includes("ddim")) return { sampler_name: "ddim", scheduler };
   if (sampler.includes("unipc") || sampler.includes("uni_pc")) {
-    return { sampler_name: "uni_pc", scheduler: "normal" };
+    return { sampler_name: "uni_pc", scheduler };
   }
 
   return {};
@@ -183,6 +341,9 @@ function parseImportParams(meta: Record<string, unknown>, item: CivitaiImageItem
   const denoise = numberValue(meta["Denoising strength"] ?? meta.denoisingStrength);
   const vaeName = stringValue(meta.VAE ?? meta.vae);
   const sampler = stringValue(meta.sampler ?? meta.Sampler);
+  const scheduler = stringValue(
+    meta.scheduler ?? meta.Scheduler ?? meta["Schedule type"] ?? meta["schedule type"]
+  );
   const { width, height } = parseSize(meta, item);
 
   if (prompt) params.prompt = prompt;
@@ -195,7 +356,7 @@ function parseImportParams(meta: Record<string, unknown>, item: CivitaiImageItem
   if (vaeName) params.vae_name = vaeName;
   if (width) params.width = width;
   if (height) params.height = height;
-  if (sampler) Object.assign(params, parseSampler(sampler));
+  if (sampler) Object.assign(params, parseSampler(sampler, scheduler));
 
   return params;
 }
@@ -238,11 +399,16 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (!item.meta) {
+  const pageGenerationData = item.meta
+    ? null
+    : await fetchGenerationDataFromPage(item.id);
+  const meta = item.meta ?? pageGenerationData?.meta;
+
+  if (!meta) {
     return NextResponse.json(
       {
         error:
-          "This Civitai image does not expose generation metadata. It may be hidden or unavailable through the API.",
+          "This Civitai image does not expose generation metadata. It may be hidden or unavailable through the API and page data.",
         imageId: item.id,
         imageUrl: item.url ?? "",
       },
@@ -250,7 +416,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const resources = parseResources(item.meta);
+  const resources = enrichResourcesWithPageData(
+    parseResources(meta),
+    pageGenerationData?.resources
+  );
   const checkpoint = resources.find((resource) => resource.type === "checkpoint");
   const loras = resources
     .filter((resource) => resource.type === "lora")
@@ -265,7 +434,7 @@ export async function POST(req: NextRequest) {
       tokens: resource.name,
     }));
   const vae = resources.find((resource) => resource.type === "vae");
-  const params = parseImportParams(item.meta, item);
+  const params = parseImportParams(meta, item);
 
   if (checkpoint) params.model_name = checkpoint.name;
   if (loras.length > 0) params.loras = loras;
