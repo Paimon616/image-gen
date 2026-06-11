@@ -101,6 +101,8 @@ export interface GenerationStatus {
 export interface ImportedCivitaiResource {
   type: "checkpoint" | "lora" | "embedding" | "vae" | "other";
   name: string;
+  versionName?: string;
+  baseModel?: string;
   weight?: number;
   hash?: string;
   modelId?: number;
@@ -113,8 +115,32 @@ export interface CivitaiImportResult {
   imageUrl: string;
   pageUrl: string;
   username?: string;
+  metadataHidden?: boolean;
+  warning?: string;
   params: Partial<GenerationParams>;
   resources: ImportedCivitaiResource[];
+}
+
+export interface HistoryMissingResource extends ImportedCivitaiResource {
+  reason: string;
+}
+
+export interface HistoryEntry {
+  id: string;
+  source: "civitai";
+  createdAt: number;
+  requestedUrl: string;
+  imageId: number;
+  imageUrl: string;
+  localImageUrl: string | null;
+  localImageFilename: string | null;
+  pageUrl: string;
+  username?: string;
+  params: GenerationParams;
+  importedParams: Partial<GenerationParams>;
+  resources: ImportedCivitaiResource[];
+  missingResources: HistoryMissingResource[];
+  rawImport: CivitaiImportResult;
 }
 
 export const DEFAULT_PARAMS: GenerationParams = {

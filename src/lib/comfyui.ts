@@ -5,17 +5,17 @@ import type {
   LoraConfig,
 } from "./types";
 import {
+  ANIMA_CLIP_NAME,
+  ANIMA_VAE_NAME,
   getCheckpointCapabilities,
+  getMissingRequiredModelFiles,
   isAnimaCheckpointName,
-  modelFileExists,
 } from "./comfyui-model-files";
 
 const DEFAULT_COMFYUI_URL = "http://127.0.0.1:8188";
 export const COMFYUI_BASE_URL =
   process.env.COMFYUI_BASE_URL?.replace(/\/$/, "") ?? DEFAULT_COMFYUI_URL;
 const COMFYUI_TIMEOUT_MS = Number(process.env.COMFYUI_TIMEOUT_MS ?? 300_000);
-const ANIMA_CLIP_NAME = "qwen_3_06b_base.safetensors";
-const ANIMA_VAE_NAME = "qwen_image_vae.safetensors";
 
 interface ComfyImageRef {
   filename: string;
@@ -174,16 +174,8 @@ async function cleanControlnets(params: GenerationParams) {
   return resolved satisfies ResolvedControlNetConfig[];
 }
 
-async function assertAnimaSupportFiles() {
-  const missing: string[] = [];
-
-  if (!(await modelFileExists("text_encoders", ANIMA_CLIP_NAME))) {
-    missing.push(`ComfyUI/models/text_encoders/${ANIMA_CLIP_NAME}`);
-  }
-
-  if (!(await modelFileExists("vae", ANIMA_VAE_NAME))) {
-    missing.push(`ComfyUI/models/vae/${ANIMA_VAE_NAME}`);
-  }
+async function assertAnimaSupportFiles(checkpoint: string) {
+  const missing = await getMissingRequiredModelFiles(checkpoint);
 
   if (missing.length > 0) {
     throw new Error(
@@ -193,7 +185,7 @@ async function assertAnimaSupportFiles() {
 }
 
 async function buildAnimaWorkflow(params: GenerationParams, checkpoint: string) {
-  await assertAnimaSupportFiles();
+  await assertAnimaSupportFiles(checkpoint);
 
   const loras = cleanLoras(params.loras);
   const controlnets = await cleanControlnets(params);

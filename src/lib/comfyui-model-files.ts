@@ -7,6 +7,8 @@ const SAFETENSORS_HEADER_LIMIT = 64 * 1024 * 1024;
 export const COMFYUI_MODELS_DIR =
   process.env.COMFYUI_MODELS_DIR ??
   join(Buffer.from("Q29tZnlVSQ==", "base64").toString("utf8"), "models");
+export const ANIMA_CLIP_NAME = "qwen_3_06b_base.safetensors";
+export const ANIMA_VAE_NAME = "qwen_image_vae.safetensors";
 
 export interface CheckpointCapabilities {
   clip: boolean;
@@ -17,7 +19,11 @@ function safeModelPath(folder: string, modelName: string) {
   const root = join(COMFYUI_MODELS_DIR, folder);
   const fullPath = normalize(join(root, modelName));
 
-  if (fullPath !== root && !fullPath.startsWith(`${root}/`)) {
+  if (
+    fullPath !== root &&
+    !fullPath.startsWith(`${root}/`) &&
+    !fullPath.startsWith(`${root}\\`)
+  ) {
     throw new Error("Invalid model path");
   }
 
@@ -35,6 +41,32 @@ export async function modelFileExists(folder: string, modelName: string) {
   } catch {
     return false;
   }
+}
+
+export async function getMissingRequiredModelFiles(checkpointName: string) {
+  if (!isAnimaCheckpointName(checkpointName)) {
+    return [];
+  }
+
+  const requiredFiles = [
+    {
+      folder: "text_encoders",
+      name: ANIMA_CLIP_NAME,
+      label: `ComfyUI/models/text_encoders/${ANIMA_CLIP_NAME}`,
+    },
+    {
+      folder: "vae",
+      name: ANIMA_VAE_NAME,
+      label: `ComfyUI/models/vae/${ANIMA_VAE_NAME}`,
+    },
+  ];
+  const missing = await Promise.all(
+    requiredFiles.map(async (file) =>
+      (await modelFileExists(file.folder, file.name)) ? null : file.label
+    )
+  );
+
+  return missing.filter((file): file is string => Boolean(file));
 }
 
 function hasCheckpointClip(keys: string[]) {

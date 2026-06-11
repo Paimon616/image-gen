@@ -26,6 +26,7 @@
 /ComfyUI/
 /output/
 /uploads/
+/data/history/
 
 # model weights
 *.safetensors

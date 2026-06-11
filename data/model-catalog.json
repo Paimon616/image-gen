@@ -383,5 +383,69 @@
     "tags": [
       "base model"
     ]
+  },
+  "checkpoints/waiIllustriousSDXL_v170.safetensors": {
+    "name": "WAI-illustrious-SDXL",
+    "version": "v17.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/bf704a4b-9e7c-4651-9387-91f121b24ef3/original=true/128374653.jpeg",
+    "civitai_url": "https://civitai.red/models/827184/wai-illustrious-sdxl?modelVersionId=2883731",
+    "tags": [
+      "base model",
+      "anime"
+    ]
+  },
+  "checkpoints/anima_baseV10.safetensors": {
+    "name": "Anima",
+    "version": "base-v1.0",
+    "base_model": "Anima",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/d6be5d97-d42c-4f31-9466-ba0ebd67ed7c/anim=false,width=450,optimized=true/133467703.jpeg",
+    "civitai_url": "https://civitai.red/models/2458426/anima?modelVersionId=2945208",
+    "tags": [
+      "art",
+      "base model",
+      "anime",
+      "illustration"
+    ]
+  },
+  "loras/AnimaNSS4RE.safetensors": {
+    "name": "Niji Sweet Spot",
+    "version": "Anima_v2_A",
+    "base_model": "Anima",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/c00474d6-30dc-48a9-baf5-e4ad32c69405/original=true/131385794.jpeg",
+    "civitai_url": "https://civitai.red/models/2554999/niji-sweet-spot?modelVersionId=2964538",
+    "tags": [
+      "semi-realistic",
+      "style",
+      "niji",
+      "anime"
+    ]
+  },
+  "loras/BunnySlop_Anima.safetensors": {
+    "name": "BunnySlop AI Style [IL/Anima]",
+    "version": "Anima v1",
+    "base_model": "Anima",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/02e89de6-95e3-44eb-af5e-ce8d4581ce9c/original=true/131879929.jpeg",
+    "civitai_url": "https://civitai.red/models/2613391/bunnyslop-ai-style-ilanima?modelVersionId=2978487",
+    "tags": [
+      "anime",
+      "slop",
+      "hentai",
+      "style"
+    ]
+  },
+  "loras/analobjill_r1.safetensors": {
+    "name": "Anal Object Insertion (Illustrious)",
+    "version": "v2.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/47a8b349-0039-4df2-81f0-91fa1fd34bf3/original=true/116342615.jpeg",
+    "civitai_url": "https://civitai.red/models/1537041/anal-object-insertion-illustrious",
+    "tags": [
+      "penetration",
+      "anal object insertion",
+      "masturbation",
+      "concept",
+      "anal"
+    ]
   }
 }

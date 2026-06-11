@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  normalizeImageDimension,
+  IMAGE_SIZE_CONSTRAINTS,
   type CivitaiImportResult,
   type GenerationParams,
   type ImportedCivitaiResource,
@@ -42,6 +42,12 @@ interface CivitaiPageResource {
 interface CivitaiPageGenerationData {
   meta?: Record<string, unknown> | null;
   resources?: CivitaiPageResource[];
+  image?: {
+    url?: string;
+    width?: number;
+    height?: number;
+    username?: string;
+  };
 }
 
 function extractImageReference(input: string) {
@@ -128,6 +134,38 @@ function extractNextData(html: string) {
   }
 }
 
+function clampImportedImageDimension(value: number) {
+  const { min, max } = IMAGE_SIZE_CONSTRAINTS;
+
+  return Math.min(Math.max(Math.round(value), min), max);
+}
+
+function extractJsonLdImage(html: string) {
+  const matches = html.matchAll(
+    /<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g
+  );
+
+  for (const match of matches) {
+    if (!match[1]) continue;
+
+    try {
+      const data = recordValue(JSON.parse(match[1]));
+      if (data?.["@type"] !== "ImageObject") continue;
+
+      return {
+        url: stringValue(data.contentUrl),
+        width: numberValue(data.width) ?? undefined,
+        height: numberValue(data.height) ?? undefined,
+        username: stringValue(recordValue(data.creator)?.name) || undefined,
+      };
+    } catch {
+      continue;
+    }
+  }
+
+  return undefined;
+}
+
 function getNestedRecord(root: Record<string, unknown>, path: string[]) {
   return path.reduce<Record<string, unknown> | null>((current, key) => {
     if (!current) return null;
@@ -148,12 +186,17 @@ function isGenerationDataQuery(query: Record<string, unknown>) {
   const state = recordValue(query.state);
   const data = state ? recordValue(state.data) : null;
   const meta = data ? recordValue(data.meta) : null;
+  const resources = data && Array.isArray(data.resources) ? data.resources : [];
 
-  return Boolean(meta && (stringValue(meta.prompt) || Array.isArray(meta.resources)));
+  return Boolean(
+    resources.length > 0 ||
+      (meta && (stringValue(meta.prompt) || Array.isArray(meta.resources)))
+  );
 }
 
 function extractGenerationDataFromPageHtml(html: string): CivitaiPageGenerationData | null {
   const nextData = recordValue(extractNextData(html));
+  const jsonLdImage = extractJsonLdImage(html);
   if (!nextData) return null;
 
   const trpcState = getNestedRecord(nextData, [
@@ -163,9 +206,16 @@ function extractGenerationDataFromPageHtml(html: string): CivitaiPageGenerationD
     "json",
   ]);
   const queries = Array.isArray(trpcState?.queries) ? trpcState.queries : [];
-  const generationQuery = queries
+  const queryRecords = queries
     .map(recordValue)
-    .find((query): query is Record<string, unknown> => {
+    .filter((query): query is Record<string, unknown> => Boolean(query));
+  const imageQuery = queryRecords.find((query) => {
+    const state = recordValue(query.state);
+    const data = state ? recordValue(state.data) : null;
+
+    return Boolean(data && numberValue(data.id) && stringValue(data.url));
+  });
+  const generationQuery = queryRecords.find((query) => {
       return Boolean(query && isGenerationDataQuery(query));
     });
 
@@ -182,8 +232,16 @@ function extractGenerationDataFromPageHtml(html: string): CivitaiPageGenerationD
           Boolean(resource && typeof resource === "object" && !Array.isArray(resource))
       )
     : [];
+  const imageData = imageQuery ? recordValue(recordValue(imageQuery.state)?.data) : null;
+  const user = imageData ? recordValue(imageData.user) : null;
+  const image = {
+    url: jsonLdImage?.url,
+    width: numberValue(imageData?.width) ?? jsonLdImage?.width ?? undefined,
+    height: numberValue(imageData?.height) ?? jsonLdImage?.height ?? undefined,
+    username: stringValue(user?.username) || jsonLdImage?.username || undefined,
+  };
 
-  return { meta, resources };
+  return { meta, resources, image };
 }
 
 async function fetchGenerationDataFromPage(imageId: number, origin: string) {
@@ -257,6 +315,8 @@ function enrichResourcesWithPageData(
 
       const modelId = numberValue(pageResource.modelId) ?? undefined;
       const modelVersionId = numberValue(pageResource.modelVersionId) ?? undefined;
+      const versionName = stringValue(pageResource.versionName) || undefined;
+      const baseModel = stringValue(pageResource.baseModel) || undefined;
       const weight =
         numberValue(pageResource.strength) ?? metaResource?.weight ?? undefined;
       const hash = metaResource?.hash;
@@ -268,6 +328,8 @@ function enrichResourcesWithPageData(
 
       if (weight !== undefined) importedResource.weight = weight;
       if (hash !== undefined) importedResource.hash = hash;
+      if (versionName !== undefined) importedResource.versionName = versionName;
+      if (baseModel !== undefined) importedResource.baseModel = baseModel;
       if (modelId !== undefined) importedResource.modelId = modelId;
       if (modelVersionId !== undefined) {
         importedResource.modelVersionId = modelVersionId;
@@ -286,12 +348,14 @@ function enrichResourcesWithPageData(
 function parseSize(meta: Record<string, unknown>, item: CivitaiImageItem) {
   const size = stringValue(meta.Size ?? meta.size);
   const match = size.match(/(\d+)\s*[x×]\s*(\d+)/i);
-  const width = match?.[1] ? Number(match[1]) : numberValue(item.width);
-  const height = match?.[2] ? Number(match[2]) : numberValue(item.height);
+  const width =
+    match?.[1] ? Number(match[1]) : numberValue(meta.width) ?? numberValue(item.width);
+  const height =
+    match?.[2] ? Number(match[2]) : numberValue(meta.height) ?? numberValue(item.height);
 
   return {
-    width: width ? normalizeImageDimension(width) : undefined,
-    height: height ? normalizeImageDimension(height) : undefined,
+    width: width ? clampImportedImageDimension(width) : undefined,
+    height: height ? clampImportedImageDimension(height) : undefined,
   };
 }
 
@@ -406,9 +470,18 @@ export async function POST(req: NextRequest) {
   const pageGenerationData = item?.meta
     ? null
     : await fetchGenerationDataFromPage(imageReference.id, imageReference.origin);
+  if (pageGenerationData?.image) {
+    itemForParsing.url = itemForParsing.url || pageGenerationData.image.url;
+    itemForParsing.width = itemForParsing.width ?? pageGenerationData.image.width;
+    itemForParsing.height = itemForParsing.height ?? pageGenerationData.image.height;
+    itemForParsing.username =
+      itemForParsing.username || pageGenerationData.image.username;
+  }
   const meta = item?.meta ?? pageGenerationData?.meta;
 
-  if (!meta) {
+  const pageResources = pageGenerationData?.resources ?? [];
+
+  if (!meta && pageResources.length === 0) {
     return NextResponse.json(
       {
         error:
@@ -421,8 +494,8 @@ export async function POST(req: NextRequest) {
   }
 
   const resources = enrichResourcesWithPageData(
-    parseResources(meta),
-    pageGenerationData?.resources
+    meta ? parseResources(meta) : [],
+    pageResources
   );
   const checkpoint = resources.find((resource) => resource.type === "checkpoint");
   const loras = resources
@@ -438,7 +511,7 @@ export async function POST(req: NextRequest) {
       tokens: resource.name,
     }));
   const vae = resources.find((resource) => resource.type === "vae");
-  const params = parseImportParams(meta, itemForParsing);
+  const params = parseImportParams(meta ?? {}, itemForParsing);
 
   if (checkpoint) params.model_name = checkpoint.name;
   if (loras.length > 0) params.loras = loras;
@@ -450,6 +523,10 @@ export async function POST(req: NextRequest) {
     imageUrl: itemForParsing.url ?? "",
     pageUrl: `${imageReference.origin}/images/${itemForParsing.id}`,
     username: itemForParsing.username,
+    metadataHidden: !meta,
+    warning: !meta
+      ? "Prompt and generation metadata are hidden on Civitai. Imported available image size and resource links only."
+      : undefined,
     params,
     resources,
   } satisfies CivitaiImportResult);

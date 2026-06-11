@@ -189,19 +189,34 @@ export function CivitaiImport() {
         throw new Error(importData.error || "Failed to import Civitai metadata");
       }
 
+      const imported = importData as CivitaiImportResult;
       const modelsData = (await modelsResponse.json()) as LocalModelsResponse;
       const { matched, missing } = reconcileImportedParams(
-        importData as CivitaiImportResult,
+        imported,
         modelsData,
         params
       );
+      const appliedParams = { ...params, ...matched };
 
       setParams(matched);
       setMissingResources(missing);
+      void fetch("/api/history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requestedUrl: url,
+          importResult: importData,
+          params: appliedParams,
+          missingResources: missing,
+        }),
+      }).catch(() => {});
+      const importScope = imported.metadataHidden
+        ? "Imported available image size and resources"
+        : "Imported settings";
       setStatus(
         missing.length > 0
-          ? `Imported settings. ${missing.length} local resource${missing.length > 1 ? "s are" : " is"} missing.`
-          : "Imported settings and matched local resources."
+          ? `${importScope} and saved to History. ${missing.length} local resource${missing.length > 1 ? "s are" : " is"} missing.`
+          : `${importScope}, matched local resources, and saved to History.`
       );
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to import Civitai metadata");

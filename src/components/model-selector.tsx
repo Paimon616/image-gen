@@ -22,6 +22,7 @@ interface LocalModelAsset {
   version: string;
   base_model: string;
   thumbnail_url: string | null;
+  missing_required_files?: string[];
 }
 
 function AssetThumbnail({
@@ -270,6 +271,7 @@ export function ModelSelector() {
     checkpointAssets: LocalModelAsset[];
     loraAssets: LocalModelAsset[];
     embeddingAssets: LocalModelAsset[];
+    animaMissingRequiredFiles: string[];
   }>({
     checkpoints: [],
     loras: [],
@@ -277,6 +279,7 @@ export function ModelSelector() {
     checkpointAssets: [],
     loraAssets: [],
     embeddingAssets: [],
+    animaMissingRequiredFiles: [],
   });
 
   const refreshLocalModels = useCallback(() => {
@@ -290,6 +293,7 @@ export function ModelSelector() {
           checkpointAssets: data.checkpointAssets ?? [],
           loraAssets: data.loraAssets ?? [],
           embeddingAssets: data.embeddingAssets ?? [],
+          animaMissingRequiredFiles: data.animaMissingRequiredFiles ?? [],
         })
       )
       .catch(() => {});
@@ -358,6 +362,9 @@ export function ModelSelector() {
     localModels.checkpointAssets,
     params.model_name
   );
+  const selectedCheckpointMissingFiles =
+    selectedCheckpoint?.missing_required_files ??
+    (/anima/i.test(params.model_name) ? localModels.animaMissingRequiredFiles : []);
 
   useEffect(() => {
     if (localModels.checkpointAssets.length > 0 && !selectedCheckpoint) {
@@ -447,6 +454,20 @@ export function ModelSelector() {
             onChange={(e) => setParams({ model_name: e.target.value })}
             className="h-9 text-xs"
           />
+        )}
+        {selectedCheckpointMissingFiles.length > 0 && (
+          <div className="mt-2 rounded-md border border-dashed border-destructive/35 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            <div className="font-semibold">
+              This model requires missing local files.
+            </div>
+            <div className="mt-1 space-y-0.5">
+              {selectedCheckpointMissingFiles.map((file) => (
+                <div key={file} className="break-all font-mono">
+                  {file}
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </div>
 

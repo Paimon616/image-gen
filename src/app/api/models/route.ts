@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   COMFYUI_MODELS_DIR,
   getCheckpointCapabilities,
+  getMissingRequiredModelFiles,
   hasModelExtension,
   isAnimaCheckpointName,
 } from "@/lib/comfyui-model-files";
@@ -141,7 +142,20 @@ async function listModelAssets(
       };
     });
 
-    return assets.sort((a, b) => a.name.localeCompare(b.name));
+    const assetsWithRequirements =
+      folder === "checkpoints"
+        ? await Promise.all(
+            assets.map(async (asset) => ({
+              ...asset,
+              missing_required_files: await getMissingRequiredModelFiles(asset.path),
+            }))
+          )
+        : assets.map((asset) => ({
+            ...asset,
+            missing_required_files: [],
+          }));
+
+    return assetsWithRequirements.sort((a, b) => a.name.localeCompare(b.name));
   } catch {
     return [];
   }
@@ -156,6 +170,7 @@ export async function GET() {
     listModelAssets("vae", catalog),
     listModelAssets("controlnet", catalog),
   ]);
+  const animaMissingRequiredFiles = await getMissingRequiredModelFiles("anima");
 
   return NextResponse.json(
     {
@@ -169,6 +184,7 @@ export async function GET() {
       embeddingAssets,
       vaeAssets,
       controlnetAssets,
+      animaMissingRequiredFiles,
     },
     {
       headers: {
