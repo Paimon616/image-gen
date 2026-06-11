@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { ImageUpload } from "@/components/image-upload";
 import { GenerationParams } from "@/components/generation-params";
 import { ModelSelector } from "@/components/model-selector";
+import { CivitaiImport } from "@/components/civitai-import";
 import { Gallery } from "@/components/gallery";
 import { ImageViewer } from "@/components/image-viewer";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -214,6 +215,8 @@ export default function Home() {
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {/* Model Selector */}
           <ModelSelector />
+
+          <CivitaiImport />
 
           <Separator />
 

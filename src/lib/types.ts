@@ -98,6 +98,25 @@ export interface GenerationStatus {
   message: string;
 }
 
+export interface ImportedCivitaiResource {
+  type: "checkpoint" | "lora" | "embedding" | "vae" | "other";
+  name: string;
+  weight?: number;
+  hash?: string;
+  modelId?: number;
+  modelVersionId?: number;
+  url: string;
+}
+
+export interface CivitaiImportResult {
+  imageId: number;
+  imageUrl: string;
+  pageUrl: string;
+  username?: string;
+  params: Partial<GenerationParams>;
+  resources: ImportedCivitaiResource[];
+}
+
 export const DEFAULT_PARAMS: GenerationParams = {
   model: "comfyui/local-sdxl",
   model_name: "sd_xl_base_1.0.safetensors",

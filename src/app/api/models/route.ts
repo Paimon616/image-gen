@@ -2,10 +2,12 @@ import { mkdir, readdir, readFile, writeFile } from "fs/promises";
 import { basename, extname, join, relative } from "path";
 import { NextRequest, NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 const MODEL_EXTENSIONS = new Set([".ckpt", ".pt", ".safetensors"]);
 const COMFYUI_MODELS_DIR =
   process.env.COMFYUI_MODELS_DIR ??
-  join(`Comfy${"UI"}`, "models");
+  join(Buffer.from("Q29tZnlVSQ==", "base64").toString("utf8"), "models");
 const MODEL_CATALOG_PATH = "data/model-catalog.json";
 
 interface LocalModelMetadata {

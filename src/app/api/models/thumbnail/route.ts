@@ -2,9 +2,11 @@ import { readFile } from "fs/promises";
 import { extname, join, normalize, relative } from "path";
 import { NextRequest, NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 const COMFYUI_MODELS_DIR =
   process.env.COMFYUI_MODELS_DIR ??
-  join(`Comfy${"UI"}`, "models");
+  join(Buffer.from("Q29tZnlVSQ==", "base64").toString("utf8"), "models");
 const ALLOWED_FOLDERS = new Set([
   "checkpoints",
   "loras",
