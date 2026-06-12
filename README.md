@@ -52,7 +52,7 @@ Files such as `.safetensors` stay local. Model metadata can be committed through
 
 ## Run
 
-On macOS, double-click `Launch Image Gen.command` from Finder. It starts ComfyUI and the Next.js app, then opens `http://localhost:3000`.
+On macOS, double-click `Launch Image Gen.command` from Finder. It starts ComfyUI and the Next.js app, then opens `http://localhost:3100`.
 
 You can also run the same launcher from a terminal:
 
@@ -75,9 +75,9 @@ npm run comfyui:win
 Start the Next.js app in another terminal:
 
 ```bash
-npm run dev
+npm run dev -- --port 3100
 ```
 
-Open `http://localhost:3000`.
+Open `http://localhost:3100`.
 
 By default the app connects to `http://127.0.0.1:8188` and reads models from `ComfyUI/models`. Copy `.env.example` to `.env.local` if you need to override those paths.
