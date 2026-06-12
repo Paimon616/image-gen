@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useStore } from "@/lib/store";
 import type { GeneratedImage } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { CopyPlus, Trash2 } from "lucide-react";
+import { BookmarkPlus, Check, CopyPlus, Trash2 } from "lucide-react";
 
 export function Gallery() {
   const {
@@ -14,6 +14,8 @@ export function Gallery() {
     loadParamsFromImage,
     removeImage,
   } = useStore();
+  const [scrappingIds, setScrappingIds] = useState<Set<string>>(new Set());
+  const [scrappedIds, setScrappedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetch("/api/images")
@@ -27,7 +29,44 @@ export function Gallery() {
   }, [addImages]);
 
   const handleReuse = (img: GeneratedImage) => {
+    if (!img.params) return;
+
     loadParamsFromImage(img);
+  };
+
+  const handleScrap = async (img: GeneratedImage) => {
+    if (!img.params) return;
+
+    setScrappingIds((current) => new Set(current).add(img.id));
+
+    try {
+      const response = await fetch("/api/scrap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          generatedImage: img,
+          params: img.params,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to scrap generated image.");
+      }
+
+      setScrappedIds((current) => new Set(current).add(img.id));
+    } catch {
+      setScrappedIds((current) => {
+        const next = new Set(current);
+        next.delete(img.id);
+        return next;
+      });
+    } finally {
+      setScrappingIds((current) => {
+        const next = new Set(current);
+        next.delete(img.id);
+        return next;
+      });
+    }
   };
 
   const handleDelete = async (img: GeneratedImage) => {
@@ -87,9 +126,21 @@ export function Gallery() {
                   size="sm"
                   className="pointer-events-auto min-w-0 flex-1 bg-white/90 px-1.5 text-[11px] text-black hover:bg-white"
                   onClick={() => handleReuse(img)}
+                  disabled={!img.params}
                 >
                   <CopyPlus />
                   정보 그대로 가져다쓰기
+                </Button>
+                <Button
+                  type="button"
+                  size="icon-sm"
+                  variant="outline"
+                  className="pointer-events-auto bg-white/90 text-black hover:bg-white"
+                  onClick={() => void handleScrap(img)}
+                  disabled={!img.params || scrappingIds.has(img.id)}
+                  aria-label="Scrap image"
+                >
+                  {scrappedIds.has(img.id) ? <Check /> : <BookmarkPlus />}
                 </Button>
                 <Button
                   type="button"

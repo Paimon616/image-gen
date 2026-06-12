@@ -90,7 +90,11 @@ export const useStore = create<AppState>((set) => ({
   setSelectedImage: (image) => set({ selectedImage: image }),
 
   loadParamsFromImage: (image) =>
-    set({ params: { ...DEFAULT_PARAMS, ...image.params } }),
+    set((state) =>
+      image.params
+        ? { params: { ...DEFAULT_PARAMS, ...image.params } }
+        : state
+    ),
 
   resetParams: () => set({ params: DEFAULT_PARAMS }),
 

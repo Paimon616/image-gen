@@ -1,9 +1,10 @@
 import { randomUUID } from "crypto";
-import { mkdir, readFile, readdir, unlink, writeFile } from "fs/promises";
+import { copyFile, mkdir, readFile, readdir, unlink, writeFile } from "fs/promises";
 import { join } from "path";
 import { NextRequest, NextResponse } from "next/server";
 import type {
   CivitaiImportResult,
+  GeneratedImage,
   GenerationParams,
   HistoryEntry,
   HistoryMissingResource,
@@ -15,6 +16,7 @@ const HISTORY_IMAGE_DIR = join(HISTORY_DIR, "images");
 interface CreateHistoryBody {
   requestedUrl?: string;
   importResult?: CivitaiImportResult;
+  generatedImage?: GeneratedImage;
   params?: GenerationParams;
   missingResources?: HistoryMissingResource[];
 }
@@ -43,6 +45,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isSafeHistoryId(value: string) {
   return /^[a-f0-9-]{36}$/i.test(value);
+}
+
+function isSafeFilename(value: string) {
+  return Boolean(value) && !value.includes("..") && !value.includes("/") && !value.includes("\\");
 }
 
 function normalizeHistoryUrl(value: string) {
@@ -74,6 +80,11 @@ function normalizeUserTags(value: unknown) {
 function withHistoryDefaults(entry: HistoryEntry): HistoryEntry {
   return {
     ...entry,
+    importedParams: entry.importedParams ?? {},
+    resources: Array.isArray(entry.resources) ? entry.resources : [],
+    missingResources: Array.isArray(entry.missingResources)
+      ? entry.missingResources
+      : [],
     userTags: normalizeUserTags(entry.userTags),
   };
 }
@@ -119,11 +130,11 @@ function findDuplicateHistoryEntry(
 
   return entries.find(({ entry }) => {
     const entryRequestedUrl = normalizeHistoryUrl(entry.requestedUrl);
-    const entryPageUrl = normalizeHistoryUrl(entry.pageUrl);
+    const entryPageUrl = normalizeHistoryUrl(entry.pageUrl ?? "");
     const entryImageId =
       entry.imageId ||
       Number(civitaiImageIdFromUrl(entry.requestedUrl)) ||
-      Number(civitaiImageIdFromUrl(entry.pageUrl));
+      Number(civitaiImageIdFromUrl(entry.pageUrl ?? ""));
 
     return (
       Boolean(
@@ -133,6 +144,23 @@ function findDuplicateHistoryEntry(
       ) ||
       Boolean(normalizedPageUrl && normalizedPageUrl === entryPageUrl) ||
       Boolean(requestedImageId && entryImageId && requestedImageId === entryImageId)
+    );
+  });
+}
+
+function findDuplicateGeneratedEntry(
+  entries: HistoryEntryFile[],
+  generatedImage: GeneratedImage
+) {
+  const normalizedUrl = normalizeHistoryUrl(generatedImage.url);
+
+  return entries.find(({ entry }) => {
+    if (entry.source !== "generated") return false;
+
+    return (
+      entry.id === generatedImage.id ||
+      normalizeHistoryUrl(entry.requestedUrl) === normalizedUrl ||
+      normalizeHistoryUrl(entry.imageUrl) === normalizedUrl
     );
   });
 }
@@ -149,6 +177,15 @@ function imageExtension(contentType: string, imageUrl: string) {
   }
 
   return "jpeg";
+}
+
+function outputImageExtension(filename: string) {
+  const ext = filename.split(".").pop()?.toLowerCase();
+  if (ext === "png" || ext === "webp" || ext === "jpg" || ext === "jpeg") {
+    return ext === "jpg" ? "jpeg" : ext;
+  }
+
+  return "png";
 }
 
 async function saveRemoteImage(id: string, imageUrl: string) {
@@ -179,6 +216,25 @@ async function saveRemoteImage(id: string, imageUrl: string) {
   } catch {
     return { localImageFilename: null, localImageUrl: null };
   }
+}
+
+async function saveGeneratedImage(id: string, filename: string) {
+  if (!isSafeFilename(filename)) {
+    return { localImageFilename: null, localImageUrl: null };
+  }
+
+  const ext = outputImageExtension(filename);
+  const localImageFilename = `${id}.${ext}`;
+
+  await copyFile(
+    join(process.cwd(), "output", filename),
+    join(HISTORY_IMAGE_DIR, localImageFilename)
+  );
+
+  return {
+    localImageFilename,
+    localImageUrl: `/api/scrap/images/${localImageFilename}`,
+  };
 }
 
 async function updateExistingHistoryEntry({
@@ -229,6 +285,47 @@ async function updateExistingHistoryEntry({
   return entry;
 }
 
+async function updateExistingGeneratedEntry({
+  duplicate,
+  generatedImage,
+  params,
+}: {
+  duplicate: HistoryEntryFile;
+  generatedImage: GeneratedImage;
+  params: GenerationParams;
+}) {
+  let localImageFilename = duplicate.entry.localImageFilename;
+  let localImageUrl = duplicate.entry.localImageUrl;
+
+  if (!localImageFilename) {
+    const savedImage = await saveGeneratedImage(duplicate.entry.id, generatedImage.filename);
+    localImageFilename = savedImage.localImageFilename;
+    localImageUrl = savedImage.localImageUrl;
+  }
+
+  const entry: HistoryEntry = {
+    ...duplicate.entry,
+    source: "generated",
+    createdAt: Date.now(),
+    requestedUrl: generatedImage.url,
+    imageUrl: generatedImage.url,
+    localImageUrl,
+    localImageFilename,
+    params,
+    importedParams: params,
+    resources: [],
+    missingResources: [],
+    userTags: normalizeUserTags(duplicate.entry.userTags),
+  };
+
+  await writeFile(
+    join(HISTORY_DIR, duplicate.filename),
+    JSON.stringify(entry, null, 2)
+  );
+
+  return entry;
+}
+
 export async function GET() {
   try {
     await ensureHistoryDirs();
@@ -244,6 +341,69 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => null)) as CreateHistoryBody | null;
+
+  if (isRecord(body?.generatedImage) && isRecord(body?.params)) {
+    await ensureHistoryDirs();
+
+    const generatedImage = body.generatedImage as GeneratedImage;
+    if (
+      typeof generatedImage.id !== "string" ||
+      typeof generatedImage.url !== "string" ||
+      !isSafeFilename(generatedImage.filename)
+    ) {
+      return NextResponse.json(
+        { error: "Valid generated image is required" },
+        { status: 400 }
+      );
+    }
+
+    const duplicate = findDuplicateGeneratedEntry(
+      await readHistoryEntryFiles(),
+      generatedImage
+    );
+
+    if (duplicate) {
+      const entry = await updateExistingGeneratedEntry({
+        duplicate,
+        generatedImage,
+        params: body.params as GenerationParams,
+      });
+
+      return NextResponse.json({ entry, updatedExisting: true });
+    }
+
+    try {
+      const id = randomUUID();
+      const { localImageFilename, localImageUrl } = await saveGeneratedImage(
+        id,
+        generatedImage.filename
+      );
+      const params = body.params as GenerationParams;
+      const entry: HistoryEntry = {
+        id,
+        source: "generated",
+        createdAt: Date.now(),
+        requestedUrl: generatedImage.url,
+        imageUrl: generatedImage.url,
+        localImageUrl,
+        localImageFilename,
+        params,
+        importedParams: params,
+        resources: [],
+        missingResources: [],
+        userTags: [],
+      };
+
+      await writeFile(join(HISTORY_DIR, `${id}.json`), JSON.stringify(entry, null, 2));
+
+      return NextResponse.json({ entry });
+    } catch {
+      return NextResponse.json(
+        { error: "Generated image could not be saved to scrap" },
+        { status: 500 }
+      );
+    }
+  }
 
   if (!isRecord(body?.importResult) || !isRecord(body?.params)) {
     return NextResponse.json(

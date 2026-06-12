@@ -88,7 +88,7 @@ export interface ControlNetConfig {
 export interface GeneratedImage {
   id: string;
   url: string;
-  params: GenerationParams;
+  params: GenerationParams | null;
   timestamp: number;
   filename: string;
 }
@@ -128,21 +128,21 @@ export interface HistoryMissingResource extends ImportedCivitaiResource {
 
 export interface HistoryEntry {
   id: string;
-  source: "civitai";
+  source: "civitai" | "generated";
   createdAt: number;
   requestedUrl: string;
-  imageId: number;
+  imageId?: number;
   imageUrl: string;
   localImageUrl: string | null;
   localImageFilename: string | null;
-  pageUrl: string;
+  pageUrl?: string;
   username?: string;
   params: GenerationParams;
   importedParams: Partial<GenerationParams>;
   resources: ImportedCivitaiResource[];
   missingResources: HistoryMissingResource[];
   userTags: string[];
-  rawImport: CivitaiImportResult;
+  rawImport?: CivitaiImportResult;
 }
 
 export const DEFAULT_PARAMS: GenerationParams = {

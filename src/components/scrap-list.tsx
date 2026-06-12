@@ -85,6 +85,12 @@ function imageSrc(entry: HistoryEntry) {
   return entry.localImageUrl || entry.imageUrl;
 }
 
+function entryTitle(entry: HistoryEntry) {
+  if (entry.source === "generated") return "Generated Image";
+
+  return entry.imageId ? `Civitai Image #${entry.imageId}` : "Civitai Image";
+}
+
 function visibleResources(entry: HistoryEntry) {
   return entry.resources.filter((resource) => resource.type !== "other");
 }
@@ -135,15 +141,17 @@ function EntryActions({
         <RotateCcw className="h-4 w-4" />
         {!compact && "Reuse"}
       </Button>
-      <Button
-        type="button"
-        size="icon-sm"
-        variant="outline"
-        onClick={() => window.open(entry.pageUrl, "_blank", "noreferrer")}
-        aria-label="Open Civitai page"
-      >
-        <ExternalLink className="h-4 w-4" />
-      </Button>
+      {entry.pageUrl && (
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="outline"
+          onClick={() => window.open(entry.pageUrl, "_blank", "noreferrer")}
+          aria-label="Open Civitai page"
+        >
+          <ExternalLink className="h-4 w-4" />
+        </Button>
+      )}
       <Button
         type="button"
         size="icon-sm"
@@ -314,7 +322,7 @@ function ImageCard({
         <header className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="truncate text-xs font-bold uppercase text-primary">
-              Civitai Image #{entry.imageId}
+              {entryTitle(entry)}
             </div>
             <div className="mt-1 text-xs text-muted-foreground">
               {formatDate(entry.createdAt)}
@@ -375,7 +383,7 @@ function DetailCard({
         <header className="flex flex-wrap items-start justify-between gap-2">
           <div className="min-w-0">
             <div className="text-xs font-bold uppercase tracking-wide text-primary">
-              Civitai Image #{entry.imageId}
+              {entryTitle(entry)}
             </div>
             <div className="mt-1 text-xs text-muted-foreground">
               {formatDate(entry.createdAt)}
@@ -502,7 +510,7 @@ function TableView({
               </td>
               <td className="px-3 py-3 align-top">
                 <div className="font-semibold text-primary">
-                  #{entry.imageId}
+                  {entryTitle(entry)}
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">
                   {formatDate(entry.createdAt)}

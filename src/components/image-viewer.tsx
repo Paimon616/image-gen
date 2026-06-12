@@ -1,6 +1,7 @@
 "use client";
 
-import { Download, RotateCcw, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { BookmarkPlus, Check, Download, RotateCcw, Trash2 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,8 @@ function TextSection({
 export function ImageViewer() {
   const { selectedImage, setSelectedImage, loadParamsFromImage, removeImage } =
     useStore();
+  const [scrappingImageId, setScrappingImageId] = useState<string | null>(null);
+  const [scrappedImageId, setScrappedImageId] = useState<string | null>(null);
 
   if (!selectedImage) return null;
 
@@ -65,11 +68,42 @@ export function ImageViewer() {
   };
 
   const handleReuse = () => {
+    if (!selectedImage.params) return;
+
     loadParamsFromImage(selectedImage);
     setSelectedImage(null);
   };
 
+  const handleScrap = async () => {
+    if (!selectedImage.params) return;
+
+    setScrappingImageId(selectedImage.id);
+
+    try {
+      const response = await fetch("/api/scrap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          generatedImage: selectedImage,
+          params: selectedImage.params,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to scrap generated image.");
+      }
+
+      setScrappedImageId(selectedImage.id);
+    } catch {
+      setScrappedImageId(null);
+    } finally {
+      setScrappingImageId(null);
+    }
+  };
+
   const params = selectedImage.params;
+  const isScrapping = scrappingImageId === selectedImage.id;
+  const isScrapped = scrappedImageId === selectedImage.id;
 
   return (
     <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
@@ -103,13 +137,26 @@ export function ImageViewer() {
             </header>
 
             <div className="flex flex-wrap gap-2 border-b border-border px-5 py-3">
-              <Button size="sm" onClick={handleReuse}>
+              <Button size="sm" onClick={handleReuse} disabled={!params}>
                 <RotateCcw className="h-4 w-4" />
                 Reuse
               </Button>
               <Button size="sm" variant="outline" onClick={handleDownload}>
                 <Download className="h-4 w-4" />
                 Download
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void handleScrap()}
+                disabled={!params || isScrapping}
+              >
+                {isScrapped ? (
+                  <Check className="h-4 w-4" />
+                ) : (
+                  <BookmarkPlus className="h-4 w-4" />
+                )}
+                Scrap
               </Button>
               <Button size="sm" variant="destructive" onClick={handleDelete}>
                 <Trash2 className="h-4 w-4" />
