@@ -46,21 +46,21 @@ function JsonDetails({ entry }: { entry: HistoryEntry }) {
   );
 }
 
-export function HistoryList() {
+export function ScrapList() {
   const router = useRouter();
   const setParams = useStore((state) => state.setParams);
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
-  const [status, setStatus] = useState("Loading history...");
+  const [status, setStatus] = useState("스크랩을 불러오는 중...");
 
   useEffect(() => {
-    fetch("/api/history", { cache: "no-store" })
+    fetch("/api/scrap", { cache: "no-store" })
       .then((response) => response.json())
       .then((data) => {
         setEntries(Array.isArray(data.entries) ? data.entries : []);
         setStatus("");
       })
       .catch(() => {
-        setStatus("Failed to load history.");
+        setStatus("스크랩을 불러오지 못했습니다.");
       });
   }, []);
 
@@ -75,18 +75,18 @@ export function HistoryList() {
     setEntries((current) => current.filter((item) => item.id !== entry.id));
 
     try {
-      const response = await fetch("/api/history", {
+      const response = await fetch("/api/scrap", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: entry.id }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to delete history entry.");
+        throw new Error("Failed to delete scrap entry.");
       }
     } catch {
       setEntries(previousEntries);
-      setStatus("Failed to delete history entry.");
+      setStatus("스크랩을 삭제하지 못했습니다.");
       setTimeout(() => setStatus(""), 2500);
     }
   };
@@ -103,9 +103,9 @@ export function HistoryList() {
     return (
       <div className="flex flex-1 items-center justify-center text-center text-muted-foreground">
         <div>
-          <div className="text-sm font-semibold">No history yet</div>
+          <div className="text-sm font-semibold">아직 스크랩이 없습니다</div>
           <div className="mt-1 text-xs">
-            Successful Civitai imports from Generate will appear here.
+            Generate에서 가져온 Civitai 이미지가 여기에 저장됩니다.
           </div>
         </div>
       </div>
@@ -165,7 +165,7 @@ export function HistoryList() {
                     size="icon-sm"
                     variant="destructive"
                     onClick={() => void deleteEntry(entry)}
-                    aria-label="Delete history entry"
+                    aria-label="Delete scrap entry"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

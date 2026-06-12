@@ -447,5 +447,19 @@
       "concept",
       "anal"
     ]
+  },
+  "checkpoints/aMixIllustrious_aMix.safetensors": {
+    "name": "A-mix [Illustrious]",
+    "version": "A - mix",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/be363071-0c5f-4235-88b5-47e27740e298/original=true/82973996.jpeg",
+    "civitai_url": "https://civitai.red/models/1692152/a-mix-illustrious?modelVersionId=1915059",
+    "tags": [
+      "hentai",
+      "illustrtion",
+      "base model",
+      "anime",
+      "women"
+    ]
   }
 }

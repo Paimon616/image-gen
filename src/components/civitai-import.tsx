@@ -213,7 +213,7 @@ export function CivitaiImport() {
 
       setParams(matched);
       setMissingResources(missing);
-      void fetch("/api/history", {
+      void fetch("/api/scrap", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -228,8 +228,8 @@ export function CivitaiImport() {
         : "Imported settings";
       setStatus(
         missing.length > 0
-          ? `${importScope} and saved to History. ${missing.length} local resource${missing.length > 1 ? "s are" : " is"} missing.`
-          : `${importScope}, matched local resources, and saved to History.`
+          ? `${importScope} and saved to Scrap. ${missing.length} local resource${missing.length > 1 ? "s are" : " is"} missing.`
+          : `${importScope}, matched local resources, and saved to Scrap.`
       );
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to import Civitai metadata");

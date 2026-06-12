@@ -147,7 +147,7 @@ async function saveRemoteImage(id: string, imageUrl: string) {
 
     return {
       localImageFilename: filename,
-      localImageUrl: `/api/history/images/${filename}`,
+      localImageUrl: `/api/scrap/images/${filename}`,
     };
   } catch {
     return { localImageFilename: null, localImageUrl: null };
@@ -278,7 +278,7 @@ export async function DELETE(req: NextRequest) {
   const id = body?.id ?? "";
 
   if (!isSafeHistoryId(id)) {
-    return NextResponse.json({ error: "Valid history id is required" }, { status: 400 });
+    return NextResponse.json({ error: "Valid scrap id is required" }, { status: 400 });
   }
 
   try {
@@ -293,6 +293,6 @@ export async function DELETE(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch {
-    return NextResponse.json({ error: "History entry not found" }, { status: 404 });
+    return NextResponse.json({ error: "Scrap entry not found" }, { status: 404 });
   }
 }

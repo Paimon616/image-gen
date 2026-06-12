@@ -163,7 +163,7 @@ Output:
 | 2.8 | 결과 저장 | 생성 이미지를 output/ 디렉토리에 저장 + 메타데이터 JSON |
 | 2.9 | 에러 핸들링 | fal.ai 에러, 타임아웃, 콘텐츠 필터 대응 |
 
-### Phase 3: Gallery + History (design_needed=true)
+### Phase 3: Gallery + Scrap (design_needed=true)
 > 생성된 이미지 관리 + 재사용
 
 | # | Task | Description |

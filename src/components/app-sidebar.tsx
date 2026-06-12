@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { History, Images, Layers3 } from "lucide-react";
+import { Bookmark, Images, Layers3 } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/", label: "Generate", icon: Images },
   { href: "/models", label: "Models", icon: Layers3 },
-  { href: "/history", label: "History", icon: History },
+  { href: "/scrap", label: "스크랩", icon: Bookmark },
 ];
 
 export function AppSidebar() {
