@@ -10,7 +10,7 @@ export function Gallery() {
   const {
     images,
     setSelectedImage,
-    addImage,
+    addImages,
     loadParamsFromImage,
     removeImage,
   } = useStore();
@@ -20,15 +20,11 @@ export function Gallery() {
       .then((r) => r.json())
       .then((data) => {
         if (data.images) {
-          const existing = useStore.getState().images;
-          const existingIds = new Set(existing.map((img) => img.id));
-          data.images.forEach((img: GeneratedImage) => {
-            if (!existingIds.has(img.id)) addImage(img);
-          });
+          addImages(data.images);
         }
       })
       .catch(() => {});
-  }, [addImage]);
+  }, [addImages]);
 
   const handleReuse = (img: GeneratedImage) => {
     loadParamsFromImage(img);

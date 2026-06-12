@@ -15,10 +15,27 @@ interface AppState {
   setParams: (update: Partial<GenerationParams>) => void;
   setStatus: (status: Partial<GenerationStatus>) => void;
   addImage: (image: GeneratedImage) => void;
+  addImages: (images: GeneratedImage[]) => void;
   removeImage: (id: string) => void;
   setSelectedImage: (image: GeneratedImage | null) => void;
   loadParamsFromImage: (image: GeneratedImage) => void;
   resetParams: () => void;
+}
+
+function sortImagesNewestFirst(images: GeneratedImage[]) {
+  return [...images].sort((a, b) => b.timestamp - a.timestamp);
+}
+
+function mergeImages(
+  existing: GeneratedImage[],
+  incoming: GeneratedImage[]
+) {
+  const imagesById = new Map<string, GeneratedImage>();
+
+  existing.forEach((image) => imagesById.set(image.id, image));
+  incoming.forEach((image) => imagesById.set(image.id, image));
+
+  return sortImagesNewestFirst(Array.from(imagesById.values()));
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -34,7 +51,10 @@ export const useStore = create<AppState>((set) => ({
     set((s) => ({ status: { ...s.status, ...status } })),
 
   addImage: (image) =>
-    set((s) => ({ images: [image, ...s.images] })),
+    set((s) => ({ images: mergeImages(s.images, [image]) })),
+
+  addImages: (images) =>
+    set((s) => ({ images: mergeImages(s.images, images) })),
 
   removeImage: (id) =>
     set((s) => ({
