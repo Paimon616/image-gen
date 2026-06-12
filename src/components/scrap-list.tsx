@@ -19,6 +19,7 @@ import type { HistoryEntry } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
 const RESOURCE_LABELS: Record<string, string> = {
@@ -135,7 +136,10 @@ function EntryActions({
         type="button"
         size={compact ? "icon-sm" : "sm"}
         className={cn(!compact && "min-w-0 flex-1")}
-        onClick={() => onReuse(entry)}
+        onClick={(event) => {
+          event.stopPropagation();
+          onReuse(entry);
+        }}
         aria-label={compact ? "Reuse" : undefined}
       >
         <RotateCcw className="h-4 w-4" />
@@ -146,7 +150,10 @@ function EntryActions({
           type="button"
           size="icon-sm"
           variant="outline"
-          onClick={() => window.open(entry.pageUrl, "_blank", "noreferrer")}
+          onClick={(event) => {
+            event.stopPropagation();
+            window.open(entry.pageUrl, "_blank", "noreferrer");
+          }}
           aria-label="Open Civitai page"
         >
           <ExternalLink className="h-4 w-4" />
@@ -156,7 +163,10 @@ function EntryActions({
         type="button"
         size="icon-sm"
         variant="destructive"
-        onClick={() => onDelete(entry)}
+        onClick={(event) => {
+          event.stopPropagation();
+          onDelete(entry);
+        }}
         aria-label="Delete scrap entry"
       >
         <Trash2 className="h-4 w-4" />
@@ -298,54 +308,57 @@ function ImagePreview({
 
 function ImageCard({
   entry,
-  draft,
-  saving,
-  onDraftChange,
-  onSaveTags,
-  onRemoveTag,
+  onOpen,
   onReuse,
   onDelete,
 }: {
   entry: HistoryEntry;
-  draft: string;
-  saving: boolean;
-  onDraftChange: (value: string) => void;
-  onSaveTags: (entry: HistoryEntry) => void;
-  onRemoveTag: (entry: HistoryEntry, tag: string) => void;
+  onOpen: (entry: HistoryEntry) => void;
   onReuse: (entry: HistoryEntry) => void;
   onDelete: (entry: HistoryEntry) => void;
 }) {
+  const tags = normalizeUserTags(entry.userTags).slice(0, 3);
+
   return (
-    <article className="min-w-0 rounded-md border border-border bg-card p-3 shadow-sm">
-      <ImagePreview entry={entry} />
-      <div className="mt-3 space-y-3">
-        <header className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="truncate text-xs font-bold uppercase text-primary">
-              {entryTitle(entry)}
-            </div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              {formatDate(entry.createdAt)}
-            </div>
-          </div>
-          <Badge variant="secondary" className="rounded-md">
+    <article
+      className="group relative min-w-0 cursor-pointer overflow-hidden rounded-md border border-border bg-card shadow-sm transition-colors hover:border-primary/45"
+      onClick={() => onOpen(entry)}
+    >
+      <ImagePreview entry={entry} className="rounded-none border-0" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/10 opacity-100">
+        <div className="absolute left-3 right-3 top-3 flex items-start justify-between gap-2">
+          <Badge variant="secondary" className="rounded-md bg-white/90 text-black">
+            {entry.source === "generated" ? "Generated" : "Civitai"}
+          </Badge>
+          <Badge variant="secondary" className="rounded-md bg-white/90 text-black">
             {entry.params.width} x {entry.params.height}
           </Badge>
-        </header>
-        <p className="line-clamp-4 whitespace-pre-wrap break-words text-sm leading-6">
-          {trimText(entry.params.prompt || "No prompt", 180)}
-        </p>
-        <ResourceBadges entry={entry} max={2} />
-        <MissingResourcesNotice entry={entry} />
-        <TagEditor
-          entry={entry}
-          draft={draft}
-          saving={saving}
-          onDraftChange={onDraftChange}
-          onSave={onSaveTags}
-          onRemoveTag={onRemoveTag}
-        />
-        <EntryActions entry={entry} onReuse={onReuse} onDelete={onDelete} />
+        </div>
+        <div className="absolute bottom-3 left-3 right-3 space-y-2">
+          <div className="min-w-0">
+            <div className="truncate text-xs font-bold uppercase text-white">
+              {entryTitle(entry)}
+            </div>
+            <p className="mt-1 line-clamp-2 break-words text-xs leading-5 text-white/85">
+              {entry.params.prompt || "No prompt"}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {entry.params.model_name && (
+              <Badge variant="secondary" className="max-w-full rounded-md bg-white/90 text-black">
+                <span className="truncate">{entry.params.model_name}</span>
+              </Badge>
+            )}
+            {tags.map((tag) => (
+              <Badge key={tag} variant="secondary" className="rounded-md bg-white/20 text-white">
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="absolute right-3 top-12 flex gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+        <EntryActions entry={entry} onReuse={onReuse} onDelete={onDelete} compact />
       </div>
     </article>
   );
@@ -353,25 +366,20 @@ function ImageCard({
 
 function DetailCard({
   entry,
-  draft,
-  saving,
-  onDraftChange,
-  onSaveTags,
-  onRemoveTag,
+  onOpen,
   onReuse,
   onDelete,
 }: {
   entry: HistoryEntry;
-  draft: string;
-  saving: boolean;
-  onDraftChange: (value: string) => void;
-  onSaveTags: (entry: HistoryEntry) => void;
-  onRemoveTag: (entry: HistoryEntry, tag: string) => void;
+  onOpen: (entry: HistoryEntry) => void;
   onReuse: (entry: HistoryEntry) => void;
   onDelete: (entry: HistoryEntry) => void;
 }) {
   return (
-    <article className="grid min-h-0 gap-4 rounded-md border border-border bg-card p-3 shadow-sm xl:grid-cols-[18rem_minmax(0,1fr)]">
+    <article
+      className="grid min-h-0 cursor-pointer gap-4 rounded-md border border-border bg-card p-3 shadow-sm transition-colors hover:border-primary/45 xl:grid-cols-[14rem_minmax(0,1fr)]"
+      onClick={() => onOpen(entry)}
+    >
       <div className="min-w-0">
         <ImagePreview entry={entry} />
         <div className="mt-2">
@@ -395,25 +403,9 @@ function DetailCard({
           </Badge>
         </header>
 
-        <section className="rounded-md border border-border bg-background/80 p-3">
-          <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-            Prompt
-          </div>
-          <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6">
-            {trimText(entry.params.prompt || "No prompt")}
-          </p>
-        </section>
-
-        {entry.params.negative_prompt && (
-          <section className="rounded-md border border-border bg-background/80 p-3">
-            <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-              Negative Prompt
-            </div>
-            <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-5 text-muted-foreground">
-              {trimText(entry.params.negative_prompt)}
-            </p>
-          </section>
-        )}
+        <p className="line-clamp-3 whitespace-pre-wrap break-words text-sm leading-6">
+          {trimText(entry.params.prompt || "No prompt", 260)}
+        </p>
 
         <section className="grid grid-cols-2 gap-2 md:grid-cols-4">
           <div className="rounded-md border border-border bg-background/80 p-2">
@@ -451,20 +443,9 @@ function DetailCard({
         </section>
 
         <section className="space-y-2">
-          <ResourceBadges entry={entry} />
+          <ResourceBadges entry={entry} max={3} />
           <MissingResourcesNotice entry={entry} />
         </section>
-
-        <TagEditor
-          entry={entry}
-          draft={draft}
-          saving={saving}
-          onDraftChange={onDraftChange}
-          onSave={onSaveTags}
-          onRemoveTag={onRemoveTag}
-        />
-
-        <JsonDetails entry={entry} />
       </div>
     </article>
   );
@@ -472,20 +453,12 @@ function DetailCard({
 
 function TableView({
   entries,
-  drafts,
-  savingId,
-  onDraftChange,
-  onSaveTags,
-  onRemoveTag,
+  onOpen,
   onReuse,
   onDelete,
 }: {
   entries: HistoryEntry[];
-  drafts: Record<string, string>;
-  savingId: string | null;
-  onDraftChange: (id: string, value: string) => void;
-  onSaveTags: (entry: HistoryEntry) => void;
-  onRemoveTag: (entry: HistoryEntry, tag: string) => void;
+  onOpen: (entry: HistoryEntry) => void;
   onReuse: (entry: HistoryEntry) => void;
   onDelete: (entry: HistoryEntry) => void;
 }) {
@@ -504,7 +477,11 @@ function TableView({
         </thead>
         <tbody>
           {entries.map((entry) => (
-            <tr key={entry.id} className="border-b border-border last:border-b-0">
+            <tr
+              key={entry.id}
+              className="cursor-pointer border-b border-border transition-colors last:border-b-0 hover:bg-muted/35"
+              onClick={() => onOpen(entry)}
+            >
               <td className="px-3 py-3 align-top">
                 <ImagePreview entry={entry} className="w-16" />
               </td>
@@ -535,14 +512,19 @@ function TableView({
                 </div>
               </td>
               <td className="min-w-72 px-3 py-3 align-top">
-                <TagEditor
-                  entry={entry}
-                  draft={drafts[entry.id] ?? ""}
-                  saving={savingId === entry.id}
-                  onDraftChange={(value) => onDraftChange(entry.id, value)}
-                  onSave={onSaveTags}
-                  onRemoveTag={onRemoveTag}
-                />
+                <div className="flex max-w-72 flex-wrap gap-1.5">
+                  {normalizeUserTags(entry.userTags).length > 0 ? (
+                    normalizeUserTags(entry.userTags).slice(0, 5).map((tag) => (
+                      <Badge key={tag} variant="outline" className="rounded-md">
+                        {tag}
+                      </Badge>
+                    ))
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      No personal tags
+                    </span>
+                  )}
+                </div>
               </td>
               <td className="px-3 py-3 align-top">
                 <EntryActions
@@ -560,6 +542,171 @@ function TableView({
   );
 }
 
+function ScrapEntryDialog({
+  entry,
+  draft,
+  saving,
+  open,
+  onOpenChange,
+  onDraftChange,
+  onSaveTags,
+  onRemoveTag,
+  onReuse,
+  onDelete,
+}: {
+  entry: HistoryEntry | null;
+  draft: string;
+  saving: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onDraftChange: (value: string) => void;
+  onSaveTags: (entry: HistoryEntry) => void;
+  onRemoveTag: (entry: HistoryEntry, tag: string) => void;
+  onReuse: (entry: HistoryEntry) => void;
+  onDelete: (entry: HistoryEntry) => void;
+}) {
+  if (!entry) {
+    return null;
+  }
+
+  const src = imageSrc(entry);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="!block h-[94vh] max-h-[94vh] w-[96vw] max-w-[96vw] overflow-hidden border border-border bg-card p-0 shadow-xl sm:max-w-[96vw]">
+        <DialogTitle className="sr-only">{entryTitle(entry)}</DialogTitle>
+
+        <div className="grid h-full w-full grid-cols-[minmax(0,1fr)_minmax(22rem,36rem)] bg-background max-lg:grid-cols-1">
+          <div className="relative min-h-0 min-w-0 overflow-auto border-r border-border bg-[radial-gradient(circle_at_1px_1px,color-mix(in_oklch,var(--border)_55%,transparent)_1px,transparent_0)] [background-size:24px_24px] max-lg:border-b max-lg:border-r-0">
+            <div className="flex min-h-full min-w-full p-6">
+              <div className="m-auto overflow-hidden rounded-lg border border-border bg-card p-2 shadow-lg">
+                {src ? (
+                  <img
+                    src={src}
+                    alt=""
+                    className="block h-auto max-h-[86vh] w-auto max-w-full rounded-md object-contain"
+                  />
+                ) : (
+                  <div className="flex h-96 w-96 max-w-full items-center justify-center text-sm text-muted-foreground">
+                    No image
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <aside className="flex min-h-0 flex-col bg-card">
+            <header className="border-b border-border bg-secondary/50 px-5 py-4 pr-12">
+              <div className="text-xs font-bold uppercase tracking-wide text-primary">
+                {entryTitle(entry)}
+              </div>
+              <div className="mt-1 text-xs font-medium text-muted-foreground">
+                {formatDate(entry.createdAt)}
+                {entry.username ? ` by ${entry.username}` : ""}
+              </div>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <Badge variant="secondary" className="rounded-md">
+                  {entry.source === "generated" ? "Generated" : "Civitai"}
+                </Badge>
+                <Badge variant="secondary" className="rounded-md">
+                  {entry.params.width} x {entry.params.height}
+                </Badge>
+              </div>
+            </header>
+
+            <div className="flex flex-wrap gap-2 border-b border-border px-5 py-3">
+              <EntryActions entry={entry} onReuse={onReuse} onDelete={onDelete} />
+            </div>
+
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-background/70 p-5">
+              <section className="rounded-md border border-border bg-card p-3 shadow-sm">
+                <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                  Prompt
+                </div>
+                <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6">
+                  {entry.params.prompt || "No prompt"}
+                </p>
+              </section>
+
+              {entry.params.negative_prompt && (
+                <section className="rounded-md border border-border bg-card p-3 shadow-sm">
+                  <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                    Negative Prompt
+                  </div>
+                  <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-5 text-muted-foreground">
+                    {entry.params.negative_prompt}
+                  </p>
+                </section>
+              )}
+
+              <section className="rounded-md border border-border bg-card p-3 shadow-sm">
+                <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                  Generation
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <div className="rounded-md border border-border bg-background px-3 py-2">
+                    <div className="text-[10px] font-bold uppercase text-muted-foreground">
+                      Steps
+                    </div>
+                    <div className="mt-1 text-sm font-semibold">
+                      {entry.params.num_inference_steps}
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-border bg-background px-3 py-2">
+                    <div className="text-[10px] font-bold uppercase text-muted-foreground">
+                      CFG
+                    </div>
+                    <div className="mt-1 text-sm font-semibold">
+                      {entry.params.guidance_scale}
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-border bg-background px-3 py-2">
+                    <div className="text-[10px] font-bold uppercase text-muted-foreground">
+                      Sampler
+                    </div>
+                    <div className="mt-1 truncate text-sm font-semibold">
+                      {entry.params.sampler_name}
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-border bg-background px-3 py-2">
+                    <div className="text-[10px] font-bold uppercase text-muted-foreground">
+                      Seed
+                    </div>
+                    <div className="mt-1 truncate text-sm font-semibold">
+                      {entry.params.seed ?? "Random"}
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section className="space-y-2 rounded-md border border-border bg-card p-3 shadow-sm">
+                <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                  Resources
+                </div>
+                <ResourceBadges entry={entry} />
+                <MissingResourcesNotice entry={entry} />
+              </section>
+
+              <section className="rounded-md border border-border bg-card p-3 shadow-sm">
+                <TagEditor
+                  entry={entry}
+                  draft={draft}
+                  saving={saving}
+                  onDraftChange={onDraftChange}
+                  onSave={onSaveTags}
+                  onRemoveTag={onRemoveTag}
+                />
+              </section>
+
+              <JsonDetails entry={entry} />
+            </div>
+          </aside>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function ScrapList() {
   const router = useRouter();
   const setParams = useStore((state) => state.setParams);
@@ -567,6 +714,7 @@ export function ScrapList() {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [selectedTag, setSelectedTag] = useState("all");
   const [viewMode, setViewMode] = useState<ScrapViewMode>("detail");
+  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [status, setStatus] = useState("스크랩을 불러오는 중...");
 
@@ -607,6 +755,12 @@ export function ScrapList() {
       normalizeUserTags(entry.userTags).includes(selectedTag)
     );
   }, [entries, selectedTag]);
+
+  const selectedEntry = useMemo(() => {
+    if (!selectedEntryId) return null;
+
+    return entries.find((entry) => entry.id === selectedEntryId) ?? null;
+  }, [entries, selectedEntryId]);
 
   const updateDraft = (id: string, value: string) => {
     setDrafts((current) => ({ ...current, [id]: value }));
@@ -672,6 +826,9 @@ export function ScrapList() {
     const previousEntries = entries;
 
     setEntries((current) => current.filter((item) => item.id !== entry.id));
+    if (selectedEntryId === entry.id) {
+      setSelectedEntryId(null);
+    }
 
     try {
       const response = await fetch("/api/scrap", {
@@ -685,6 +842,9 @@ export function ScrapList() {
       }
     } catch {
       setEntries(previousEntries);
+      if (selectedEntryId === entry.id) {
+        setSelectedEntryId(entry.id);
+      }
       setStatus("스크랩을 삭제하지 못했습니다.");
       setTimeout(() => setStatus(""), 2500);
     }
@@ -784,11 +944,7 @@ export function ScrapList() {
       ) : viewMode === "table" ? (
         <TableView
           entries={filteredEntries}
-          drafts={drafts}
-          savingId={savingId}
-          onDraftChange={updateDraft}
-          onSaveTags={saveTags}
-          onRemoveTag={removeTag}
+          onOpen={(entry) => setSelectedEntryId(entry.id)}
           onReuse={reuseEntry}
           onDelete={(entry) => void deleteEntry(entry)}
         />
@@ -806,11 +962,7 @@ export function ScrapList() {
               <ImageCard
                 key={entry.id}
                 entry={entry}
-                draft={drafts[entry.id] ?? ""}
-                saving={savingId === entry.id}
-                onDraftChange={(value) => updateDraft(entry.id, value)}
-                onSaveTags={saveTags}
-                onRemoveTag={removeTag}
+                onOpen={(item) => setSelectedEntryId(item.id)}
                 onReuse={reuseEntry}
                 onDelete={(item) => void deleteEntry(item)}
               />
@@ -818,11 +970,7 @@ export function ScrapList() {
               <DetailCard
                 key={entry.id}
                 entry={entry}
-                draft={drafts[entry.id] ?? ""}
-                saving={savingId === entry.id}
-                onDraftChange={(value) => updateDraft(entry.id, value)}
-                onSaveTags={saveTags}
-                onRemoveTag={removeTag}
+                onOpen={(item) => setSelectedEntryId(item.id)}
                 onReuse={reuseEntry}
                 onDelete={(item) => void deleteEntry(item)}
               />
@@ -830,6 +978,23 @@ export function ScrapList() {
           )}
         </div>
       )}
+
+      <ScrapEntryDialog
+        entry={selectedEntry}
+        draft={selectedEntry ? drafts[selectedEntry.id] ?? "" : ""}
+        saving={selectedEntry ? savingId === selectedEntry.id : false}
+        open={Boolean(selectedEntry)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedEntryId(null);
+        }}
+        onDraftChange={(value) => {
+          if (selectedEntry) updateDraft(selectedEntry.id, value);
+        }}
+        onSaveTags={saveTags}
+        onRemoveTag={removeTag}
+        onReuse={reuseEntry}
+        onDelete={(entry) => void deleteEntry(entry)}
+      />
     </div>
   );
 }
