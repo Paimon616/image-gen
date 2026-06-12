@@ -226,7 +226,7 @@ function TagEditor({
         <Input
           value={draft}
           onChange={(event) => onDraftChange(event.target.value)}
-          placeholder="태그 입력, 쉼표로 구분"
+          placeholder="새 태그 입력, 쉼표로 구분"
           className="h-8 text-xs"
         />
         <Button type="submit" size="sm" variant="outline" disabled={saving}>
@@ -732,7 +732,7 @@ export function ScrapList() {
         setEntries(loadedEntries);
         setDrafts(
           Object.fromEntries(
-            loadedEntries.map((entry) => [entry.id, entry.userTags.join(", ")])
+            loadedEntries.map((entry) => [entry.id, ""])
           )
         );
         setStatus("");
@@ -771,8 +771,15 @@ export function ScrapList() {
     router.push("/");
   };
 
-  const saveTags = async (entry: HistoryEntry, tags = parseTags(drafts[entry.id] ?? "")) => {
+  const saveTags = async (
+    entry: HistoryEntry,
+    tags = normalizeUserTags([
+      ...normalizeUserTags(entry.userTags),
+      ...parseTags(drafts[entry.id] ?? ""),
+    ])
+  ) => {
     const previousEntries = entries;
+    const previousDrafts = drafts;
 
     setSavingId(entry.id);
     setEntries((current) =>
@@ -780,7 +787,7 @@ export function ScrapList() {
         item.id === entry.id ? { ...item, userTags: tags } : item
       )
     );
-    setDrafts((current) => ({ ...current, [entry.id]: tags.join(", ") }));
+    setDrafts((current) => ({ ...current, [entry.id]: "" }));
 
     try {
       const response = await fetch("/api/scrap", {
@@ -803,13 +810,11 @@ export function ScrapList() {
         setEntries((current) =>
           current.map((item) => (item.id === entry.id ? updatedEntry : item))
         );
-        setDrafts((current) => ({
-          ...current,
-          [entry.id]: updatedEntry.userTags.join(", "),
-        }));
+        setDrafts((current) => ({ ...current, [entry.id]: "" }));
       }
     } catch {
       setEntries(previousEntries);
+      setDrafts(previousDrafts);
       setStatus("태그를 저장하지 못했습니다.");
       setTimeout(() => setStatus(""), 2500);
     } finally {
