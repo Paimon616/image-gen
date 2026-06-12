@@ -2,9 +2,25 @@
 
 import { useEffect, useState } from "react";
 import { useStore } from "@/lib/store";
-import type { GeneratedImage } from "@/lib/types";
+import type { GeneratedImage, HistoryEntry } from "@/lib/types";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BookmarkPlus, Check, CopyPlus, Trash2 } from "lucide-react";
+
+function generatedImageKeys(img: GeneratedImage) {
+  return [img.id, img.url, img.filename, `/api/images/${img.filename}`].filter(Boolean);
+}
+
+function generatedScrapKeys(entry: HistoryEntry) {
+  if (entry.source !== "generated") return [];
+
+  return [
+    entry.requestedUrl,
+    entry.imageUrl,
+    entry.localImageFilename ?? "",
+    entry.localImageUrl ?? "",
+  ].filter(Boolean);
+}
 
 export function Gallery() {
   const {
@@ -15,7 +31,7 @@ export function Gallery() {
     removeImage,
   } = useStore();
   const [scrappingIds, setScrappingIds] = useState<Set<string>>(new Set());
-  const [scrappedIds, setScrappedIds] = useState<Set<string>>(new Set());
+  const [scrappedKeys, setScrappedKeys] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetch("/api/images")
@@ -27,6 +43,23 @@ export function Gallery() {
       })
       .catch(() => {});
   }, [addImages]);
+
+  useEffect(() => {
+    fetch("/api/scrap", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((data) => {
+        const entries = Array.isArray(data.entries)
+          ? (data.entries as HistoryEntry[])
+          : [];
+
+        setScrappedKeys(new Set(entries.flatMap(generatedScrapKeys)));
+      })
+      .catch(() => {});
+  }, []);
+
+  const isScrappedImage = (img: GeneratedImage) => {
+    return generatedImageKeys(img).some((key) => scrappedKeys.has(key));
+  };
 
   const handleReuse = (img: GeneratedImage) => {
     if (!img.params) return;
@@ -53,11 +86,15 @@ export function Gallery() {
         throw new Error("Failed to scrap generated image.");
       }
 
-      setScrappedIds((current) => new Set(current).add(img.id));
-    } catch {
-      setScrappedIds((current) => {
+      setScrappedKeys((current) => {
         const next = new Set(current);
-        next.delete(img.id);
+        generatedImageKeys(img).forEach((key) => next.add(key));
+        return next;
+      });
+    } catch {
+      setScrappedKeys((current) => {
+        const next = new Set(current);
+        generatedImageKeys(img).forEach((key) => next.delete(key));
         return next;
       });
     } finally {
@@ -101,25 +138,34 @@ export function Gallery() {
   return (
     <div className="flex-1 overflow-y-auto p-3">
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-        {images.map((img) => (
-          <div
-            key={img.id}
-            className="group relative aspect-square overflow-hidden rounded-lg border border-border transition-colors hover:border-primary/50"
-          >
-            <button
-              type="button"
-              className="absolute inset-0 cursor-pointer"
-              onClick={() => setSelectedImage(img)}
-              aria-label="Open image details"
+        {images.map((img) => {
+          const scrapped = isScrappedImage(img);
+
+          return (
+            <div
+              key={img.id}
+              className="group relative aspect-square overflow-hidden rounded-lg border border-border transition-colors hover:border-primary/50"
             >
-              <img
-                src={img.url}
-                alt=""
-                className="h-full w-full object-cover"
-                loading="lazy"
-              />
-            </button>
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent opacity-0 transition-opacity group-hover:opacity-100">
+              <button
+                type="button"
+                className="absolute inset-0 cursor-pointer"
+                onClick={() => setSelectedImage(img)}
+                aria-label="Open image details"
+              >
+                <img
+                  src={img.url}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
+              </button>
+              {scrapped && (
+                <Badge className="pointer-events-none absolute left-2 top-2 z-10 rounded-md bg-primary/95 text-primary-foreground shadow-sm">
+                  <Check className="h-3 w-3" />
+                  스크랩됨
+                </Badge>
+              )}
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent opacity-0 transition-opacity group-hover:opacity-100">
               <div className="absolute left-2 right-2 top-2 flex gap-1.5">
                 <Button
                   type="button"
@@ -137,10 +183,10 @@ export function Gallery() {
                   variant="outline"
                   className="pointer-events-auto bg-white/90 text-black hover:bg-white"
                   onClick={() => void handleScrap(img)}
-                  disabled={!img.params || scrappingIds.has(img.id)}
+                  disabled={!img.params || scrappingIds.has(img.id) || scrapped}
                   aria-label="Scrap image"
                 >
-                  {scrappedIds.has(img.id) ? <Check /> : <BookmarkPlus />}
+                  {scrapped ? <Check /> : <BookmarkPlus />}
                 </Button>
                 <Button
                   type="button"
@@ -160,7 +206,8 @@ export function Gallery() {
               </div>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
