@@ -168,17 +168,16 @@ function EntryActions({
       {canRefresh && (
         <Button
           type="button"
-          size={compact ? "icon-sm" : "sm"}
+          size="icon-sm"
           variant="outline"
           disabled={refreshing}
           onClick={(event) => {
             event.stopPropagation();
             onRefresh(entry);
           }}
-          aria-label={compact ? "Refresh import" : undefined}
+          aria-label="Refresh import"
         >
           <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
-          {!compact && "다시 가져오기"}
         </Button>
       )}
       {entry.pageUrl && (
