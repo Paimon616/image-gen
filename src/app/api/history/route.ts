@@ -23,6 +23,11 @@ interface DeleteHistoryBody {
   id?: string;
 }
 
+interface UpdateHistoryBody {
+  id?: string;
+  userTags?: unknown;
+}
+
 interface HistoryEntryFile {
   entry: HistoryEntry;
   filename: string;
@@ -54,6 +59,25 @@ function normalizeHistoryUrl(value: string) {
   }
 }
 
+function normalizeUserTags(value: unknown) {
+  if (!Array.isArray(value)) return [];
+
+  const tags = value
+    .filter((tag): tag is string => typeof tag === "string")
+    .map((tag) => tag.trim())
+    .filter(Boolean)
+    .slice(0, 32);
+
+  return Array.from(new Set(tags));
+}
+
+function withHistoryDefaults(entry: HistoryEntry): HistoryEntry {
+  return {
+    ...entry,
+    userTags: normalizeUserTags(entry.userTags),
+  };
+}
+
 function civitaiImageIdFromUrl(value: string) {
   const match = value.match(/(?:civitai\.(?:com|red)\/images\/)(\d+)/i);
 
@@ -68,7 +92,10 @@ async function readHistoryEntryFiles() {
       .map(async (filename) => {
         try {
           const content = await readFile(join(HISTORY_DIR, filename), "utf-8");
-          return { entry: JSON.parse(content) as HistoryEntry, filename };
+          return {
+            entry: withHistoryDefaults(JSON.parse(content) as HistoryEntry),
+            filename,
+          };
         } catch {
           return null;
         }
@@ -190,6 +217,7 @@ async function updateExistingHistoryEntry({
     importedParams: importResult.params,
     resources: importResult.resources,
     missingResources,
+    userTags: normalizeUserTags(duplicate.entry.userTags),
     rawImport: importResult,
   };
 
@@ -265,12 +293,40 @@ export async function POST(req: NextRequest) {
     importedParams: importResult.params,
     resources: importResult.resources,
     missingResources: body.missingResources ?? [],
+    userTags: [],
     rawImport: importResult,
   };
 
   await writeFile(join(HISTORY_DIR, `${id}.json`), JSON.stringify(entry, null, 2));
 
   return NextResponse.json({ entry });
+}
+
+export async function PATCH(req: NextRequest) {
+  const body = (await req.json().catch(() => null)) as UpdateHistoryBody | null;
+  const id = body?.id ?? "";
+
+  if (!isSafeHistoryId(id)) {
+    return NextResponse.json({ error: "Valid scrap id is required" }, { status: 400 });
+  }
+
+  try {
+    const entryPath = join(HISTORY_DIR, `${id}.json`);
+    const entry = withHistoryDefaults(
+      JSON.parse(await readFile(entryPath, "utf-8")) as HistoryEntry
+    );
+
+    const updatedEntry: HistoryEntry = {
+      ...entry,
+      userTags: normalizeUserTags(body?.userTags),
+    };
+
+    await writeFile(entryPath, JSON.stringify(updatedEntry, null, 2));
+
+    return NextResponse.json({ entry: updatedEntry });
+  } catch {
+    return NextResponse.json({ error: "Scrap entry not found" }, { status: 404 });
+  }
 }
 
 export async function DELETE(req: NextRequest) {

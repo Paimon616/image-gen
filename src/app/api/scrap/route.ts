@@ -1,1 +1,1 @@
-export { DELETE, GET, POST } from "../history/route";
+export { DELETE, GET, PATCH, POST } from "../history/route";

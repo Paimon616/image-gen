@@ -461,5 +461,19 @@
       "anime",
       "women"
     ]
+  },
+  "loras/Elle_based_on_Rick__Morty_Anime-000009.safetensors": {
+    "name": "Elle (based on Rick & Morty Anime) - Illustrious",
+    "version": "V1",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/7c8c0ca1-4471-4c92-8670-beed016b4fe3/original=true/105310825.jpeg",
+    "civitai_url": "https://civitai.com/models/2032463/elle-based-on-rick-and-morty-anime-illustrious?modelVersionId=2300249",
+    "tags": [
+      "sexy",
+      "anime",
+      "character",
+      "nsfw",
+      "woman"
+    ]
   }
 }

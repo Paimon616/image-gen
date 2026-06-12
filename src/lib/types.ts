@@ -141,6 +141,7 @@ export interface HistoryEntry {
   importedParams: Partial<GenerationParams>;
   resources: ImportedCivitaiResource[];
   missingResources: HistoryMissingResource[];
+  userTags: string[];
   rawImport: CivitaiImportResult;
 }
 
