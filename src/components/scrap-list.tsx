@@ -214,7 +214,7 @@ function TagEditor({
     <section className="space-y-2">
       <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-muted-foreground">
         <Tag className="h-3 w-3" />
-        My Tags
+        마이태그
       </div>
       <div className="flex flex-wrap gap-1.5">
         {tags.length > 0 ? (
@@ -232,7 +232,7 @@ function TagEditor({
             </Badge>
           ))
         ) : (
-          <span className="text-xs text-muted-foreground">No personal tags</span>
+          <span className="text-xs text-muted-foreground">마이태그 없음</span>
         )}
       </div>
       <form className="flex gap-2" onSubmit={handleSubmit}>
@@ -261,7 +261,7 @@ function ImportedTags({ entry, max }: { entry: HistoryEntry; max?: number }) {
     <section className="space-y-2">
       <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-muted-foreground">
         <Tag className="h-3 w-3" />
-        Source Tags
+        이미지태그
       </div>
       <div className="flex flex-wrap gap-1.5">
         {visible.map((tag) => (
@@ -513,8 +513,8 @@ function TableView({
             <th className="px-3 py-2">Info</th>
             <th className="px-3 py-2">Prompt</th>
             <th className="px-3 py-2">Params</th>
-            <th className="px-3 py-2">Source Tags</th>
-            <th className="px-3 py-2">My Tags</th>
+            <th className="px-3 py-2">이미지태그</th>
+            <th className="px-3 py-2">마이태그</th>
             <th className="w-28 px-3 py-2 text-right">Actions</th>
           </tr>
         </thead>
@@ -567,7 +567,7 @@ function TableView({
                     ))
                   ) : (
                     <span className="text-xs text-muted-foreground">
-                      No personal tags
+                      마이태그 없음
                     </span>
                   )}
                 </div>
@@ -733,12 +733,6 @@ function ScrapEntryDialog({
                 <MissingResourcesNotice entry={entry} />
               </section>
 
-              {normalizeImportedTags(entry.importedTags).length > 0 && (
-                <section className="rounded-md border border-border bg-card p-3 shadow-sm">
-                  <ImportedTags entry={entry} />
-                </section>
-              )}
-
               <section className="rounded-md border border-border bg-card p-3 shadow-sm">
                 <TagEditor
                   entry={entry}
@@ -749,6 +743,12 @@ function ScrapEntryDialog({
                   onRemoveTag={onRemoveTag}
                 />
               </section>
+
+              {normalizeImportedTags(entry.importedTags).length > 0 && (
+                <section className="rounded-md border border-border bg-card p-3 shadow-sm">
+                  <ImportedTags entry={entry} />
+                </section>
+              )}
 
               <JsonDetails entry={entry} />
             </div>
@@ -764,7 +764,8 @@ export function ScrapList() {
   const setParams = useStore((state) => state.setParams);
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [selectedTag, setSelectedTag] = useState("all");
+  const [selectedUserTag, setSelectedUserTag] = useState("all");
+  const [selectedImportedTag, setSelectedImportedTag] = useState("all");
   const [viewMode, setViewMode] = useState<ScrapViewMode>("detail");
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -795,19 +796,26 @@ export function ScrapList() {
       });
   }, []);
 
-  const allTags = useMemo(() => {
+  const allUserTags = useMemo(() => {
     return Array.from(
       new Set(entries.flatMap((entry) => normalizeUserTags(entry.userTags)))
     ).sort((a, b) => a.localeCompare(b));
   }, [entries]);
 
-  const filteredEntries = useMemo(() => {
-    if (selectedTag === "all") return entries;
+  const allImportedTags = useMemo(() => {
+    return Array.from(
+      new Set(entries.flatMap((entry) => normalizeImportedTags(entry.importedTags)))
+    ).sort((a, b) => a.localeCompare(b));
+  }, [entries]);
 
+  const filteredEntries = useMemo(() => {
     return entries.filter((entry) =>
-      normalizeUserTags(entry.userTags).includes(selectedTag)
+      (selectedUserTag === "all" ||
+        normalizeUserTags(entry.userTags).includes(selectedUserTag)) &&
+      (selectedImportedTag === "all" ||
+        normalizeImportedTags(entry.importedTags).includes(selectedImportedTag))
     );
-  }, [entries, selectedTag]);
+  }, [entries, selectedImportedTag, selectedUserTag]);
 
   const selectedEntry = useMemo(() => {
     if (!selectedEntryId) return null;
@@ -960,30 +968,60 @@ export function ScrapList() {
 
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-semibold text-muted-foreground">
-            태그 필터
+            마이태그
           </span>
           <Button
             type="button"
             size="xs"
-            variant={selectedTag === "all" ? "default" : "outline"}
-            onClick={() => setSelectedTag("all")}
+            variant={selectedUserTag === "all" ? "default" : "outline"}
+            onClick={() => setSelectedUserTag("all")}
           >
             전체
           </Button>
-          {allTags.map((tag) => (
+          {allUserTags.map((tag) => (
             <Button
               key={tag}
               type="button"
               size="xs"
-              variant={selectedTag === tag ? "default" : "outline"}
-              onClick={() => setSelectedTag(tag)}
+              variant={selectedUserTag === tag ? "default" : "outline"}
+              onClick={() => setSelectedUserTag(tag)}
             >
               {tag}
             </Button>
           ))}
-          {allTags.length === 0 && (
+          {allUserTags.length === 0 && (
             <span className="text-xs text-muted-foreground">
-              저장된 개인 태그가 없습니다.
+              저장된 마이태그가 없습니다.
+            </span>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+          <span className="text-xs font-semibold text-muted-foreground">
+            이미지태그
+          </span>
+          <Button
+            type="button"
+            size="xs"
+            variant={selectedImportedTag === "all" ? "default" : "outline"}
+            onClick={() => setSelectedImportedTag("all")}
+          >
+            전체
+          </Button>
+          {allImportedTags.map((tag) => (
+            <Button
+              key={tag}
+              type="button"
+              size="xs"
+              variant={selectedImportedTag === tag ? "default" : "outline"}
+              onClick={() => setSelectedImportedTag(tag)}
+            >
+              {tag}
+            </Button>
+          ))}
+          {allImportedTags.length === 0 && (
+            <span className="text-xs text-muted-foreground">
+              임포트된 이미지태그가 없습니다.
             </span>
           )}
         </div>
