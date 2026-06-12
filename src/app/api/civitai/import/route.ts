@@ -58,6 +58,10 @@ interface CivitaiPageGenerationData {
   };
 }
 
+interface CivitaiVotableTag {
+  name?: unknown;
+}
+
 const PROMPT_TAG_STOP_WORDS = new Set([
   "best quality",
   "high quality",
@@ -409,6 +413,42 @@ async function fetchGenerationDataFromPage(imageId: number, origin: string) {
   return extractGenerationDataFromPageHtml(await response.text());
 }
 
+async function fetchVotableTags(imageId: number, origin: string) {
+  const input = encodeURIComponent(
+    JSON.stringify({
+      0: {
+        json: {
+          type: "image",
+          id: imageId,
+        },
+      },
+    })
+  );
+  const response = await fetch(
+    `${origin}/api/trpc/tag.getVotableTags?batch=1&input=${input}`,
+    {
+      headers: {
+        Accept: "application/json",
+        Referer: `${origin}/images/${imageId}`,
+        "User-Agent": "image-gen-civitai-import/1.0",
+      },
+      next: { revalidate: 0 },
+    }
+  );
+
+  if (!response.ok) return [];
+
+  const data = await response.json().catch(() => null);
+  const batchItem = Array.isArray(data) ? recordValue(data[0]) : null;
+  const result = batchItem ? recordValue(batchItem.result) : null;
+  const resultData = result ? recordValue(result.data) : null;
+  const tags = Array.isArray(resultData?.json) ? resultData.json : [];
+
+  return normalizeImportedTags(
+    tags.filter((tag): tag is CivitaiVotableTag => Boolean(recordValue(tag)))
+  );
+}
+
 function parseResources(meta: Record<string, unknown>) {
   const rawResources = Array.isArray(meta.resources) ? meta.resources : [];
 
@@ -631,6 +671,10 @@ export async function POST(req: NextRequest) {
   const meta = item?.meta ?? pageGenerationData?.meta;
 
   const pageResources = pageGenerationData?.resources ?? [];
+  const votableTags = await fetchVotableTags(
+    imageReference.id,
+    imageReference.origin
+  );
 
   if (!meta && pageResources.length === 0) {
     return NextResponse.json(
@@ -657,6 +701,7 @@ export async function POST(req: NextRequest) {
     meta?.tags,
     meta?.Tags,
     pageGenerationData?.importedTags,
+    votableTags,
     inferTagsFromPrompt(
       stringValue(meta?.prompt ?? meta?.Prompt),
       numberValue(item?.nsfwLevel) ?? pageGenerationData?.image?.nsfwLevel
