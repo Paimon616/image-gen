@@ -27,6 +27,7 @@ interface DeleteHistoryBody {
 
 interface UpdateHistoryBody {
   id?: string;
+  action?: "refresh-import";
   userTags?: unknown;
 }
 
@@ -41,6 +42,19 @@ async function ensureHistoryDirs() {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function isCivitaiImportResult(value: unknown): value is CivitaiImportResult {
+  if (!isRecord(value)) return false;
+
+  return (
+    typeof value.imageId === "number" &&
+    typeof value.imageUrl === "string" &&
+    typeof value.pageUrl === "string" &&
+    isRecord(value.params) &&
+    Array.isArray(value.resources) &&
+    Array.isArray(value.importedTags)
+  );
 }
 
 function isSafeHistoryId(value: string) {
@@ -494,6 +508,72 @@ export async function PATCH(req: NextRequest) {
     const entry = withHistoryDefaults(
       JSON.parse(await readFile(entryPath, "utf-8")) as HistoryEntry
     );
+
+    if (body?.action === "refresh-import") {
+      const refreshUrl = entry.pageUrl || entry.requestedUrl;
+
+      if (entry.source !== "civitai" || !refreshUrl) {
+        return NextResponse.json(
+          { error: "Only URL-based Civitai scraps can be refreshed" },
+          { status: 400 }
+        );
+      }
+
+      const importResponse = await fetch(new URL("/api/civitai/import", req.url), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: refreshUrl }),
+        next: { revalidate: 0 },
+      });
+      const importResult = (await importResponse.json().catch(() => null)) as
+        | CivitaiImportResult
+        | { error?: string }
+        | null;
+
+      if (!importResponse.ok || !isCivitaiImportResult(importResult)) {
+        const errorResult = isRecord(importResult) ? importResult : null;
+        return NextResponse.json(
+          {
+            error:
+              typeof errorResult?.error === "string"
+                ? errorResult.error
+                : "Failed to refresh Civitai import",
+          },
+          { status: importResponse.ok ? 502 : importResponse.status }
+        );
+      }
+
+      let localImageFilename = entry.localImageFilename;
+      let localImageUrl = entry.localImageUrl;
+
+      if (!localImageFilename && importResult.imageUrl) {
+        const savedImage = await saveRemoteImage(entry.id, importResult.imageUrl);
+        localImageFilename = savedImage.localImageFilename;
+        localImageUrl = savedImage.localImageUrl;
+      }
+
+      const updatedEntry: HistoryEntry = {
+        ...entry,
+        imageId: importResult.imageId,
+        imageUrl: importResult.imageUrl || entry.imageUrl,
+        localImageUrl,
+        localImageFilename,
+        pageUrl: importResult.pageUrl,
+        username: importResult.username,
+        params: {
+          ...entry.params,
+          ...importResult.params,
+        },
+        importedParams: importResult.params,
+        resources: importResult.resources,
+        importedTags: normalizeImportedTags(importResult.importedTags),
+        rawImport: importResult,
+      };
+
+      await writeFile(entryPath, JSON.stringify(updatedEntry, null, 2));
+
+      return NextResponse.json({ entry: updatedEntry });
+    }
 
     const updatedEntry: HistoryEntry = {
       ...entry,

@@ -7,6 +7,7 @@ import {
   Grid3X3,
   Image as ImageIcon,
   List,
+  RefreshCw,
   RotateCcw,
   Save,
   Table2,
@@ -135,14 +136,20 @@ function JsonDetails({ entry }: { entry: HistoryEntry }) {
 function EntryActions({
   entry,
   onReuse,
+  onRefresh,
   onDelete,
+  refreshing = false,
   compact = false,
 }: {
   entry: HistoryEntry;
   onReuse: (entry: HistoryEntry) => void;
+  onRefresh: (entry: HistoryEntry) => void;
   onDelete: (entry: HistoryEntry) => void;
+  refreshing?: boolean;
   compact?: boolean;
 }) {
+  const canRefresh = entry.source === "civitai" && Boolean(entry.pageUrl || entry.requestedUrl);
+
   return (
     <div className={cn("flex gap-2", compact && "justify-end")}>
       <Button
@@ -158,6 +165,22 @@ function EntryActions({
         <RotateCcw className="h-4 w-4" />
         {!compact && "Reuse"}
       </Button>
+      {canRefresh && (
+        <Button
+          type="button"
+          size={compact ? "icon-sm" : "sm"}
+          variant="outline"
+          disabled={refreshing}
+          onClick={(event) => {
+            event.stopPropagation();
+            onRefresh(entry);
+          }}
+          aria-label={compact ? "Refresh import" : undefined}
+        >
+          <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
+          {!compact && "다시 가져오기"}
+        </Button>
+      )}
       {entry.pageUrl && (
         <Button
           type="button"
@@ -351,12 +374,16 @@ function ImageCard({
   entry,
   onOpen,
   onReuse,
+  onRefresh,
   onDelete,
+  refreshing,
 }: {
   entry: HistoryEntry;
   onOpen: (entry: HistoryEntry) => void;
   onReuse: (entry: HistoryEntry) => void;
+  onRefresh: (entry: HistoryEntry) => void;
   onDelete: (entry: HistoryEntry) => void;
+  refreshing: boolean;
 }) {
   const tags = normalizeUserTags(entry.userTags).slice(0, 3);
 
@@ -399,7 +426,14 @@ function ImageCard({
         </div>
       </div>
       <div className="absolute right-3 top-12 flex gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
-        <EntryActions entry={entry} onReuse={onReuse} onDelete={onDelete} compact />
+        <EntryActions
+          entry={entry}
+          onReuse={onReuse}
+          onRefresh={onRefresh}
+          onDelete={onDelete}
+          refreshing={refreshing}
+          compact
+        />
       </div>
     </article>
   );
@@ -409,12 +443,16 @@ function DetailCard({
   entry,
   onOpen,
   onReuse,
+  onRefresh,
   onDelete,
+  refreshing,
 }: {
   entry: HistoryEntry;
   onOpen: (entry: HistoryEntry) => void;
   onReuse: (entry: HistoryEntry) => void;
+  onRefresh: (entry: HistoryEntry) => void;
   onDelete: (entry: HistoryEntry) => void;
+  refreshing: boolean;
 }) {
   return (
     <article
@@ -424,7 +462,13 @@ function DetailCard({
       <div className="min-w-0">
         <ImagePreview entry={entry} />
         <div className="mt-2">
-          <EntryActions entry={entry} onReuse={onReuse} onDelete={onDelete} />
+          <EntryActions
+            entry={entry}
+            onReuse={onReuse}
+            onRefresh={onRefresh}
+            onDelete={onDelete}
+            refreshing={refreshing}
+          />
         </div>
       </div>
 
@@ -497,12 +541,16 @@ function TableView({
   entries,
   onOpen,
   onReuse,
+  onRefresh,
   onDelete,
+  refreshingId,
 }: {
   entries: HistoryEntry[];
   onOpen: (entry: HistoryEntry) => void;
   onReuse: (entry: HistoryEntry) => void;
+  onRefresh: (entry: HistoryEntry) => void;
   onDelete: (entry: HistoryEntry) => void;
+  refreshingId: string | null;
 }) {
   return (
     <div className="overflow-x-auto rounded-md border border-border bg-card">
@@ -576,7 +624,9 @@ function TableView({
                 <EntryActions
                   entry={entry}
                   onReuse={onReuse}
+                  onRefresh={onRefresh}
                   onDelete={onDelete}
+                  refreshing={refreshingId === entry.id}
                   compact
                 />
               </td>
@@ -592,23 +642,27 @@ function ScrapEntryDialog({
   entry,
   draft,
   saving,
+  refreshing,
   open,
   onOpenChange,
   onDraftChange,
   onSaveTags,
   onRemoveTag,
   onReuse,
+  onRefresh,
   onDelete,
 }: {
   entry: HistoryEntry | null;
   draft: string;
   saving: boolean;
+  refreshing: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDraftChange: (value: string) => void;
   onSaveTags: (entry: HistoryEntry) => void;
   onRemoveTag: (entry: HistoryEntry, tag: string) => void;
   onReuse: (entry: HistoryEntry) => void;
+  onRefresh: (entry: HistoryEntry) => void;
   onDelete: (entry: HistoryEntry) => void;
 }) {
   if (!entry) {
@@ -661,7 +715,13 @@ function ScrapEntryDialog({
             </header>
 
             <div className="flex flex-wrap gap-2 border-b border-border px-5 py-3">
-              <EntryActions entry={entry} onReuse={onReuse} onDelete={onDelete} />
+              <EntryActions
+                entry={entry}
+                onReuse={onReuse}
+                onRefresh={onRefresh}
+                onDelete={onDelete}
+                refreshing={refreshing}
+              />
             </div>
 
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-background/70 p-5">
@@ -769,6 +829,7 @@ export function ScrapList() {
   const [viewMode, setViewMode] = useState<ScrapViewMode>("detail");
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [status, setStatus] = useState("스크랩을 불러오는 중...");
 
   useEffect(() => {
@@ -886,6 +947,51 @@ export function ScrapList() {
   const removeTag = (entry: HistoryEntry, tag: string) => {
     const tags = normalizeUserTags(entry.userTags).filter((item) => item !== tag);
     void saveTags(entry, tags);
+  };
+
+  const refreshEntry = async (entry: HistoryEntry) => {
+    if (refreshingId || entry.source !== "civitai") return;
+
+    setRefreshingId(entry.id);
+    setStatus("");
+
+    try {
+      const response = await fetch("/api/scrap", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: entry.id, action: "refresh-import" }),
+      });
+      const data = (await response.json().catch(() => null)) as {
+        entry?: HistoryEntry;
+        error?: string;
+      } | null;
+
+      if (!response.ok || !data?.entry) {
+        throw new Error(data?.error || "Failed to refresh scrap import.");
+      }
+
+      const updatedEntry = {
+        ...data.entry,
+        importedTags: normalizeImportedTags(data.entry.importedTags),
+        userTags: normalizeUserTags(data.entry.userTags),
+      };
+
+      setEntries((current) =>
+        current.map((item) => (item.id === entry.id ? updatedEntry : item))
+      );
+      setDrafts((current) => ({ ...current, [entry.id]: current[entry.id] ?? "" }));
+      setStatus("스크랩을 다시 가져왔습니다.");
+      setTimeout(() => setStatus(""), 2500);
+    } catch (error) {
+      setStatus(
+        error instanceof Error
+          ? error.message
+          : "스크랩을 다시 가져오지 못했습니다."
+      );
+      setTimeout(() => setStatus(""), 3500);
+    } finally {
+      setRefreshingId(null);
+    }
   };
 
   const deleteEntry = async (entry: HistoryEntry) => {
@@ -1042,7 +1148,9 @@ export function ScrapList() {
           entries={filteredEntries}
           onOpen={(entry) => setSelectedEntryId(entry.id)}
           onReuse={reuseEntry}
+          onRefresh={(entry) => void refreshEntry(entry)}
           onDelete={(entry) => void deleteEntry(entry)}
+          refreshingId={refreshingId}
         />
       ) : (
         <div
@@ -1060,7 +1168,9 @@ export function ScrapList() {
                 entry={entry}
                 onOpen={(item) => setSelectedEntryId(item.id)}
                 onReuse={reuseEntry}
+                onRefresh={(item) => void refreshEntry(item)}
                 onDelete={(item) => void deleteEntry(item)}
+                refreshing={refreshingId === entry.id}
               />
             ) : (
               <DetailCard
@@ -1068,7 +1178,9 @@ export function ScrapList() {
                 entry={entry}
                 onOpen={(item) => setSelectedEntryId(item.id)}
                 onReuse={reuseEntry}
+                onRefresh={(item) => void refreshEntry(item)}
                 onDelete={(item) => void deleteEntry(item)}
+                refreshing={refreshingId === entry.id}
               />
             )
           )}
@@ -1079,6 +1191,7 @@ export function ScrapList() {
         entry={selectedEntry}
         draft={selectedEntry ? drafts[selectedEntry.id] ?? "" : ""}
         saving={selectedEntry ? savingId === selectedEntry.id : false}
+        refreshing={selectedEntry ? refreshingId === selectedEntry.id : false}
         open={Boolean(selectedEntry)}
         onOpenChange={(open) => {
           if (!open) setSelectedEntryId(null);
@@ -1089,6 +1202,7 @@ export function ScrapList() {
         onSaveTags={saveTags}
         onRemoveTag={removeTag}
         onReuse={reuseEntry}
+        onRefresh={(entry) => void refreshEntry(entry)}
         onDelete={(entry) => void deleteEntry(entry)}
       />
     </div>
