@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Bookmark, Images, Languages, Layers3 } from "lucide-react";
+import { useStore, type AppLanguage } from "@/lib/store";
 
 const NAV_ITEMS = [
   { href: "/", labels: { ko: "생성", en: "Generate" }, icon: Images },
@@ -11,7 +12,6 @@ const NAV_ITEMS = [
   { href: "/scrap", labels: { ko: "스크랩", en: "Scrap" }, icon: Bookmark },
 ];
 
-const LANGUAGE_STORAGE_KEY = "image-gen-language";
 const LANGUAGE_LABELS = {
   ko: {
     subtitle: "로컬 스튜디오",
@@ -23,32 +23,16 @@ const LANGUAGE_LABELS = {
   },
 } as const;
 
-type Language = keyof typeof LANGUAGE_LABELS;
-
-function isLanguage(value: string | null): value is Language {
-  return value === "ko" || value === "en";
-}
-
 export function AppSidebar() {
   const pathname = usePathname();
-  const [language, setLanguage] = useState<Language>(() => {
-    if (typeof window === "undefined") {
-      return "ko";
-    }
+  const language = useStore((state) => state.language);
+  const setLanguage = useStore((state) => state.setLanguage);
 
-    const savedLanguage = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
-    return isLanguage(savedLanguage) ? savedLanguage : "ko";
-  });
+  const labels = LANGUAGE_LABELS[language];
 
   useEffect(() => {
     document.documentElement.lang = language;
-    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
   }, [language]);
-
-  const handleLanguageChange = (nextLanguage: Language) =>
-    setLanguage(nextLanguage);
-
-  const labels = LANGUAGE_LABELS[language];
 
   return (
     <nav className="flex h-screen w-40 shrink-0 flex-col border-r border-border bg-sidebar">
@@ -100,7 +84,7 @@ export function AppSidebar() {
           id="app-language"
           value={language}
           onChange={(event) =>
-            handleLanguageChange(event.currentTarget.value as Language)
+            setLanguage(event.currentTarget.value as AppLanguage)
           }
           className="h-9 w-full rounded-md border border-sidebar-border bg-background px-2 text-sm font-medium text-sidebar-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
         >

@@ -90,6 +90,31 @@ function resourceBucket(
   return [];
 }
 
+function importStatusText(
+  options: { metadataHidden: boolean; missingCount: number },
+  language: "ko" | "en"
+) {
+  const { metadataHidden, missingCount } = options;
+
+  if (language === "ko") {
+    const importScope = metadataHidden
+      ? "사용 가능한 이미지 크기와 리소스를 가져왔고"
+      : "생성 설정을 가져왔고";
+
+    return missingCount > 0
+      ? `${importScope} 스크랩에 저장했습니다. 로컬 리소스 ${missingCount}개를 찾을 수 없습니다.`
+      : `${importScope} 로컬 리소스를 매칭한 뒤 스크랩에 저장했습니다.`;
+  }
+
+  const importScope = metadataHidden
+    ? "Imported available image size and resources"
+    : "Imported settings";
+
+  return missingCount > 0
+    ? `${importScope} and saved to Scrap. ${missingCount} local resource${missingCount > 1 ? "s are" : " is"} missing.`
+    : `${importScope}, matched local resources, and saved to Scrap.`;
+}
+
 function reconcileImportedParams(
   imported: CivitaiImportResult,
   models: LocalModelsResponse,
@@ -174,7 +199,7 @@ function reconcileImportedParams(
 }
 
 export function CivitaiImport() {
-  const { params, setParams } = useStore();
+  const { params, setParams, language } = useStore();
   const [url, setUrl] = useState("");
   const [status, setStatus] = useState("");
   const [missingResources, setMissingResources] = useState<MissingResource[]>([]);
@@ -223,13 +248,14 @@ export function CivitaiImport() {
           missingResources: missing,
         }),
       }).catch(() => {});
-      const importScope = imported.metadataHidden
-        ? "Imported available image size and resources"
-        : "Imported settings";
       setStatus(
-        missing.length > 0
-          ? `${importScope} and saved to Scrap. ${missing.length} local resource${missing.length > 1 ? "s are" : " is"} missing.`
-          : `${importScope}, matched local resources, and saved to Scrap.`
+        importStatusText(
+          {
+            metadataHidden: Boolean(imported.metadataHidden),
+            missingCount: missing.length,
+          },
+          language
+        )
       );
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to import Civitai metadata");
@@ -285,7 +311,7 @@ export function CivitaiImport() {
       {missingResources.length > 0 && (
         <div className="mt-3 rounded-md border border-dashed border-destructive/30 bg-destructive/10 p-3">
           <div className="text-xs font-semibold text-destructive">
-            Missing local resources
+            {language === "ko" ? "누락된 로컬 리소스" : "Missing local resources"}
           </div>
           <div className="mt-2 space-y-1.5">
             {missingResources.map((resource, index) => (

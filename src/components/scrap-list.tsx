@@ -89,6 +89,14 @@ function visibleResources(entry: HistoryEntry) {
   return entry.resources.filter((resource) => resource.type !== "other");
 }
 
+function missingResourcesText(count: number, language: "ko" | "en") {
+  if (language === "ko") {
+    return `로컬 리소스 ${count}개를 찾을 수 없습니다.`;
+  }
+
+  return `${count} missing local resource${count > 1 ? "s" : ""}`;
+}
+
 function JsonDetails({ entry }: { entry: HistoryEntry }) {
   const payload = useMemo(() => JSON.stringify(entry, null, 2), [entry]);
 
@@ -242,12 +250,13 @@ function ResourceBadges({ entry, max }: { entry: HistoryEntry; max?: number }) {
 }
 
 function MissingResourcesNotice({ entry }: { entry: HistoryEntry }) {
+  const language = useStore((state) => state.language);
+
   if (entry.missingResources.length === 0) return null;
 
   return (
     <div className="rounded-md border border-dashed border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
-      {entry.missingResources.length} missing local resource
-      {entry.missingResources.length > 1 ? "s" : ""}
+      {missingResourcesText(entry.missingResources.length, language)}
     </div>
   );
 }

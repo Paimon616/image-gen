@@ -11,6 +11,7 @@ interface AppState {
   status: GenerationStatus;
   images: GeneratedImage[];
   selectedImage: GeneratedImage | null;
+  language: AppLanguage;
 
   setParams: (update: Partial<GenerationParams>) => void;
   setStatus: (status: Partial<GenerationStatus>) => void;
@@ -20,6 +21,29 @@ interface AppState {
   setSelectedImage: (image: GeneratedImage | null) => void;
   loadParamsFromImage: (image: GeneratedImage) => void;
   resetParams: () => void;
+  setLanguage: (language: AppLanguage) => void;
+}
+
+export type AppLanguage = "ko" | "en";
+
+const LANGUAGE_STORAGE_KEY = "image-gen-language";
+
+function getInitialLanguage(): AppLanguage {
+  if (typeof window === "undefined") {
+    return "ko";
+  }
+
+  const savedLanguage = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
+  return savedLanguage === "en" ? "en" : "ko";
+}
+
+function persistLanguage(language: AppLanguage) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
+  document.documentElement.lang = language;
 }
 
 function sortImagesNewestFirst(images: GeneratedImage[]) {
@@ -43,6 +67,7 @@ export const useStore = create<AppState>((set) => ({
   status: { state: "idle", progress: 0, message: "" },
   images: [],
   selectedImage: null,
+  language: getInitialLanguage(),
 
   setParams: (update) =>
     set((s) => ({ params: { ...s.params, ...update } })),
@@ -68,4 +93,9 @@ export const useStore = create<AppState>((set) => ({
     set({ params: { ...DEFAULT_PARAMS, ...image.params } }),
 
   resetParams: () => set({ params: DEFAULT_PARAMS }),
+
+  setLanguage: (language) => {
+    persistLanguage(language);
+    set({ language });
+  },
 }));
