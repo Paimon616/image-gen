@@ -52,6 +52,7 @@ export interface GenerationParams {
   scheduler: string;
   clip_skip: number;
   vae_name: string;
+  upscale_model_name: string;
   loras: LoraConfig[];
   embeddings: EmbeddingConfig[];
   controlnets: ControlNetConfig[];
@@ -99,7 +100,7 @@ export interface GenerationStatus {
 }
 
 export interface ImportedCivitaiResource {
-  type: "checkpoint" | "lora" | "embedding" | "vae" | "other";
+  type: "checkpoint" | "lora" | "embedding" | "vae" | "upscaler" | "other";
   name: string;
   versionName?: string;
   baseModel?: string;
@@ -160,6 +161,7 @@ export const DEFAULT_PARAMS: GenerationParams = {
   scheduler: "karras",
   clip_skip: 1,
   vae_name: "",
+  upscale_model_name: "",
   loras: [],
   embeddings: [],
   controlnets: [],

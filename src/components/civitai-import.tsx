@@ -25,6 +25,7 @@ interface LocalModelsResponse {
   loraAssets?: LocalModelAsset[];
   embeddingAssets?: LocalModelAsset[];
   vaeAssets?: LocalModelAsset[];
+  upscaleModelAssets?: LocalModelAsset[];
 }
 
 interface MissingResource extends ImportedCivitaiResource {
@@ -36,6 +37,7 @@ const RESOURCE_LABELS: Record<ImportedCivitaiResource["type"], string> = {
   lora: "LoRA",
   embedding: "Embedding",
   vae: "VAE",
+  upscaler: "Upscaler",
   other: "Resource",
 };
 
@@ -84,6 +86,7 @@ function resourceBucket(
   if (type === "lora") return models.loraAssets ?? [];
   if (type === "embedding") return models.embeddingAssets ?? [];
   if (type === "vae") return models.vaeAssets ?? [];
+  if (type === "upscaler") return models.upscaleModelAssets ?? [];
   return [];
 }
 
@@ -131,18 +134,28 @@ function reconcileImportedParams(
     if (resource.type === "vae") {
       matched.vae_name = match.path;
     }
+
+    if (resource.type === "upscaler") {
+      matched.upscale_model_name = match.path;
+    }
   });
 
   const importedCheckpoint = imported.resources.some(
     (resource) => resource.type === "checkpoint"
   );
   const importedVae = imported.resources.some((resource) => resource.type === "vae");
+  const importedUpscaler = imported.resources.some(
+    (resource) => resource.type === "upscaler"
+  );
 
   if (importedCheckpoint && !matched.model_name) {
     matched.model_name = currentParams.model_name;
   }
   if (importedVae && !matched.vae_name) {
     matched.vae_name = currentParams.vae_name;
+  }
+  if (importedUpscaler && !matched.upscale_model_name) {
+    matched.upscale_model_name = currentParams.upscale_model_name;
   }
   if (
     matchedLoras.length > 0 ||

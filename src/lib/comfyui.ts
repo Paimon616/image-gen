@@ -55,6 +55,36 @@ interface ResolvedControlNetConfig extends WorkflowControlNetConfig {
   image: string;
 }
 
+function addUpscaleWorkflowNodes(
+  workflow: Record<string, unknown>,
+  params: GenerationParams,
+  imageRef: [string, number],
+  loaderNodeId: string,
+  upscaleNodeId: string
+) {
+  const modelName = params.upscale_model_name?.trim();
+
+  if (!modelName) {
+    return imageRef;
+  }
+
+  workflow[loaderNodeId] = {
+    class_type: "UpscaleModelLoader",
+    inputs: {
+      model_name: modelName,
+    },
+  };
+  workflow[upscaleNodeId] = {
+    class_type: "ImageUpscaleWithModel",
+    inputs: {
+      upscale_model: [loaderNodeId, 0],
+      image: imageRef,
+    },
+  };
+
+  return [upscaleNodeId, 0] satisfies [string, number];
+}
+
 function cleanLoras(loras: LoraConfig[]) {
   return loras
     .map((lora) => ({
@@ -377,11 +407,18 @@ async function buildAnimaWorkflow(params: GenerationParams, checkpoint: string) 
       vae: vaeRef,
     },
   };
+  const saveImageRef = addUpscaleWorkflowNodes(
+    workflow,
+    params,
+    ["6", 0],
+    "70",
+    "71"
+  );
   workflow["7"] = {
     class_type: "SaveImage",
     inputs: {
       filename_prefix: "image-gen-anima",
-      images: ["6", 0],
+      images: saveImageRef,
     },
   };
 
@@ -598,11 +635,18 @@ async function buildDefaultWorkflow(params: GenerationParams) {
       vae: vaeRef,
     },
   };
+  const saveImageRef = addUpscaleWorkflowNodes(
+    workflow,
+    params,
+    ["6", 0],
+    "70",
+    "71"
+  );
   workflow["7"] = {
     class_type: "SaveImage",
     inputs: {
       filename_prefix: "image-gen",
-      images: ["6", 0],
+      images: saveImageRef,
     },
   };
 

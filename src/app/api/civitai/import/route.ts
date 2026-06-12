@@ -95,6 +95,9 @@ function normalizeResourceType(type: string): ImportedCivitaiResource["type"] {
     return "embedding";
   }
   if (normalized.includes("vae")) return "vae";
+  if (normalized.includes("upscaler") || normalized.includes("upscale")) {
+    return "upscaler";
+  }
   if (normalized.includes("checkpoint") || normalized === "model") return "checkpoint";
 
   return "other";
@@ -511,12 +514,16 @@ export async function POST(req: NextRequest) {
       tokens: resource.name,
     }));
   const vae = resources.find((resource) => resource.type === "vae");
+  const upscaler = resources.find((resource) => resource.type === "upscaler");
   const params = parseImportParams(meta ?? {}, itemForParsing);
 
   if (checkpoint) params.model_name = checkpoint.name;
   if (loras.length > 0) params.loras = loras;
   if (embeddings.length > 0) params.embeddings = embeddings;
   if (vae && !params.vae_name) params.vae_name = vae.name;
+  if (upscaler && !params.upscale_model_name) {
+    params.upscale_model_name = upscaler.name;
+  }
 
   return NextResponse.json({
     imageId: itemForParsing.id,

@@ -1,7 +1,7 @@
 import { access, open } from "fs/promises";
 import { join, normalize } from "path";
 
-const MODEL_EXTENSIONS = new Set([".ckpt", ".pt", ".safetensors"]);
+const MODEL_EXTENSIONS = new Set([".ckpt", ".pt", ".pth", ".safetensors"]);
 const SAFETENSORS_HEADER_LIMIT = 64 * 1024 * 1024;
 
 export const COMFYUI_MODELS_DIR =

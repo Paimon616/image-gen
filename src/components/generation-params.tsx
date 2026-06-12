@@ -44,8 +44,9 @@ export function GenerationParams() {
   >({});
   const [localModels, setLocalModels] = useState<{
     vaes: string[];
+    upscaleModels: string[];
     controlnets: string[];
-  }>({ vaes: [], controlnets: [] });
+  }>({ vaes: [], upscaleModels: [], controlnets: [] });
 
   useEffect(() => {
     fetch("/api/models")
@@ -53,6 +54,7 @@ export function GenerationParams() {
       .then((data) =>
         setLocalModels({
           vaes: data.vaes ?? [],
+          upscaleModels: data.upscale_models ?? [],
           controlnets: data.controlnets ?? [],
         })
       )
@@ -341,6 +343,40 @@ export function GenerationParams() {
                   placeholder={isLocal ? "vae file name" : "Local ComfyUI only"}
                   value={params.vae_name}
                   onChange={(e) => setParams({ vae_name: e.target.value })}
+                  className="h-8 text-xs"
+                  disabled={!isLocal}
+                />
+              )}
+            </div>
+
+            <div>
+              <Label className="text-xs text-muted-foreground mb-2 block">
+                Upscaler
+              </Label>
+              {isLocal && localModels.upscaleModels.length > 0 ? (
+                <select
+                  value={params.upscale_model_name}
+                  onChange={(e) =>
+                    setParams({ upscale_model_name: e.target.value })
+                  }
+                  className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
+                  <option value="">Off</option>
+                  {localModels.upscaleModels.map((model) => (
+                    <option key={model} value={model}>
+                      {model}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <Input
+                  placeholder={
+                    isLocal ? "upscale model file" : "Local ComfyUI only"
+                  }
+                  value={params.upscale_model_name}
+                  onChange={(e) =>
+                    setParams({ upscale_model_name: e.target.value })
+                  }
                   className="h-8 text-xs"
                   disabled={!isLocal}
                 />

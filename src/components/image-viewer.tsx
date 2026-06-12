@@ -156,6 +156,14 @@ export function ImageViewer() {
                         {params.model_name}
                       </Badge>
                     )}
+                    {params.upscale_model_name && (
+                      <Badge
+                        variant="outline"
+                        className="rounded-md border-accent/35 bg-accent/10 text-accent-foreground"
+                      >
+                        Upscaler: {params.upscale_model_name}
+                      </Badge>
+                    )}
                   </div>
                 </section>
 

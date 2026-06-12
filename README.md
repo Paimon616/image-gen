@@ -44,6 +44,7 @@ ComfyUI/models/checkpoints/
 ComfyUI/models/loras/
 ComfyUI/models/embeddings/
 ComfyUI/models/vae/
+ComfyUI/models/upscale_models/
 ComfyUI/models/controlnet/
 ```
 

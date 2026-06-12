@@ -44,6 +44,7 @@ mkdir -p \
   "$COMFYUI_DIR/models/loras" \
   "$COMFYUI_DIR/models/embeddings" \
   "$COMFYUI_DIR/models/vae" \
+  "$COMFYUI_DIR/models/upscale_models" \
   "$COMFYUI_DIR/models/controlnet" \
   "$COMFYUI_DIR/input" \
   "$COMFYUI_DIR/output" \
@@ -59,6 +60,7 @@ Next steps:
      $COMFYUI_DIR/models/loras
      $COMFYUI_DIR/models/embeddings
      $COMFYUI_DIR/models/vae
+     $COMFYUI_DIR/models/upscale_models
      $COMFYUI_DIR/models/controlnet
   2. Start ComfyUI:
      npm run comfyui

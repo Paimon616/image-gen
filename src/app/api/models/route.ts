@@ -163,11 +163,19 @@ async function listModelAssets(
 
 export async function GET() {
   const catalog = await readCatalog();
-  const [checkpointAssets, loraAssets, embeddingAssets, vaeAssets, controlnetAssets] = await Promise.all([
+  const [
+    checkpointAssets,
+    loraAssets,
+    embeddingAssets,
+    vaeAssets,
+    upscaleModelAssets,
+    controlnetAssets,
+  ] = await Promise.all([
     listModelAssets("checkpoints", catalog),
     listModelAssets("loras", catalog),
     listModelAssets("embeddings", catalog),
     listModelAssets("vae", catalog),
+    listModelAssets("upscale_models", catalog),
     listModelAssets("controlnet", catalog),
   ]);
   const animaMissingRequiredFiles = await getMissingRequiredModelFiles("anima");
@@ -178,11 +186,13 @@ export async function GET() {
       loras: loraAssets.map((asset) => asset.path),
       embeddings: embeddingAssets.map((asset) => asset.path),
       vaes: vaeAssets.map((asset) => asset.path),
+      upscale_models: upscaleModelAssets.map((asset) => asset.path),
       controlnets: controlnetAssets.map((asset) => asset.path),
       checkpointAssets,
       loraAssets,
       embeddingAssets,
       vaeAssets,
+      upscaleModelAssets,
       controlnetAssets,
       animaMissingRequiredFiles,
     },

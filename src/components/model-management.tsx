@@ -32,6 +32,7 @@ interface ModelsResponse {
   loraAssets: ModelAsset[];
   embeddingAssets: ModelAsset[];
   vaeAssets: ModelAsset[];
+  upscaleModelAssets: ModelAsset[];
 }
 
 interface EditableMetadata {
@@ -48,6 +49,7 @@ const GROUPS = [
   { id: "loras", label: "LoRA", folder: "loras", key: "loraAssets" },
   { id: "embeddings", label: "Embeddings", folder: "embeddings", key: "embeddingAssets" },
   { id: "vae", label: "VAE", folder: "vae", key: "vaeAssets" },
+  { id: "upscale_models", label: "Upscalers", folder: "upscale_models", key: "upscaleModelAssets" },
 ] as const;
 
 function parseTags(value: string) {
@@ -498,11 +500,13 @@ export function ModelManagement() {
         (models?.checkpointAssets.length ?? 0) +
         (models?.loraAssets.length ?? 0) +
         (models?.embeddingAssets.length ?? 0) +
-        (models?.vaeAssets.length ?? 0),
+        (models?.vaeAssets.length ?? 0) +
+        (models?.upscaleModelAssets.length ?? 0),
       checkpoints: models?.checkpointAssets.length ?? 0,
       loras: models?.loraAssets.length ?? 0,
       embeddings: models?.embeddingAssets.length ?? 0,
       vae: models?.vaeAssets.length ?? 0,
+      upscale_models: models?.upscaleModelAssets.length ?? 0,
     }),
     [models]
   );
@@ -551,7 +555,7 @@ export function ModelManagement() {
               </h1>
             </div>
             <p className="text-sm font-medium text-muted-foreground">
-              Manage local checkpoints, LoRA, embeddings, and VAE metadata.
+              Manage local checkpoints, LoRA, embeddings, VAE, and upscaler metadata.
             </p>
           </div>
           <Button

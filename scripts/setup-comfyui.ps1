@@ -45,6 +45,7 @@ $VenvPython = Join-Path $VenvDir "Scripts\python.exe"
   "models\loras",
   "models\embeddings",
   "models\vae",
+  "models\upscale_models",
   "models\controlnet",
   "input",
   "output",

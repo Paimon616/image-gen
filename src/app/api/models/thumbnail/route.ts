@@ -12,6 +12,7 @@ const ALLOWED_FOLDERS = new Set([
   "loras",
   "embeddings",
   "vae",
+  "upscale_models",
   "controlnet",
 ]);
 const CONTENT_TYPES: Record<string, string> = {
