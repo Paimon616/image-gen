@@ -52,6 +52,14 @@ Files such as `.safetensors` stay local. Model metadata can be committed through
 
 ## Run
 
+On macOS, double-click `Launch Image Gen.command` from Finder. It starts ComfyUI and the Next.js app, then opens `http://localhost:3000`.
+
+You can also run the same launcher from a terminal:
+
+```bash
+npm run local
+```
+
 Start ComfyUI on macOS/Linux:
 
 ```bash

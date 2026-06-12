@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "local": "bash scripts/start-local.sh",
     "setup:comfyui": "bash scripts/setup-comfyui.sh",
     "setup:comfyui:win": "powershell -ExecutionPolicy Bypass -File scripts/setup-comfyui.ps1",
     "comfyui": "bash scripts/run-comfyui.sh",
