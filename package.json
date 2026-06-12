@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "local": "bash scripts/start-local.sh",
+    "local:win": "powershell -ExecutionPolicy Bypass -File scripts/start-local.ps1",
     "setup:comfyui": "bash scripts/setup-comfyui.sh",
     "setup:comfyui:win": "powershell -ExecutionPolicy Bypass -File scripts/setup-comfyui.ps1",
     "comfyui": "bash scripts/run-comfyui.sh",
