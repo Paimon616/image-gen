@@ -16,6 +16,7 @@ interface CivitaiImageItem {
   width?: number;
   height?: number;
   username?: string;
+  tags?: unknown;
   meta?: Record<string, unknown> | null;
 }
 
@@ -42,6 +43,7 @@ interface CivitaiPageResource {
 interface CivitaiPageGenerationData {
   meta?: Record<string, unknown> | null;
   resources?: CivitaiPageResource[];
+  importedTags?: string[];
   image?: {
     url?: string;
     width?: number;
@@ -85,6 +87,47 @@ function recordValue(value: unknown) {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : null;
+}
+
+function normalizeImportedTags(...sources: unknown[]) {
+  const tags = sources.flatMap((source) => {
+    if (!source) return [];
+
+    if (typeof source === "string") {
+      return source.split(/[,，\n]/);
+    }
+
+    if (!Array.isArray(source)) {
+      const record = recordValue(source);
+      const name = record
+        ? stringValue(record.name ?? record.tag ?? record.label ?? record.value)
+        : "";
+
+      return name ? [name] : [];
+    }
+
+    return source.flatMap((item) => {
+      if (typeof item === "string") return [item];
+
+      const record = recordValue(item);
+      if (!record) return [];
+
+      return [
+        stringValue(record.name),
+        stringValue(record.tag),
+        stringValue(record.label),
+        stringValue(record.value),
+      ].filter(Boolean);
+    });
+  });
+
+  return Array.from(
+    new Set(
+      tags
+        .map((tag) => tag.trim())
+        .filter((tag) => tag.length > 0 && tag.length <= 80)
+    )
+  ).slice(0, 64);
 }
 
 function normalizeResourceType(type: string): ImportedCivitaiResource["type"] {
@@ -237,6 +280,11 @@ function extractGenerationDataFromPageHtml(html: string): CivitaiPageGenerationD
     : [];
   const imageData = imageQuery ? recordValue(recordValue(imageQuery.state)?.data) : null;
   const user = imageData ? recordValue(imageData.user) : null;
+  const importedTags = normalizeImportedTags(
+    imageData?.tags,
+    imageData?.tagNames,
+    imageData?.tagNamesNormalized
+  );
   const image = {
     url: jsonLdImage?.url,
     width: numberValue(imageData?.width) ?? jsonLdImage?.width ?? undefined,
@@ -244,7 +292,7 @@ function extractGenerationDataFromPageHtml(html: string): CivitaiPageGenerationD
     username: stringValue(user?.username) || jsonLdImage?.username || undefined,
   };
 
-  return { meta, resources, image };
+  return { meta, resources, importedTags, image };
 }
 
 async function fetchGenerationDataFromPage(imageId: number, origin: string) {
@@ -500,6 +548,12 @@ export async function POST(req: NextRequest) {
     meta ? parseResources(meta) : [],
     pageResources
   );
+  const importedTags = normalizeImportedTags(
+    item?.tags,
+    meta?.tags,
+    meta?.Tags,
+    pageGenerationData?.importedTags
+  );
   const checkpoint = resources.find((resource) => resource.type === "checkpoint");
   const loras = resources
     .filter((resource) => resource.type === "lora")
@@ -530,6 +584,7 @@ export async function POST(req: NextRequest) {
     imageUrl: itemForParsing.url ?? "",
     pageUrl: `${imageReference.origin}/images/${itemForParsing.id}`,
     username: itemForParsing.username,
+    importedTags,
     metadataHidden: !meta,
     warning: !meta
       ? "Prompt and generation metadata are hidden on Civitai. Imported available image size and resource links only."

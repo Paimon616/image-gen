@@ -116,6 +116,7 @@ export interface CivitaiImportResult {
   imageUrl: string;
   pageUrl: string;
   username?: string;
+  importedTags: string[];
   metadataHidden?: boolean;
   warning?: string;
   params: Partial<GenerationParams>;
@@ -141,6 +142,7 @@ export interface HistoryEntry {
   importedParams: Partial<GenerationParams>;
   resources: ImportedCivitaiResource[];
   missingResources: HistoryMissingResource[];
+  importedTags: string[];
   userTags: string[];
   rawImport?: CivitaiImportResult;
 }

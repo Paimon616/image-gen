@@ -77,6 +77,18 @@ function normalizeUserTags(value: unknown) {
   return Array.from(new Set(tags));
 }
 
+function normalizeImportedTags(value: unknown) {
+  if (!Array.isArray(value)) return [];
+
+  const tags = value
+    .filter((tag): tag is string => typeof tag === "string")
+    .map((tag) => tag.trim())
+    .filter(Boolean)
+    .slice(0, 64);
+
+  return Array.from(new Set(tags));
+}
+
 function withHistoryDefaults(entry: HistoryEntry): HistoryEntry {
   return {
     ...entry,
@@ -85,6 +97,9 @@ function withHistoryDefaults(entry: HistoryEntry): HistoryEntry {
     missingResources: Array.isArray(entry.missingResources)
       ? entry.missingResources
       : [],
+    importedTags: normalizeImportedTags(
+      entry.importedTags ?? entry.rawImport?.importedTags
+    ),
     userTags: normalizeUserTags(entry.userTags),
   };
 }
@@ -273,6 +288,7 @@ async function updateExistingHistoryEntry({
     importedParams: importResult.params,
     resources: importResult.resources,
     missingResources,
+    importedTags: normalizeImportedTags(importResult.importedTags),
     userTags: normalizeUserTags(duplicate.entry.userTags),
     rawImport: importResult,
   };
@@ -315,6 +331,7 @@ async function updateExistingGeneratedEntry({
     importedParams: params,
     resources: [],
     missingResources: [],
+    importedTags: [],
     userTags: normalizeUserTags(duplicate.entry.userTags),
   };
 
@@ -391,6 +408,7 @@ export async function POST(req: NextRequest) {
         importedParams: params,
         resources: [],
         missingResources: [],
+        importedTags: [],
         userTags: [],
       };
 
@@ -453,6 +471,7 @@ export async function POST(req: NextRequest) {
     importedParams: importResult.params,
     resources: importResult.resources,
     missingResources: body.missingResources ?? [],
+    importedTags: normalizeImportedTags(importResult.importedTags),
     userTags: [],
     rawImport: importResult,
   };

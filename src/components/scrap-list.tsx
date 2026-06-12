@@ -71,6 +71,19 @@ function normalizeUserTags(value: unknown) {
   );
 }
 
+function normalizeImportedTags(value: unknown) {
+  if (!Array.isArray(value)) return [];
+
+  return Array.from(
+    new Set(
+      value
+        .filter((tag): tag is string => typeof tag === "string")
+        .map((tag) => tag.trim())
+        .filter(Boolean)
+    )
+  );
+}
+
 function parseTags(value: string) {
   return Array.from(
     new Set(
@@ -234,6 +247,34 @@ function TagEditor({
           저장
         </Button>
       </form>
+    </section>
+  );
+}
+
+function ImportedTags({ entry, max }: { entry: HistoryEntry; max?: number }) {
+  const tags = normalizeImportedTags(entry.importedTags);
+  const visible = typeof max === "number" ? tags.slice(0, max) : tags;
+
+  if (tags.length === 0) return null;
+
+  return (
+    <section className="space-y-2">
+      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-muted-foreground">
+        <Tag className="h-3 w-3" />
+        Source Tags
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {visible.map((tag) => (
+          <Badge key={tag} variant="secondary" className="max-w-full rounded-md">
+            <span className="truncate">{tag}</span>
+          </Badge>
+        ))}
+        {tags.length > visible.length && (
+          <Badge variant="outline" className="rounded-md">
+            +{tags.length - visible.length}
+          </Badge>
+        )}
+      </div>
     </section>
   );
 }
@@ -444,6 +485,7 @@ function DetailCard({
 
         <section className="space-y-2">
           <ResourceBadges entry={entry} max={3} />
+          <ImportedTags entry={entry} max={8} />
           <MissingResourcesNotice entry={entry} />
         </section>
       </div>
@@ -471,6 +513,7 @@ function TableView({
             <th className="px-3 py-2">Info</th>
             <th className="px-3 py-2">Prompt</th>
             <th className="px-3 py-2">Params</th>
+            <th className="px-3 py-2">Source Tags</th>
             <th className="px-3 py-2">My Tags</th>
             <th className="w-28 px-3 py-2 text-right">Actions</th>
           </tr>
@@ -510,6 +553,9 @@ function TableView({
                 <div className="mt-1 max-w-36 truncate text-muted-foreground">
                   {entry.params.sampler_name}
                 </div>
+              </td>
+              <td className="min-w-72 px-3 py-3 align-top">
+                <ImportedTags entry={entry} max={6} />
               </td>
               <td className="min-w-72 px-3 py-3 align-top">
                 <div className="flex max-w-72 flex-wrap gap-1.5">
@@ -687,6 +733,12 @@ function ScrapEntryDialog({
                 <MissingResourcesNotice entry={entry} />
               </section>
 
+              {normalizeImportedTags(entry.importedTags).length > 0 && (
+                <section className="rounded-md border border-border bg-card p-3 shadow-sm">
+                  <ImportedTags entry={entry} />
+                </section>
+              )}
+
               <section className="rounded-md border border-border bg-card p-3 shadow-sm">
                 <TagEditor
                   entry={entry}
@@ -725,6 +777,7 @@ export function ScrapList() {
         const loadedEntries = Array.isArray(data.entries)
           ? (data.entries as HistoryEntry[]).map((entry) => ({
               ...entry,
+              importedTags: normalizeImportedTags(entry.importedTags),
               userTags: normalizeUserTags(entry.userTags),
             }))
           : [];

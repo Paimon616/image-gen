@@ -475,5 +475,15 @@
       "nsfw",
       "woman"
     ]
+  },
+  "upscale_models/remacri_original.safetensors": {
+    "name": "Remacri",
+    "version": "Original",
+    "base_model": "Upscaler",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/b6b3d1d9-6467-4719-9136-877732b4c3aa/original=true/2566828.jpeg",
+    "civitai_url": "https://civitai.red/models/147759/remacri?modelVersionId=164821",
+    "tags": [
+      "base model"
+    ]
   }
 }
