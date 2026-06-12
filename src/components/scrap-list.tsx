@@ -148,7 +148,9 @@ function EntryActions({
   refreshing?: boolean;
   compact?: boolean;
 }) {
-  const canRefresh = entry.source === "civitai" && Boolean(entry.pageUrl || entry.requestedUrl);
+  const canRefresh =
+    (entry.source === "civitai" && Boolean(entry.pageUrl || entry.requestedUrl)) ||
+    (entry.source === "generated" && Boolean(entry.params.prompt));
 
   return (
     <div className={cn("flex gap-2", compact && "justify-end")}>
@@ -175,7 +177,9 @@ function EntryActions({
             event.stopPropagation();
             onRefresh(entry);
           }}
-          aria-label="Refresh import"
+          aria-label={
+            entry.source === "generated" ? "Refresh prompt tags" : "Refresh import"
+          }
         >
           <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
         </Button>
@@ -949,7 +953,10 @@ export function ScrapList() {
   };
 
   const refreshEntry = async (entry: HistoryEntry) => {
-    if (refreshingId || entry.source !== "civitai") return;
+    if (refreshingId) return;
+
+    const action =
+      entry.source === "generated" ? "refresh-tags" : "refresh-import";
 
     setRefreshingId(entry.id);
     setStatus("");
@@ -958,7 +965,7 @@ export function ScrapList() {
       const response = await fetch("/api/scrap", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: entry.id, action: "refresh-import" }),
+        body: JSON.stringify({ id: entry.id, action }),
       });
       const data = (await response.json().catch(() => null)) as {
         entry?: HistoryEntry;
@@ -979,13 +986,17 @@ export function ScrapList() {
         current.map((item) => (item.id === entry.id ? updatedEntry : item))
       );
       setDrafts((current) => ({ ...current, [entry.id]: current[entry.id] ?? "" }));
-      setStatus("스크랩을 다시 가져왔습니다.");
+      setStatus(
+        entry.source === "generated"
+          ? "이미지태그를 다시 만들었습니다."
+          : "스크랩을 다시 가져왔습니다."
+      );
       setTimeout(() => setStatus(""), 2500);
     } catch (error) {
       setStatus(
         error instanceof Error
           ? error.message
-          : "스크랩을 다시 가져오지 못했습니다."
+          : "이미지태그를 갱신하지 못했습니다."
       );
       setTimeout(() => setStatus(""), 3500);
     } finally {

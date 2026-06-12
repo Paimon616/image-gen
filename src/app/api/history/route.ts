@@ -9,6 +9,7 @@ import type {
   HistoryEntry,
   HistoryMissingResource,
 } from "@/lib/types";
+import { inferTagsFromPrompt } from "@/lib/prompt-tags";
 
 const HISTORY_DIR = join(process.cwd(), "data", "history");
 const HISTORY_IMAGE_DIR = join(HISTORY_DIR, "images");
@@ -27,7 +28,7 @@ interface DeleteHistoryBody {
 
 interface UpdateHistoryBody {
   id?: string;
-  action?: "refresh-import";
+  action?: "refresh-import" | "refresh-tags";
   userTags?: unknown;
 }
 
@@ -101,6 +102,10 @@ function normalizeImportedTags(value: unknown) {
     .slice(0, 64);
 
   return Array.from(new Set(tags));
+}
+
+function generatedImageTags(params: GenerationParams) {
+  return normalizeImportedTags(inferTagsFromPrompt(params.prompt));
 }
 
 function withHistoryDefaults(entry: HistoryEntry): HistoryEntry {
@@ -345,7 +350,7 @@ async function updateExistingGeneratedEntry({
     importedParams: params,
     resources: [],
     missingResources: [],
-    importedTags: [],
+    importedTags: generatedImageTags(params),
     userTags: normalizeUserTags(duplicate.entry.userTags),
   };
 
@@ -422,7 +427,7 @@ export async function POST(req: NextRequest) {
         importedParams: params,
         resources: [],
         missingResources: [],
-        importedTags: [],
+        importedTags: generatedImageTags(params),
         userTags: [],
       };
 
@@ -508,6 +513,24 @@ export async function PATCH(req: NextRequest) {
     const entry = withHistoryDefaults(
       JSON.parse(await readFile(entryPath, "utf-8")) as HistoryEntry
     );
+
+    if (body?.action === "refresh-tags") {
+      if (entry.source !== "generated") {
+        return NextResponse.json(
+          { error: "Only generated scraps can refresh prompt tags" },
+          { status: 400 }
+        );
+      }
+
+      const updatedEntry: HistoryEntry = {
+        ...entry,
+        importedTags: generatedImageTags(entry.params),
+      };
+
+      await writeFile(entryPath, JSON.stringify(updatedEntry, null, 2));
+
+      return NextResponse.json({ entry: updatedEntry });
+    }
 
     if (body?.action === "refresh-import") {
       const refreshUrl = entry.pageUrl || entry.requestedUrl;
