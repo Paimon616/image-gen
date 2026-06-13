@@ -9,6 +9,7 @@ interface ImageUploadProps {
   description: string;
   value: string | null;
   onChange: (url: string | null) => void;
+  onPreview?: () => void;
 }
 
 export function ImageUpload({
@@ -16,6 +17,7 @@ export function ImageUpload({
   description,
   value,
   onChange,
+  onPreview,
 }: ImageUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -73,7 +75,19 @@ export function ImageUpload({
       />
 
       {value ? (
-        <div className="relative group">
+        <div
+          role={onPreview ? "button" : undefined}
+          tabIndex={onPreview ? 0 : undefined}
+          onClick={onPreview}
+          onKeyDown={(event) => {
+            if (!onPreview) return;
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              onPreview();
+            }
+          }}
+          className={`relative group ${onPreview ? "cursor-zoom-in focus:outline-none focus-visible:ring-3 focus-visible:ring-ring/30" : ""}`}
+        >
           <img
             src={value}
             alt={label}
@@ -83,14 +97,20 @@ export function ImageUpload({
             <Button
               size="sm"
               variant="secondary"
-              onClick={() => inputRef.current?.click()}
+              onClick={(event) => {
+                event.stopPropagation();
+                inputRef.current?.click();
+              }}
             >
               Replace
             </Button>
             <Button
               size="sm"
               variant="destructive"
-              onClick={() => onChange(null)}
+              onClick={(event) => {
+                event.stopPropagation();
+                onChange(null);
+              }}
             >
               Remove
             </Button>

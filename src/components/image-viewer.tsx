@@ -1,7 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { BookmarkPlus, Check, Download, RotateCcw, Trash2 } from "lucide-react";
+import {
+  BookmarkPlus,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  RotateCcw,
+  Trash2,
+} from "lucide-react";
 import { useStore } from "@/lib/store";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -47,7 +55,7 @@ function TextSection({
 }
 
 export function ImageViewer() {
-  const { selectedImage, setSelectedImage, loadParamsFromImage, removeImage } =
+  const { images, selectedImage, setSelectedImage, loadParamsFromImage, removeImage } =
     useStore();
   const [scrappingImageId, setScrappingImageId] = useState<string | null>(null);
   const [scrappedImageId, setScrappedImageId] = useState<string | null>(null);
@@ -104,6 +112,22 @@ export function ImageViewer() {
   const params = selectedImage.params;
   const isScrapping = scrappingImageId === selectedImage.id;
   const isScrapped = scrappedImageId === selectedImage.id;
+  const selectedIndex = images.findIndex((image) => image.id === selectedImage.id);
+  const previousImage =
+    selectedIndex > 0 ? images[selectedIndex - 1] : images.at(-1) ?? null;
+  const nextImage =
+    selectedIndex >= 0 && selectedIndex < images.length - 1
+      ? images[selectedIndex + 1]
+      : images[0] ?? null;
+  const hasNavigation = images.length > 1;
+
+  const showPreviousImage = () => {
+    if (previousImage) setSelectedImage(previousImage);
+  };
+
+  const showNextImage = () => {
+    if (nextImage) setSelectedImage(nextImage);
+  };
 
   return (
     <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
@@ -112,6 +136,30 @@ export function ImageViewer() {
 
         <div className="grid h-full w-full grid-cols-[minmax(0,1fr)_minmax(22rem,34rem)] bg-background">
           <div className="relative min-w-0 overflow-auto border-r border-border bg-[radial-gradient(circle_at_1px_1px,color-mix(in_oklch,var(--border)_55%,transparent)_1px,transparent_0)] [background-size:24px_24px]">
+            {hasNavigation && (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={showPreviousImage}
+                  className="absolute left-4 top-1/2 z-10 h-11 w-11 -translate-y-1/2 rounded-full bg-card/90 shadow-lg backdrop-blur hover:bg-card"
+                  aria-label="Previous image"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={showNextImage}
+                  className="absolute right-4 top-1/2 z-10 h-11 w-11 -translate-y-1/2 rounded-full bg-card/90 shadow-lg backdrop-blur hover:bg-card"
+                  aria-label="Next image"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </Button>
+              </>
+            )}
             <div className="flex min-h-full min-w-full p-6">
               <div className="m-auto rounded-lg border border-border bg-card p-2 shadow-lg">
                 <img

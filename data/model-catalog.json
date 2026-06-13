@@ -485,5 +485,116 @@
     "tags": [
       "base model"
     ]
+  },
+  "loras/ily-scat-smear.safetensors": {
+    "name": "ily-scat-smear",
+    "version": "",
+    "base_model": "Illustrious",
+    "thumbnail_url": null,
+    "source_url": "https://huggingface.co/thecakeisal1e/ily-scat-smear",
+    "tags": [
+      "lora",
+      "huggingface",
+      "illustrious"
+    ]
+  },
+  "checkpoints/pieModels_nutella.safetensors": {
+    "name": "Pie - Models 🥧",
+    "version": "Nutella",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/5a0b81f6-828a-4b1c-b016-2ad1667c20af/original=true/133005781.jpeg",
+    "civitai_url": "https://civitai.red/models/1593793/pie-models?modelVersionId=3009657",
+    "tags": [
+      "women",
+      "model",
+      "merge",
+      "anime",
+      "illustrious",
+      "base model"
+    ]
+  },
+  "checkpoints/nova3DCGXL_ilV90.safetensors": {
+    "name": "Nova 3DCG XL",
+    "version": "IL v9.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/d35d6311-986f-45ac-81d5-c86400d143fa/original=true/123183138.jpeg",
+    "civitai_url": "https://civitai.red/models/715287/nova-3dcg-xl?modelVersionId=2744564",
+    "source_url": "https://civitai.red/models/715287/nova-3dcg-xl?modelVersionId=2744564",
+    "tags": [
+      "3d",
+      "colorful",
+      "digital art",
+      "base model",
+      "cg",
+      "model",
+      "illustration",
+      "fantasy",
+      "hentai",
+      "doll",
+      "landscape",
+      "2.5d",
+      "3dcg",
+      "xl",
+      "sdxl"
+    ]
+  },
+  "checkpoints/picxReal_10.safetensors": {
+    "name": "PicX_real",
+    "version": "1.0",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/c446740c-3703-4f51-9662-68541da69f82/original=true/4878990.jpeg",
+    "civitai_url": "https://civitai.red/models/241415/picxreal?modelVersionId=272376",
+    "source_url": "https://civitai.red/models/241415/picxreal?modelVersionId=272376",
+    "tags": [
+      "photorealistic",
+      "digital art",
+      "base model",
+      "sci-fi",
+      "fantasy",
+      "nsfw"
+    ]
+  },
+  "checkpoints/epicrealism_naturalSinRC1VAE.safetensors": {
+    "name": "epiCRealism",
+    "version": "Natural Sin RC1 VAE",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/3822f91b-5f4e-4df6-8934-2a453f13b40e/original=true/2103034.jpeg",
+    "civitai_url": "https://civitai.red/models/25694/epicrealism?modelVersionId=143906",
+    "source_url": "https://civitai.red/models/25694/epicrealism?modelVersionId=143906",
+    "tags": [
+      "photorealistic",
+      "female",
+      "analog",
+      "realism",
+      "base model",
+      "portrait",
+      "raw photo",
+      "woman",
+      "photography",
+      "photorealism",
+      "realistic",
+      "photoshoot",
+      "natural colors"
+    ]
+  },
+  "loras/more_details.safetensors": {
+    "name": "Add More Details - Detail Enhancer / Tweaker (细节调整) LoRA",
+    "version": "v1.0",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/c1697174-7c8d-4bde-b053-7b1ec0692b64/original=true/995787.jpeg",
+    "civitai_url": "https://civitai.red/models/82098/add-more-details-detail-enhancer-tweaker-lora?modelVersionId=87153",
+    "source_url": "https://civitai.red/models/82098/add-more-details-detail-enhancer-tweaker-lora?modelVersionId=87153",
+    "tags": [
+      "portraits",
+      "landscape",
+      "detail",
+      "tool",
+      "lora",
+      "enhancer",
+      "detailer",
+      "details",
+      "backgrounds",
+      "detail tweaker"
+    ]
   }
 }

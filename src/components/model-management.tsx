@@ -2,7 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { Edit3, ExternalLink, RefreshCw, Sparkles, Tags } from "lucide-react";
+import {
+  Download,
+  ExternalLink,
+  Heart,
+  Info,
+  Loader2,
+  RefreshCw,
+  Sparkles,
+  Tags,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +33,7 @@ interface ModelAsset {
   base_model: string;
   thumbnail_url: string | null;
   civitai_url: string | null;
+  source_url: string | null;
   tags: string[];
 }
 
@@ -41,7 +51,33 @@ interface EditableMetadata {
   base_model: string;
   thumbnail_url: string | null;
   civitai_url: string | null;
+  source_url: string | null;
   tags: string[];
+}
+
+interface SourceInfo {
+  repo_id?: string;
+  name?: string;
+  author?: string;
+  sha?: string;
+  last_modified?: string;
+  pipeline_tag?: string;
+  library_name?: string;
+  downloads?: number | null;
+  likes?: number | null;
+  base_model?: string;
+  license?: string;
+  datasets?: string[];
+  tags?: string[];
+  trigger_words?: string[];
+  description?: string;
+  files?: {
+    name: string;
+    size: number | null;
+  }[];
+  file_size_total?: number | null;
+  source_url?: string;
+  error?: string;
 }
 
 const GROUPS = [
@@ -67,8 +103,49 @@ function assetKey(asset: ModelAsset) {
     asset.base_model,
     asset.thumbnail_url ?? "",
     asset.civitai_url ?? "",
+    asset.source_url ?? "",
     asset.tags.join(","),
   ].join(":");
+}
+
+function getSourceUrl(asset: Pick<ModelAsset, "source_url" | "civitai_url">) {
+  return asset.source_url || asset.civitai_url || "";
+}
+
+function sourceProvider(url: string) {
+  if (/^https?:\/\/([^/]+\.)?huggingface\.co\//i.test(url)) return "huggingface";
+  if (/^https?:\/\/([^/]+\.)?civitai\.(com|red)\//i.test(url)) return "civitai";
+  return url ? "source" : "";
+}
+
+function sourceLabel(url: string) {
+  const provider = sourceProvider(url);
+  if (provider === "huggingface") return "Hugging Face";
+  if (provider === "civitai") return "Civitai";
+  return "Source";
+}
+
+function isCivitaiUrl(url: string) {
+  return sourceProvider(url) === "civitai";
+}
+
+function formatCount(value: number | null | undefined) {
+  if (typeof value !== "number") return "0";
+  return new Intl.NumberFormat("en").format(value);
+}
+
+function formatBytes(value: number | null | undefined) {
+  if (!value) return "";
+  const units = ["B", "KB", "MB", "GB"];
+  let size = value;
+  let unit = 0;
+
+  while (size >= 1024 && unit < units.length - 1) {
+    size /= 1024;
+    unit += 1;
+  }
+
+  return `${size.toFixed(unit === 0 ? 0 : 1)} ${units[unit]}`;
 }
 
 function ModelThumb({
@@ -123,16 +200,28 @@ function TagPill({
 
 function ModelCard({
   asset,
-  onEdit,
+  onView,
 }: {
   asset: ModelAsset;
-  onEdit: () => void;
+  onView: () => void;
 }) {
   const [showAllTags, setShowAllTags] = useState(false);
   const visibleTags = showAllTags ? asset.tags : asset.tags.slice(0, 4);
+  const sourceUrl = getSourceUrl(asset);
 
   return (
-    <article className="group grid min-h-40 grid-cols-[6rem_minmax(0,1fr)] gap-3 rounded-lg border border-border bg-card p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md focus-within:border-primary/25 focus-within:shadow-md">
+    <article
+      role="button"
+      tabIndex={0}
+      onClick={onView}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onView();
+        }
+      }}
+      className="group grid min-h-40 cursor-pointer grid-cols-[6rem_minmax(0,1fr)] gap-3 rounded-lg border border-border bg-card p-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md focus:outline-none focus-visible:border-primary/25 focus-visible:ring-3 focus-visible:ring-ring/20 focus-within:border-primary/25 focus-within:shadow-md"
+    >
       <ModelThumb asset={asset} className="h-28 w-full shadow-sm" />
 
       <div className="flex min-w-0 flex-col">
@@ -146,16 +235,6 @@ function ModelCard({
                 {asset.path}
               </p>
             </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 shrink-0 px-2 opacity-0 shadow-none transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
-              onClick={onEdit}
-            >
-              <Edit3 className="h-4 w-4" />
-              <span className="ml-1 hidden sm:inline">Edit</span>
-            </Button>
           </div>
 
           <div className="mt-2 flex flex-wrap gap-1.5">
@@ -175,12 +254,12 @@ function ModelCard({
                 {asset.base_model}
               </Badge>
             )}
-            {asset.civitai_url && (
+            {sourceUrl && (
               <Badge
                 variant="outline"
                 className="rounded-md border-primary/25 bg-primary/10 text-primary"
               >
-                Civitai
+                {sourceLabel(sourceUrl)}
               </Badge>
             )}
           </div>
@@ -201,7 +280,10 @@ function ModelCard({
               {asset.tags.length > visibleTags.length && (
                 <button
                   type="button"
-                  onClick={() => setShowAllTags(true)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setShowAllTags(true);
+                  }}
                   className="h-5 rounded-md bg-primary/10 px-1.5 text-[10px] font-semibold text-primary transition-colors hover:bg-primary/15"
                 >
                   +{asset.tags.length - visibleTags.length}
@@ -214,6 +296,34 @@ function ModelCard({
               No tags
             </div>
           )}
+
+          <div className="mt-3 flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={(event) => {
+                event.stopPropagation();
+                onView();
+              }}
+            >
+              <Info className="h-3.5 w-3.5" />
+              Details
+            </Button>
+            {sourceUrl && (
+              <a
+                href={sourceUrl}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(event) => event.stopPropagation()}
+                className="inline-flex h-7 items-center gap-1.5 rounded-md border border-border bg-card px-2 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/30 hover:text-primary"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Open
+              </a>
+            )}
+          </div>
         </div>
       </div>
     </article>
@@ -228,7 +338,26 @@ function EmptyState({ label }: { label: string }) {
   );
 }
 
-function ModelEditDialog({
+function MetadataRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: ReactNode;
+}) {
+  if (!value) return null;
+
+  return (
+    <div className="grid gap-1">
+      <div className="text-[11px] font-bold uppercase text-muted-foreground">
+        {label}
+      </div>
+      <div className="min-w-0 text-sm font-medium text-foreground">{value}</div>
+    </div>
+  );
+}
+
+function ModelDetailsDialog({
   asset,
   folder,
   open,
@@ -245,11 +374,14 @@ function ModelEditDialog({
   const [version, setVersion] = useState(asset.version);
   const [baseModel, setBaseModel] = useState(asset.base_model);
   const [thumbnailUrl, setThumbnailUrl] = useState(asset.thumbnail_url ?? "");
-  const [civitaiUrl, setCivitaiUrl] = useState(asset.civitai_url ?? "");
+  const [sourceUrl, setSourceUrl] = useState(getSourceUrl(asset));
   const [tags, setTags] = useState(asset.tags.join(", "));
   const [saving, setSaving] = useState(false);
-  const [loadingCivitai, setLoadingCivitai] = useState(false);
+  const [loadingSource, setLoadingSource] = useState(false);
+  const provider = sourceProvider(sourceUrl);
+  const [sourceInfo, setSourceInfo] = useState<SourceInfo | null>(null);
   const [message, setMessage] = useState("");
+  const [editMessage, setEditMessage] = useState("");
 
   const saveMetadata = async (metadata: EditableMetadata) => {
     const res = await fetch("/api/models", {
@@ -271,37 +403,50 @@ function ModelEditDialog({
     version,
     base_model: baseModel,
     thumbnail_url: thumbnailUrl || null,
-    civitai_url: civitaiUrl || null,
+    civitai_url: isCivitaiUrl(sourceUrl) ? sourceUrl : null,
+    source_url: sourceUrl || null,
     tags: parseTags(tags),
   });
 
   const save = async () => {
     setSaving(true);
-    setMessage("");
+    setEditMessage("");
     try {
       await saveMetadata(currentMetadata());
-      setMessage("Saved.");
+      setEditMessage("Saved.");
       onSaved();
-      onOpenChange(false);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Failed to save.");
+      setEditMessage(error instanceof Error ? error.message : "Failed to save.");
     } finally {
       setSaving(false);
     }
   };
 
-  const loadCivitaiInfo = async () => {
-    const trimmedUrl = civitaiUrl.trim();
+  const loadSourceInfo = async () => {
+    const trimmedUrl = sourceUrl.trim();
     if (!trimmedUrl) {
-      setMessage("Enter a Civitai URL first.");
+      setEditMessage("Enter a source URL first.");
       return;
     }
 
-    setLoadingCivitai(true);
-    setMessage("");
+    const currentProvider = sourceProvider(trimmedUrl);
+    const endpoint =
+      currentProvider === "huggingface"
+        ? "/api/models/huggingface"
+        : currentProvider === "civitai"
+          ? "/api/models/civitai"
+          : "";
+
+    if (!endpoint) {
+      setEditMessage("Only Hugging Face and Civitai URLs can be loaded.");
+      return;
+    }
+
+    setLoadingSource(true);
+    setEditMessage("");
     try {
       const res = await fetch(
-        `/api/models/civitai?url=${encodeURIComponent(trimmedUrl)}`,
+        `${endpoint}?url=${encodeURIComponent(trimmedUrl)}`,
         { cache: "no-store" }
       );
       const data = (await res.json()) as {
@@ -310,136 +455,327 @@ function ModelEditDialog({
         base_model?: string;
         thumbnail_url?: string | null;
         tags?: string[];
+        trigger_words?: string[];
         error?: string;
       };
 
       if (!res.ok) {
-        throw new Error(data.error || "Failed to load Civitai info");
+        throw new Error(data.error || "Failed to load source info");
       }
 
+      const importedTags = Array.from(
+        new Set([...(data.trigger_words ?? []), ...(data.tags ?? parseTags(tags))])
+      );
       const metadata: EditableMetadata = {
         name: data.name || name,
         version: data.version || version,
         base_model: data.base_model || baseModel,
         thumbnail_url: data.thumbnail_url || thumbnailUrl || null,
-        civitai_url: trimmedUrl,
-        tags: data.tags ?? parseTags(tags),
+        civitai_url: currentProvider === "civitai" ? trimmedUrl : null,
+        source_url: trimmedUrl,
+        tags: importedTags,
       };
 
       setName(metadata.name);
       setVersion(metadata.version);
       setBaseModel(metadata.base_model);
       setThumbnailUrl(metadata.thumbnail_url ?? "");
+      setSourceUrl(metadata.source_url ?? "");
       setTags(metadata.tags.join(", "));
 
       await saveMetadata(metadata);
-      setMessage("Loaded and saved Civitai metadata.");
+      setEditMessage(`Loaded and saved ${sourceLabel(trimmedUrl)} metadata.`);
       onSaved();
     } catch (error) {
-      setMessage(
-        error instanceof Error ? error.message : "Failed to load Civitai metadata."
+      setEditMessage(
+        error instanceof Error ? error.message : "Failed to load source metadata."
       );
     } finally {
-      setLoadingCivitai(false);
+      setLoadingSource(false);
     }
   };
 
+  useEffect(() => {
+    if (!open || provider !== "huggingface" || !sourceUrl) {
+      return;
+    }
+
+    let cancelled = false;
+
+    fetch(`/api/models/huggingface?url=${encodeURIComponent(sourceUrl)}`, {
+      cache: "no-store",
+    })
+      .then(async (res) => {
+        const data = (await res.json()) as SourceInfo;
+
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to load Hugging Face info");
+        }
+
+        if (!cancelled) {
+          setSourceInfo(data);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setMessage(
+            error instanceof Error
+              ? error.message
+              : "Failed to load Hugging Face metadata."
+          );
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, provider, sourceUrl]);
+
+  const detailTags = sourceInfo?.tags?.length ? sourceInfo.tags : parseTags(tags);
+  const triggerWords = sourceInfo?.trigger_words ?? [];
+  const files = sourceInfo?.files?.slice(0, 8) ?? [];
+  const loading = provider === "huggingface" && !sourceInfo && !message;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-hidden border border-border bg-card p-0 shadow-xl sm:max-w-3xl">
+      <DialogContent className="max-h-[90vh] overflow-hidden border border-border bg-card p-0 shadow-xl sm:max-w-5xl">
         <DialogHeader className="border-b border-border bg-secondary/50 px-5 py-4">
-          <DialogTitle>Edit model metadata</DialogTitle>
+          <DialogTitle>{name}</DialogTitle>
           <DialogDescription className="truncate">{asset.path}</DialogDescription>
         </DialogHeader>
 
-        <div className="grid max-h-[calc(90vh-9rem)] gap-5 overflow-y-auto bg-background/70 px-5 py-4 md:grid-cols-[10rem_minmax(0,1fr)]">
+        <div className="grid max-h-[calc(90vh-8rem)] gap-5 overflow-y-auto bg-background/70 px-5 py-4 md:grid-cols-[12rem_minmax(0,1fr)]">
           <div className="space-y-3">
             <ModelThumb
               asset={{ ...asset, name, thumbnail_url: thumbnailUrl || null }}
               className="aspect-square w-full shadow-sm"
             />
-            {asset.civitai_url && (
+            {sourceUrl && (
               <a
-                href={asset.civitai_url}
+                href={sourceUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1.5 text-xs font-semibold text-muted-foreground hover:border-primary/30 hover:text-primary"
+                className="flex items-center justify-center gap-1.5 rounded-md border border-border bg-card px-2 py-2 text-xs font-semibold text-muted-foreground hover:border-primary/30 hover:text-primary"
               >
                 <ExternalLink className="h-3.5 w-3.5" />
-                Civitai
+                Open {sourceLabel(sourceUrl)}
               </a>
             )}
           </div>
 
-          <div className="grid gap-4">
-            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_8rem]">
-              <div>
-                <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
-                  Name
-                </Label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} />
-              </div>
-              <div>
-                <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
-                  Version
-                </Label>
-                <Input value={version} onChange={(e) => setVersion(e.target.value)} />
-              </div>
-            </div>
-
-            <div>
-              <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
-                Base Model
-              </Label>
-              <Input value={baseModel} onChange={(e) => setBaseModel(e.target.value)} />
-            </div>
-
-            <div>
-              <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
-                Thumbnail URL
-              </Label>
-              <Input
-                value={thumbnailUrl}
-                onChange={(e) => setThumbnailUrl(e.target.value)}
+          <div className="space-y-5">
+            <div className="grid gap-3 rounded-md border border-border bg-card p-3 sm:grid-cols-2 lg:grid-cols-3">
+              <MetadataRow label="Name" value={sourceInfo?.name || name} />
+              <MetadataRow label="Version" value={version} />
+              <MetadataRow
+                label="Base Model"
+                value={sourceInfo?.base_model || baseModel}
+              />
+              <MetadataRow label="Provider" value={sourceUrl ? sourceLabel(sourceUrl) : "Local"} />
+              <MetadataRow label="Author" value={sourceInfo?.author} />
+              <MetadataRow label="Pipeline" value={sourceInfo?.pipeline_tag} />
+              <MetadataRow label="Library" value={sourceInfo?.library_name} />
+              <MetadataRow label="License" value={sourceInfo?.license} />
+              <MetadataRow
+                label="Last Modified"
+                value={
+                  sourceInfo?.last_modified
+                    ? new Date(sourceInfo.last_modified).toLocaleString()
+                    : ""
+                }
               />
             </div>
 
-            <div>
-              <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
-                Tags
-              </Label>
-              <Input
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}
-                placeholder="style, character, realism"
-              />
-            </div>
+            {provider === "huggingface" && (
+              <div className="rounded-md border border-border bg-card p-3">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-bold">Hugging Face info</h3>
+                  {loading && (
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Loading
+                    </span>
+                  )}
+                </div>
 
-            <div>
-              <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
-                Civitai URL
-              </Label>
-              <div className="flex gap-2">
-                <Input
-                  value={civitaiUrl}
-                  onChange={(e) => setCivitaiUrl(e.target.value)}
-                  placeholder="https://civitai.com/models/..."
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="shrink-0"
-                  onClick={loadCivitaiInfo}
-                  disabled={loadingCivitai || saving || !civitaiUrl.trim()}
-                >
-                  {loadingCivitai ? "Loading" : "Load info"}
-                </Button>
+                {message ? (
+                  <div className="rounded-md border border-destructive/25 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
+                    {message}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant="outline" className="rounded-md">
+                        <Download className="mr-1 h-3.5 w-3.5" />
+                        {formatCount(sourceInfo?.downloads)} downloads
+                      </Badge>
+                      <Badge variant="outline" className="rounded-md">
+                        <Heart className="mr-1 h-3.5 w-3.5" />
+                        {formatCount(sourceInfo?.likes)} likes
+                      </Badge>
+                      {formatBytes(sourceInfo?.file_size_total) && (
+                        <Badge variant="outline" className="rounded-md">
+                          {formatBytes(sourceInfo?.file_size_total)}
+                        </Badge>
+                      )}
+                    </div>
+
+                    {sourceInfo?.description && (
+                      <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
+                        {sourceInfo.description}
+                      </p>
+                    )}
+
+                    {triggerWords.length > 0 && (
+                      <div>
+                        <div className="mb-2 text-xs font-bold uppercase text-muted-foreground">
+                          Trigger Words
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {triggerWords.map((word) => (
+                            <Badge key={word} variant="secondary" className="rounded-md">
+                              {word}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {files.length > 0 && (
+                      <div>
+                        <div className="mb-2 text-xs font-bold uppercase text-muted-foreground">
+                          Files
+                        </div>
+                        <div className="grid gap-1.5">
+                          {files.map((file) => (
+                            <div
+                              key={file.name}
+                              className="flex min-w-0 items-center justify-between gap-3 rounded-md bg-background px-2 py-1.5 text-xs"
+                            >
+                              <span className="truncate font-medium">{file.name}</span>
+                              <span className="shrink-0 text-muted-foreground">
+                                {formatBytes(file.size)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-            </div>
+            )}
 
-            {message && (
-              <div className="rounded-md border border-primary/15 bg-secondary/70 px-3 py-2 text-xs font-medium text-secondary-foreground">
-                {message}
+            <section className="rounded-md border border-border bg-card p-3">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h3 className="text-sm font-bold">Metadata</h3>
+                <span className="text-xs font-medium text-muted-foreground">
+                  Update local catalog fields
+                </span>
+              </div>
+
+              <div className="grid gap-4">
+                <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_8rem]">
+                  <div>
+                    <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
+                      Name
+                    </Label>
+                    <Input
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
+                      Version
+                    </Label>
+                    <Input
+                      value={version}
+                      onChange={(e) => setVersion(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
+                    Base Model
+                  </Label>
+                  <Input
+                    value={baseModel}
+                    onChange={(e) => setBaseModel(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
+                    Thumbnail URL
+                  </Label>
+                  <Input
+                    value={thumbnailUrl}
+                    onChange={(e) => setThumbnailUrl(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
+                    Tags
+                  </Label>
+                  <Input
+                    value={tags}
+                    onChange={(e) => setTags(e.target.value)}
+                    placeholder="style, character, realism"
+                  />
+                </div>
+
+                <div>
+                  <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
+                    Source URL
+                  </Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={sourceUrl}
+                      onChange={(e) => setSourceUrl(e.target.value)}
+                      placeholder="https://huggingface.co/owner/model or https://civitai.com/models/..."
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="shrink-0"
+                      onClick={loadSourceInfo}
+                      disabled={loadingSource || saving || !sourceUrl.trim()}
+                    >
+                      {loadingSource ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          Loading
+                        </span>
+                      ) : (
+                        "Load info"
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {editMessage && (
+                  <div className="rounded-md border border-primary/15 bg-secondary/70 px-3 py-2 text-xs font-medium text-secondary-foreground">
+                    {editMessage}
+                  </div>
+                )}
+              </div>
+            </section>
+
+            {detailTags.length > 0 && (
+              <div>
+                <div className="mb-2 text-xs font-bold uppercase text-muted-foreground">
+                  Tags
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {detailTags.map((tag) => (
+                    <Badge key={tag} variant="outline" className="rounded-md bg-card">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -450,14 +786,14 @@ function ModelEditDialog({
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={saving || loadingCivitai}
+            disabled={saving || loadingSource}
           >
-            Cancel
+            Close
           </Button>
           <Button
             type="button"
             onClick={save}
-            disabled={saving || loadingCivitai || !name.trim()}
+            disabled={saving || loadingSource || !name.trim()}
           >
             {saving ? "Saving" : "Save"}
           </Button>
@@ -472,7 +808,7 @@ export function ModelManagement() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [error, setError] = useState("");
   const [selectedTag, setSelectedTag] = useState("all");
-  const [editing, setEditing] = useState<{
+  const [viewing, setViewing] = useState<{
     asset: ModelAsset;
     folder: string;
   } | null>(null);
@@ -619,7 +955,7 @@ export function ModelManagement() {
                   <ModelCard
                     key={`${folder}:${assetKey(asset)}`}
                     asset={asset}
-                    onEdit={() => setEditing({ asset, folder })}
+                    onView={() => setViewing({ asset, folder })}
                   />
                 ))}
               </div>
@@ -636,7 +972,7 @@ export function ModelManagement() {
                     <ModelCard
                       key={assetKey(asset)}
                       asset={asset}
-                      onEdit={() => setEditing({ asset, folder: group.folder })}
+                      onView={() => setViewing({ asset, folder: group.folder })}
                     />
                   ))}
                 </div>
@@ -646,14 +982,14 @@ export function ModelManagement() {
         </Tabs>
       </main>
 
-      {editing && (
-        <ModelEditDialog
-          key={assetKey(editing.asset)}
-          asset={editing.asset}
-          folder={editing.folder}
+      {viewing && (
+        <ModelDetailsDialog
+          key={`${viewing.folder}:${assetKey(viewing.asset)}`}
+          asset={viewing.asset}
+          folder={viewing.folder}
           open
           onOpenChange={(open) => {
-            if (!open) setEditing(null);
+            if (!open) setViewing(null);
           }}
           onSaved={() => setRefreshKey((key) => key + 1)}
         />

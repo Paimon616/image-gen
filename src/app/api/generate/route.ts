@@ -3,7 +3,11 @@ import { generateWithComfyUI } from "@/lib/comfyui";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { randomUUID } from "crypto";
-import { getModelConfig, normalizeImageDimension } from "@/lib/types";
+import {
+  getModelConfig,
+  normalizeGenerationSeed,
+  normalizeImageDimension,
+} from "@/lib/types";
 import type { GenerationParams } from "@/lib/types";
 
 const OUTPUT_DIR = join(process.cwd(), "output");
@@ -70,6 +74,7 @@ export async function POST(req: NextRequest) {
       ...rawBody,
       width: normalizeImageDimension(rawBody.width),
       height: normalizeImageDimension(rawBody.height),
+      seed: normalizeGenerationSeed(rawBody.seed),
     };
     const modelConfig = getModelConfig(body.model);
 

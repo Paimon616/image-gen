@@ -6,6 +6,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ImageUpload } from "@/components/image-upload";
 import { GenerationParams } from "@/components/generation-params";
 import { ModelSelector } from "@/components/model-selector";
@@ -43,12 +50,34 @@ function parseSseEvent(rawEvent: string) {
   };
 }
 
+async function uploadImageFile(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await fetch("/api/upload", { method: "POST", body: formData });
+  const data = (await res.json()) as { url?: string; error?: string };
+
+  if (!res.ok || !data.url) {
+    throw new Error(data.error || "Upload failed");
+  }
+
+  return data.url;
+}
+
+function imageFileFromClipboard(event: ClipboardEvent) {
+  const items = Array.from(event.clipboardData?.items ?? []);
+  const imageItem = items.find((item) => item.type.startsWith("image/"));
+
+  return imageItem?.getAsFile() ?? null;
+}
+
 export default function Home() {
   const { params, setParams, status, setStatus, addImage, images } = useStore();
   const [localControlnets, setLocalControlnets] = useState<string[]>([]);
   const [buttonProgress, setButtonProgress] = useState(0);
   const [posePreviewUrl, setPosePreviewUrl] = useState<string | null>(null);
   const [posePreviewStatus, setPosePreviewStatus] = useState("");
+  const [sourceImagePreviewOpen, setSourceImagePreviewOpen] = useState(false);
   const activePromptIdRef = useRef("");
   const generationAbortControllerRef = useRef<AbortController | null>(null);
 
@@ -64,6 +93,34 @@ export default function Home() {
       })
       .catch(() => {});
   }, [params.pose_reference_model, setParams]);
+
+  useEffect(() => {
+    if (params.generation_mode !== "image_to_image") return;
+
+    const handlePaste = async (event: ClipboardEvent) => {
+      const file = imageFileFromClipboard(event);
+
+      if (!file) return;
+
+      event.preventDefault();
+      try {
+        const url = await uploadImageFile(file);
+        setParams({ source_image: url });
+      } catch (error) {
+        setStatus({
+          state: "error",
+          progress: 0,
+          message: error instanceof Error ? error.message : "Upload failed",
+        });
+      }
+    };
+
+    window.addEventListener("paste", handlePaste);
+
+    return () => {
+      window.removeEventListener("paste", handlePaste);
+    };
+  }, [params.generation_mode, setParams, setStatus]);
 
   const currentModel = getModelConfig(params.model);
   const supportsPoseReference = currentModel.provider === "comfyui";
@@ -454,6 +511,11 @@ export default function Home() {
                     description="Drop or click to upload a source image"
                     value={params.source_image}
                     onChange={(url) => setParams({ source_image: url })}
+                    onPreview={
+                      params.source_image
+                        ? () => setSourceImagePreviewOpen(true)
+                        : undefined
+                    }
                   />
                 </div>
 
@@ -605,6 +667,29 @@ export default function Home() {
 
       {/* Image Viewer Dialog */}
       <ImageViewer />
+
+      <Dialog
+        open={sourceImagePreviewOpen && Boolean(params.source_image)}
+        onOpenChange={setSourceImagePreviewOpen}
+      >
+        <DialogContent className="max-h-[92vh] overflow-hidden border border-border bg-card p-0 shadow-xl sm:max-w-5xl">
+          <DialogHeader className="border-b border-border bg-secondary/50 px-5 py-4">
+            <DialogTitle>Source Image</DialogTitle>
+            <DialogDescription className="truncate">
+              {params.source_image}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex max-h-[calc(92vh-5rem)] items-center justify-center bg-background p-3">
+            {params.source_image && (
+              <img
+                src={params.source_image}
+                alt="Source Image"
+                className="max-h-[calc(92vh-7rem)] max-w-full object-contain"
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

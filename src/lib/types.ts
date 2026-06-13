@@ -194,6 +194,20 @@ export const IMAGE_SIZE_CONSTRAINTS = {
   step: 8,
 } as const;
 
+export function randomGenerationSeed() {
+  return Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+}
+
+export function normalizeGenerationSeed(value: unknown) {
+  const numericValue = Number(value);
+
+  if (!Number.isFinite(numericValue) || numericValue < 0) {
+    return randomGenerationSeed();
+  }
+
+  return Math.floor(numericValue);
+}
+
 export function normalizeImageDimension(value: unknown) {
   const numericValue = Number(value);
 

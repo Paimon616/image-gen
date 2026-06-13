@@ -35,6 +35,14 @@ function getAspectRatioLabel(width: number, height: number) {
   return `${width / divisor}:${height / divisor}`;
 }
 
+function parseSeedInput(value: string) {
+  if (!value.trim()) return null;
+
+  const seed = Number(value);
+
+  return Number.isFinite(seed) ? Math.floor(seed) : null;
+}
+
 export function GenerationParams() {
   const { params, setParams } = useStore();
   const currentModel = getModelConfig(params.model);
@@ -294,11 +302,13 @@ export function GenerationParams() {
               <Label className="text-xs text-muted-foreground mb-2 block">Seed</Label>
               <Input
                 type="number"
-                placeholder="Random"
+                min={-1}
+                step={1}
+                placeholder="Random / -1"
                 value={params.seed ?? ""}
                 onChange={(e) =>
                   setParams({
-                    seed: e.target.value ? parseInt(e.target.value) : null,
+                    seed: parseSeedInput(e.target.value),
                   })
                 }
                 className="h-8 text-sm"

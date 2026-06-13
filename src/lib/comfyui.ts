@@ -11,6 +11,7 @@ import {
   getMissingRequiredModelFiles,
   isAnimaCheckpointName,
 } from "./comfyui-model-files";
+import { normalizeGenerationSeed } from "./types";
 
 const DEFAULT_COMFYUI_URL = "http://127.0.0.1:8188";
 export const COMFYUI_BASE_URL =
@@ -219,7 +220,7 @@ async function buildAnimaWorkflow(params: GenerationParams, checkpoint: string) 
 
   const loras = cleanLoras(params.loras);
   const controlnets = await cleanControlnets(params);
-  const seed = params.seed ?? Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+  const seed = normalizeGenerationSeed(params.seed);
   const samplerName =
     !params.sampler_name || params.sampler_name === "dpmpp_2m"
       ? "er_sde"
@@ -448,7 +449,7 @@ async function buildDefaultWorkflow(params: GenerationParams) {
 
   const loras = cleanLoras(params.loras);
   const controlnets = await cleanControlnets(params);
-  const seed = params.seed ?? Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+  const seed = normalizeGenerationSeed(params.seed);
   const workflow: Record<string, unknown> = {
     "1": {
       class_type: "CheckpointLoaderSimple",
