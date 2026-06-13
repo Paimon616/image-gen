@@ -10,6 +10,7 @@ import {
   RefreshCw,
   RotateCcw,
   Save,
+  Star,
   Table2,
   Tag,
   Trash2,
@@ -33,6 +34,14 @@ const RESOURCE_LABELS: Record<string, string> = {
 };
 
 type ScrapViewMode = "image" | "detail" | "table";
+type TagCategory = "user" | "imported";
+type TagSortMode = "abc" | "count";
+
+interface ScrapTagFilter {
+  category: TagCategory;
+  label: string;
+  count: number;
+}
 
 const VIEW_OPTIONS: {
   value: ScrapViewMode;
@@ -94,6 +103,45 @@ function parseTags(value: string) {
         .filter(Boolean)
     )
   );
+}
+
+function tagKey(category: TagCategory, label: string) {
+  return `${category}:${label}`;
+}
+
+function tagCounts(
+  entries: HistoryEntry[],
+  getter: (entry: HistoryEntry) => string[]
+) {
+  const counts = new Map<string, number>();
+
+  entries.forEach((entry) => {
+    getter(entry).forEach((tag) => {
+      counts.set(tag, (counts.get(tag) ?? 0) + 1);
+    });
+  });
+
+  return Array.from(counts.entries())
+    .map(([label, count]) => ({ label, count }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
+
+function selectedTagCount(userTags: string[], importedTags: string[]) {
+  return userTags.length + importedTags.length;
+}
+
+function loadFavoriteTagKeys() {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const saved = window.localStorage.getItem("scrap-favorite-tags");
+    const parsed = saved ? JSON.parse(saved) : [];
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.filter((item): item is string => typeof item === "string");
+  } catch {
+    return [];
+  }
 }
 
 function imageSrc(entry: HistoryEntry) {
@@ -641,6 +689,240 @@ function TableView({
   );
 }
 
+function TagFilterButton({
+  tag,
+  selected,
+  favorite,
+  onToggle,
+  onToggleFavorite,
+}: {
+  tag: ScrapTagFilter;
+  selected: boolean;
+  favorite: boolean;
+  onToggle: (tag: ScrapTagFilter) => void;
+  onToggleFavorite: (tag: ScrapTagFilter) => void;
+}) {
+  return (
+    <div
+      className={cn(
+        "group inline-flex max-w-full items-center gap-1 rounded-md border px-1.5 py-1 text-xs transition-colors",
+        favorite
+          ? "border-primary/35 bg-primary/10 shadow-sm"
+          : "border-border bg-background/70",
+        selected && "border-primary bg-primary text-primary-foreground"
+      )}
+    >
+      <button
+        type="button"
+        className="flex min-w-0 items-center gap-1.5 text-left"
+        onClick={() => onToggle(tag)}
+        aria-pressed={selected}
+      >
+        <span className="min-w-0 truncate font-medium">{tag.label}</span>
+        <span
+          className={cn(
+            "shrink-0 text-[10px]",
+            selected ? "text-primary-foreground/75" : "text-muted-foreground"
+          )}
+        >
+          {tag.count}
+        </span>
+      </button>
+      <button
+        type="button"
+        className={cn(
+          "shrink-0 rounded-sm p-0.5 transition-colors",
+          selected
+            ? "text-primary-foreground/80 hover:bg-primary-foreground/15 hover:text-primary-foreground"
+            : favorite
+              ? "text-primary hover:bg-primary/10"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+        )}
+        onClick={() => onToggleFavorite(tag)}
+        aria-label={`${favorite ? "Unfavorite" : "Favorite"} ${tag.label}`}
+        title={`${favorite ? "Unfavorite" : "Favorite"} ${tag.label}`}
+      >
+        <Star
+          className={cn(
+            "h-3.5 w-3.5",
+            favorite && "fill-current"
+          )}
+        />
+      </button>
+    </div>
+  );
+}
+
+function TagFilterSection({
+  title,
+  tags,
+  selectedTags,
+  favoriteTagKeys,
+  sortMode,
+  category,
+  emptyText,
+  onToggle,
+  onToggleFavorite,
+}: {
+  title: string;
+  tags: { label: string; count: number }[];
+  selectedTags: string[];
+  favoriteTagKeys: string[];
+  sortMode: TagSortMode;
+  category: TagCategory;
+  emptyText: string;
+  onToggle: (tag: ScrapTagFilter) => void;
+  onToggleFavorite: (tag: ScrapTagFilter) => void;
+}) {
+  const sortedTags = useMemo(() => {
+    const compareTags = (
+      a: { label: string; count: number },
+      b: { label: string; count: number }
+    ) => {
+      if (sortMode === "count" && a.count !== b.count) {
+        return b.count - a.count;
+      }
+
+      return a.label.localeCompare(b.label);
+    };
+
+    return tags
+      .map((tag) => ({
+        ...tag,
+        category,
+        favorite: favoriteTagKeys.includes(tagKey(category, tag.label)),
+      }))
+      .sort((a, b) => {
+        if (a.favorite !== b.favorite) return a.favorite ? -1 : 1;
+        return compareTags(a, b);
+      });
+  }, [category, favoriteTagKeys, sortMode, tags]);
+
+  return (
+    <section className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+          <Tag className="h-3 w-3" />
+          <span className="truncate">{title}</span>
+        </div>
+        <span className="text-[10px] text-muted-foreground">{tags.length}</span>
+      </div>
+      {sortedTags.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5">
+          {sortedTags.map((tag) => (
+            <TagFilterButton
+              key={`${tag.category}-${tag.label}`}
+              tag={tag}
+              selected={selectedTags.includes(tag.label)}
+              favorite={tag.favorite}
+              onToggle={onToggle}
+              onToggleFavorite={onToggleFavorite}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-md border border-dashed border-border px-2 py-3 text-xs text-muted-foreground">
+          {emptyText}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ScrapTagSidebar({
+  userTags,
+  importedTags,
+  selectedUserTags,
+  selectedImportedTags,
+  favoriteTagKeys,
+  totalEntries,
+  filteredEntries,
+  onReset,
+  onToggleTag,
+  onToggleFavorite,
+}: {
+  userTags: { label: string; count: number }[];
+  importedTags: { label: string; count: number }[];
+  selectedUserTags: string[];
+  selectedImportedTags: string[];
+  favoriteTagKeys: string[];
+  totalEntries: number;
+  filteredEntries: number;
+  onReset: () => void;
+  onToggleTag: (tag: ScrapTagFilter) => void;
+  onToggleFavorite: (tag: ScrapTagFilter) => void;
+}) {
+  const activeCount = selectedTagCount(selectedUserTags, selectedImportedTags);
+  const [sortMode, setSortMode] = useState<TagSortMode>("abc");
+
+  return (
+    <aside className="sticky top-4 max-h-[calc(100vh-7rem)] min-h-0 overflow-hidden rounded-md border border-border bg-card shadow-sm">
+      <div className="border-b border-border bg-secondary/40 p-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-sm font-semibold">Tags</div>
+          <div className="flex items-center gap-1.5">
+            <Button
+              type="button"
+              size="xs"
+              variant={sortMode === "abc" ? "default" : "outline"}
+              onClick={() => setSortMode("abc")}
+              aria-pressed={sortMode === "abc"}
+            >
+              abc
+            </Button>
+            <Button
+              type="button"
+              size="xs"
+              variant={sortMode === "count" ? "default" : "outline"}
+              onClick={() => setSortMode("count")}
+              aria-pressed={sortMode === "count"}
+            >
+              123
+            </Button>
+            <Button
+              type="button"
+              size="xs"
+              variant={activeCount === 0 ? "default" : "outline"}
+              onClick={onReset}
+            >
+              All
+            </Button>
+          </div>
+        </div>
+        <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Grid3X3 className="h-3.5 w-3.5" />
+          {filteredEntries} / {totalEntries}
+          {activeCount > 0 && <span>with {activeCount} tag filters</span>}
+        </div>
+      </div>
+      <div className="max-h-[calc(100vh-13rem)] space-y-5 overflow-y-auto p-3">
+        <TagFilterSection
+          title="My Tags"
+          tags={userTags}
+          selectedTags={selectedUserTags}
+          favoriteTagKeys={favoriteTagKeys}
+          sortMode={sortMode}
+          category="user"
+          emptyText="No saved tags."
+          onToggle={onToggleTag}
+          onToggleFavorite={onToggleFavorite}
+        />
+        <TagFilterSection
+          title="Image Tags"
+          tags={importedTags}
+          selectedTags={selectedImportedTags}
+          favoriteTagKeys={favoriteTagKeys}
+          sortMode={sortMode}
+          category="imported"
+          emptyText="No imported tags."
+          onToggle={onToggleTag}
+          onToggleFavorite={onToggleFavorite}
+        />
+      </div>
+    </aside>
+  );
+}
+
 function ScrapEntryDialog({
   entry,
   draft,
@@ -827,13 +1109,23 @@ export function ScrapList() {
   const setParams = useStore((state) => state.setParams);
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [selectedUserTag, setSelectedUserTag] = useState("all");
-  const [selectedImportedTag, setSelectedImportedTag] = useState("all");
+  const [selectedUserTags, setSelectedUserTags] = useState<string[]>([]);
+  const [selectedImportedTags, setSelectedImportedTags] = useState<string[]>([]);
+  const [favoriteTagKeys, setFavoriteTagKeys] = useState<string[]>(
+    loadFavoriteTagKeys
+  );
   const [viewMode, setViewMode] = useState<ScrapViewMode>("detail");
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [status, setStatus] = useState("스크랩을 불러오는 중...");
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      "scrap-favorite-tags",
+      JSON.stringify(favoriteTagKeys)
+    );
+  }, [favoriteTagKeys]);
 
   useEffect(() => {
     fetch("/api/scrap", { cache: "no-store" })
@@ -860,26 +1152,30 @@ export function ScrapList() {
       });
   }, []);
 
-  const allUserTags = useMemo(() => {
-    return Array.from(
-      new Set(entries.flatMap((entry) => normalizeUserTags(entry.userTags)))
-    ).sort((a, b) => a.localeCompare(b));
-  }, [entries]);
+  const allUserTags = useMemo(
+    () => tagCounts(entries, (entry) => normalizeUserTags(entry.userTags)),
+    [entries]
+  );
 
-  const allImportedTags = useMemo(() => {
-    return Array.from(
-      new Set(entries.flatMap((entry) => normalizeImportedTags(entry.importedTags)))
-    ).sort((a, b) => a.localeCompare(b));
-  }, [entries]);
+  const allImportedTags = useMemo(
+    () => tagCounts(entries, (entry) => normalizeImportedTags(entry.importedTags)),
+    [entries]
+  );
 
   const filteredEntries = useMemo(() => {
-    return entries.filter((entry) =>
-      (selectedUserTag === "all" ||
-        normalizeUserTags(entry.userTags).includes(selectedUserTag)) &&
-      (selectedImportedTag === "all" ||
-        normalizeImportedTags(entry.importedTags).includes(selectedImportedTag))
-    );
-  }, [entries, selectedImportedTag, selectedUserTag]);
+    return entries.filter((entry) => {
+      const entryUserTags = normalizeUserTags(entry.userTags);
+      const entryImportedTags = normalizeImportedTags(entry.importedTags);
+      const matchesUserTags =
+        selectedUserTags.length === 0 ||
+        selectedUserTags.some((tag) => entryUserTags.includes(tag));
+      const matchesImportedTags =
+        selectedImportedTags.length === 0 ||
+        selectedImportedTags.some((tag) => entryImportedTags.includes(tag));
+
+      return matchesUserTags && matchesImportedTags;
+    });
+  }, [entries, selectedImportedTags, selectedUserTags]);
 
   const selectedEntry = useMemo(() => {
     if (!selectedEntryId) return null;
@@ -950,6 +1246,34 @@ export function ScrapList() {
   const removeTag = (entry: HistoryEntry, tag: string) => {
     const tags = normalizeUserTags(entry.userTags).filter((item) => item !== tag);
     void saveTags(entry, tags);
+  };
+
+  const resetTagFilters = () => {
+    setSelectedUserTags([]);
+    setSelectedImportedTags([]);
+  };
+
+  const toggleTagFilter = (tag: ScrapTagFilter) => {
+    const update = (current: string[]) =>
+      current.includes(tag.label)
+        ? current.filter((item) => item !== tag.label)
+        : [...current, tag.label];
+
+    if (tag.category === "user") {
+      setSelectedUserTags(update);
+      return;
+    }
+
+    setSelectedImportedTags(update);
+  };
+
+  const toggleFavoriteTag = (tag: ScrapTagFilter) => {
+    const key = tagKey(tag.category, tag.label);
+    setFavoriteTagKeys((current) =>
+      current.includes(key)
+        ? current.filter((item) => item !== key)
+        : [...current, key]
+    );
   };
 
   const refreshEntry = async (entry: HistoryEntry) => {
@@ -1082,27 +1406,27 @@ export function ScrapList() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="hidden flex-wrap items-center gap-2">
           <span className="text-xs font-semibold text-muted-foreground">
             마이태그
           </span>
           <Button
             type="button"
             size="xs"
-            variant={selectedUserTag === "all" ? "default" : "outline"}
-            onClick={() => setSelectedUserTag("all")}
+            variant={selectedUserTags.length === 0 ? "default" : "outline"}
+            onClick={() => setSelectedUserTags([])}
           >
             전체
           </Button>
           {allUserTags.map((tag) => (
             <Button
-              key={tag}
+              key={tag.label}
               type="button"
               size="xs"
-              variant={selectedUserTag === tag ? "default" : "outline"}
-              onClick={() => setSelectedUserTag(tag)}
+              variant={selectedUserTags.includes(tag.label) ? "default" : "outline"}
+              onClick={() => toggleTagFilter({ ...tag, category: "user" })}
             >
-              {tag}
+              {tag.label}
             </Button>
           ))}
           {allUserTags.length === 0 && (
@@ -1112,27 +1436,27 @@ export function ScrapList() {
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+        <div className="hidden flex-wrap items-center gap-2 border-t border-border pt-3">
           <span className="text-xs font-semibold text-muted-foreground">
             이미지태그
           </span>
           <Button
             type="button"
             size="xs"
-            variant={selectedImportedTag === "all" ? "default" : "outline"}
-            onClick={() => setSelectedImportedTag("all")}
+            variant={selectedImportedTags.length === 0 ? "default" : "outline"}
+            onClick={() => setSelectedImportedTags([])}
           >
             전체
           </Button>
           {allImportedTags.map((tag) => (
             <Button
-              key={tag}
+              key={tag.label}
               type="button"
               size="xs"
-              variant={selectedImportedTag === tag ? "default" : "outline"}
-              onClick={() => setSelectedImportedTag(tag)}
+              variant={selectedImportedTags.includes(tag.label) ? "default" : "outline"}
+              onClick={() => toggleTagFilter({ ...tag, category: "imported" })}
             >
-              {tag}
+              {tag.label}
             </Button>
           ))}
           {allImportedTags.length === 0 && (
@@ -1143,6 +1467,8 @@ export function ScrapList() {
         </div>
       </div>
 
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem]">
+        <div className="min-w-0">
       {status && (
         <div className="mb-3 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
           {status}
@@ -1196,6 +1522,21 @@ export function ScrapList() {
           )}
         </div>
       )}
+        </div>
+
+        <ScrapTagSidebar
+          userTags={allUserTags}
+          importedTags={allImportedTags}
+          selectedUserTags={selectedUserTags}
+          selectedImportedTags={selectedImportedTags}
+          favoriteTagKeys={favoriteTagKeys}
+          totalEntries={entries.length}
+          filteredEntries={filteredEntries.length}
+          onReset={resetTagFilters}
+          onToggleTag={toggleTagFilter}
+          onToggleFavorite={toggleFavoriteTag}
+        />
+      </div>
 
       <ScrapEntryDialog
         entry={selectedEntry}

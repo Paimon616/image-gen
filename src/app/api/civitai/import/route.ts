@@ -10,6 +10,7 @@ import { inferTagsFromPrompt } from "@/lib/prompt-tags";
 const CIVITAI_IMAGE_URL_PATTERN =
   /(?:https?:\/\/)?(?:www\.)?(civitai\.(?:com|red))\/images\/(\d+)/i;
 const DEFAULT_CIVITAI_ORIGIN = "https://civitai.com";
+const CIVITAI_LINK_ORIGIN = "https://civitai.red";
 
 interface CivitaiImageItem {
   id: number;
@@ -157,22 +158,35 @@ function normalizeResourceType(type: string): ImportedCivitaiResource["type"] {
   return "other";
 }
 
+function normalizeCivitaiLinkUrl(rawUrl: string) {
+  try {
+    const url = new URL(rawUrl);
+    if (/^(www\.)?civitai\.(com|red)$/i.test(url.hostname)) {
+      url.protocol = "https:";
+      url.hostname = "civitai.red";
+    }
+    return url.toString();
+  } catch {
+    return rawUrl;
+  }
+}
+
 function resourceUrl(resource: CivitaiResourceMeta, name: string) {
   const explicitUrl = stringValue(resource.url);
-  if (explicitUrl) return explicitUrl;
+  if (explicitUrl) return normalizeCivitaiLinkUrl(explicitUrl);
 
   const modelId = numberValue(resource.modelId);
   const modelVersionId = numberValue(resource.modelVersionId);
 
   if (modelId) {
-    const url = new URL(`https://civitai.com/models/${modelId}`);
+    const url = new URL(`${CIVITAI_LINK_ORIGIN}/models/${modelId}`);
     if (modelVersionId) {
       url.searchParams.set("modelVersionId", String(modelVersionId));
     }
     return url.toString();
   }
 
-  const searchUrl = new URL("https://civitai.com/search/models");
+  const searchUrl = new URL(`${CIVITAI_LINK_ORIGIN}/search/models`);
   searchUrl.searchParams.set("query", name);
   return searchUrl.toString();
 }

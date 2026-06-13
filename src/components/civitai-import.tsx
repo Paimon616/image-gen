@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+const CIVITAI_IMAGES_URL = "https://civitai.red/images";
+
 interface LocalModelAsset {
   path: string;
   name: string;
@@ -273,7 +275,16 @@ export function CivitaiImport() {
             Paste an image URL to load prompt, sampler, seed, and resource links.
           </p>
         </div>
-        <LinkIcon className="h-4 w-4 shrink-0 text-primary" />
+        <a
+          href={CIVITAI_IMAGES_URL}
+          target="_blank"
+          rel="noreferrer"
+          aria-label="Open Civitai images"
+          title="Open Civitai images"
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-background text-primary shadow-sm transition-colors hover:border-primary/35 hover:bg-secondary"
+        >
+          <LinkIcon className="h-4 w-4" />
+        </a>
       </div>
 
       <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
