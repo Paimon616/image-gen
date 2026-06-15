@@ -43,6 +43,10 @@ function parseSeedInput(value: string) {
   return Number.isFinite(seed) ? Math.floor(seed) : null;
 }
 
+function roundToTenth(value: number) {
+  return Math.round(value * 10) / 10;
+}
+
 export function GenerationParams() {
   const { params, setParams } = useStore();
   const currentModel = getModelConfig(params.model);
@@ -244,11 +248,11 @@ export function GenerationParams() {
                 value={[params.guidance_scale]}
                 onValueChange={(v) => {
                   const val = Array.isArray(v) ? v[0] : v;
-                  setParams({ guidance_scale: val });
+                  setParams({ guidance_scale: roundToTenth(val) });
                 }}
                 min={1}
                 max={20}
-                step={0.5}
+                step={0.1}
               />
             </div>
 
@@ -318,17 +322,19 @@ export function GenerationParams() {
             <div>
               <div className="flex justify-between items-center mb-2">
                 <Label className="text-xs text-muted-foreground">CLIP Skip</Label>
-                <span className="text-xs font-mono">{params.clip_skip}</span>
+                <span className="text-xs font-mono">
+                  {params.clip_skip.toFixed(1)}
+                </span>
               </div>
               <Slider
                 value={[params.clip_skip]}
                 onValueChange={(v) => {
                   const val = Array.isArray(v) ? v[0] : v;
-                  setParams({ clip_skip: val });
+                  setParams({ clip_skip: roundToTenth(val) });
                 }}
                 min={1}
                 max={12}
-                step={1}
+                step={0.1}
                 disabled={!isLocal}
               />
             </div>

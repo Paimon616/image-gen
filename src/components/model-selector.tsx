@@ -231,6 +231,10 @@ type PickerTarget =
   | { type: "embedding-new" }
   | null;
 
+function roundToTenth(value: number) {
+  return Math.round(value * 10) / 10;
+}
+
 function LoraScaleSlider({
   value,
   onChange,
@@ -249,7 +253,11 @@ function LoraScaleSlider({
       <Slider
         value={[value]}
         onValueChange={(nextValue) =>
-          onChange(Array.isArray(nextValue) ? nextValue[0] ?? value : nextValue)
+          onChange(
+            roundToTenth(
+              Array.isArray(nextValue) ? nextValue[0] ?? value : nextValue
+            )
+          )
         }
         min={0}
         max={2}

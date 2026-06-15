@@ -619,5 +619,19 @@
       "anime",
       "style"
     ]
+  },
+  "loras/anima-turbo-lora-v0.2.safetensors": {
+    "name": "Anima Turbo LoRA",
+    "version": "v0.2",
+    "base_model": "Anima",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/f5c2c926-b326-45e9-9496-1154c44010d2/original=true/131920852.jpeg",
+    "civitai_url": "https://civitai.red/models/2560840/anima-turbo-lora?modelVersionId=2979642",
+    "source_url": "https://civitai.red/models/2560840/anima-turbo-lora?modelVersionId=2979642",
+    "tags": [
+      "anime",
+      "base model",
+      "turbo",
+      "distill"
+    ]
   }
 }
