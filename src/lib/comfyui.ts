@@ -3,7 +3,10 @@ import type {
   EmbeddingConfig,
   GenerationParams,
   LoraConfig,
+  VideoGenerationParams,
 } from "./types";
+import { readFile } from "fs/promises";
+import { isAbsolute, join } from "path";
 import {
   ANIMA_CLIP_NAME,
   ANIMA_VAE_NAME,
@@ -24,6 +27,8 @@ interface ComfyImageRef {
   type?: string;
 }
 
+interface ComfyMediaRef extends ComfyImageRef {}
+
 export interface ComfyQueuedPrompt {
   prompt_id: string;
   client_id: string;
@@ -31,10 +36,19 @@ export interface ComfyQueuedPrompt {
 
 interface ComfyHistoryOutput {
   images?: ComfyImageRef[];
+  gifs?: ComfyMediaRef[];
+  videos?: ComfyMediaRef[];
+}
+
+interface ComfyHistoryStatus {
+  status_str?: string;
+  completed?: boolean;
+  messages?: unknown[];
 }
 
 interface ComfyHistoryItem {
   outputs?: Record<string, ComfyHistoryOutput>;
+  status?: ComfyHistoryStatus;
 }
 
 interface ComfyQueue {
@@ -46,6 +60,13 @@ export interface ComfyGeneratedImage {
   buffer: Buffer;
   contentType: string;
   originalUrl: string;
+}
+
+export interface ComfyGeneratedMedia {
+  buffer: Buffer;
+  contentType: string;
+  originalUrl: string;
+  filename: string;
 }
 
 type WorkflowControlNetConfig = ControlNetConfig & {
@@ -665,8 +686,10 @@ async function comfyFetch(path: string, init?: RequestInit) {
   return res;
 }
 
-export async function queueComfyPrompt(params: GenerationParams, clientId = crypto.randomUUID()) {
-  const prompt = await buildDefaultWorkflow(params);
+export async function queueComfyWorkflow(
+  prompt: Record<string, unknown>,
+  clientId = crypto.randomUUID()
+) {
   const res = await comfyFetch("/prompt", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -678,6 +701,11 @@ export async function queueComfyPrompt(params: GenerationParams, clientId = cryp
 
   const queued = (await res.json()) as Omit<ComfyQueuedPrompt, "client_id">;
   return { ...queued, client_id: clientId };
+}
+
+export async function queueComfyPrompt(params: GenerationParams, clientId = crypto.randomUUID()) {
+  const prompt = await buildDefaultWorkflow(params);
+  return queueComfyWorkflow(prompt, clientId);
 }
 
 async function getHistory(promptId: string) {
@@ -717,6 +745,64 @@ function imageRefsFromHistory(history: ComfyHistoryItem | undefined) {
   return Object.values(history?.outputs ?? {}).flatMap((output) => output.images ?? []);
 }
 
+function isVideoMediaRef(ref: ComfyMediaRef) {
+  return /\.(mp4|webm|gif)$/i.test(ref.filename);
+}
+
+function videoRefsFromHistory(history: ComfyHistoryItem | undefined) {
+  return Object.values(history?.outputs ?? {}).flatMap((output) => [
+    ...(output.videos ?? []),
+    ...(output.gifs ?? []),
+    ...(output.images ?? []).filter(isVideoMediaRef),
+  ]);
+}
+
+function stringFromRecord(record: Record<string, unknown>, key: string) {
+  const value = record[key];
+  return typeof value === "string" ? value : "";
+}
+
+function errorFromHistory(history: ComfyHistoryItem | undefined) {
+  const status = history?.status;
+
+  for (const message of status?.messages ?? []) {
+    if (
+      !Array.isArray(message) ||
+      (message[0] !== "execution_error" && message[0] !== "execution_interrupted")
+    ) {
+      continue;
+    }
+
+    const data = message[1];
+    if (!data || typeof data !== "object" || Array.isArray(data)) {
+      return "ComfyUI generation failed";
+    }
+
+    const record = data as Record<string, unknown>;
+    const nodeType = stringFromRecord(record, "node_type");
+    const nodeId = stringFromRecord(record, "node_id");
+    const fallbackMessage =
+      message[0] === "execution_interrupted" ? "execution_interrupted" : "execution_error";
+    const exceptionMessage =
+      stringFromRecord(record, "exception_message") ||
+      stringFromRecord(record, "exception_type") ||
+      fallbackMessage;
+    const nodeLabel = [nodeType, nodeId ? `node ${nodeId}` : ""]
+      .filter(Boolean)
+      .join(" ");
+
+    return nodeLabel
+      ? `ComfyUI ${nodeLabel} error: ${exceptionMessage}`
+      : `ComfyUI error: ${exceptionMessage}`;
+  }
+
+  if (status?.status_str === "error") {
+    return "ComfyUI generation failed";
+  }
+
+  return "";
+}
+
 function wait(ms: number, signal?: AbortSignal) {
   return new Promise<void>((resolve, reject) => {
     const timeout = setTimeout(resolve, ms);
@@ -745,10 +831,16 @@ export async function waitForComfyImageRefs(
 
   while (!options.signal?.aborted) {
     const history = await getHistory(promptId);
-    const images = imageRefsFromHistory(history[promptId]);
+    const promptHistory = history[promptId];
+    const images = imageRefsFromHistory(promptHistory);
 
     if (images.length > 0) {
       return images;
+    }
+
+    const historyError = errorFromHistory(promptHistory);
+    if (historyError) {
+      throw new Error(historyError);
     }
 
     const externalActivityAt = options.getLastActivityAt?.() ?? 0;
@@ -773,6 +865,55 @@ export async function waitForComfyImageRefs(
   }
 
   throw new Error("ComfyUI generation canceled");
+}
+
+export async function waitForComfyVideoRefs(
+  promptId: string,
+  options: {
+    idleTimeoutMs?: number;
+    getLastActivityAt?: () => number;
+    signal?: AbortSignal;
+  } = {}
+) {
+  const idleTimeoutMs = options.idleTimeoutMs ?? COMFYUI_TIMEOUT_MS;
+  let lastActivityAt = Date.now();
+
+  while (!options.signal?.aborted) {
+    const history = await getHistory(promptId);
+    const promptHistory = history[promptId];
+    const videos = videoRefsFromHistory(promptHistory);
+
+    if (videos.length > 0) {
+      return videos;
+    }
+
+    const historyError = errorFromHistory(promptHistory);
+    if (historyError) {
+      throw new Error(historyError);
+    }
+
+    const externalActivityAt = options.getLastActivityAt?.() ?? 0;
+
+    if (externalActivityAt > lastActivityAt) {
+      lastActivityAt = externalActivityAt;
+    }
+
+    try {
+      if (await isPromptActive(promptId)) {
+        lastActivityAt = Date.now();
+      }
+    } catch {
+      // If the queue endpoint is temporarily unavailable, fall back to idle timeout.
+    }
+
+    if (Date.now() - lastActivityAt >= idleTimeoutMs) {
+      throw new Error("ComfyUI video generation timed out");
+    }
+
+    await wait(1000, options.signal);
+  }
+
+  throw new Error("ComfyUI video generation canceled");
 }
 
 export async function cancelComfyPrompt(promptId?: string) {
@@ -821,11 +962,108 @@ function contentTypeFor(filename: string) {
     : "image/png";
 }
 
+function mediaContentTypeFor(filename: string) {
+  const lower = filename.toLowerCase();
+  if (lower.endsWith(".mp4")) return "video/mp4";
+  if (lower.endsWith(".webm")) return "video/webm";
+  if (lower.endsWith(".gif")) return "image/gif";
+  if (lower.endsWith(".png")) return "image/png";
+  if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+  return "application/octet-stream";
+}
+
+function replaceVideoWorkflowPlaceholders(value: unknown, params: VideoGenerationParams): unknown {
+  if (typeof value === "string") {
+    const replacements: Record<string, string | number> = {
+      prompt: params.prompt,
+      negative_prompt: params.negative_prompt,
+      width: params.width,
+      height: params.height,
+      num_frames: params.num_frames,
+      frames: params.num_frames,
+      fps: params.fps,
+      duration_seconds: params.duration_seconds,
+      steps: params.num_inference_steps,
+      num_inference_steps: params.num_inference_steps,
+      high_noise_end_step: Math.max(1, Math.floor(params.num_inference_steps / 2)),
+      low_noise_start_step: Math.max(1, Math.floor(params.num_inference_steps / 2)),
+      cfg: params.guidance_scale,
+      guidance_scale: params.guidance_scale,
+      seed: normalizeGenerationSeed(params.seed),
+      source_image: params.source_image ?? "",
+    };
+
+    const exactPlaceholder = value.match(/^\{\{([a-zA-Z0-9_]+)\}\}$/);
+    if (exactPlaceholder) {
+      return replacements[exactPlaceholder[1]] ?? "";
+    }
+
+    return value.replace(/\{\{([a-zA-Z0-9_]+)\}\}/g, (_, key: string) =>
+      String(replacements[key] ?? "")
+    );
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => replaceVideoWorkflowPlaceholders(item, params));
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [
+        key,
+        replaceVideoWorkflowPlaceholders(item, params),
+      ])
+    );
+  }
+
+  return value;
+}
+
+async function loadVideoWorkflow(params: VideoGenerationParams) {
+  const workflowPath = process.env.COMFYUI_VIDEO_WORKFLOW_PATH?.trim();
+
+  if (!workflowPath) {
+    throw new Error(
+      "Set COMFYUI_VIDEO_WORKFLOW_PATH to a ComfyUI API workflow JSON file before generating video."
+    );
+  }
+
+  const resolvedSourceImage = params.source_image
+    ? await resolveControlNetImage(params.source_image)
+    : null;
+  const resolvedParams = { ...params, source_image: resolvedSourceImage };
+  const absolutePath = isAbsolute(workflowPath)
+    ? workflowPath
+    : join(/*turbopackIgnore: true*/ process.cwd(), workflowPath);
+  const rawWorkflow = JSON.parse(await readFile(absolutePath, "utf-8")) as unknown;
+  const workflow =
+    rawWorkflow && typeof rawWorkflow === "object" && "prompt" in rawWorkflow
+      ? (rawWorkflow as { prompt: unknown }).prompt
+      : rawWorkflow;
+
+  if (!workflow || typeof workflow !== "object" || Array.isArray(workflow)) {
+    throw new Error("COMFYUI_VIDEO_WORKFLOW_PATH must point to a ComfyUI API workflow JSON object.");
+  }
+
+  return replaceVideoWorkflowPlaceholders(
+    workflow,
+    resolvedParams
+  ) as Record<string, unknown>;
+}
+
 export async function generateWithComfyUI(params: GenerationParams) {
   const queued = await queueComfyPrompt(params);
   const imageRefs = await waitForComfyImageRefs(queued.prompt_id);
 
   return fetchComfyImages(imageRefs);
+}
+
+export async function queueComfyVideoPrompt(
+  params: VideoGenerationParams,
+  clientId = crypto.randomUUID()
+) {
+  const prompt = await loadVideoWorkflow(params);
+  return queueComfyWorkflow(prompt, clientId);
 }
 
 export async function generateOpenPosePreview(imageUrl: string, resolution: number) {
@@ -883,6 +1121,23 @@ export async function fetchComfyImages(imageRefs: ComfyImageRef[]) {
         contentType: contentTypeFor(image.filename),
         originalUrl,
       } satisfies ComfyGeneratedImage;
+    })
+  );
+}
+
+export async function fetchComfyMedia(mediaRefs: ComfyMediaRef[]) {
+  return Promise.all(
+    mediaRefs.map(async (media) => {
+      const originalUrl = `${COMFYUI_BASE_URL}${viewPath(media)}`;
+      const response = await comfyFetch(viewPath(media));
+      const buffer = Buffer.from(await response.arrayBuffer());
+
+      return {
+        buffer,
+        contentType: mediaContentTypeFor(media.filename),
+        originalUrl,
+        filename: media.filename,
+      } satisfies ComfyGeneratedMedia;
     })
   );
 }

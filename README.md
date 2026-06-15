@@ -89,3 +89,46 @@ npm run dev -- --port 3100
 Open `http://localhost:3100`.
 
 By default the app connects to `http://127.0.0.1:8188` and reads models from `ComfyUI/models`. Copy `.env.example` to `.env.local` if you need to override those paths.
+
+## Video generation
+
+The Video Generation page queues a ComfyUI API workflow from `COMFYUI_VIDEO_WORKFLOW_PATH`.
+Export an API-format workflow JSON from ComfyUI and use placeholders such as
+`{{prompt}}`, `{{negative_prompt}}`, `{{width}}`, `{{height}}`, `{{num_frames}}`,
+`{{fps}}`, `{{steps}}`, `{{cfg}}`, `{{seed}}`, and `{{source_image}}` in node inputs
+that should be filled from the UI.
+
+This repo includes two Wan 2.2 I2V API workflows:
+
+```text
+workflows/wan22-i2v-base-api.json
+workflows/wan22-i2v-civitai-133468541-api.json
+```
+
+The base workflow uses native ComfyUI Wan 2.2 image-to-video nodes and expects
+these files:
+
+```text
+ComfyUI/models/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors
+ComfyUI/models/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors
+ComfyUI/models/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors
+ComfyUI/models/vae/wan_2.1_vae.safetensors
+```
+
+The Civitai workflow additionally expects these LoRA files in
+`ComfyUI/models/loras/`:
+
+```text
+doggyPOV_v1_1.safetensors
+DR34ML4Y_I2V_14B_LOW_V2.safetensors
+```
+
+Civitai requires an API token for those LoRA downloads. On Windows PowerShell:
+
+```powershell
+$env:CIVITAI_API_TOKEN="your-token"
+powershell -ExecutionPolicy Bypass -File scripts/download-civitai-video-loras.ps1
+```
+
+Then set `COMFYUI_VIDEO_WORKFLOW_PATH` to
+`workflows/wan22-i2v-civitai-133468541-api.json` and restart the app.

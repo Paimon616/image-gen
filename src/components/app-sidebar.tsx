@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
-import { Bookmark, Images, Languages, Layers3 } from "lucide-react";
+import { Bookmark, Film, Images, Languages, Layers3 } from "lucide-react";
 import { useStore, type AppLanguage } from "@/lib/store";
 
 const NAV_ITEMS = [
-  { href: "/", labels: { ko: "생성", en: "Generate" }, icon: Images },
+  { href: "/", labels: { ko: "이미지 생성", en: "Image Generation" }, icon: Images },
+  { href: "/video", labels: { ko: "비디오 생성", en: "Video Generation" }, icon: Film },
   { href: "/models", labels: { ko: "모델", en: "Models" }, icon: Layers3 },
   { href: "/scrap", labels: { ko: "스크랩", en: "Scrap" }, icon: Bookmark },
 ];
@@ -35,7 +36,7 @@ export function AppSidebar() {
   }, [language]);
 
   return (
-    <nav className="flex h-screen w-40 shrink-0 flex-col border-r border-border bg-sidebar">
+    <nav className="flex h-screen w-44 shrink-0 flex-col border-r border-border bg-sidebar">
       <div className="border-b border-sidebar-border px-4 py-4">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-sm">
@@ -53,7 +54,9 @@ export function AppSidebar() {
       </div>
       <div className="flex flex-col gap-1.5 p-2">
         {NAV_ITEMS.map((item) => {
-          const active = pathname === item.href;
+          const active =
+            pathname === item.href ||
+            (item.href !== "/" && pathname.startsWith(item.href));
           const Icon = item.icon;
 
           return (
@@ -67,7 +70,7 @@ export function AppSidebar() {
               }`}
             >
               <Icon className="h-4 w-4" />
-              {item.labels[language]}
+              <span className="min-w-0 truncate">{item.labels[language]}</span>
             </Link>
           );
         })}

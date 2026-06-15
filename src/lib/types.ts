@@ -93,6 +93,29 @@ export interface GeneratedImage {
   filename: string;
 }
 
+export interface VideoGenerationParams {
+  prompt: string;
+  negative_prompt: string;
+  width: number;
+  height: number;
+  num_frames: number;
+  fps: number;
+  duration_seconds: number;
+  num_inference_steps: number;
+  guidance_scale: number;
+  seed: number | null;
+  source_image: string | null;
+}
+
+export interface GeneratedVideo {
+  id: string;
+  url: string;
+  params: VideoGenerationParams | null;
+  timestamp: number;
+  filename: string;
+  contentType: string;
+}
+
 export interface GenerationStatus {
   state: "idle" | "uploading" | "generating" | "completed" | "canceled" | "error";
   progress: number;
@@ -177,6 +200,20 @@ export const DEFAULT_PARAMS: GenerationParams = {
   pose_reference_model: "",
   pose_reference_strength: 0.8,
   enable_safety_checker: false,
+};
+
+export const DEFAULT_VIDEO_PARAMS: VideoGenerationParams = {
+  prompt: "",
+  negative_prompt: "low quality, blurry, flicker, warped, distorted motion",
+  width: 720,
+  height: 1072,
+  num_frames: 49,
+  fps: 8,
+  duration_seconds: 6,
+  num_inference_steps: 7,
+  guidance_scale: 5,
+  seed: null,
+  source_image: null,
 };
 
 export const IMAGE_SIZES = [
