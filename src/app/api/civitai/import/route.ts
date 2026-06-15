@@ -40,6 +40,7 @@ interface CivitaiResourceMeta {
 interface CivitaiPageResource {
   modelId?: unknown;
   modelVersionId?: unknown;
+  versionId?: unknown;
   modelName?: unknown;
   modelType?: unknown;
   versionName?: unknown;
@@ -171,6 +172,13 @@ function normalizeCivitaiLinkUrl(rawUrl: string) {
   }
 }
 
+function modelUrlSlug(name: string) {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 function resourceUrl(resource: CivitaiResourceMeta, name: string) {
   const explicitUrl = stringValue(resource.url);
   if (explicitUrl) return normalizeCivitaiLinkUrl(explicitUrl);
@@ -179,7 +187,10 @@ function resourceUrl(resource: CivitaiResourceMeta, name: string) {
   const modelVersionId = numberValue(resource.modelVersionId);
 
   if (modelId) {
-    const url = new URL(`${CIVITAI_LINK_ORIGIN}/models/${modelId}`);
+    const slug = modelUrlSlug(name);
+    const url = new URL(
+      `${CIVITAI_LINK_ORIGIN}/models/${modelId}${slug ? `/${slug}` : ""}`
+    );
     if (modelVersionId) {
       url.searchParams.set("modelVersionId", String(modelVersionId));
     }
@@ -408,6 +419,66 @@ function parseResources(meta: Record<string, unknown>) {
     .filter((resource): resource is ImportedCivitaiResource => resource !== null);
 }
 
+function normalizeResourceName(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function resourceNamesMatch(resource: ImportedCivitaiResource, pageResource: CivitaiPageResource) {
+  const resourceName = normalizeResourceName(resource.name);
+  if (!resourceName) return false;
+
+  const modelName = stringValue(pageResource.modelName);
+  const versionName = stringValue(pageResource.versionName);
+  const candidates = [
+    modelName,
+    versionName,
+    modelName && versionName ? `${modelName} ${versionName}` : "",
+    modelName && versionName ? `${modelName}-${versionName}` : "",
+  ]
+    .map(normalizeResourceName)
+    .filter(Boolean);
+
+  return candidates.some((candidate) => {
+    return candidate.includes(resourceName) || resourceName.includes(candidate);
+  });
+}
+
+function findMetaResourceIndex(
+  metaResources: ImportedCivitaiResource[],
+  usedMetaIndexes: Set<number>,
+  pageResource: CivitaiPageResource,
+  type: ImportedCivitaiResource["type"]
+) {
+  const modelId = numberValue(pageResource.modelId);
+  const modelVersionId =
+    numberValue(pageResource.modelVersionId) ?? numberValue(pageResource.versionId);
+
+  const availableResourceIndexes = metaResources
+    .map((resource, index) => ({ resource, index }))
+    .filter(({ resource, index }) => {
+      return !usedMetaIndexes.has(index) && resource.type === type;
+    });
+
+  const idMatch = availableResourceIndexes.find(({ resource }) => {
+    return (
+      Boolean(modelId && resource.modelId === modelId) ||
+      Boolean(modelVersionId && resource.modelVersionId === modelVersionId)
+    );
+  });
+  if (idMatch) return idMatch.index;
+
+  const nameMatch = availableResourceIndexes.find(({ resource }) => {
+    return resourceNamesMatch(resource, pageResource);
+  });
+  if (nameMatch) return nameMatch.index;
+
+  if (availableResourceIndexes.length === 1) {
+    return availableResourceIndexes[0].index;
+  }
+
+  return -1;
+}
+
 function enrichResourcesWithPageData(
   metaResources: ImportedCivitaiResource[],
   pageResources: CivitaiPageResource[] = []
@@ -422,14 +493,20 @@ function enrichResourcesWithPageData(
       if (!name) return null;
 
       const type = normalizeResourceType(stringValue(pageResource.modelType));
-      const metaIndex = metaResources.findIndex((resource, index) => {
-        return !usedMetaIndexes.has(index) && resource.type === type;
-      });
+      const metaIndex = findMetaResourceIndex(
+        metaResources,
+        usedMetaIndexes,
+        pageResource,
+        type
+      );
       const metaResource = metaIndex >= 0 ? metaResources[metaIndex] : undefined;
       if (metaIndex >= 0) usedMetaIndexes.add(metaIndex);
 
       const modelId = numberValue(pageResource.modelId) ?? undefined;
-      const modelVersionId = numberValue(pageResource.modelVersionId) ?? undefined;
+      const modelVersionId =
+        numberValue(pageResource.modelVersionId) ??
+        numberValue(pageResource.versionId) ??
+        undefined;
       const versionName = stringValue(pageResource.versionName) || undefined;
       const baseModel = stringValue(pageResource.baseModel) || undefined;
       const weight =

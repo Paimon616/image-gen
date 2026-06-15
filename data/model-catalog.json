@@ -596,5 +596,16 @@
       "backgrounds",
       "detail tweaker"
     ]
+  },
+  "checkpoints/JANIMA_v10.safetensors": {
+    "name": "✨ JANIMA ✨",
+    "version": "v1.0",
+    "base_model": "Anima",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/4d26f220-b77c-4cfb-8267-c7a324924fca/original=true/131507754.jpeg",
+    "civitai_url": "https://civitai.red/models/2642932/janima?modelVersionId=2967640",
+    "source_url": "https://civitai.red/models/2642932/janima?modelVersionId=2967640",
+    "tags": [
+      "base model"
+    ]
   }
 }

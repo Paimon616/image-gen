@@ -59,6 +59,10 @@ export function ImageViewer() {
     useStore();
   const [scrappingImageId, setScrappingImageId] = useState<string | null>(null);
   const [scrappedImageId, setScrappedImageId] = useState<string | null>(null);
+  const [imageSizeMode, setImageSizeMode] = useState<{
+    imageId: string | null;
+    original: boolean;
+  }>({ imageId: null, original: false });
 
   if (!selectedImage) return null;
 
@@ -112,6 +116,8 @@ export function ImageViewer() {
   const params = selectedImage.params;
   const isScrapping = scrappingImageId === selectedImage.id;
   const isScrapped = scrappedImageId === selectedImage.id;
+  const isOriginalSize =
+    imageSizeMode.imageId === selectedImage.id && imageSizeMode.original;
   const selectedIndex = images.findIndex((image) => image.id === selectedImage.id);
   const previousImage =
     selectedIndex > 0 ? images[selectedIndex - 1] : images.at(-1) ?? null;
@@ -160,14 +166,35 @@ export function ImageViewer() {
                 </Button>
               </>
             )}
-            <div className="flex min-h-full min-w-full p-6">
-              <div className="m-auto rounded-lg border border-border bg-card p-2 shadow-lg">
+            <div className="flex h-full min-h-0 min-w-full p-6">
+              <button
+                type="button"
+                onClick={() =>
+                  setImageSizeMode((current) => ({
+                    imageId: selectedImage.id,
+                    original:
+                      current.imageId === selectedImage.id ? !current.original : true,
+                  }))
+                }
+                className={`m-auto rounded-lg border border-border bg-card p-2 shadow-lg ${
+                  isOriginalSize
+                    ? "cursor-zoom-out"
+                    : "flex max-h-full max-w-full cursor-zoom-in"
+                }`}
+                aria-label={
+                  isOriginalSize ? "Show fitted image" : "Show original size image"
+                }
+              >
                 <img
                   src={selectedImage.url}
                   alt="Generated"
-                  className="block h-auto max-h-none w-auto max-w-none rounded-md"
+                  className={
+                    isOriginalSize
+                      ? "block h-auto max-h-none w-auto max-w-none rounded-md"
+                      : "block h-auto max-h-[calc(94vh-4rem)] max-w-full rounded-md object-contain"
+                  }
                 />
-              </div>
+              </button>
             </div>
           </div>
 
