@@ -325,24 +325,49 @@ export function CivitaiImport() {
             {language === "ko" ? "누락된 로컬 리소스" : "Missing local resources"}
           </div>
           <div className="mt-2 space-y-1.5">
-            {missingResources.map((resource, index) => (
-              <a
-                key={`${resource.type}-${resource.name}-${index}`}
-                href={resource.url}
-                target="_blank"
-                rel="noreferrer"
-                className="flex min-w-0 items-center justify-between gap-2 rounded-md bg-background/80 px-2 py-1.5 text-xs hover:text-primary"
-              >
-                <span className="min-w-0 truncate">
-                  <span className="font-semibold">
-                    {RESOURCE_LABELS[resource.type]}
+            {missingResources.map((resource, index) => {
+              const content = (
+                <>
+                  <span className="min-w-0 truncate">
+                    <span className="font-semibold">
+                      {RESOURCE_LABELS[resource.type]}
+                    </span>
+                    <span className="text-muted-foreground"> · </span>
+                    <span>{resource.name}</span>
                   </span>
-                  <span className="text-muted-foreground"> · </span>
-                  <span>{resource.name}</span>
-                </span>
-                <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-              </a>
-            ))}
+                  {resource.url ? (
+                    <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                  ) : (
+                    <span className="shrink-0 text-muted-foreground">
+                      {language === "ko" ? "CivitAI에 없음" : "Not on CivitAI"}
+                    </span>
+                  )}
+                </>
+              );
+
+              if (!resource.url) {
+                return (
+                  <div
+                    key={`${resource.type}-${resource.name}-${index}`}
+                    className="flex min-w-0 items-center justify-between gap-2 rounded-md bg-background/80 px-2 py-1.5 text-xs"
+                  >
+                    {content}
+                  </div>
+                );
+              }
+
+              return (
+                <a
+                  key={`${resource.type}-${resource.name}-${index}`}
+                  href={resource.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex min-w-0 items-center justify-between gap-2 rounded-md bg-background/80 px-2 py-1.5 text-xs hover:text-primary"
+                >
+                  {content}
+                </a>
+              );
+            })}
           </div>
         </div>
       )}

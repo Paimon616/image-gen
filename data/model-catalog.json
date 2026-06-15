@@ -607,5 +607,17 @@
     "tags": [
       "base model"
     ]
+  },
+  "loras/anima-highres-aesthetic-boost.safetensors": {
+    "name": "Anima Highres/Aesthetic Boost",
+    "version": "v1.0",
+    "base_model": "Anima",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/91519397-ca49-4771-a3d6-c06bbae06b25/original=true/127347641.jpeg",
+    "civitai_url": "https://civitai.com/models/2540444/anima-highresaesthetic-boost",
+    "source_url": "https://civitai.com/models/2540444/anima-highresaesthetic-boost",
+    "tags": [
+      "anime",
+      "style"
+    ]
   }
 }

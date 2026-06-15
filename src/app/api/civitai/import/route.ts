@@ -197,9 +197,7 @@ function resourceUrl(resource: CivitaiResourceMeta, name: string) {
     return url.toString();
   }
 
-  const searchUrl = new URL(`${CIVITAI_LINK_ORIGIN}/search/models`);
-  searchUrl.searchParams.set("query", name);
-  return searchUrl.toString();
+  return "";
 }
 
 function extractNextData(html: string) {
