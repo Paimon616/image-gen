@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  FileJson,
   RotateCcw,
   Trash2,
 } from "lucide-react";
@@ -54,6 +55,10 @@ function TextSection({
   );
 }
 
+function metadataDownloadFilename(filename: string) {
+  return `${filename.replace(/\.[^/.]+$/, "") || "image"}-metadata.json`;
+}
+
 export function ImageViewer() {
   const { images, selectedImage, setSelectedImage, loadParamsFromImage, removeImage } =
     useStore();
@@ -71,6 +76,29 @@ export function ImageViewer() {
     a.href = selectedImage.url;
     a.download = selectedImage.filename;
     a.click();
+  };
+
+  const handleMetadataDownload = () => {
+    const metadata = {
+      id: selectedImage.id,
+      filename: selectedImage.filename,
+      url: selectedImage.url,
+      timestamp: selectedImage.timestamp,
+      createdAt: new Date(selectedImage.timestamp).toISOString(),
+      params: selectedImage.params,
+    };
+    const blob = new Blob([JSON.stringify(metadata, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+
+    a.href = url;
+    a.download = metadataDownloadFilename(selectedImage.filename);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
   };
 
   const handleDelete = async () => {
@@ -219,6 +247,14 @@ export function ImageViewer() {
               <Button size="sm" variant="outline" onClick={handleDownload}>
                 <Download className="h-4 w-4" />
                 Download
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleMetadataDownload}
+              >
+                <FileJson className="h-4 w-4" />
+                Metadata
               </Button>
               <Button
                 size="sm"
