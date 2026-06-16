@@ -146,7 +146,14 @@ function normalizeImportedTags(...sources: unknown[]) {
 function normalizeResourceType(type: string): ImportedCivitaiResource["type"] {
   const normalized = type.toLowerCase().replace(/[\s_-]/g, "");
 
-  if (normalized.includes("lora")) return "lora";
+  if (
+    normalized.includes("lora") ||
+    normalized.includes("lycoris") ||
+    normalized.includes("locon") ||
+    normalized.includes("loha")
+  ) {
+    return "lora";
+  }
   if (normalized.includes("textualinversion") || normalized.includes("embedding")) {
     return "embedding";
   }

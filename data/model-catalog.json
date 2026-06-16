@@ -633,5 +633,103 @@
       "turbo",
       "distill"
     ]
+  },
+  "checkpoints/novaOrangeXL_v130.safetensors": {
+    "name": "Nova Orange XL",
+    "version": "v13.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/10296fbb-0a3f-4d61-b1cf-ee209d82b475/original=true/110948279.jpeg",
+    "civitai_url": "https://civitai.com/models/967405/nova-orange-xl?modelVersionId=2424898",
+    "source_url": "https://civitai.com/models/967405/nova-orange-xl?modelVersionId=2424898",
+    "tags": [
+      "digital art",
+      "model",
+      "sdxl",
+      "base model",
+      "anime",
+      "fantasy",
+      "2.5d",
+      "landscape",
+      "xl",
+      "colorful",
+      "illustration",
+      "2d"
+    ]
+  },
+  "loras/1990s ShoujoManga Anime Style [XLlora].safetensors": {
+    "name": "1990s ShoujoManga Anime Style [XLlora]",
+    "version": "v1.0",
+    "base_model": "SDXL 1.0",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/e906aebd-f249-4c39-9d08-f8eb8f9f1e4e/original=true/2075119.jpeg",
+    "civitai_url": "https://civitai.red/models/130045/1990s-shoujomanga-anime-style-xllora?modelVersionId=142602",
+    "source_url": "https://civitai.red/models/130045/1990s-shoujomanga-anime-style-xllora?modelVersionId=142602",
+    "tags": [
+      "manga",
+      "1990s anime style",
+      "style",
+      "styles",
+      "girls",
+      "1990s"
+    ]
+  },
+  "loras/96YOTTEA-WAI.safetensors": {
+    "name": "96YOTTEA style | Illustrious",
+    "version": "v1.1 - WAI",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/178058a4-35b6-4869-a805-b27ab4289d4e/original=true/41204042.jpeg",
+    "civitai_url": "https://civitai.red/models/966483/96yottea-style-or-illustrious?modelVersionId=1082928",
+    "source_url": "https://civitai.red/models/966483/96yottea-style-or-illustrious?modelVersionId=1082928",
+    "tags": [
+      "style",
+      "anime",
+      "painting",
+      "aesthetic"
+    ]
+  },
+  "loras/AntherimOC-000004.safetensors": {
+    "name": "AntherimOC",
+    "version": "V1",
+    "base_model": "Pony",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/114aab9a-811b-4564-9340-3121103c9c0c/original=true/119088206.jpeg",
+    "civitai_url": "https://civitai.red/models/1236736/antherimoc?modelVersionId=1393767",
+    "source_url": "https://civitai.red/models/1236736/antherimoc?modelVersionId=1393767",
+    "tags": [
+      "gay",
+      "male focus",
+      "male",
+      "man",
+      "femboy",
+      "character"
+    ]
+  },
+  "loras/Wet_Hair_-_Wet_Hair_Look_-_Dripping-000006.safetensors": {
+    "name": "Wet Hair - Wet Hair Look - Dripping",
+    "version": "💦👦🏻꒷꒦🧔🏻‍♀️",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/9bbbcdc7-c704-4503-bda7-ba9e710f2ded/anim=false,width=450,optimized=true/119564726.jpeg",
+    "civitai_url": "https://civitai.red/models/1919989/wet-hair-wet-hair-look-dripping?modelVersionId=2173122",
+    "source_url": "https://civitai.red/models/1919989/wet-hair-wet-hair-look-dripping?modelVersionId=2173122",
+    "tags": [
+      "style",
+      "wet",
+      "wet hair",
+      "shower",
+      "dripping"
+    ]
+  },
+  "loras/nnestyle.safetensors": {
+    "name": "Nene Mix style | Illustrious",
+    "version": "NNEv1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/39db3fed-62b6-4e48-87d4-45577ba97728/original=true/108836176.jpeg",
+    "civitai_url": "https://civitai.red/models/2098306/nene-mix-style-or-illustrious?modelVersionId=2374037",
+    "source_url": "https://civitai.red/models/2098306/nene-mix-style-or-illustrious?modelVersionId=2374037",
+    "tags": [
+      "illustration",
+      "abstract",
+      "surreal",
+      "illustrious",
+      "style"
+    ]
   }
 }
