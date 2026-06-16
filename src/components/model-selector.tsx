@@ -251,7 +251,7 @@ function LoraScaleSlider({
   onChange: (value: number) => void;
 }) {
   return (
-    <div className="grid min-w-28 gap-1">
+    <div className="grid min-w-32 gap-1">
       <div className="flex items-center justify-between gap-2">
         <span className="text-[10px] text-muted-foreground">Weight</span>
         <Input
@@ -265,7 +265,7 @@ function LoraScaleSlider({
             if (!Number.isFinite(nextValue)) return;
             onChange(roundToStep(clampNumber(nextValue, 0, 2), 0.05));
           }}
-          className="h-6 w-14 px-1.5 text-right text-[10px] font-mono"
+          className="h-6 w-16 px-2 text-right text-[10px] font-mono"
         />
       </div>
       <Slider
@@ -522,7 +522,7 @@ export function ModelSelector() {
               {params.loras.map((lora, i) => (
                 <div key={i} className="space-y-2 rounded-md border border-border bg-background/60 p-2">
                   {isLocal && localModels.loraAssets.length > 0 ? (
-                    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_7rem_2rem]">
+                    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem_2rem]">
                       <AssetChoiceButton
                         asset={findAsset(localModels.loraAssets, lora.path)}
                         placeholder="Select LoRA"
@@ -542,7 +542,7 @@ export function ModelSelector() {
                       </Button>
                     </div>
                   ) : (
-                    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_7rem_2rem]">
+                    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem_2rem]">
                       <Input
                         placeholder={
                           isLocal ? "my-lora.safetensors" : "huggingface/lora-name"
