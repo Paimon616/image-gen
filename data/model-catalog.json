@@ -731,5 +731,18 @@
       "illustrious",
       "style"
     ]
+  },
+  "loras/DemonerithIllustrious.safetensors": {
+    "name": "Demonerith Style",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/df91ca64-21e2-40d6-a742-bdd16bf4c9ad/original=true/108830502.jpeg",
+    "civitai_url": "https://civitai.red/models/2098183/demonerith-style?modelVersionId=2373899",
+    "source_url": "https://civitai.red/models/2098183/demonerith-style?modelVersionId=2373899",
+    "tags": [
+      "anime",
+      "artist styles",
+      "style"
+    ]
   }
 }

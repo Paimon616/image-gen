@@ -47,6 +47,10 @@ function roundToTenth(value: number) {
   return Math.round(value * 10) / 10;
 }
 
+function clampNumber(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
 export function GenerationParams() {
   const { params, setParams } = useStore();
   const currentModel = getModelConfig(params.model);
@@ -240,9 +244,21 @@ export function GenerationParams() {
             <div>
               <div className="flex justify-between items-center mb-2">
                 <Label className="text-xs text-muted-foreground">CFG Scale</Label>
-                <span className="text-xs font-mono">
-                  {params.guidance_scale.toFixed(1)}
-                </span>
+                <Input
+                  type="number"
+                  min={1}
+                  max={20}
+                  step={0.1}
+                  value={params.guidance_scale}
+                  onChange={(e) => {
+                    const value = Number(e.target.value);
+                    if (!Number.isFinite(value)) return;
+                    setParams({
+                      guidance_scale: roundToTenth(clampNumber(value, 1, 20)),
+                    });
+                  }}
+                  className="h-7 w-20 px-2 text-right text-xs font-mono"
+                />
               </div>
               <Slider
                 value={[params.guidance_scale]}
@@ -284,15 +300,29 @@ export function GenerationParams() {
             <div>
               <div className="flex justify-between items-center mb-2">
                 <Label className="text-xs text-muted-foreground">Steps</Label>
-                <span className="text-xs font-mono">
-                  {params.num_inference_steps}
-                </span>
+                <Input
+                  type="number"
+                  min={1}
+                  max={100}
+                  step={1}
+                  value={params.num_inference_steps}
+                  onChange={(e) => {
+                    const value = Number(e.target.value);
+                    if (!Number.isFinite(value)) return;
+                    setParams({
+                      num_inference_steps: Math.round(
+                        clampNumber(value, 1, 100)
+                      ),
+                    });
+                  }}
+                  className="h-7 w-20 px-2 text-right text-xs font-mono"
+                />
               </div>
               <Slider
                 value={[params.num_inference_steps]}
                 onValueChange={(v) => {
                   const val = Array.isArray(v) ? v[0] : v;
-                  setParams({ num_inference_steps: val });
+                  setParams({ num_inference_steps: Math.round(val) });
                 }}
                 min={1}
                 max={100}
@@ -322,9 +352,22 @@ export function GenerationParams() {
             <div>
               <div className="flex justify-between items-center mb-2">
                 <Label className="text-xs text-muted-foreground">CLIP Skip</Label>
-                <span className="text-xs font-mono">
-                  {params.clip_skip.toFixed(1)}
-                </span>
+                <Input
+                  type="number"
+                  min={1}
+                  max={12}
+                  step={0.1}
+                  value={params.clip_skip}
+                  onChange={(e) => {
+                    const value = Number(e.target.value);
+                    if (!Number.isFinite(value)) return;
+                    setParams({
+                      clip_skip: roundToTenth(clampNumber(value, 1, 12)),
+                    });
+                  }}
+                  className="h-7 w-20 px-2 text-right text-xs font-mono"
+                  disabled={!isLocal}
+                />
               </div>
               <Slider
                 value={[params.clip_skip]}

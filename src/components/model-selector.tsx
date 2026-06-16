@@ -231,8 +231,16 @@ type PickerTarget =
   | { type: "embedding-new" }
   | null;
 
-function roundToTenth(value: number) {
-  return Math.round(value * 10) / 10;
+function roundToStep(value: number, step: number) {
+  return Math.round(value / step) * step;
+}
+
+function clampNumber(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function formatScale(value: number) {
+  return Number(value.toFixed(2)).toString();
 }
 
 function LoraScaleSlider({
@@ -246,22 +254,33 @@ function LoraScaleSlider({
     <div className="grid min-w-28 gap-1">
       <div className="flex items-center justify-between gap-2">
         <span className="text-[10px] text-muted-foreground">Weight</span>
-        <span className="font-mono text-[10px] text-muted-foreground">
-          {value.toFixed(1)}
-        </span>
+        <Input
+          type="number"
+          min={0}
+          max={2}
+          step={0.05}
+          value={formatScale(value)}
+          onChange={(event) => {
+            const nextValue = Number(event.target.value);
+            if (!Number.isFinite(nextValue)) return;
+            onChange(roundToStep(clampNumber(nextValue, 0, 2), 0.05));
+          }}
+          className="h-6 w-14 px-1.5 text-right text-[10px] font-mono"
+        />
       </div>
       <Slider
         value={[value]}
         onValueChange={(nextValue) =>
           onChange(
-            roundToTenth(
-              Array.isArray(nextValue) ? nextValue[0] ?? value : nextValue
+            roundToStep(
+              Array.isArray(nextValue) ? nextValue[0] ?? value : nextValue,
+              0.05
             )
           )
         }
         min={0}
         max={2}
-        step={0.1}
+        step={0.05}
       />
     </div>
   );
