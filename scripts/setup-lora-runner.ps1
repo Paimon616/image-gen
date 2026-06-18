@@ -39,7 +39,12 @@ if (-not (Test-Path $VenvDir)) {
 
 $VenvPython = Join-Path $VenvDir "Scripts\python.exe"
 & $VenvPython -m pip install --upgrade pip setuptools wheel
-& $VenvPython -m pip install -r (Join-Path $RunnerDir "requirements.txt")
+Push-Location $RunnerDir
+try {
+  & $VenvPython -m pip install -r "requirements.txt"
+} finally {
+  Pop-Location
+}
 & $VenvPython -m pip install accelerate
 
 New-Item -ItemType Directory -Force -Path (Join-Path $RootDir "training\runs") | Out-Null

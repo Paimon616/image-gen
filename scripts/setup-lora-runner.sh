@@ -38,7 +38,7 @@ fi
 source "$RUNNER_DIR/.venv/bin/activate"
 
 python -m pip install --upgrade pip setuptools wheel
-python -m pip install -r "$RUNNER_DIR/requirements.txt"
+(cd "$RUNNER_DIR" && python -m pip install -r requirements.txt)
 python -m pip install accelerate
 
 mkdir -p "$ROOT_DIR/training/runs" "$ROOT_DIR/ComfyUI/models/loras"

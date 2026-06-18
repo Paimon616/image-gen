@@ -4,14 +4,14 @@ import { join } from "path";
 import { spawn, type ChildProcessWithoutNullStreams } from "child_process";
 import { NextRequest } from "next/server";
 import {
-  LORA_RUNNER_PYTHON,
-  SDXL_TRAIN_SCRIPT,
   buildSdxlTrainingConfig,
   checkpointPath,
   getLoraRunnerStatus,
   loraOutputDir,
+  loraRunnerPython,
   safeImageExtension,
   safeOutputName,
+  sdxlTrainScript,
   writeTrainingReadme,
 } from "@/lib/lora-training";
 
@@ -92,7 +92,7 @@ function trainingArgs({
     "accelerate.commands.launch",
     "--num_cpu_threads_per_process",
     "1",
-    SDXL_TRAIN_SCRIPT,
+    sdxlTrainScript(),
     "--pretrained_model_name_or_path",
     baseModelPath,
     "--dataset_config",
@@ -230,7 +230,7 @@ export async function POST(req: NextRequest) {
         );
 
         send("progress", { progress: 8, message: "Starting LoRA training..." });
-        child = spawn(LORA_RUNNER_PYTHON, args, {
+        child = spawn(loraRunnerPython(), args, {
           cwd: runnerStatus.runnerDir,
           env: {
             ...process.env,
