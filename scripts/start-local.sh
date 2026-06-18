@@ -5,11 +5,13 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG_DIR="${LOG_DIR:-$ROOT_DIR/.local/logs}"
 
 IMAGE_GEN_HOST="${IMAGE_GEN_HOST:-127.0.0.1}"
-IMAGE_GEN_PORT="${IMAGE_GEN_PORT:-3100}"
+IMAGE_GEN_PORT="${IMAGE_GEN_PORT:-5353}"
 IMAGE_GEN_URL="${IMAGE_GEN_URL:-http://localhost:$IMAGE_GEN_PORT}"
 
 COMFYUI_HOST="${COMFYUI_HOST:-127.0.0.1}"
 COMFYUI_PORT="${COMFYUI_PORT:-8188}"
+COMFYUI_DIR="${COMFYUI_DIR:-$ROOT_DIR/ComfyUI}"
+LORA_RUNNER_DIR="${LORA_RUNNER_DIR:-$ROOT_DIR/runners/sd-scripts}"
 
 STARTED_PIDS=()
 
@@ -116,13 +118,25 @@ require_command npm
 require_command lsof
 
 if [ ! -d "$ROOT_DIR/node_modules" ]; then
-  echo "Node dependencies are missing. Run: npm install" >&2
-  exit 1
+  echo "Node dependencies are missing. Running npm install..."
+  npm install
 fi
 
 mkdir -p "$LOG_DIR"
 export COMFYUI_HOST
 export COMFYUI_PORT
+export COMFYUI_DIR
+export LORA_RUNNER_DIR
+
+if [ ! -f "$COMFYUI_DIR/main.py" ] || [ ! -x "$COMFYUI_DIR/venv/bin/python" ]; then
+  echo "ComfyUI is missing. Running setup..."
+  npm run setup:comfyui
+fi
+
+if [ ! -f "$LORA_RUNNER_DIR/sdxl_train_network.py" ] || [ ! -x "$LORA_RUNNER_DIR/.venv/bin/python" ]; then
+  echo "LoRA runner is missing. Running setup..."
+  npm run setup:lora-runner
+fi
 
 start_service "ComfyUI" "$COMFYUI_PORT" "$LOG_DIR/comfyui.log" npm run comfyui
 

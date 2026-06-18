@@ -1,9 +1,11 @@
 param(
   [string]$ImageGenHost = "127.0.0.1",
-  [int]$ImageGenPort = 3100,
+  [int]$ImageGenPort = 5353,
   [string]$ImageGenUrl = "",
   [string]$ComfyUIHost = "127.0.0.1",
   [int]$ComfyUIPort = 8188,
+  [string]$ComfyUIDir = "",
+  [string]$LoraRunnerDir = "",
   [string]$LogDir = ""
 )
 
@@ -15,6 +17,12 @@ if (-not $ImageGenUrl) {
 }
 if (-not $LogDir) {
   $LogDir = Join-Path $RootDir ".local\logs"
+}
+if (-not $ComfyUIDir) {
+  $ComfyUIDir = Join-Path $RootDir "ComfyUI"
+}
+if (-not $LoraRunnerDir) {
+  $LoraRunnerDir = Join-Path $RootDir "runners\sd-scripts"
 }
 
 $StartedProcesses = New-Object System.Collections.Generic.List[System.Diagnostics.Process]
@@ -113,13 +121,51 @@ function Start-LocalService {
 
 try {
   if (-not (Test-Path (Join-Path $RootDir "node_modules"))) {
-    throw "Node dependencies are missing. Run: npm install"
+    Write-Host "Node dependencies are missing. Running npm install..."
+    $NpmCommand = Get-Command npm.cmd -ErrorAction SilentlyContinue
+    if (-not $NpmCommand) {
+      $NpmCommand = Get-Command npm -ErrorAction SilentlyContinue
+    }
+    if (-not $NpmCommand) {
+      throw "npm is required."
+    }
+    & $NpmCommand.Source install
   }
 
   New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 
   $env:COMFYUI_HOST = $ComfyUIHost
   $env:COMFYUI_PORT = [string]$ComfyUIPort
+  $env:COMFYUI_DIR = $ComfyUIDir
+  $env:LORA_RUNNER_DIR = $LoraRunnerDir
+
+  $ComfyMain = Join-Path $ComfyUIDir "main.py"
+  $ComfyPython = Join-Path $ComfyUIDir "venv\Scripts\python.exe"
+  if ((-not (Test-Path $ComfyMain)) -or (-not (Test-Path $ComfyPython))) {
+    Write-Host "ComfyUI is missing. Running setup..."
+    $NpmCommand = Get-Command npm.cmd -ErrorAction SilentlyContinue
+    if (-not $NpmCommand) {
+      $NpmCommand = Get-Command npm -ErrorAction SilentlyContinue
+    }
+    if (-not $NpmCommand) {
+      throw "npm is required."
+    }
+    & $NpmCommand.Source run setup:comfyui:win
+  }
+
+  $LoraTrainScript = Join-Path $LoraRunnerDir "sdxl_train_network.py"
+  $LoraPython = Join-Path $LoraRunnerDir ".venv\Scripts\python.exe"
+  if ((-not (Test-Path $LoraTrainScript)) -or (-not (Test-Path $LoraPython))) {
+    Write-Host "LoRA runner is missing. Running setup..."
+    $NpmCommand = Get-Command npm.cmd -ErrorAction SilentlyContinue
+    if (-not $NpmCommand) {
+      $NpmCommand = Get-Command npm -ErrorAction SilentlyContinue
+    }
+    if (-not $NpmCommand) {
+      throw "npm is required."
+    }
+    & $NpmCommand.Source run setup:lora-runner:win
+  }
 
   Start-LocalService `
     -Name "ComfyUI" `
