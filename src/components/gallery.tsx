@@ -47,6 +47,7 @@ interface GalleryCardProps {
   onReuse: (img: GeneratedImage) => void;
   onScrap: (img: GeneratedImage) => void;
   onDelete: (img: GeneratedImage) => void;
+  onCancelGeneration?: (img: GeneratedImage) => void;
 }
 
 const GalleryCard = memo(function GalleryCard({
@@ -57,6 +58,7 @@ const GalleryCard = memo(function GalleryCard({
   onReuse,
   onScrap,
   onDelete,
+  onCancelGeneration,
 }: GalleryCardProps) {
   const generation = img.generation;
   const hasImage = Boolean(img.url);
@@ -134,6 +136,18 @@ const GalleryCard = memo(function GalleryCard({
                 {generation.message}
               </p>
             )}
+            {isPending && onCancelGeneration && (
+              <Button
+                type="button"
+                size="sm"
+                variant="destructive"
+                className="w-full"
+                onClick={() => onCancelGeneration(img)}
+              >
+                <XCircle />
+                생성 취소
+              </Button>
+            )}
           </div>
         </div>
       )}
@@ -144,7 +158,7 @@ const GalleryCard = memo(function GalleryCard({
         </Badge>
       )}
       {hasImage && generation && generation.state !== "completed" && (
-        <div className="pointer-events-none absolute inset-x-2 bottom-2 z-10 rounded-md bg-black/70 px-2 py-1.5 text-white shadow-sm">
+        <div className="absolute inset-x-2 bottom-2 z-10 rounded-md bg-black/70 px-2 py-1.5 text-white shadow-sm">
           <div className="mb-1 flex items-center justify-between text-[11px]">
             <span>{statusLabel}</span>
             <span className="tabular-nums">{Math.round(progress)}%</span>
@@ -155,8 +169,21 @@ const GalleryCard = memo(function GalleryCard({
               style={{ width: `${progress}%` }}
             />
           </div>
+          {isPending && onCancelGeneration && (
+            <Button
+              type="button"
+              size="sm"
+              variant="destructive"
+              className="mt-2 h-7 w-full text-xs"
+              onClick={() => onCancelGeneration(img)}
+            >
+              <XCircle />
+              생성 취소
+            </Button>
+          )}
         </div>
       )}
+      {!isPending && (
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent opacity-0 transition-opacity group-hover:opacity-100">
         <div className="absolute left-2 right-2 top-2 flex gap-1.5">
           <Button
@@ -198,11 +225,16 @@ const GalleryCard = memo(function GalleryCard({
           </p>
         </div>
       </div>
+      )}
     </div>
   );
 });
 
-export function Gallery() {
+interface GalleryProps {
+  onCancelGeneration?: (img: GeneratedImage) => void;
+}
+
+export function Gallery({ onCancelGeneration }: GalleryProps) {
   const images = useStore((state) => state.images);
   const setSelectedImage = useStore((state) => state.setSelectedImage);
   const addImages = useStore((state) => state.addImages);
@@ -365,6 +397,7 @@ export function Gallery() {
             onReuse={handleReuse}
             onScrap={handleScrap}
             onDelete={handleDelete}
+            onCancelGeneration={onCancelGeneration}
           />
         ))}
       </div>

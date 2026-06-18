@@ -359,7 +359,28 @@ export default function Home() {
     setStatus({ state: "idle", progress: 0, message: "" });
   }, [addImage, generationModeError, params, setStatus]);
 
-  const cancelGeneration = useCallback(() => {
+  const cancelGeneration = useCallback((imageId?: string) => {
+    const targetId = imageId ?? activeGeneration?.id;
+
+    if (!targetId) return;
+
+    const queuedJob = generationQueue.find((job) => job.id === targetId);
+
+    if (queuedJob) {
+      setGenerationQueue((queue) => queue.filter((job) => job.id !== targetId));
+      updateImage(targetId, {
+        generation: {
+          state: "canceled",
+          progress: 0,
+          message: "Canceled.",
+        },
+      });
+      setStatus({ state: "canceled", progress: 0, message: "Canceled." });
+      return;
+    }
+
+    if (activeGeneration?.id !== targetId) return;
+
     const promptId = activePromptIdRef.current;
 
     generationAbortControllerRef.current?.abort();
@@ -372,18 +393,16 @@ export default function Home() {
       }).catch(() => {});
     }
 
-    if (activeGeneration) {
-      updateImage(activeGeneration.id, {
-        generation: {
-          state: "canceled",
-          progress: 0,
-          message: "Canceled.",
-        },
-      });
-    }
+    updateImage(targetId, {
+      generation: {
+        state: "canceled",
+        progress: 0,
+        message: "Canceled.",
+      },
+    });
 
     setStatus({ state: "canceled", progress: 0, message: "Canceled." });
-  }, [activeGeneration, setStatus, updateImage]);
+  }, [activeGeneration, generationQueue, setStatus, updateImage]);
 
   const previewPose = useCallback(async () => {
     if (!params.pose_reference_image) return;
@@ -752,7 +771,7 @@ export default function Home() {
                 type="button"
                 variant="outline"
                 size="lg"
-                onClick={cancelGeneration}
+                onClick={() => cancelGeneration()}
                 className="gap-1.5"
               >
                 <X className="h-4 w-4" />
@@ -771,7 +790,7 @@ export default function Home() {
             {images.length} images
           </span>
         </div>
-        <Gallery />
+        <Gallery onCancelGeneration={(image) => cancelGeneration(image.id)} />
       </main>
 
       {/* Image Viewer Dialog */}
