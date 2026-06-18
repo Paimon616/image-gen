@@ -67,6 +67,26 @@ export function LoraTraining() {
     return safeName ? `ComfyUI/models/loras/${safeName}.safetensors` : "ComfyUI/models/loras/my-lora.safetensors";
   }, [loraName]);
   const selectedCheckpoint = checkpoints.find((checkpoint) => checkpoint.path === baseModel);
+  const missingRequirements = [
+    dataset.length < MIN_IMAGES ? `이미지 ${MIN_IMAGES - dataset.length}장` : "",
+    loraName.trim().length === 0 ? "LoRA 이름" : "",
+    triggerWords.trim().length === 0 ? "trigger words" : "",
+    baseModel.trim().length === 0 ? "기반 모델" : "",
+  ].filter(Boolean);
+  const footerMessage =
+    state === "training"
+      ? `LoRA 파일 생성 중 ${progress}%`
+      : state === "completed"
+        ? "생성 요청이 완료되었습니다. 실제 .safetensors 저장은 runner 연결 후 활성화됩니다."
+        : canStart
+          ? "LoRA 파일 생성 준비가 완료되었습니다"
+          : `${missingRequirements.join(", ")}이 필요합니다`;
+  const actionLabel =
+    state === "training"
+      ? "생성 중"
+      : state === "completed"
+        ? "다시 파일 생성"
+        : "LoRA 파일 생성 시작";
 
   useEffect(() => {
     fetch("/api/models")
@@ -132,7 +152,7 @@ export function LoraTraining() {
               </p>
             </div>
             <Badge variant={state === "completed" ? "default" : "secondary"} className="h-7 rounded-md px-3">
-              {state === "training" ? "훈련 중" : state === "completed" ? "파일 준비됨" : "설정 중"}
+              {state === "training" ? "생성 중" : state === "completed" ? "요청 완료" : "설정 중"}
             </Badge>
           </div>
 
@@ -145,7 +165,7 @@ export function LoraTraining() {
                 </span>
               </div>
               <p className={dataset.length < MIN_IMAGES ? "mt-1 text-sm font-semibold text-destructive" : "mt-1 text-sm font-semibold text-primary"}>
-                {dataset.length < MIN_IMAGES ? `최소 ${MIN_IMAGES}장 필요` : "훈련 시작 가능"}
+                {dataset.length < MIN_IMAGES ? `최소 ${MIN_IMAGES}장 필요` : "파일 생성 가능"}
               </p>
             </div>
             <div className="text-sm font-semibold text-muted-foreground">최대 {MAX_IMAGES}</div>
@@ -336,13 +356,7 @@ export function LoraTraining() {
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
             <div className="text-sm font-bold text-foreground">
-              {state === "training"
-                ? `훈련 진행 중 ${progress}%`
-                : state === "completed"
-                  ? "LoRA 파일 생성 준비가 완료되었습니다"
-                  : canStart
-                    ? "훈련을 시작할 수 있습니다"
-                    : `이미지 ${Math.max(MIN_IMAGES - dataset.length, 0)}장과 이름, trigger words가 필요합니다`}
+              {footerMessage}
             </div>
             <div className="mt-1 text-xs font-medium text-muted-foreground">
               예상 비용 {creditCost.toLocaleString("ko-KR")} credits · Runner 연결 후 실제 훈련 job으로 전송됩니다.
@@ -350,7 +364,7 @@ export function LoraTraining() {
           </div>
           <Button size="lg" className="min-w-64 rounded-full text-base" disabled={!canStart || state === "training"} onClick={startTraining}>
             {state === "training" ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
-            {state === "training" ? "훈련 중" : state === "completed" ? "다시 훈련 시작" : "훈련 시작"}
+            {actionLabel}
             <span className="ml-3 font-bold">{creditCost.toLocaleString("ko-KR")}</span>
           </Button>
         </div>
