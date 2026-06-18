@@ -119,7 +119,7 @@ require_command lsof
 
 if [ ! -d "$ROOT_DIR/node_modules" ]; then
   echo "Node dependencies are missing. Running npm install..."
-  npm install
+  (cd "$ROOT_DIR" && npm install)
 fi
 
 mkdir -p "$LOG_DIR"
@@ -130,12 +130,12 @@ export LORA_RUNNER_DIR
 
 if [ ! -f "$COMFYUI_DIR/main.py" ] || [ ! -x "$COMFYUI_DIR/venv/bin/python" ]; then
   echo "ComfyUI is missing. Running setup..."
-  npm run setup:comfyui
+  (cd "$ROOT_DIR" && npm run setup:comfyui)
 fi
 
 if [ ! -f "$LORA_RUNNER_DIR/sdxl_train_network.py" ] || [ ! -x "$LORA_RUNNER_DIR/.venv/bin/python" ]; then
   echo "LoRA runner is missing. Running setup..."
-  npm run setup:lora-runner
+  (cd "$ROOT_DIR" && npm run setup:lora-runner)
 fi
 
 start_service "ComfyUI" "$COMFYUI_PORT" "$LOG_DIR/comfyui.log" npm run comfyui

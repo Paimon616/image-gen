@@ -129,7 +129,12 @@ try {
     if (-not $NpmCommand) {
       throw "npm is required."
     }
-    & $NpmCommand.Source install
+    Push-Location $RootDir
+    try {
+      & $NpmCommand.Source install
+    } finally {
+      Pop-Location
+    }
   }
 
   New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
@@ -150,7 +155,12 @@ try {
     if (-not $NpmCommand) {
       throw "npm is required."
     }
-    & $NpmCommand.Source run setup:comfyui:win
+    Push-Location $RootDir
+    try {
+      & $NpmCommand.Source run setup:comfyui:win
+    } finally {
+      Pop-Location
+    }
   }
 
   $LoraTrainScript = Join-Path $LoraRunnerDir "sdxl_train_network.py"
@@ -164,7 +174,12 @@ try {
     if (-not $NpmCommand) {
       throw "npm is required."
     }
-    & $NpmCommand.Source run setup:lora-runner:win
+    Push-Location $RootDir
+    try {
+      & $NpmCommand.Source run setup:lora-runner:win
+    } finally {
+      Pop-Location
+    }
   }
 
   Start-LocalService `
