@@ -1,8 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Check,
   ChevronDown,
   Clock3,
   ImagePlus,
@@ -20,7 +19,6 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 
-type ModelType = "dit2" | "dit1" | "sdxl" | "other";
 type TrainingState = "idle" | "ready" | "training" | "completed";
 
 interface DatasetImage {
@@ -29,30 +27,14 @@ interface DatasetImage {
   url: string;
 }
 
-interface ThemeOption {
-  id: string;
-  label: string;
-  image: string;
+interface LocalCheckpoint {
+  path: string;
+  name: string;
+  base_model: string;
 }
 
 const MIN_IMAGES = 10;
 const MAX_IMAGES = 100;
-
-const THEME_OPTIONS: ThemeOption[] = [
-  { id: "illustrious-v1", label: "Illustrious-v1.0", image: "/image_1.png" },
-  { id: "noobai-xl", label: "NoobAI XL", image: "/image_2.png" },
-  { id: "hinata-v2", label: "Hinata v2", image: "/screenshot.png" },
-  { id: "illustrious-v01", label: "Illustrious-v0.1", image: "/image_1.png" },
-  { id: "haruka-v2", label: "Haruka-v2", image: "/image_2.png" },
-  { id: "otome-v2", label: "Otome-v2", image: "/screenshot.png" },
-];
-
-const MODEL_TYPES: { id: ModelType; label: string; badge?: string }[] = [
-  { id: "dit2", label: "DiT.2", badge: "NEW" },
-  { id: "dit1", label: "DiT.1" },
-  { id: "sdxl", label: "SDXL" },
-  { id: "other", label: "Other..." },
-];
 
 function clampDataset(files: File[]) {
   return files.slice(0, MAX_IMAGES).map((file) => ({
@@ -67,20 +49,37 @@ export function LoraTraining() {
   const [loraName, setLoraName] = useState("");
   const [triggerWords, setTriggerWords] = useState("");
   const [category, setCategory] = useState("");
-  const [modelType, setModelType] = useState<ModelType>("sdxl");
-  const [selectedTheme, setSelectedTheme] = useState("illustrious-v1");
+  const [checkpoints, setCheckpoints] = useState<LocalCheckpoint[]>([]);
+  const [baseModel, setBaseModel] = useState("");
   const [state, setState] = useState<TrainingState>("idle");
   const [progress, setProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const datasetPercent = Math.min((dataset.length / MAX_IMAGES) * 100, 100);
   const canStart =
-    dataset.length >= MIN_IMAGES && loraName.trim().length > 0 && triggerWords.trim().length > 0;
-  const creditCost = modelType === "sdxl" ? 25000 : modelType === "dit1" ? 42000 : 55000;
+    dataset.length >= MIN_IMAGES &&
+    loraName.trim().length > 0 &&
+    triggerWords.trim().length > 0 &&
+    baseModel.trim().length > 0;
+  const creditCost = 25000;
   const outputPath = useMemo(() => {
     const safeName = loraName.trim().toLowerCase().replace(/[^a-z0-9가-힣_-]+/gi, "-");
     return safeName ? `ComfyUI/models/loras/${safeName}.safetensors` : "ComfyUI/models/loras/my-lora.safetensors";
   }, [loraName]);
+  const selectedCheckpoint = checkpoints.find((checkpoint) => checkpoint.path === baseModel);
+
+  useEffect(() => {
+    fetch("/api/models")
+      .then((res) => res.json())
+      .then((data) => {
+        const checkpointAssets = Array.isArray(data.checkpointAssets)
+          ? (data.checkpointAssets as LocalCheckpoint[])
+          : [];
+        setCheckpoints(checkpointAssets);
+        setBaseModel((current) => current || checkpointAssets[0]?.path || "");
+      })
+      .catch(() => {});
+  }, []);
 
   function addFiles(files: FileList | null) {
     if (!files) return;
@@ -103,8 +102,6 @@ export function LoraTraining() {
   }
 
   function resetParameters() {
-    setModelType("sdxl");
-    setSelectedTheme("illustrious-v1");
     setCategory("");
     setTriggerWords("");
   }
@@ -292,57 +289,38 @@ export function LoraTraining() {
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <Label className="text-base font-bold">
-                  모델 유형 <Info className="h-4 w-4" />
+              <div className="space-y-2">
+                <Label htmlFor="base-model" className="text-base font-bold">
+                  기반 모델 <Info className="h-4 w-4" />
                 </Label>
-                <div className="flex flex-wrap gap-3">
-                  {MODEL_TYPES.map((type) => (
-                    <button
-                      key={type.id}
-                      type="button"
-                      onClick={() => setModelType(type.id)}
-                      className="flex h-9 items-center gap-2 rounded-md px-1 text-base font-bold"
-                    >
-                      <span className={`flex h-5 w-5 items-center justify-center rounded-full border-2 ${
-                        modelType === type.id ? "border-primary bg-primary text-primary-foreground" : "border-foreground"
-                      }`}>
-                        {modelType === type.id && <span className="h-2 w-2 rounded-full bg-current" />}
-                      </span>
-                      {type.label}
-                      {type.badge && <Badge className="h-5 rounded-md bg-pink-500 px-1.5 text-[10px]">{type.badge}</Badge>}
-                    </button>
-                  ))}
+                <div className="relative">
+                  <select
+                    id="base-model"
+                    value={baseModel}
+                    onChange={(event) => setBaseModel(event.currentTarget.value)}
+                    className="h-11 w-full appearance-none rounded-md border border-input bg-background px-3 pr-9 text-base font-medium outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/25"
+                  >
+                    <option value="">기반 checkpoint를 선택하세요</option>
+                    {checkpoints.map((checkpoint) => (
+                      <option key={checkpoint.path} value={checkpoint.path}>
+                        {checkpoint.name || checkpoint.path}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-muted-foreground" />
                 </div>
-              </div>
-
-              <div className="space-y-3">
-                <Label className="text-base font-bold">모델 테마</Label>
-                <div className="grid grid-cols-2 gap-3">
-                  {THEME_OPTIONS.map((theme) => {
-                    const selected = selectedTheme === theme.id;
-                    return (
-                      <button
-                        key={theme.id}
-                        type="button"
-                        onClick={() => setSelectedTheme(theme.id)}
-                        className={`overflow-hidden rounded-lg border bg-background text-left transition-all ${
-                          selected ? "border-primary ring-3 ring-primary/25" : "border-border hover:border-primary/40"
-                        }`}
-                      >
-                        <div className="relative aspect-[4/3] bg-muted">
-                          <img src={theme.image} alt={theme.label} className="h-full w-full object-cover" />
-                          {selected && (
-                            <span className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                              <Check className="h-4 w-4" />
-                            </span>
-                          )}
-                        </div>
-                        <div className="truncate px-3 py-2 text-center text-sm font-bold">{theme.label}</div>
-                      </button>
-                    );
-                  })}
-                </div>
+                <p className="text-xs font-medium text-muted-foreground">
+                  LoRA는 독립 모델이 아니라 선택한 checkpoint 위에 얹히는 가중치입니다.
+                </p>
+                {selectedCheckpoint && (
+                  <div className="rounded-md border border-border bg-muted/35 p-3 text-sm">
+                    <div className="font-bold text-foreground">{selectedCheckpoint.name}</div>
+                    <div className="mt-1 break-all text-xs font-medium text-muted-foreground">
+                      {selectedCheckpoint.path}
+                      {selectedCheckpoint.base_model ? ` · ${selectedCheckpoint.base_model}` : ""}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="rounded-md border border-border bg-muted/35 p-3">
