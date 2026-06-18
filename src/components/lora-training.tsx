@@ -20,6 +20,7 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 
 type TrainingState = "idle" | "ready" | "training" | "completed";
+type RunnerState = "not_configured" | "ready";
 
 interface DatasetImage {
   id: string;
@@ -52,16 +53,17 @@ export function LoraTraining() {
   const [checkpoints, setCheckpoints] = useState<LocalCheckpoint[]>([]);
   const [baseModel, setBaseModel] = useState("");
   const [state, setState] = useState<TrainingState>("idle");
+  const [runnerState] = useState<RunnerState>("not_configured");
   const [progress, setProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const datasetPercent = Math.min((dataset.length / MAX_IMAGES) * 100, 100);
-  const canStart =
+  const canPrepare =
     dataset.length >= MIN_IMAGES &&
     loraName.trim().length > 0 &&
     triggerWords.trim().length > 0 &&
     baseModel.trim().length > 0;
-  const creditCost = 25000;
+  const canStart = canPrepare && runnerState === "ready";
   const outputPath = useMemo(() => {
     const safeName = loraName.trim().toLowerCase().replace(/[^a-z0-9가-힣_-]+/gi, "-");
     return safeName ? `ComfyUI/models/loras/${safeName}.safetensors` : "ComfyUI/models/loras/my-lora.safetensors";
@@ -74,15 +76,19 @@ export function LoraTraining() {
     baseModel.trim().length === 0 ? "기반 모델" : "",
   ].filter(Boolean);
   const footerMessage =
-    state === "training"
+    runnerState !== "ready"
+      ? "LoRA 파일 생성을 실행하려면 local training runner 연결이 필요합니다."
+      : state === "training"
       ? `LoRA 파일 생성 중 ${progress}%`
       : state === "completed"
-        ? "생성 요청이 완료되었습니다. 실제 .safetensors 저장은 runner 연결 후 활성화됩니다."
-        : canStart
+        ? `LoRA 파일 생성이 완료되었습니다. 출력 위치: ${outputPath}`
+        : canPrepare
           ? "LoRA 파일 생성 준비가 완료되었습니다"
           : `${missingRequirements.join(", ")}이 필요합니다`;
   const actionLabel =
-    state === "training"
+    runnerState !== "ready"
+      ? "Runner 연결 필요"
+      : state === "training"
       ? "생성 중"
       : state === "completed"
         ? "다시 파일 생성"
@@ -151,8 +157,17 @@ export function LoraTraining() {
                 이미지 dataset과 trigger words로 ComfyUI용 LoRA 파일을 준비합니다.
               </p>
             </div>
-            <Badge variant={state === "completed" ? "default" : "secondary"} className="h-7 rounded-md px-3">
-              {state === "training" ? "생성 중" : state === "completed" ? "요청 완료" : "설정 중"}
+            <Badge
+              variant={runnerState === "ready" && state === "completed" ? "default" : "secondary"}
+              className="h-7 rounded-md px-3"
+            >
+              {runnerState !== "ready"
+                ? "Runner 미연결"
+                : state === "training"
+                  ? "생성 중"
+                  : state === "completed"
+                    ? "파일 생성됨"
+                    : "설정 중"}
             </Badge>
           </div>
 
@@ -165,7 +180,7 @@ export function LoraTraining() {
                 </span>
               </div>
               <p className={dataset.length < MIN_IMAGES ? "mt-1 text-sm font-semibold text-destructive" : "mt-1 text-sm font-semibold text-primary"}>
-                {dataset.length < MIN_IMAGES ? `최소 ${MIN_IMAGES}장 필요` : "파일 생성 가능"}
+                {dataset.length < MIN_IMAGES ? `최소 ${MIN_IMAGES}장 필요` : "데이터셋 준비됨"}
               </p>
             </div>
             <div className="text-sm font-semibold text-muted-foreground">최대 {MAX_IMAGES}</div>
@@ -247,8 +262,8 @@ export function LoraTraining() {
             <div className="flex gap-3">
               <Sparkles className="mt-0.5 h-5 w-5 shrink-0" />
               <div>
-                로컬 LoRA 훈련 runner를 연결하면 이 설정으로 `.safetensors` 파일을 생성하고
-                `ComfyUI/models/loras`에 저장할 수 있습니다.
+                현재는 화면 설정 단계입니다. `.safetensors` 파일을 만들려면 `kohya_ss` 또는
+                `sd-scripts` 기반 local training runner를 연결해야 합니다.
               </div>
             </div>
           </div>
@@ -359,13 +374,12 @@ export function LoraTraining() {
               {footerMessage}
             </div>
             <div className="mt-1 text-xs font-medium text-muted-foreground">
-              예상 비용 {creditCost.toLocaleString("ko-KR")} credits · Runner 연결 후 실제 훈련 job으로 전송됩니다.
+              출력 대상은 `ComfyUI/models/loras`입니다. Runner 연결 전에는 파일이 생성되지 않습니다.
             </div>
           </div>
           <Button size="lg" className="min-w-64 rounded-full text-base" disabled={!canStart || state === "training"} onClick={startTraining}>
             {state === "training" ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
             {actionLabel}
-            <span className="ml-3 font-bold">{creditCost.toLocaleString("ko-KR")}</span>
           </Button>
         </div>
         {state === "training" && (
