@@ -17,6 +17,7 @@ interface AppState {
   setStatus: (status: Partial<GenerationStatus>) => void;
   addImage: (image: GeneratedImage) => void;
   addImages: (images: GeneratedImage[]) => void;
+  updateImage: (id: string, update: Partial<GeneratedImage>) => void;
   removeImage: (id: string) => void;
   setSelectedImage: (image: GeneratedImage | null) => void;
   loadParamsFromImage: (image: GeneratedImage) => void;
@@ -80,6 +81,22 @@ export const useStore = create<AppState>((set) => ({
 
   addImages: (images) =>
     set((s) => ({ images: mergeImages(s.images, images) })),
+
+  updateImage: (id, update) =>
+    set((s) => {
+      const images = s.images.map((image) =>
+        image.id === id ? { ...image, ...update, id } : image
+      );
+      const selectedImage =
+        s.selectedImage?.id === id
+          ? { ...s.selectedImage, ...update, id }
+          : s.selectedImage;
+
+      return {
+        images: sortImagesNewestFirst(images),
+        selectedImage,
+      };
+    }),
 
   removeImage: (id) =>
     set((s) => ({

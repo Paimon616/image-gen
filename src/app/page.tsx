@@ -20,6 +20,10 @@ import { CivitaiImport } from "@/components/civitai-import";
 import { Gallery } from "@/components/gallery";
 import { ImageViewer } from "@/components/image-viewer";
 import { AppSidebar } from "@/components/app-sidebar";
+import type {
+  GeneratedImage,
+  GenerationParams as GenerationParamsType,
+} from "@/lib/types";
 import { getModelConfig } from "@/lib/types";
 import { ImageIcon, ImageUp, ScanLine, X } from "lucide-react";
 
@@ -71,13 +75,33 @@ function imageFileFromClipboard(event: ClipboardEvent) {
   return imageItem?.getAsFile() ?? null;
 }
 
+interface GenerationQueueItem {
+  id: string;
+  params: GenerationParamsType;
+}
+
+function cloneGenerationParams(params: GenerationParamsType) {
+  return JSON.parse(JSON.stringify(params)) as GenerationParamsType;
+}
+
 export default function Home() {
-  const { params, setParams, status, setStatus, addImage, images } = useStore();
+  const {
+    params,
+    setParams,
+    status,
+    setStatus,
+    addImage,
+    addImages,
+    updateImage,
+    images,
+  } = useStore();
   const [localControlnets, setLocalControlnets] = useState<string[]>([]);
-  const [buttonProgress, setButtonProgress] = useState(0);
   const [posePreviewUrl, setPosePreviewUrl] = useState<string | null>(null);
   const [posePreviewStatus, setPosePreviewStatus] = useState("");
   const [sourceImagePreviewOpen, setSourceImagePreviewOpen] = useState(false);
+  const [generationQueue, setGenerationQueue] = useState<GenerationQueueItem[]>([]);
+  const [activeGeneration, setActiveGeneration] =
+    useState<GenerationQueueItem | null>(null);
   const activePromptIdRef = useRef("");
   const generationAbortControllerRef = useRef<AbortController | null>(null);
 
@@ -148,24 +172,25 @@ export default function Home() {
     supportsPoseReference,
   ]);
 
-  const generate = useCallback(async () => {
-    if (!params.prompt.trim()) return;
-    if (generationModeError) {
-      setStatus({ state: "error", progress: 0, message: generationModeError });
-      return;
-    }
+  const runGenerationJob = useCallback(async (job: GenerationQueueItem) => {
+    const { id, params: jobParams } = job;
 
     const abortController = new AbortController();
     activePromptIdRef.current = "";
     generationAbortControllerRef.current = abortController;
-    setButtonProgress(1);
-    setStatus({ state: "generating", progress: 1, message: "Queued..." });
+    updateImage(id, {
+      generation: {
+        state: "generating",
+        progress: 1,
+        message: "Queued...",
+      },
+    });
 
     try {
       const res = await fetch("/api/generate/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(params),
+        body: JSON.stringify(jobParams),
         signal: abortController.signal,
       });
 
@@ -202,14 +227,49 @@ export default function Home() {
           if (event === "progress") {
             const progress = Number(data?.progress ?? 0);
             const message = String(data?.message ?? "Generating...");
-            setButtonProgress(progress);
-            setStatus({ state: "generating", progress, message });
+            updateImage(id, {
+              generation: {
+                state: "generating",
+                progress,
+                message,
+              },
+            });
           }
 
           if (event === "complete") {
-            if (data?.images) {
-              data.images.forEach(addImage);
+            const generatedImages: GeneratedImage[] = Array.isArray(data?.images)
+              ? data.images
+              : [];
+
+            if (generatedImages.length === 0) {
+              throw new Error("Generation completed without an image.");
             }
+
+            const [firstImage, ...additionalImages] = generatedImages;
+            updateImage(id, {
+              ...firstImage,
+              id,
+              params: firstImage.params ?? jobParams,
+              generation: {
+                state: "completed",
+                progress: 100,
+                message: "Done",
+              },
+            });
+
+            if (additionalImages.length > 0) {
+              addImages(
+                additionalImages.map((image) => ({
+                  ...image,
+                  generation: {
+                    state: "completed" as const,
+                    progress: 100,
+                    message: "Done",
+                  },
+                }))
+              );
+            }
+
             completed = true;
           }
 
@@ -219,27 +279,85 @@ export default function Home() {
         }
       }
 
-      setButtonProgress(100);
       setStatus({ state: "completed", progress: 100, message: "Done!" });
       setTimeout(() => {
-        setButtonProgress(0);
         setStatus({ state: "idle", progress: 0, message: "" });
       }, 2000);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
-        setButtonProgress(0);
+        updateImage(id, {
+          generation: {
+            state: "canceled",
+            progress: 0,
+            message: "Canceled.",
+          },
+        });
         setStatus({ state: "canceled", progress: 0, message: "Canceled." });
         return;
       }
 
       const message = err instanceof Error ? err.message : "Unknown error";
-      setButtonProgress(0);
+      updateImage(id, {
+        generation: {
+          state: "error",
+          progress: 0,
+          message,
+        },
+      });
       setStatus({ state: "error", progress: 0, message });
     } finally {
       generationAbortControllerRef.current = null;
       activePromptIdRef.current = "";
+      setActiveGeneration(null);
     }
-  }, [params, generationModeError, setStatus, addImage]);
+  }, [addImages, setStatus, updateImage]);
+
+  useEffect(() => {
+    if (activeGeneration || generationQueue.length === 0) return;
+
+    const [nextJob] = generationQueue;
+    let canceled = false;
+
+    queueMicrotask(() => {
+      if (canceled) return;
+
+      setGenerationQueue((queue) =>
+        queue[0]?.id === nextJob.id ? queue.slice(1) : queue
+      );
+      setActiveGeneration(nextJob);
+      void runGenerationJob(nextJob);
+    });
+
+    return () => {
+      canceled = true;
+    };
+  }, [activeGeneration, generationQueue, runGenerationJob]);
+
+  const generate = useCallback(() => {
+    if (!params.prompt.trim()) return;
+    if (generationModeError) {
+      setStatus({ state: "error", progress: 0, message: generationModeError });
+      return;
+    }
+
+    const jobParams = cloneGenerationParams(params);
+    const id = crypto.randomUUID();
+
+    addImage({
+      id,
+      url: "",
+      filename: "",
+      params: jobParams,
+      timestamp: Date.now(),
+      generation: {
+        state: "queued",
+        progress: 0,
+        message: "Queued",
+      },
+    });
+    setGenerationQueue((queue) => [...queue, { id, params: jobParams }]);
+    setStatus({ state: "idle", progress: 0, message: "" });
+  }, [addImage, generationModeError, params, setStatus]);
 
   const cancelGeneration = useCallback(() => {
     const promptId = activePromptIdRef.current;
@@ -254,9 +372,18 @@ export default function Home() {
       }).catch(() => {});
     }
 
-    setButtonProgress(0);
+    if (activeGeneration) {
+      updateImage(activeGeneration.id, {
+        generation: {
+          state: "canceled",
+          progress: 0,
+          message: "Canceled.",
+        },
+      });
+    }
+
     setStatus({ state: "canceled", progress: 0, message: "Canceled." });
-  }, [setStatus]);
+  }, [activeGeneration, setStatus, updateImage]);
 
   const previewPose = useCallback(async () => {
     if (!params.pose_reference_image) return;
@@ -287,12 +414,8 @@ export default function Home() {
     }
   }, [params.pose_reference_image, params.width, params.height]);
 
-  const isGenerating = status.state === "generating";
-  const generateButtonProgress = isGenerating
-    ? Math.max(buttonProgress, status.progress)
-    : status.state === "completed"
-      ? 100
-      : 0;
+  const isGenerating = Boolean(activeGeneration);
+  const queuedJobCount = generationQueue.length;
 
   return (
     <div className="flex h-screen bg-background">
@@ -603,39 +726,25 @@ export default function Home() {
           {status.state === "canceled" && (
             <p className="text-xs text-muted-foreground mb-2">{status.message}</p>
           )}
+          {(isGenerating || queuedJobCount > 0) && (
+            <p className="mb-2 text-xs text-muted-foreground">
+              실행 중 {isGenerating ? 1 : 0}개 · 대기 {queuedJobCount}개
+            </p>
+          )}
           <div
             className={
               isGenerating ? "grid grid-cols-[minmax(0,1fr)_6.5rem] gap-2" : ""
             }
           >
             <Button
-              className={`relative w-full overflow-hidden ${
-                isGenerating
-                  ? "bg-zinc-800 text-zinc-100 disabled:bg-zinc-800 disabled:text-zinc-100 disabled:opacity-100 dark:bg-zinc-800 dark:disabled:bg-zinc-800"
-                  : ""
-              }`}
+              className="relative w-full overflow-hidden"
               size="lg"
               onClick={generate}
-              disabled={isGenerating || !params.prompt.trim() || Boolean(generationModeError)}
-              aria-busy={isGenerating}
+              disabled={!params.prompt.trim() || Boolean(generationModeError)}
             >
-              <span
-                className="absolute inset-y-0 left-0 bg-gradient-to-r from-sky-500 via-cyan-400 to-emerald-400 transition-[width] duration-500 ease-out"
-                style={{ width: `${isGenerating ? generateButtonProgress : 0}%` }}
-                aria-hidden="true"
-              />
-              {isGenerating ? (
-                <span className="relative z-10 flex min-w-0 items-center gap-2 drop-shadow-sm">
-                  <span className="tabular-nums">
-                    {Math.round(generateButtonProgress)}%
-                  </span>
-                  <span>Generating...</span>
-                </span>
-              ) : (
-                <span className="relative z-10 drop-shadow-sm">
-                  {status.state === "completed" ? "Done" : "Generate"}
-                </span>
-              )}
+              <span className="relative z-10 drop-shadow-sm">
+                {isGenerating || queuedJobCount > 0 ? "Add to Queue" : "Generate"}
+              </span>
             </Button>
 
             {isGenerating && (

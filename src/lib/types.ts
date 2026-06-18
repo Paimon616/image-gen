@@ -91,6 +91,13 @@ export interface GeneratedImage {
   params: GenerationParams | null;
   timestamp: number;
   filename: string;
+  generation?: ImageGenerationStatus;
+}
+
+export interface ImageGenerationStatus {
+  state: "queued" | "generating" | "completed" | "canceled" | "error";
+  progress: number;
+  message: string;
 }
 
 export interface VideoGenerationParams {

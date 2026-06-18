@@ -744,5 +744,33 @@
       "artist styles",
       "style"
     ]
+  },
+  "loras/realistic filter [IL].safetensors": {
+    "name": "Realistic filter [IL]",
+    "version": "IL v1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/f3fabafd-9255-46ae-b02a-7b0f5c038f58/original=true/44939813.jpeg",
+    "civitai_url": "https://civitai.red/models/1003513/realistic-filter-il?modelVersionId=1124771",
+    "source_url": "https://civitai.red/models/1003513/realistic-filter-il?modelVersionId=1124771",
+    "tags": [
+      "realistic",
+      "style",
+      "realism",
+      "2.5d style",
+      "2.5d"
+    ]
+  },
+  "loras/skzW0rld-IXL.safetensors": {
+    "name": "skzW0rld",
+    "version": "Illustrious",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/5b4c3ece-8f05-4180-8612-aa917b91d253/original=true/73340416.jpeg",
+    "civitai_url": "https://civitai.red/models/1524256/skzw0rld?modelVersionId=1729406",
+    "source_url": "https://civitai.red/models/1524256/skzw0rld?modelVersionId=1729406",
+    "tags": [
+      "style",
+      "niji",
+      "gothic"
+    ]
   }
 }

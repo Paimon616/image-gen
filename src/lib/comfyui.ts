@@ -27,7 +27,7 @@ interface ComfyImageRef {
   type?: string;
 }
 
-interface ComfyMediaRef extends ComfyImageRef {}
+type ComfyMediaRef = ComfyImageRef;
 
 export interface ComfyQueuedPrompt {
   prompt_id: string;
