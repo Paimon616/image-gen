@@ -6,50 +6,72 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+. (Join-Path $PSScriptRoot "windows-prereqs.ps1")
+
 $RootDir = Resolve-Path (Join-Path $PSScriptRoot "..")
+$DefaultRunnerDir = Join-Path $RootDir "runners\sd-scripts"
 if (-not $RunnerDir) {
-  $RunnerDir = Join-Path $RootDir "runners\sd-scripts"
+  $RunnerDir = $DefaultRunnerDir
 }
 
-if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
-  throw "git is required to install the LoRA runner."
-}
+Ensure-Git
+$PythonBin = Ensure-Python310 -PreferredBin $PythonBin
 
-if (-not $PythonBin) {
-  foreach ($Candidate in @("python3.12", "python3.11", "python3.10", "python")) {
-    if (Get-Command $Candidate -ErrorAction SilentlyContinue) {
-      $PythonBin = $Candidate
-      break
-    }
+$ExpectedRunnerCommit = ""
+if ([System.IO.Path]::GetFullPath($RunnerDir).TrimEnd("\") -eq [System.IO.Path]::GetFullPath($DefaultRunnerDir).TrimEnd("\")) {
+  $RunnerTreeEntry = git -C $RootDir ls-tree HEAD -- "runners/sd-scripts"
+  if ($LASTEXITCODE -eq 0 -and $RunnerTreeEntry -match "160000 commit ([0-9a-f]{40})\s+runners/sd-scripts") {
+    $ExpectedRunnerCommit = $Matches[1]
   }
 }
 
-if (-not $PythonBin -or -not (Get-Command $PythonBin -ErrorAction SilentlyContinue)) {
-  throw "Python 3.10 or newer is required. Pass -PythonBin if needed."
-}
+function Sync-RunnerCheckout {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$RunnerDir,
+    [string]$ExpectedCommit = ""
+  )
 
-& $PythonBin -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)"
-if ($LASTEXITCODE -ne 0) {
-  throw "Python 3.10 or newer is required for the LoRA runner."
+  if (-not $ExpectedCommit) {
+    Invoke-Checked { git -C $RunnerDir pull --ff-only } "Failed to update sd-scripts checkout."
+    return
+  }
+
+  & git -C $RunnerDir cat-file -e "$ExpectedCommit^{commit}" 2>$null
+  if ($LASTEXITCODE -ne 0) {
+    Invoke-Checked { git -C $RunnerDir fetch origin $ExpectedCommit } "Failed to fetch pinned sd-scripts commit $ExpectedCommit."
+  }
+
+  Invoke-Checked { git -C $RunnerDir checkout --detach $ExpectedCommit } "Failed to checkout pinned sd-scripts commit $ExpectedCommit."
 }
 
 $RunnerGitDir = Join-Path $RunnerDir ".git"
 if (Test-Path $RunnerGitDir) {
   Write-Host "Updating existing sd-scripts checkout..."
-  git -C $RunnerDir pull --ff-only
+  Invoke-Checked { git -C $RunnerDir rev-parse --is-inside-work-tree | Out-Null } "$RunnerDir has a .git directory but is not a valid git checkout. Move it aside or pass -RunnerDir."
+  Sync-RunnerCheckout -RunnerDir $RunnerDir -ExpectedCommit $ExpectedRunnerCommit
 } elseif (Test-Path $RunnerDir) {
-  throw "$RunnerDir already exists but is not a git checkout. Move it aside or pass -RunnerDir."
+  $RunnerItems = @(Get-ChildItem -Force -LiteralPath $RunnerDir)
+  if ($RunnerItems.Count -gt 0) {
+    throw "$RunnerDir already exists but is not a git checkout. Move it aside or pass -RunnerDir."
+  }
+
+  Write-Host "Cloning sd-scripts into empty directory $RunnerDir..."
+  Invoke-Checked { git clone $SdScriptsRepo $RunnerDir } "Failed to clone sd-scripts."
+  Sync-RunnerCheckout -RunnerDir $RunnerDir -ExpectedCommit $ExpectedRunnerCommit
 } else {
   Write-Host "Cloning sd-scripts into $RunnerDir..."
   New-Item -ItemType Directory -Force -Path (Split-Path $RunnerDir) | Out-Null
-  git clone $SdScriptsRepo $RunnerDir
+  Invoke-Checked { git clone $SdScriptsRepo $RunnerDir } "Failed to clone sd-scripts."
+  Sync-RunnerCheckout -RunnerDir $RunnerDir -ExpectedCommit $ExpectedRunnerCommit
 }
 
 $VenvDir = Join-Path $RunnerDir ".venv"
 $VenvPython = Join-Path $VenvDir "Scripts\python.exe"
 if ((Test-Path $VenvPython)) {
-  & $VenvPython -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)"
-  if ($LASTEXITCODE -ne 0) {
+  try {
+    Invoke-Checked { & $VenvPython -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)" } "Existing LoRA runner venv uses Python older than 3.10."
+  } catch {
     Write-Host "Existing LoRA runner venv uses Python older than 3.10. Recreating it..."
     Remove-Item -Recurse -Force $VenvDir
   }
@@ -57,17 +79,17 @@ if ((Test-Path $VenvPython)) {
 
 if (-not (Test-Path $VenvDir)) {
   Write-Host "Creating Python virtual environment..."
-  & $PythonBin -m venv $VenvDir
+  Invoke-Checked { & $PythonBin -m venv $VenvDir } "Failed to create Python virtual environment."
 }
 
-& $VenvPython -m pip install --upgrade pip setuptools wheel
+Invoke-Checked { & $VenvPython -m pip install --upgrade pip "setuptools<82" wheel } "Failed to install base Python packaging tools."
 Push-Location $RunnerDir
 try {
-  & $VenvPython -m pip install -r "requirements.txt"
+  Invoke-Checked { & $VenvPython -m pip install -r "requirements.txt" } "Failed to install sd-scripts requirements."
 } finally {
   Pop-Location
 }
-& $VenvPython -m pip install accelerate torchvision
+Invoke-Checked { & $VenvPython -m pip install accelerate torchvision } "Failed to install LoRA runner runtime packages."
 
 New-Item -ItemType Directory -Force -Path (Join-Path $RootDir "training\runs") | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $RootDir "ComfyUI\models\loras") | Out-Null

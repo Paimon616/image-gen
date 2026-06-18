@@ -1,11 +1,18 @@
-import { access, writeFile } from "fs/promises";
+import { access, readFile, writeFile } from "fs/promises";
 import { constants } from "fs";
 import { basename, extname, join, normalize, resolve } from "path";
 import { randomUUID } from "crypto";
 
 function comfyUiModelsDir() {
+  if (process.env.COMFYUI_MODELS_DIR) {
+    return process.env.COMFYUI_MODELS_DIR;
+  }
+
+  if (process.env.COMFYUI_DIR) {
+    return join(process.env.COMFYUI_DIR, "models");
+  }
+
   return (
-    process.env.COMFYUI_MODELS_DIR ??
     join(
       /*turbopackIgnore: true*/ process.cwd(),
       Buffer.from("Q29tZnlVSQ==", "base64").toString("utf8"),
@@ -38,6 +45,10 @@ export function sdxlTrainScript() {
   return join(loraRunnerDir(), "sdxl_train_network.py");
 }
 
+export function sdTrainScript() {
+  return join(loraRunnerDir(), "train_network.py");
+}
+
 export function loraOutputDir() {
   return join(comfyUiModelsDir(), "loras");
 }
@@ -59,6 +70,7 @@ export interface LoraTrainingConfigInput {
   category: string;
   imageDir: string;
   outputName: string;
+  resolution: number;
 }
 
 async function exists(path: string) {
@@ -75,6 +87,7 @@ export async function getLoraRunnerStatus(): Promise<LoraRunnerStatus> {
     { label: "runners/sd-scripts", path: loraRunnerDir() },
     { label: "runner Python venv", path: loraRunnerPython() },
     { label: "sdxl_train_network.py", path: sdxlTrainScript() },
+    { label: "train_network.py", path: sdTrainScript() },
   ];
   const results = await Promise.all(
     checks.map(async (check) => ({
@@ -118,6 +131,81 @@ export function checkpointPath(baseModel: string) {
   return fullPath;
 }
 
+interface LocalModelMetadata {
+  base_model?: string;
+}
+
+export type TrainingTarget =
+  | {
+      kind: "sdxl" | "sd";
+      label: string;
+      scriptPath: string;
+      resolution: number;
+    }
+  | {
+      kind: "unsupported";
+      label: string;
+      reason: string;
+    };
+
+async function checkpointBaseModelLabel(baseModel: string) {
+  try {
+    const catalog = JSON.parse(
+      await readFile(join(process.cwd(), "data", "model-catalog.json"), "utf8")
+    ) as Record<string, LocalModelMetadata>;
+    return catalog[`checkpoints/${baseModel}`]?.base_model?.trim() ?? "";
+  } catch {
+    return "";
+  }
+}
+
+export async function getTrainingTarget(baseModel: string): Promise<TrainingTarget> {
+  const label = (await checkpointBaseModelLabel(baseModel)) || baseModel;
+  const normalized = `${label} ${baseModel}`.toLowerCase();
+
+  if (/\banima\b/.test(normalized)) {
+    return {
+      kind: "unsupported",
+      label,
+      reason:
+        "Anima checkpoints require the dedicated anima_train_network.py path and additional Qwen/VAE/adapter settings, so they are not supported by this LoRA runner yet.",
+    };
+  }
+
+  if (/\bflux\b|flux\.1/.test(normalized)) {
+    return {
+      kind: "unsupported",
+      label,
+      reason: "Flux checkpoints are not supported by this SD/SDXL LoRA runner.",
+    };
+  }
+
+  if (/sd\s*1\.?5|sd1|stable diffusion 1|sd\s*v?1/.test(normalized)) {
+    return {
+      kind: "sd",
+      label,
+      scriptPath: sdTrainScript(),
+      resolution: Number(process.env.LORA_SD_RESOLUTION ?? "512"),
+    };
+  }
+
+  if (/sdxl|xl|illustrious|pony|noobai|animagine/.test(normalized)) {
+    return {
+      kind: "sdxl",
+      label,
+      scriptPath: sdxlTrainScript(),
+      resolution: Number(process.env.LORA_SDXL_RESOLUTION ?? "1024"),
+    };
+  }
+
+  return {
+    kind: "unsupported",
+    label,
+    reason:
+      "This checkpoint has no supported base model metadata. Set it to SD 1.5, SDXL, Illustrious, or Pony in the model catalog before training.",
+  };
+}
+
 export function safeImageExtension(file: File) {
   const fromName = extname(file.name).toLowerCase();
   if ([".png", ".jpg", ".jpeg", ".webp"].includes(fromName)) return fromName;
@@ -137,6 +225,7 @@ export function buildSdxlTrainingConfig({
   category,
   imageDir,
   outputName,
+  resolution,
 }: LoraTrainingConfigInput) {
   const tokens = triggerWords
     .split(",")
@@ -152,7 +241,7 @@ caption_extension = ".txt"
 keep_tokens = 1
 
 [[datasets]]
-resolution = 1024
+resolution = ${resolution}
 batch_size = 1
 enable_bucket = true
 bucket_no_upscale = true
@@ -163,11 +252,6 @@ max_bucket_reso = 1536
   image_dir = ${tomlString(normalize(imageDir))}
   class_tokens = ${tomlString(`${tokens} ${classToken}`.trim())}
   num_repeats = 10
-
-[metadata]
-lora_name = ${tomlString(loraName)}
-base_model = ${tomlString(baseModel)}
-output_name = ${tomlString(outputName)}
 `;
 }
 

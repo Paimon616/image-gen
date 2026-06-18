@@ -11,6 +11,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+. (Join-Path $PSScriptRoot "windows-prereqs.ps1")
+
 $RootDir = Resolve-Path (Join-Path $PSScriptRoot "..")
 if (-not $ImageGenUrl) {
   $ImageGenUrl = "http://localhost:$ImageGenPort"
@@ -93,13 +95,7 @@ function Start-LocalService {
     return
   }
 
-  $NpmCommand = Get-Command npm.cmd -ErrorAction SilentlyContinue
-  if (-not $NpmCommand) {
-    $NpmCommand = Get-Command npm -ErrorAction SilentlyContinue
-  }
-  if (-not $NpmCommand) {
-    throw "npm is required."
-  }
+  $NpmCommand = Ensure-Npm
 
   $SafeName = $Name.ToLowerInvariant().Replace(" ", "-")
   $StdOutLog = Join-Path $LogDir "$SafeName.out.log"
@@ -107,7 +103,7 @@ function Start-LocalService {
 
   Write-Host "Starting $Name..."
   $Process = Start-Process `
-    -FilePath $NpmCommand.Source `
+    -FilePath $NpmCommand `
     -ArgumentList $Arguments `
     -WorkingDirectory $RootDir `
     -RedirectStandardOutput $StdOutLog `
@@ -122,16 +118,10 @@ function Start-LocalService {
 try {
   if (-not (Test-Path (Join-Path $RootDir "node_modules"))) {
     Write-Host "Node dependencies are missing. Running npm install..."
-    $NpmCommand = Get-Command npm.cmd -ErrorAction SilentlyContinue
-    if (-not $NpmCommand) {
-      $NpmCommand = Get-Command npm -ErrorAction SilentlyContinue
-    }
-    if (-not $NpmCommand) {
-      throw "npm is required."
-    }
+    $NpmCommand = Ensure-Npm
     Push-Location $RootDir
     try {
-      & $NpmCommand.Source install
+      & $NpmCommand install
     } finally {
       Pop-Location
     }
@@ -148,16 +138,10 @@ try {
   $ComfyPython = Join-Path $ComfyUIDir "venv\Scripts\python.exe"
   if ((-not (Test-Path $ComfyMain)) -or (-not (Test-Path $ComfyPython))) {
     Write-Host "ComfyUI is missing. Running setup..."
-    $NpmCommand = Get-Command npm.cmd -ErrorAction SilentlyContinue
-    if (-not $NpmCommand) {
-      $NpmCommand = Get-Command npm -ErrorAction SilentlyContinue
-    }
-    if (-not $NpmCommand) {
-      throw "npm is required."
-    }
+    $NpmCommand = Ensure-Npm
     Push-Location $RootDir
     try {
-      & $NpmCommand.Source run setup:comfyui:win
+      & $NpmCommand run setup:comfyui:win
     } finally {
       Pop-Location
     }
@@ -167,16 +151,10 @@ try {
   $LoraPython = Join-Path $LoraRunnerDir ".venv\Scripts\python.exe"
   if ((-not (Test-Path $LoraTrainScript)) -or (-not (Test-Path $LoraPython))) {
     Write-Host "LoRA runner is missing. Running setup..."
-    $NpmCommand = Get-Command npm.cmd -ErrorAction SilentlyContinue
-    if (-not $NpmCommand) {
-      $NpmCommand = Get-Command npm -ErrorAction SilentlyContinue
-    }
-    if (-not $NpmCommand) {
-      throw "npm is required."
-    }
+    $NpmCommand = Ensure-Npm
     Push-Location $RootDir
     try {
-      & $NpmCommand.Source run setup:lora-runner:win
+      & $NpmCommand run setup:lora-runner:win
     } finally {
       Pop-Location
     }

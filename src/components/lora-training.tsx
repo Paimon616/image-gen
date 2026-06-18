@@ -44,6 +44,16 @@ interface RunnerStatus {
   missing: string[];
 }
 
+interface TrainingResult {
+  runId: string;
+  outputName: string;
+  outputPath: string;
+  logPath: string;
+  status: "idle" | "running" | "completed" | "failed";
+  lines: string[];
+  error: string;
+}
+
 const MIN_IMAGES = 10;
 const MAX_IMAGES = 100;
 
@@ -75,6 +85,40 @@ function parseSseEvent(rawEvent: string) {
   };
 }
 
+function checkpointTrainingSupport(checkpoint: LocalCheckpoint | undefined) {
+  if (!checkpoint) return { supported: false, label: "", reason: "Select a checkpoint." };
+
+  const normalized = `${checkpoint.base_model} ${checkpoint.name} ${checkpoint.path}`.toLowerCase();
+  if (/\banima\b/.test(normalized)) {
+    return {
+      supported: false,
+      label: checkpoint.base_model || checkpoint.name,
+      reason: "Anima checkpoints need a dedicated training path and are not supported here yet.",
+    };
+  }
+
+  if (/\bflux\b|flux\.1/.test(normalized)) {
+    return {
+      supported: false,
+      label: checkpoint.base_model || checkpoint.name,
+      reason: "Flux checkpoints are not supported by this SD/SDXL LoRA runner.",
+    };
+  }
+
+  const supported =
+    /sd\s*1\.?5|sd1|stable diffusion 1|sd\s*v?1|sdxl|xl|illustrious|pony|noobai|animagine/.test(
+      normalized
+    );
+
+  return {
+    supported,
+    label: checkpoint.base_model || checkpoint.name,
+    reason: supported
+      ? ""
+      : "Set this checkpoint metadata to SD 1.5, SDXL, Illustrious, or Pony before training.",
+  };
+}
+
 export function LoraTraining() {
   const [dataset, setDataset] = useState<DatasetImage[]>([]);
   const [loraName, setLoraName] = useState("");
@@ -88,20 +132,31 @@ export function LoraTraining() {
   const [progress, setProgress] = useState(0);
   const [statusMessage, setStatusMessage] = useState("");
   const [outputFile, setOutputFile] = useState("");
+  const [trainingResult, setTrainingResult] = useState<TrainingResult>({
+    runId: "",
+    outputName: "",
+    outputPath: "",
+    logPath: "",
+    status: "idle",
+    lines: [],
+    error: "",
+  });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const datasetPercent = Math.min((dataset.length / MAX_IMAGES) * 100, 100);
+  const selectedCheckpoint = checkpoints.find((checkpoint) => checkpoint.path === baseModel);
+  const trainingSupport = checkpointTrainingSupport(selectedCheckpoint);
   const canPrepare =
     dataset.length >= MIN_IMAGES &&
     loraName.trim().length > 0 &&
     triggerWords.trim().length > 0 &&
-    baseModel.trim().length > 0;
+    baseModel.trim().length > 0 &&
+    trainingSupport.supported;
   const canStart = canPrepare && runnerState === "ready";
   const outputPath = useMemo(() => {
     const safeName = loraName.trim().toLowerCase().replace(/[^a-z0-9가-힣_-]+/gi, "-");
     return safeName ? `ComfyUI/models/loras/${safeName}.safetensors` : "ComfyUI/models/loras/my-lora.safetensors";
   }, [loraName]);
-  const selectedCheckpoint = checkpoints.find((checkpoint) => checkpoint.path === baseModel);
   const missingRequirements = [
     dataset.length < MIN_IMAGES ? `이미지 ${MIN_IMAGES - dataset.length}장` : "",
     loraName.trim().length === 0 ? "LoRA 이름" : "",
@@ -117,6 +172,8 @@ export function LoraTraining() {
       ? statusMessage || `LoRA 파일 생성 중 ${progress}%`
       : state === "completed"
         ? `LoRA 파일 생성이 완료되었습니다. 출력 위치: ${outputFile || outputPath}`
+        : baseModel.trim().length > 0 && !trainingSupport.supported
+          ? trainingSupport.reason
         : canPrepare
           ? "LoRA 파일 생성 준비가 완료되었습니다"
           : `${missingRequirements.join(", ")}이 필요합니다`;
@@ -139,7 +196,14 @@ export function LoraTraining() {
           ? (data.checkpointAssets as LocalCheckpoint[])
           : [];
         setCheckpoints(checkpointAssets);
-        setBaseModel((current) => current || checkpointAssets[0]?.path || "");
+        setBaseModel(
+          (current) =>
+            current ||
+            checkpointAssets.find((checkpoint) => checkpointTrainingSupport(checkpoint).supported)
+              ?.path ||
+            checkpointAssets[0]?.path ||
+            ""
+        );
       })
       .catch(() => {});
   }, []);
@@ -196,12 +260,30 @@ export function LoraTraining() {
     setTriggerWords("");
   }
 
+  function appendResultLine(message: string) {
+    const trimmed = message.trim();
+    if (!trimmed) return;
+    setTrainingResult((current) => ({
+      ...current,
+      lines: [...current.lines, trimmed].slice(-80),
+    }));
+  }
+
   async function startTraining() {
     if (!canStart || state === "training") return;
     setState("training");
     setProgress(1);
     setStatusMessage("Dataset을 전송하는 중...");
     setOutputFile("");
+    setTrainingResult({
+      runId: "",
+      outputName: "",
+      outputPath: "",
+      logPath: "",
+      status: "running",
+      lines: ["Preparing dataset upload..."],
+      error: "",
+    });
 
     const formData = new FormData();
     formData.append("loraName", loraName);
@@ -245,32 +327,78 @@ export function LoraTraining() {
           if (!rawEvent.trim()) continue;
           const { event, data } = parseSseEvent(rawEvent);
 
+          if (event === "queued") {
+            setTrainingResult((current) => ({
+              ...current,
+              runId: String(data?.runId ?? ""),
+              outputName: String(data?.outputName ?? ""),
+              status: "running",
+            }));
+            appendResultLine(`Run queued: ${String(data?.runId ?? "")}`);
+          }
+
           if (event === "progress") {
             setProgress(Number(data?.progress ?? 1));
-            setStatusMessage(String(data?.message ?? "LoRA 파일 생성 중..."));
+            const message = String(data?.message ?? "LoRA 파일 생성 중...");
+            setStatusMessage(message);
+            appendResultLine(message);
           }
 
           if (event === "log" && data?.message) {
-            setStatusMessage(String(data.message));
+            const message = String(data.message);
+            setStatusMessage(message);
+            appendResultLine(message);
           }
 
           if (event === "complete") {
             setProgress(100);
-            setOutputFile(String(data?.outputPath ?? ""));
+            const nextOutputFile = String(data?.outputPath ?? "");
+            setOutputFile(nextOutputFile);
             setStatusMessage("LoRA 파일 생성 완료");
+            setTrainingResult((current) => ({
+              ...current,
+              runId: String(data?.runId ?? current.runId),
+              outputName: String(data?.outputName ?? current.outputName),
+              outputPath: nextOutputFile,
+              logPath: String(data?.logPath ?? current.logPath),
+              status: "completed",
+              error: "",
+            }));
+            appendResultLine(`Created: ${nextOutputFile}`);
             setState("completed");
             completed = true;
           }
 
           if (event === "error") {
+            const errorMessage = data?.error || "LoRA training failed.";
+            const logTail = String(data?.logTail ?? "");
+            setTrainingResult((current) => ({
+              ...current,
+              logPath: String(data?.logPath ?? current.logPath),
+              status: "failed",
+              error: String(errorMessage),
+              lines: logTail
+                ? logTail.split(/\r?\n/).filter(Boolean).slice(-80)
+                : current.lines,
+            }));
             throw new Error(data?.error || "LoRA training failed.");
           }
         }
       }
+
+      if (!completed) {
+        throw new Error("LoRA training stream ended before completion.");
+      }
     } catch (error) {
+      const message = error instanceof Error ? error.message : "LoRA training failed.";
       setState("ready");
       setProgress(0);
-      setStatusMessage(error instanceof Error ? error.message : "LoRA training failed.");
+      setStatusMessage(message);
+      setTrainingResult((current) => ({
+        ...current,
+        status: current.status === "failed" ? "failed" : "failed",
+        error: current.error || message,
+      }));
     }
   }
 
@@ -491,11 +619,15 @@ export function LoraTraining() {
                     className="h-11 w-full appearance-none rounded-md border border-input bg-background px-3 pr-9 text-base font-medium outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/25"
                   >
                     <option value="">기반 checkpoint를 선택하세요</option>
-                    {checkpoints.map((checkpoint) => (
-                      <option key={checkpoint.path} value={checkpoint.path}>
+                    {checkpoints.map((checkpoint) => {
+                      const support = checkpointTrainingSupport(checkpoint);
+                      return (
+                      <option key={checkpoint.path} value={checkpoint.path} disabled={!support.supported}>
                         {checkpoint.name || checkpoint.path}
+                        {!support.supported ? " (unsupported)" : ""}
                       </option>
-                    ))}
+                      );
+                    })}
                   </select>
                   <ChevronDown className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-muted-foreground" />
                 </div>
@@ -511,11 +643,80 @@ export function LoraTraining() {
                     </div>
                   </div>
                 )}
+                {baseModel.trim().length > 0 && !trainingSupport.supported && (
+                  <div className="rounded-md border border-destructive/35 bg-destructive/10 p-3 text-sm font-semibold text-destructive">
+                    {trainingSupport.reason}
+                  </div>
+                )}
               </div>
 
               <div className="rounded-md border border-border bg-muted/35 p-3">
                 <div className="text-xs font-bold uppercase text-muted-foreground">출력 파일</div>
                 <div className="mt-1 break-all text-sm font-semibold text-foreground">{outputPath}</div>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-lg border border-border bg-card p-4 shadow-sm">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="text-lg font-bold">Training Result</h2>
+              <Badge
+                variant={
+                  trainingResult.status === "completed"
+                    ? "default"
+                    : trainingResult.status === "failed"
+                      ? "destructive"
+                      : "secondary"
+                }
+                className="rounded-md"
+              >
+                {trainingResult.status === "idle"
+                  ? "Idle"
+                  : trainingResult.status === "running"
+                    ? "Running"
+                    : trainingResult.status === "completed"
+                      ? "Completed"
+                      : "Failed"}
+              </Badge>
+            </div>
+
+            <div className="space-y-3 text-sm">
+              <div className="rounded-md border border-border bg-muted/35 p-3">
+                <div className="text-xs font-bold uppercase text-muted-foreground">Output</div>
+                <div className="mt-1 break-all font-semibold text-foreground">
+                  {trainingResult.outputPath || outputFile || outputPath}
+                </div>
+              </div>
+
+              {trainingResult.runId && (
+                <div className="grid grid-cols-[5rem_1fr] gap-2 text-xs font-medium">
+                  <div className="text-muted-foreground">Run ID</div>
+                  <div className="break-all text-foreground">{trainingResult.runId}</div>
+                </div>
+              )}
+
+              {trainingResult.logPath && (
+                <div className="grid grid-cols-[5rem_1fr] gap-2 text-xs font-medium">
+                  <div className="text-muted-foreground">Log</div>
+                  <div className="break-all text-foreground">{trainingResult.logPath}</div>
+                </div>
+              )}
+
+              {trainingResult.error && (
+                <div className="rounded-md border border-destructive/35 bg-destructive/10 p-3 text-sm font-semibold text-destructive">
+                  {trainingResult.error}
+                </div>
+              )}
+
+              <div className="rounded-md border border-border bg-muted/35">
+                <div className="border-b border-border px-3 py-2 text-xs font-bold uppercase text-muted-foreground">
+                  Recent Output
+                </div>
+                <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words p-3 text-xs leading-5 text-foreground">
+                  {trainingResult.lines.length > 0
+                    ? trainingResult.lines.join("\n")
+                    : "No training output yet."}
+                </pre>
               </div>
             </div>
           </section>

@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "fs/promises";
+import { access, appendFile, mkdir, readFile, writeFile } from "fs/promises";
 import { randomUUID } from "crypto";
 import { join } from "path";
 import { spawn, type ChildProcessWithoutNullStreams } from "child_process";
@@ -7,11 +7,11 @@ import {
   buildSdxlTrainingConfig,
   checkpointPath,
   getLoraRunnerStatus,
+  getTrainingTarget,
   loraOutputDir,
   loraRunnerPython,
   safeImageExtension,
   safeOutputName,
-  sdxlTrainScript,
   writeTrainingReadme,
 } from "@/lib/lora-training";
 
@@ -54,6 +54,15 @@ function parseProgress(line: string) {
   return null;
 }
 
+async function readLogTail(logPath: string, maxLength = 6000) {
+  try {
+    const content = await readFile(logPath, "utf8");
+    return content.slice(-maxLength);
+  } catch {
+    return "";
+  }
+}
+
 async function saveDataset({
   files,
   imageDir,
@@ -82,17 +91,19 @@ function trainingArgs({
   baseModelPath,
   datasetConfigPath,
   outputName,
+  trainScript,
 }: {
   baseModelPath: string;
   datasetConfigPath: string;
   outputName: string;
+  trainScript: string;
 }) {
   return [
     "-m",
     "accelerate.commands.launch",
     "--num_cpu_threads_per_process",
     "1",
-    sdxlTrainScript(),
+    trainScript,
     "--pretrained_model_name_or_path",
     baseModelPath,
     "--dataset_config",
@@ -174,6 +185,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const trainingTarget = await getTrainingTarget(baseModel);
+  if (trainingTarget.kind === "unsupported") {
+    return Response.json(
+      { error: trainingTarget.reason, baseModel: trainingTarget.label },
+      { status: 400 }
+    );
+  }
+
   let child: ChildProcessWithoutNullStreams | null = null;
   let clientDisconnected = false;
 
@@ -215,6 +234,7 @@ export async function POST(req: NextRequest) {
           category,
           imageDir,
           outputName,
+          resolution: trainingTarget.resolution,
         });
 
         await writeFile(datasetConfigPath, datasetConfig);
@@ -222,10 +242,17 @@ export async function POST(req: NextRequest) {
           `runId=${runId}`,
           `loraName=${loraName}`,
           `baseModel=${baseModel}`,
+          `baseModelType=${trainingTarget.label}`,
+          `trainingScript=${trainingTarget.scriptPath}`,
           `output=${join(outputDir, `${outputName}.safetensors`)}`,
         ]);
 
-        const args = trainingArgs({ baseModelPath, datasetConfigPath, outputName });
+        const args = trainingArgs({
+          baseModelPath,
+          datasetConfigPath,
+          outputName,
+          trainScript: trainingTarget.scriptPath,
+        });
         await writeFile(
           logPath,
           [`python ${args.join(" ")}`, "", "---- output ----", ""].join("\n")
@@ -241,7 +268,7 @@ export async function POST(req: NextRequest) {
         });
 
         const appendLog = async (chunk: Buffer) => {
-          await writeFile(logPath, chunk, { flag: "a" });
+          await appendFile(logPath, chunk);
         };
 
         child.stdout.on("data", (chunk: Buffer) => {
@@ -273,12 +300,28 @@ export async function POST(req: NextRequest) {
         if (clientDisconnected) return;
 
         if (exitCode !== 0) {
-          throw new Error(`LoRA training failed with exit code ${exitCode}. See ${logPath}`);
+          send("error", {
+            error: `LoRA training failed with exit code ${exitCode}.`,
+            logPath,
+            logTail: await readLogTail(logPath),
+          });
+          return;
         }
 
         const outputPath = join(outputDir, `${outputName}.safetensors`);
+        try {
+          await access(outputPath);
+        } catch {
+          send("error", {
+            error: "LoRA training finished, but the output file was not found.",
+            logPath,
+            logTail: await readLogTail(logPath),
+          });
+          return;
+        }
+
         send("progress", { progress: 100, message: "LoRA file created." });
-        send("complete", { runId, outputName, outputPath });
+        send("complete", { runId, outputName, outputPath, logPath });
       } catch (error) {
         if (!clientDisconnected) {
           send("error", {

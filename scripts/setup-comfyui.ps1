@@ -1,44 +1,57 @@
 param(
   [string]$ComfyUIDir = "",
   [string]$ComfyUIRepo = "https://github.com/comfyanonymous/ComfyUI.git",
-  [string]$PythonBin = "python"
+  [string]$PythonBin = ""
 )
 
 $ErrorActionPreference = "Stop"
+
+. (Join-Path $PSScriptRoot "windows-prereqs.ps1")
 
 $RootDir = Resolve-Path (Join-Path $PSScriptRoot "..")
 if (-not $ComfyUIDir) {
   $ComfyUIDir = Join-Path $RootDir "ComfyUI"
 }
 
-if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
-  throw "git is required to install ComfyUI."
-}
-
-if (-not (Get-Command $PythonBin -ErrorAction SilentlyContinue)) {
-  throw "$PythonBin is required. Pass -PythonBin if needed."
-}
+Ensure-Git
+$PythonBin = Ensure-Python310 -PreferredBin $PythonBin
 
 $ComfyGitDir = Join-Path $ComfyUIDir ".git"
 if (Test-Path $ComfyGitDir) {
   Write-Host "Updating existing ComfyUI checkout..."
-  git -C $ComfyUIDir pull --ff-only
+  Invoke-Checked { git -C $ComfyUIDir rev-parse --is-inside-work-tree | Out-Null } "$ComfyUIDir has a .git directory but is not a valid git checkout. Move it aside or pass -ComfyUIDir."
+  Invoke-Checked { git -C $ComfyUIDir pull --ff-only } "Failed to update ComfyUI checkout."
 } elseif (Test-Path $ComfyUIDir) {
-  throw "$ComfyUIDir already exists but is not a git checkout. Move it aside or pass -ComfyUIDir."
+  $ComfyItems = @(Get-ChildItem -Force -LiteralPath $ComfyUIDir)
+  if ($ComfyItems.Count -gt 0) {
+    throw "$ComfyUIDir already exists but is not a git checkout. Move it aside or pass -ComfyUIDir."
+  }
+
+  Write-Host "Cloning ComfyUI into empty directory $ComfyUIDir..."
+  Invoke-Checked { git clone $ComfyUIRepo $ComfyUIDir } "Failed to clone ComfyUI."
 } else {
   Write-Host "Cloning ComfyUI into $ComfyUIDir..."
-  git clone $ComfyUIRepo $ComfyUIDir
+  Invoke-Checked { git clone $ComfyUIRepo $ComfyUIDir } "Failed to clone ComfyUI."
 }
 
 $VenvDir = Join-Path $ComfyUIDir "venv"
-if (-not (Test-Path $VenvDir)) {
-  Write-Host "Creating Python virtual environment..."
-  & $PythonBin -m venv $VenvDir
+$VenvPython = Join-Path $VenvDir "Scripts\python.exe"
+if ((Test-Path $VenvPython)) {
+  try {
+    Invoke-Checked { & $VenvPython -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)" } "Existing ComfyUI venv uses Python older than 3.10."
+  } catch {
+    Write-Host "Existing ComfyUI venv uses Python older than 3.10. Recreating it..."
+    Remove-Item -Recurse -Force $VenvDir
+  }
 }
 
-$VenvPython = Join-Path $VenvDir "Scripts\python.exe"
-& $VenvPython -m pip install --upgrade pip setuptools wheel
-& $VenvPython -m pip install -r (Join-Path $ComfyUIDir "requirements.txt")
+if (-not (Test-Path $VenvDir)) {
+  Write-Host "Creating Python virtual environment..."
+  Invoke-Checked { & $PythonBin -m venv $VenvDir } "Failed to create Python virtual environment."
+}
+
+Invoke-Checked { & $VenvPython -m pip install --upgrade pip "setuptools<82" wheel } "Failed to install base Python packaging tools."
+Invoke-Checked { & $VenvPython -m pip install -r (Join-Path $ComfyUIDir "requirements.txt") } "Failed to install ComfyUI requirements."
 
 @(
   "models\checkpoints",
