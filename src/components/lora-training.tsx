@@ -20,18 +20,28 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 
 type TrainingState = "idle" | "ready" | "training" | "completed";
-type RunnerState = "not_configured" | "ready";
+type RunnerState = "checking" | "not_configured" | "ready";
 
 interface DatasetImage {
   id: string;
   name: string;
   url: string;
+  file: File;
 }
 
 interface LocalCheckpoint {
   path: string;
   name: string;
   base_model: string;
+}
+
+interface RunnerStatus {
+  ready: boolean;
+  runnerDir: string;
+  pythonPath: string;
+  trainScript: string;
+  outputDir: string;
+  missing: string[];
 }
 
 const MIN_IMAGES = 10;
@@ -42,7 +52,27 @@ function clampDataset(files: File[]) {
     id: `${file.name}-${file.lastModified}-${crypto.randomUUID()}`,
     name: file.name,
     url: URL.createObjectURL(file),
+    file,
   }));
+}
+
+function parseSseEvent(rawEvent: string) {
+  const event =
+    rawEvent
+      .split("\n")
+      .find((line) => line.startsWith("event: "))
+      ?.slice("event: ".length)
+      .trim() ?? "message";
+  const data = rawEvent
+    .split("\n")
+    .filter((line) => line.startsWith("data: "))
+    .map((line) => line.slice("data: ".length))
+    .join("\n");
+
+  return {
+    event,
+    data: data ? JSON.parse(data) : null,
+  };
 }
 
 export function LoraTraining() {
@@ -53,8 +83,11 @@ export function LoraTraining() {
   const [checkpoints, setCheckpoints] = useState<LocalCheckpoint[]>([]);
   const [baseModel, setBaseModel] = useState("");
   const [state, setState] = useState<TrainingState>("idle");
-  const [runnerState] = useState<RunnerState>("not_configured");
+  const [runnerState, setRunnerState] = useState<RunnerState>("checking");
+  const [runnerStatus, setRunnerStatus] = useState<RunnerStatus | null>(null);
   const [progress, setProgress] = useState(0);
+  const [statusMessage, setStatusMessage] = useState("");
+  const [outputFile, setOutputFile] = useState("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const datasetPercent = Math.min((dataset.length / MAX_IMAGES) * 100, 100);
@@ -76,17 +109,21 @@ export function LoraTraining() {
     baseModel.trim().length === 0 ? "기반 모델" : "",
   ].filter(Boolean);
   const footerMessage =
-    runnerState !== "ready"
+    runnerState === "checking"
+      ? "LoRA runner 상태를 확인하는 중입니다."
+      : runnerState !== "ready"
       ? "LoRA 파일 생성을 실행하려면 local training runner 연결이 필요합니다."
       : state === "training"
-      ? `LoRA 파일 생성 중 ${progress}%`
+      ? statusMessage || `LoRA 파일 생성 중 ${progress}%`
       : state === "completed"
-        ? `LoRA 파일 생성이 완료되었습니다. 출력 위치: ${outputPath}`
+        ? `LoRA 파일 생성이 완료되었습니다. 출력 위치: ${outputFile || outputPath}`
         : canPrepare
           ? "LoRA 파일 생성 준비가 완료되었습니다"
           : `${missingRequirements.join(", ")}이 필요합니다`;
   const actionLabel =
-    runnerState !== "ready"
+    runnerState === "checking"
+      ? "Runner 확인 중"
+      : runnerState !== "ready"
       ? "Runner 연결 필요"
       : state === "training"
       ? "생성 중"
@@ -105,6 +142,33 @@ export function LoraTraining() {
         setBaseModel((current) => current || checkpointAssets[0]?.path || "");
       })
       .catch(() => {});
+  }, []);
+
+  function refreshRunnerStatus() {
+    setRunnerState("checking");
+    fetch("/api/lora-training/status")
+      .then((res) => res.json())
+      .then((data: RunnerStatus) => {
+        setRunnerStatus(data);
+        setRunnerState(data.ready ? "ready" : "not_configured");
+      })
+      .catch(() => {
+        setRunnerStatus(null);
+        setRunnerState("not_configured");
+      });
+  }
+
+  useEffect(() => {
+    fetch("/api/lora-training/status")
+      .then((res) => res.json())
+      .then((data: RunnerStatus) => {
+        setRunnerStatus(data);
+        setRunnerState(data.ready ? "ready" : "not_configured");
+      })
+      .catch(() => {
+        setRunnerStatus(null);
+        setRunnerState("not_configured");
+      });
   }, []);
 
   function addFiles(files: FileList | null) {
@@ -132,18 +196,82 @@ export function LoraTraining() {
     setTriggerWords("");
   }
 
-  function startTraining() {
+  async function startTraining() {
     if (!canStart || state === "training") return;
     setState("training");
-    setProgress(8);
+    setProgress(1);
+    setStatusMessage("Dataset을 전송하는 중...");
+    setOutputFile("");
 
-    const steps = [18, 31, 47, 64, 79, 92, 100];
-    steps.forEach((step, index) => {
-      window.setTimeout(() => {
-        setProgress(step);
-        if (step === 100) setState("completed");
-      }, 500 + index * 450);
+    const formData = new FormData();
+    formData.append("loraName", loraName);
+    formData.append("triggerWords", triggerWords);
+    formData.append("category", category);
+    formData.append("baseModel", baseModel);
+    dataset.forEach((image) => {
+      formData.append("images", image.file, image.name);
     });
+
+    try {
+      const res = await fetch("/api/lora-training/generate/stream", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        const missing = Array.isArray(data.missing) ? `\n${data.missing.join("\n")}` : "";
+        throw new Error(`${data.error || "LoRA training failed"}${missing}`);
+      }
+
+      if (!res.body) {
+        throw new Error("LoRA training stream did not start.");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let completed = false;
+
+      while (!completed) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split("\n\n");
+        buffer = events.pop() ?? "";
+
+        for (const rawEvent of events) {
+          if (!rawEvent.trim()) continue;
+          const { event, data } = parseSseEvent(rawEvent);
+
+          if (event === "progress") {
+            setProgress(Number(data?.progress ?? 1));
+            setStatusMessage(String(data?.message ?? "LoRA 파일 생성 중..."));
+          }
+
+          if (event === "log" && data?.message) {
+            setStatusMessage(String(data.message));
+          }
+
+          if (event === "complete") {
+            setProgress(100);
+            setOutputFile(String(data?.outputPath ?? ""));
+            setStatusMessage("LoRA 파일 생성 완료");
+            setState("completed");
+            completed = true;
+          }
+
+          if (event === "error") {
+            throw new Error(data?.error || "LoRA training failed.");
+          }
+        }
+      }
+    } catch (error) {
+      setState("ready");
+      setProgress(0);
+      setStatusMessage(error instanceof Error ? error.message : "LoRA training failed.");
+    }
   }
 
   return (
@@ -161,7 +289,9 @@ export function LoraTraining() {
               variant={runnerState === "ready" && state === "completed" ? "default" : "secondary"}
               className="h-7 rounded-md px-3"
             >
-              {runnerState !== "ready"
+              {runnerState === "checking"
+                ? "Runner 확인 중"
+                : runnerState !== "ready"
                 ? "Runner 미연결"
                 : state === "training"
                   ? "생성 중"
@@ -261,9 +391,34 @@ export function LoraTraining() {
           <div className="rounded-lg bg-primary/10 p-4 text-sm font-semibold leading-6 text-primary">
             <div className="flex gap-3">
               <Sparkles className="mt-0.5 h-5 w-5 shrink-0" />
-              <div>
-                현재는 화면 설정 단계입니다. `.safetensors` 파일을 만들려면 `kohya_ss` 또는
-                `sd-scripts` 기반 local training runner를 연결해야 합니다.
+              <div className="min-w-0 flex-1">
+                {runnerState === "ready" ? (
+                  <>
+                    LoRA runner가 연결되었습니다. 생성 결과는 `ComfyUI/models/loras`에 저장됩니다.
+                  </>
+                ) : (
+                  <>
+                    `.safetensors` 파일을 만들려면 먼저 `npm run setup:lora-runner`를 실행한 뒤
+                    dev server를 재시작하세요.
+                  </>
+                )}
+                {runnerStatus?.missing && runnerStatus.missing.length > 0 && (
+                  <div className="mt-2 space-y-1 text-xs text-primary/80">
+                    {runnerStatus.missing.slice(0, 3).map((item) => (
+                      <div key={item} className="truncate">{item}</div>
+                    ))}
+                  </div>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 bg-background/80"
+                  onClick={refreshRunnerStatus}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Runner 다시 확인
+                </Button>
               </div>
             </div>
           </div>
@@ -374,7 +529,9 @@ export function LoraTraining() {
               {footerMessage}
             </div>
             <div className="mt-1 text-xs font-medium text-muted-foreground">
-              출력 대상은 `ComfyUI/models/loras`입니다. Runner 연결 전에는 파일이 생성되지 않습니다.
+              {runnerState === "ready"
+                ? "실행 중 브라우저를 닫으면 현재 training process가 중단됩니다."
+                : "출력 대상은 `ComfyUI/models/loras`입니다. Runner 연결 전에는 파일이 생성되지 않습니다."}
             </div>
           </div>
           <Button size="lg" className="min-w-64 rounded-full text-base" disabled={!canStart || state === "training"} onClick={startTraining}>
