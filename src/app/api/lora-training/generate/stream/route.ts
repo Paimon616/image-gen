@@ -119,6 +119,8 @@ function trainingArgs({
     process.env.LORA_MAX_TRAIN_EPOCHS ?? "10",
     "--train_batch_size",
     process.env.LORA_TRAIN_BATCH_SIZE ?? "1",
+    "--optimizer_type",
+    process.env.LORA_OPTIMIZER_TYPE ?? "AdamW",
     "--mixed_precision",
     process.env.LORA_MIXED_PRECISION ?? "fp16",
     "--save_precision",

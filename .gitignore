@@ -25,6 +25,8 @@
 *.pem
 /.local/
 /ComfyUI/
+/runners/
+/training/
 /output/
 /uploads/
 /data/history/

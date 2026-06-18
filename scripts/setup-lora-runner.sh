@@ -4,7 +4,16 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUNNER_DIR="${LORA_RUNNER_DIR:-$ROOT_DIR/runners/sd-scripts}"
 SD_SCRIPTS_REPO="${SD_SCRIPTS_REPO:-https://github.com/kohya-ss/sd-scripts.git}"
-PYTHON_BIN="${PYTHON_BIN:-python3}"
+PYTHON_BIN="${PYTHON_BIN:-}"
+
+if [ -z "$PYTHON_BIN" ]; then
+  for candidate in python3.12 python3.11 python3.10 python3; do
+    if command -v "$candidate" >/dev/null 2>&1; then
+      PYTHON_BIN="$candidate"
+      break
+    fi
+  done
+fi
 
 if ! command -v git >/dev/null 2>&1; then
   echo "git is required to install the LoRA runner." >&2
@@ -13,6 +22,13 @@ fi
 
 if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
   echo "$PYTHON_BIN is required. Set PYTHON_BIN=/path/to/python if needed." >&2
+  exit 1
+fi
+
+if ! "$PYTHON_BIN" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' >/dev/null 2>&1; then
+  echo "Python 3.10 or newer is required for the LoRA runner." >&2
+  echo "Selected Python: $("$PYTHON_BIN" -c 'import sys; print(sys.version.split()[0])')" >&2
+  echo "Install Python 3.12 or set PYTHON_BIN=/path/to/python3.12." >&2
   exit 1
 fi
 
@@ -29,6 +45,11 @@ else
   git clone "$SD_SCRIPTS_REPO" "$RUNNER_DIR"
 fi
 
+if [ -d "$RUNNER_DIR/.venv" ] && ! "$RUNNER_DIR/.venv/bin/python" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' >/dev/null 2>&1; then
+  echo "Existing LoRA runner venv uses Python older than 3.10. Recreating it..."
+  rm -rf "$RUNNER_DIR/.venv"
+fi
+
 if [ ! -d "$RUNNER_DIR/.venv" ]; then
   echo "Creating Python virtual environment..."
   "$PYTHON_BIN" -m venv "$RUNNER_DIR/.venv"
@@ -39,7 +60,7 @@ source "$RUNNER_DIR/.venv/bin/activate"
 
 python -m pip install --upgrade pip setuptools wheel
 (cd "$RUNNER_DIR" && python -m pip install -r requirements.txt)
-python -m pip install accelerate
+python -m pip install accelerate torchvision
 
 mkdir -p "$ROOT_DIR/training/runs" "$ROOT_DIR/ComfyUI/models/loras"
 

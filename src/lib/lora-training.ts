@@ -6,7 +6,11 @@ import { randomUUID } from "crypto";
 function comfyUiModelsDir() {
   return (
     process.env.COMFYUI_MODELS_DIR ??
-    join(Buffer.from("Q29tZnlVSQ==", "base64").toString("utf8"), "models")
+    join(
+      /*turbopackIgnore: true*/ process.cwd(),
+      Buffer.from("Q29tZnlVSQ==", "base64").toString("utf8"),
+      "models"
+    )
   );
 }
 
@@ -16,6 +20,7 @@ export function loraRunnerDir() {
   return (
     process.env.LORA_RUNNER_DIR ??
     join(
+      /*turbopackIgnore: true*/ process.cwd(),
       Buffer.from("cnVubmVycw==", "base64").toString("utf8"),
       Buffer.from("c2Qtc2NyaXB0cw==", "base64").toString("utf8")
     )
