@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
-import { Bookmark, Film, Images, Languages, Layers3 } from "lucide-react";
+import { Bookmark, BrainCircuit, Film, Images, Languages, Layers3 } from "lucide-react";
 import { useStore, type AppLanguage } from "@/lib/store";
 
 const NAV_ITEMS = [
   { href: "/", labels: { ko: "이미지 생성", en: "Image Generation" }, icon: Images },
   { href: "/video", labels: { ko: "비디오 생성", en: "Video Generation" }, icon: Film },
   { href: "/models", labels: { ko: "모델", en: "Models" }, icon: Layers3 },
+  { href: "/lora-training", labels: { ko: "LoRA 훈련", en: "LoRA Training" }, icon: BrainCircuit },
   { href: "/scrap", labels: { ko: "스크랩", en: "Scrap" }, icon: Bookmark },
 ];
 
