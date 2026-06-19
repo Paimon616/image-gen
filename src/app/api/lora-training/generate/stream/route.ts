@@ -54,6 +54,14 @@ function parseProgress(line: string) {
   return null;
 }
 
+function defaultMixedPrecision() {
+  return process.platform === "darwin" ? "no" : "fp16";
+}
+
+function defaultSavePrecision() {
+  return process.platform === "darwin" ? "float" : "fp16";
+}
+
 async function readLogTail(logPath: string, maxLength = 6000) {
   try {
     const content = await readFile(logPath, "utf8");
@@ -133,9 +141,9 @@ function trainingArgs({
     "--optimizer_type",
     process.env.LORA_OPTIMIZER_TYPE ?? "AdamW",
     "--mixed_precision",
-    process.env.LORA_MIXED_PRECISION ?? "fp16",
+    process.env.LORA_MIXED_PRECISION ?? defaultMixedPrecision(),
     "--save_precision",
-    process.env.LORA_SAVE_PRECISION ?? "fp16",
+    process.env.LORA_SAVE_PRECISION ?? defaultSavePrecision(),
     "--cache_latents",
     "--gradient_checkpointing",
   ];
