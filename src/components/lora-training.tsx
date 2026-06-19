@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronDown,
   Clock3,
@@ -49,13 +49,26 @@ interface TrainingResult {
   outputName: string;
   outputPath: string;
   logPath: string;
-  status: "idle" | "running" | "completed" | "failed";
+  status: "idle" | "queued" | "running" | "completed" | "failed" | "cancelled";
   lines: string[];
   error: string;
 }
 
+interface LoraJobStatus {
+  runId: string;
+  outputName: string;
+  outputPath: string;
+  logPath: string;
+  state: "queued" | "running" | "completed" | "failed" | "cancelled";
+  progress: number;
+  message: string;
+  error: string;
+  logTail?: string;
+}
+
 const MIN_IMAGES = 10;
 const MAX_IMAGES = 100;
+const ACTIVE_JOB_STORAGE_KEY = "image-gen-active-lora-job";
 
 function clampDataset(files: File[]) {
   return files.slice(0, MAX_IMAGES).map((file) => ({
@@ -64,25 +77,6 @@ function clampDataset(files: File[]) {
     url: URL.createObjectURL(file),
     file,
   }));
-}
-
-function parseSseEvent(rawEvent: string) {
-  const event =
-    rawEvent
-      .split("\n")
-      .find((line) => line.startsWith("event: "))
-      ?.slice("event: ".length)
-      .trim() ?? "message";
-  const data = rawEvent
-    .split("\n")
-    .filter((line) => line.startsWith("data: "))
-    .map((line) => line.slice("data: ".length))
-    .join("\n");
-
-  return {
-    event,
-    data: data ? JSON.parse(data) : null,
-  };
 }
 
 function checkpointTrainingSupport(checkpoint: LocalCheckpoint | undefined) {
@@ -269,6 +263,72 @@ export function LoraTraining() {
     }));
   }
 
+  const applyJobStatus = useCallback((job: LoraJobStatus) => {
+    const lines = job.logTail ? job.logTail.split(/\r?\n/).filter(Boolean).slice(-80) : [];
+    setProgress(job.progress);
+    setStatusMessage(job.message);
+    setOutputFile(job.outputPath);
+    setTrainingResult({
+      runId: job.runId,
+      outputName: job.outputName,
+      outputPath: job.outputPath,
+      logPath: job.logPath,
+      status: job.state,
+      lines,
+      error: job.error,
+    });
+
+    if (job.state === "queued" || job.state === "running") {
+      setState("training");
+      localStorage.setItem(ACTIVE_JOB_STORAGE_KEY, job.runId);
+      return;
+    }
+
+    if (job.state === "completed") {
+      setState("completed");
+      localStorage.removeItem(ACTIVE_JOB_STORAGE_KEY);
+      return;
+    }
+
+    setState("ready");
+    localStorage.removeItem(ACTIVE_JOB_STORAGE_KEY);
+  }, []);
+
+  const fetchJobStatus = useCallback(async (runId: string) => {
+    const res = await fetch(`/api/lora-training/jobs/${runId}`, { cache: "no-store" });
+    if (!res.ok) {
+      if (res.status === 404) localStorage.removeItem(ACTIVE_JOB_STORAGE_KEY);
+      throw new Error("LoRA training job status could not be loaded.");
+    }
+    const data = (await res.json()) as LoraJobStatus;
+    applyJobStatus(data);
+    return data;
+  }, [applyJobStatus]);
+
+  useEffect(() => {
+    const activeRunId = localStorage.getItem(ACTIVE_JOB_STORAGE_KEY);
+    if (!activeRunId) return;
+    const timeoutId = window.setTimeout(() => {
+      void fetchJobStatus(activeRunId).catch(() => {});
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [fetchJobStatus]);
+
+  useEffect(() => {
+    const runId = trainingResult.runId;
+    if (!runId || (trainingResult.status !== "queued" && trainingResult.status !== "running")) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void fetchJobStatus(runId).catch((error) => {
+        setStatusMessage(error instanceof Error ? error.message : "Job status check failed.");
+      });
+    }, 2000);
+
+    return () => window.clearInterval(intervalId);
+  }, [fetchJobStatus, trainingResult.runId, trainingResult.status]);
+
   async function startTraining() {
     if (!canStart || state === "training") return;
     setState("training");
@@ -295,7 +355,7 @@ export function LoraTraining() {
     });
 
     try {
-      const res = await fetch("/api/lora-training/generate/stream", {
+      const res = await fetch("/api/lora-training/jobs", {
         method: "POST",
         body: formData,
       });
@@ -306,89 +366,9 @@ export function LoraTraining() {
         throw new Error(`${data.error || "LoRA training failed"}${missing}`);
       }
 
-      if (!res.body) {
-        throw new Error("LoRA training stream did not start.");
-      }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let completed = false;
-
-      while (!completed) {
-        const { value, done } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const events = buffer.split("\n\n");
-        buffer = events.pop() ?? "";
-
-        for (const rawEvent of events) {
-          if (!rawEvent.trim()) continue;
-          const { event, data } = parseSseEvent(rawEvent);
-
-          if (event === "queued") {
-            setTrainingResult((current) => ({
-              ...current,
-              runId: String(data?.runId ?? ""),
-              outputName: String(data?.outputName ?? ""),
-              status: "running",
-            }));
-            appendResultLine(`Run queued: ${String(data?.runId ?? "")}`);
-          }
-
-          if (event === "progress") {
-            setProgress(Number(data?.progress ?? 1));
-            const message = String(data?.message ?? "LoRA 파일 생성 중...");
-            setStatusMessage(message);
-            appendResultLine(message);
-          }
-
-          if (event === "log" && data?.message) {
-            const message = String(data.message);
-            setStatusMessage(message);
-            appendResultLine(message);
-          }
-
-          if (event === "complete") {
-            setProgress(100);
-            const nextOutputFile = String(data?.outputPath ?? "");
-            setOutputFile(nextOutputFile);
-            setStatusMessage("LoRA 파일 생성 완료");
-            setTrainingResult((current) => ({
-              ...current,
-              runId: String(data?.runId ?? current.runId),
-              outputName: String(data?.outputName ?? current.outputName),
-              outputPath: nextOutputFile,
-              logPath: String(data?.logPath ?? current.logPath),
-              status: "completed",
-              error: "",
-            }));
-            appendResultLine(`Created: ${nextOutputFile}`);
-            setState("completed");
-            completed = true;
-          }
-
-          if (event === "error") {
-            const errorMessage = data?.error || "LoRA training failed.";
-            const logTail = String(data?.logTail ?? "");
-            setTrainingResult((current) => ({
-              ...current,
-              logPath: String(data?.logPath ?? current.logPath),
-              status: "failed",
-              error: String(errorMessage),
-              lines: logTail
-                ? logTail.split(/\r?\n/).filter(Boolean).slice(-80)
-                : current.lines,
-            }));
-            throw new Error(data?.error || "LoRA training failed.");
-          }
-        }
-      }
-
-      if (!completed) {
-        throw new Error("LoRA training stream ended before completion.");
-      }
+      const data = (await res.json()) as LoraJobStatus;
+      applyJobStatus(data);
+      appendResultLine(`Run queued: ${data.runId}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : "LoRA training failed.";
       setState("ready");
@@ -399,6 +379,24 @@ export function LoraTraining() {
         status: current.status === "failed" ? "failed" : "failed",
         error: current.error || message,
       }));
+    }
+  }
+
+  async function cancelTraining() {
+    const runId = trainingResult.runId;
+    if (!runId || (trainingResult.status !== "queued" && trainingResult.status !== "running")) return;
+
+    setStatusMessage("LoRA 학습을 취소하는 중...");
+    try {
+      const res = await fetch(`/api/lora-training/jobs/${runId}/cancel`, { method: "POST" });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "LoRA training cancel failed.");
+      }
+      const data = (await res.json()) as LoraJobStatus;
+      applyJobStatus(data);
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "LoRA training cancel failed.");
     }
   }
 
@@ -672,11 +670,15 @@ export function LoraTraining() {
               >
                 {trainingResult.status === "idle"
                   ? "Idle"
+                  : trainingResult.status === "queued"
+                    ? "Queued"
                   : trainingResult.status === "running"
                     ? "Running"
                     : trainingResult.status === "completed"
                       ? "Completed"
-                      : "Failed"}
+                      : trainingResult.status === "cancelled"
+                        ? "Cancelled"
+                        : "Failed"}
               </Badge>
             </div>
 
@@ -731,14 +733,22 @@ export function LoraTraining() {
             </div>
             <div className="mt-1 text-xs font-medium text-muted-foreground">
               {runnerState === "ready"
-                ? "실행 중 브라우저를 닫으면 현재 training process가 중단됩니다."
+                ? "학습은 background job으로 실행됩니다. 다른 페이지로 이동해도 계속 진행됩니다."
                 : "출력 대상은 `ComfyUI/models/loras`입니다. Runner 연결 전에는 파일이 생성되지 않습니다."}
             </div>
           </div>
-          <Button size="lg" className="min-w-64 rounded-full text-base" disabled={!canStart || state === "training"} onClick={startTraining}>
-            {state === "training" ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
-            {actionLabel}
-          </Button>
+          <div className="flex shrink-0 items-center gap-2">
+            {state === "training" && (
+              <Button size="lg" variant="outline" className="rounded-full text-base" onClick={cancelTraining}>
+                <X className="h-5 w-5" />
+                취소
+              </Button>
+            )}
+            <Button size="lg" className="min-w-64 rounded-full text-base" disabled={!canStart || state === "training"} onClick={startTraining}>
+              {state === "training" ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
+              {actionLabel}
+            </Button>
+          </div>
         </div>
         {state === "training" && (
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">

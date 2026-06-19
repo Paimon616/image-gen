@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { homedir } from "os";
 
 const comfyUiTraceExcludes = [
   "./ComfyUI/**/*",
@@ -16,6 +17,7 @@ const comfyUiTraceExcludes = [
 ];
 
 const nextConfig: NextConfig = {
+  outputFileTracingRoot: homedir(),
   outputFileTracingExcludes: {
     "/*": comfyUiTraceExcludes,
     "/page": comfyUiTraceExcludes,
@@ -23,6 +25,9 @@ const nextConfig: NextConfig = {
     "/api/lora-training/*": comfyUiTraceExcludes,
     "/api/lora-training/status": comfyUiTraceExcludes,
     "/api/lora-training/generate/stream": comfyUiTraceExcludes,
+    "/api/lora-training/jobs": comfyUiTraceExcludes,
+    "/api/lora-training/jobs/*": comfyUiTraceExcludes,
+    "/api/lora-training/jobs/*/cancel": comfyUiTraceExcludes,
     "/api/models": comfyUiTraceExcludes,
     "/api/models/thumbnail": comfyUiTraceExcludes,
   },
