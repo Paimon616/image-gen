@@ -1,4 +1,4 @@
-import { access, appendFile, mkdir, readFile, writeFile } from "fs/promises";
+import { access, appendFile, mkdir, readdir, readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import { spawn, type ChildProcessWithoutNullStreams } from "child_process";
 import {
@@ -12,6 +12,12 @@ export type LoraJobState = "queued" | "running" | "completed" | "failed" | "canc
 
 export interface LoraJobStatus {
   runId: string;
+  loraName: string;
+  triggerWords: string;
+  category: string;
+  baseModel: string;
+  baseModelLabel: string;
+  imageCount: number;
   outputName: string;
   outputPath: string;
   logPath: string;
@@ -87,6 +93,18 @@ export async function readLoraJobStatus(runId: string): Promise<LoraJobStatus | 
     };
   } catch {
     return null;
+  }
+}
+
+export async function listLoraJobStatuses() {
+  try {
+    const runIds = await readdir(trainingRunsDir());
+    const statuses = await Promise.all(runIds.map((runId) => readLoraJobStatus(runId)));
+    return statuses
+      .filter((status): status is LoraJobStatus => Boolean(status))
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  } catch {
+    return [];
   }
 }
 
@@ -188,11 +206,23 @@ export function buildTrainingArgs({
 export async function createInitialLoraJobStatus({
   runDir,
   runId,
+  loraName,
+  triggerWords,
+  category,
+  baseModel,
+  baseModelLabel,
+  imageCount,
   outputName,
   logPath,
 }: {
   runDir: string;
   runId: string;
+  loraName: string;
+  triggerWords: string;
+  category: string;
+  baseModel: string;
+  baseModelLabel: string;
+  imageCount: number;
   outputName: string;
   logPath: string;
 }) {
@@ -200,6 +230,12 @@ export async function createInitialLoraJobStatus({
   const outputPath = join(loraOutputDir(), `${outputName}.safetensors`);
   const status: LoraJobStatus = {
     runId,
+    loraName,
+    triggerWords,
+    category,
+    baseModel,
+    baseModelLabel,
+    imageCount,
     outputName,
     outputPath,
     logPath,

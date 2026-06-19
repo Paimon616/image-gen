@@ -772,5 +772,20 @@
       "niji",
       "gothic"
     ]
+  },
+  "checkpoints/ultra_v14.safetensors": {
+    "name": "ULTRA",
+    "version": "v14",
+    "base_model": "Pony",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/336924e7-68a2-46a6-a6ff-63343e38f6ca/original=true/132515496.jpeg",
+    "civitai_url": "https://civitai.com/models/228525/ultra",
+    "source_url": "https://civitai.com/models/228525/ultra",
+    "tags": [
+      "real",
+      "beautiful",
+      "asian",
+      "base model",
+      "realistic"
+    ]
   }
 }

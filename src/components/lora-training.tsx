@@ -46,6 +46,7 @@ interface RunnerStatus {
 
 interface TrainingResult {
   runId: string;
+  imageCount: number;
   outputName: string;
   outputPath: string;
   logPath: string;
@@ -56,6 +57,12 @@ interface TrainingResult {
 
 interface LoraJobStatus {
   runId: string;
+  loraName: string;
+  triggerWords: string;
+  category: string;
+  baseModel: string;
+  baseModelLabel: string;
+  imageCount: number;
   outputName: string;
   outputPath: string;
   logPath: string;
@@ -64,6 +71,11 @@ interface LoraJobStatus {
   message: string;
   error: string;
   logTail?: string;
+}
+
+interface LoraJobsResponse {
+  activeJob: LoraJobStatus | null;
+  jobs: LoraJobStatus[];
 }
 
 const MIN_IMAGES = 10;
@@ -128,6 +140,7 @@ export function LoraTraining() {
   const [outputFile, setOutputFile] = useState("");
   const [trainingResult, setTrainingResult] = useState<TrainingResult>({
     runId: "",
+    imageCount: 0,
     outputName: "",
     outputPath: "",
     logPath: "",
@@ -265,11 +278,16 @@ export function LoraTraining() {
 
   const applyJobStatus = useCallback((job: LoraJobStatus) => {
     const lines = job.logTail ? job.logTail.split(/\r?\n/).filter(Boolean).slice(-80) : [];
+    if (job.loraName) setLoraName(job.loraName);
+    if (job.triggerWords) setTriggerWords(job.triggerWords);
+    setCategory(job.category ?? "");
+    if (job.baseModel) setBaseModel(job.baseModel);
     setProgress(job.progress);
     setStatusMessage(job.message);
     setOutputFile(job.outputPath);
     setTrainingResult({
       runId: job.runId,
+      imageCount: job.imageCount,
       outputName: job.outputName,
       outputPath: job.outputPath,
       logPath: job.logPath,
@@ -307,12 +325,23 @@ export function LoraTraining() {
 
   useEffect(() => {
     const activeRunId = localStorage.getItem(ACTIVE_JOB_STORAGE_KEY);
-    if (!activeRunId) return;
     const timeoutId = window.setTimeout(() => {
-      void fetchJobStatus(activeRunId).catch(() => {});
+      if (activeRunId) {
+        void fetchJobStatus(activeRunId).catch(() => {});
+        return;
+      }
+
+      void fetch("/api/lora-training/jobs", { cache: "no-store" })
+        .then((res) => res.json())
+        .then((data: LoraJobsResponse) => {
+          if (data.activeJob?.state === "queued" || data.activeJob?.state === "running") {
+            applyJobStatus(data.activeJob);
+          }
+        })
+        .catch(() => {});
     }, 0);
     return () => window.clearTimeout(timeoutId);
-  }, [fetchJobStatus]);
+  }, [applyJobStatus, fetchJobStatus]);
 
   useEffect(() => {
     const runId = trainingResult.runId;
@@ -337,6 +366,7 @@ export function LoraTraining() {
     setOutputFile("");
     setTrainingResult({
       runId: "",
+      imageCount: dataset.length,
       outputName: "",
       outputPath: "",
       logPath: "",
@@ -459,10 +489,23 @@ export function LoraTraining() {
                 <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
                   <Clock3 className="h-8 w-8" />
                 </div>
-                <h3 className="text-lg font-bold text-foreground">생성 기록에서 선택</h3>
-                <p className="mt-2 max-w-md text-sm font-medium text-muted-foreground">
-                  최근 작품에서 이미지를 추가하거나, 아래 버튼으로 직접 업로드할 수 있습니다.
-                </p>
+                {state === "training" && trainingResult.runId ? (
+                  <>
+                    <h3 className="text-lg font-bold text-foreground">Background job 진행 중</h3>
+                    <p className="mt-2 max-w-md text-sm font-medium text-muted-foreground">
+                      Dataset 이미지는 서버에 저장되었습니다.
+                      {trainingResult.imageCount > 0 ? ` 업로드된 이미지: ${trainingResult.imageCount}장.` : ""}
+                      {trainingResult.outputName ? ` 출력 이름: ${trainingResult.outputName}` : ""}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-lg font-bold text-foreground">생성 기록에서 선택</h3>
+                    <p className="mt-2 max-w-md text-sm font-medium text-muted-foreground">
+                      최근 작품에서 이미지를 추가하거나, 아래 버튼으로 직접 업로드할 수 있습니다.
+                    </p>
+                  </>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">

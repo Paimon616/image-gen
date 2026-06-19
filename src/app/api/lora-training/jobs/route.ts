@@ -4,6 +4,7 @@ import { join } from "path";
 import { NextRequest } from "next/server";
 import {
   createInitialLoraJobStatus,
+  listLoraJobStatuses,
   startLoraJob,
   trainingRunPath,
 } from "@/lib/lora-job-runner";
@@ -23,6 +24,21 @@ export const runtime = "nodejs";
 
 const MIN_IMAGES = 10;
 const MAX_IMAGES = 100;
+
+export async function GET() {
+  const jobs = await listLoraJobStatuses();
+  const activeJob =
+    jobs.find((job) => job.state === "running" || job.state === "queued") ?? jobs[0] ?? null;
+
+  return Response.json(
+    { activeJob, jobs: jobs.slice(0, 20) },
+    {
+      headers: {
+        "Cache-Control": "no-store",
+      },
+    }
+  );
+}
 
 function field(formData: FormData, name: string) {
   const value = formData.get(name);
@@ -137,7 +153,18 @@ export async function POST(req: NextRequest) {
     `output=${join(outputDir, `${outputName}.safetensors`)}`,
   ]);
 
-  const status = await createInitialLoraJobStatus({ runDir, runId, outputName, logPath });
+  const status = await createInitialLoraJobStatus({
+    runDir,
+    runId,
+    loraName,
+    triggerWords,
+    category,
+    baseModel,
+    baseModelLabel: trainingTarget.label,
+    imageCount: files.length,
+    outputName,
+    logPath,
+  });
   await startLoraJob({
     runId,
     outputName,
