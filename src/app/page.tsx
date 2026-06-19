@@ -104,6 +104,7 @@ export default function Home() {
     useState<GenerationQueueItem | null>(null);
   const activePromptIdRef = useRef("");
   const generationAbortControllerRef = useRef<AbortController | null>(null);
+  const activeGenerationRef = useRef<GenerationQueueItem | null>(null);
 
   useEffect(() => {
     fetch("/api/models")
@@ -248,7 +249,6 @@ export default function Home() {
             const [firstImage, ...additionalImages] = generatedImages;
             updateImage(id, {
               ...firstImage,
-              id,
               params: firstImage.params ?? jobParams,
               generation: {
                 state: "completed",
@@ -308,29 +308,23 @@ export default function Home() {
     } finally {
       generationAbortControllerRef.current = null;
       activePromptIdRef.current = "";
+      activeGenerationRef.current = null;
       setActiveGeneration(null);
     }
   }, [addImages, setStatus, updateImage]);
 
   useEffect(() => {
-    if (activeGeneration || generationQueue.length === 0) return;
+    if (activeGenerationRef.current || activeGeneration || generationQueue.length === 0) {
+      return;
+    }
 
     const [nextJob] = generationQueue;
-    let canceled = false;
-
-    queueMicrotask(() => {
-      if (canceled) return;
-
-      setGenerationQueue((queue) =>
-        queue[0]?.id === nextJob.id ? queue.slice(1) : queue
-      );
-      setActiveGeneration(nextJob);
-      void runGenerationJob(nextJob);
-    });
-
-    return () => {
-      canceled = true;
-    };
+    activeGenerationRef.current = nextJob;
+    setGenerationQueue((queue) =>
+      queue[0]?.id === nextJob.id ? queue.slice(1) : queue
+    );
+    setActiveGeneration(nextJob);
+    void runGenerationJob(nextJob);
   }, [activeGeneration, generationQueue, runGenerationJob]);
 
   const generate = useCallback(() => {
@@ -379,7 +373,9 @@ export default function Home() {
       return;
     }
 
-    if (activeGeneration?.id !== targetId) return;
+    const runningJob = activeGenerationRef.current ?? activeGeneration;
+
+    if (runningJob?.id !== targetId) return;
 
     const promptId = activePromptIdRef.current;
 

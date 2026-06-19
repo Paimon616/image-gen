@@ -65,13 +65,17 @@ function mergeImages(
   incoming: GeneratedImage[]
 ) {
   const imagesByKey = new Map<string, GeneratedImage>();
+  const mergedImages: GeneratedImage[] = [];
 
-  const rememberImage = (image: GeneratedImage) => {
-    imageIdentityKeys(image).forEach((key) => imagesByKey.set(key, image));
+  const forgetImage = (image: GeneratedImage) => {
+    imageIdentityKeys(image).forEach((key) => {
+      if (imagesByKey.get(key) === image) {
+        imagesByKey.delete(key);
+      }
+    });
   };
 
-  existing.forEach(rememberImage);
-  incoming.forEach((image) => {
+  const rememberImage = (image: GeneratedImage) => {
     const existingImage = imageIdentityKeys(image)
       .map((key) => imagesByKey.get(key))
       .find(Boolean);
@@ -79,15 +83,28 @@ function mergeImages(
       ? {
           ...existingImage,
           ...image,
-          id: existingImage.id,
+          id: image.id || existingImage.id,
           generation: existingImage.generation ?? image.generation,
         }
       : image;
 
-    rememberImage(mergedImage);
-  });
+    if (existingImage) {
+      const index = mergedImages.indexOf(existingImage);
 
-  return sortImagesNewestFirst(Array.from(new Set(imagesByKey.values())));
+      forgetImage(existingImage);
+      if (index >= 0) {
+        mergedImages[index] = mergedImage;
+      }
+    } else {
+      mergedImages.push(mergedImage);
+    }
+
+    imageIdentityKeys(mergedImage).forEach((key) => imagesByKey.set(key, mergedImage));
+  };
+
+  [...existing, ...incoming].forEach(rememberImage);
+
+  return sortImagesNewestFirst(mergedImages);
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -111,16 +128,16 @@ export const useStore = create<AppState>((set) => ({
 
   updateImage: (id, update) =>
     set((s) => {
-      const images = s.images.map((image) =>
-        image.id === id ? { ...image, ...update, id } : image
+      const updatedImages = s.images.map((image) =>
+        image.id === id ? { ...image, ...update } : image
       );
       const selectedImage =
         s.selectedImage?.id === id
-          ? { ...s.selectedImage, ...update, id }
+          ? { ...s.selectedImage, ...update }
           : s.selectedImage;
 
       return {
-        images: sortImagesNewestFirst(images),
+        images: mergeImages(updatedImages, []),
         selectedImage,
       };
     }),

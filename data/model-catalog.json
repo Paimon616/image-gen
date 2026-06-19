@@ -837,5 +837,38 @@
       "base model",
       "hands"
     ]
+  },
+  "checkpoints/majicmixRealistic_v7.safetensors": {
+    "name": "majicMIX realistic 麦橘写实",
+    "version": "v7",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/4fd40408-f963-4d2d-8caa-8d3f176139cf/original=true/2805533.jpeg",
+    "civitai_url": "https://civitai.red/models/43331/majicmix-realistic",
+    "source_url": "https://civitai.red/models/43331/majicmix-realistic",
+    "tags": [
+      "asian",
+      "photoralistic",
+      "realistic",
+      "base model"
+    ]
+  },
+  "checkpoints/hardcoreAsianCosplay_ilV11.safetensors": {
+    "name": "Hardcore Asian Cosplay Porn",
+    "version": "IL v1.1",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/7e28520e-36f8-4b3b-bc95-353b2b2b4a51/original=true/103714180.jpeg",
+    "civitai_url": "https://civitai.red/models/138630/hardcore-asian-cosplay-porn",
+    "source_url": "https://civitai.red/models/138630/hardcore-asian-cosplay-porn",
+    "tags": [
+      "realistic",
+      "base model",
+      "sexy",
+      "nsfw",
+      "cosplay",
+      "porn",
+      "asian",
+      "woman",
+      "sex"
+    ]
   }
 }
