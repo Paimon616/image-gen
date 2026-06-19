@@ -63,29 +63,35 @@ const GalleryCard = memo(function GalleryCard({
   const generation = img.generation;
   const hasImage = Boolean(img.url);
   const isPending =
-    generation?.state === "queued" || generation?.state === "generating";
+    generation?.state === "queued" ||
+    generation?.state === "waiting" ||
+    generation?.state === "generating";
   const canUseCompletedImageActions = hasImage && !isPending;
   const progress = Math.min(100, Math.max(0, generation?.progress ?? 0));
   const statusLabel =
     generation?.state === "queued"
       ? "Queued"
-      : generation?.state === "generating"
-        ? "Generating"
-        : generation?.state === "error"
-          ? "Error"
-          : generation?.state === "canceled"
-            ? "Canceled"
-            : "";
+      : generation?.state === "waiting"
+        ? "Waiting"
+        : generation?.state === "generating"
+          ? "Generating"
+          : generation?.state === "error"
+            ? "Error"
+            : generation?.state === "canceled"
+              ? "Canceled"
+              : "";
   const StatusIcon =
     generation?.state === "queued"
       ? Clock
-      : generation?.state === "generating"
-        ? Loader2
-        : generation?.state === "error"
-          ? AlertCircle
-          : generation?.state === "canceled"
-            ? XCircle
-            : null;
+      : generation?.state === "waiting"
+        ? Clock
+        : generation?.state === "generating"
+          ? Loader2
+          : generation?.state === "error"
+            ? AlertCircle
+            : generation?.state === "canceled"
+              ? XCircle
+              : null;
 
   return (
     <div className="group relative aspect-square overflow-hidden rounded-lg border border-border transition-colors [contain-intrinsic-size:320px] [content-visibility:auto] hover:border-primary/50">

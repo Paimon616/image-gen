@@ -181,7 +181,7 @@ export default function Home() {
     generationAbortControllerRef.current = abortController;
     updateImage(id, {
       generation: {
-        state: "generating",
+        state: "waiting",
         progress: 1,
         message: "Queued...",
       },
@@ -228,9 +228,11 @@ export default function Home() {
           if (event === "progress") {
             const progress = Number(data?.progress ?? 0);
             const message = String(data?.message ?? "Generating...");
+            const isStepProgress =
+              data?.step != null && data?.total_steps != null;
             updateImage(id, {
               generation: {
-                state: "generating",
+                state: isStepProgress ? "generating" : "waiting",
                 progress,
                 message,
               },

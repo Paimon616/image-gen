@@ -95,7 +95,7 @@ export interface GeneratedImage {
 }
 
 export interface ImageGenerationStatus {
-  state: "queued" | "generating" | "completed" | "canceled" | "error";
+  state: "queued" | "waiting" | "generating" | "completed" | "canceled" | "error";
   progress: number;
   message: string;
 }
