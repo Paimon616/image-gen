@@ -223,6 +223,13 @@ export default function Home() {
 
           if (event === "queued") {
             activePromptIdRef.current = String(data?.prompt_id ?? "");
+            updateImage(id, {
+              generation: {
+                state: "waiting",
+                progress: 1,
+                message: "Waiting for ComfyUI...",
+              },
+            });
           }
 
           if (event === "progress") {

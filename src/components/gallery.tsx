@@ -62,34 +62,39 @@ const GalleryCard = memo(function GalleryCard({
 }: GalleryCardProps) {
   const generation = img.generation;
   const hasImage = Boolean(img.url);
+  const displayState =
+    generation?.state === "generating" &&
+    /queued|waiting for comfyui/i.test(generation.message)
+      ? "waiting"
+      : generation?.state;
   const isPending =
-    generation?.state === "queued" ||
-    generation?.state === "waiting" ||
-    generation?.state === "generating";
+    displayState === "queued" ||
+    displayState === "waiting" ||
+    displayState === "generating";
   const canUseCompletedImageActions = hasImage && !isPending;
   const progress = Math.min(100, Math.max(0, generation?.progress ?? 0));
   const statusLabel =
-    generation?.state === "queued"
+    displayState === "queued"
       ? "Queued"
-      : generation?.state === "waiting"
+      : displayState === "waiting"
         ? "Waiting"
-        : generation?.state === "generating"
+        : displayState === "generating"
           ? "Generating"
-          : generation?.state === "error"
+          : displayState === "error"
             ? "Error"
-            : generation?.state === "canceled"
+            : displayState === "canceled"
               ? "Canceled"
               : "";
   const StatusIcon =
-    generation?.state === "queued"
+    displayState === "queued"
       ? Clock
-      : generation?.state === "waiting"
+      : displayState === "waiting"
         ? Clock
-        : generation?.state === "generating"
+        : displayState === "generating"
           ? Loader2
-          : generation?.state === "error"
+          : displayState === "error"
             ? AlertCircle
-            : generation?.state === "canceled"
+            : displayState === "canceled"
               ? XCircle
               : null;
 
@@ -116,7 +121,7 @@ const GalleryCard = memo(function GalleryCard({
               {StatusIcon && (
                 <StatusIcon
                   className={`h-3 w-3 ${
-                    generation?.state === "generating" ? "animate-spin" : ""
+                    displayState === "generating" ? "animate-spin" : ""
                   }`}
                 />
               )}
