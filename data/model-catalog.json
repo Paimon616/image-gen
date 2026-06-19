@@ -787,5 +787,55 @@
       "base model",
       "realistic"
     ]
+  },
+  "checkpoints/quiets25DIllusMerge_v10.safetensors": {
+    "name": "Quiet's 2.5D Illus_Merge",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/6773a606-6128-49d7-9cc8-680d943c99b1/anim=false,width=450,optimized=true/00048-1457470645.jpeg",
+    "civitai_url": "https://civitai.com/models/2657073/quiets-25d-illusmerge",
+    "source_url": "https://civitai.com/models/2657073/quiets-25d-illusmerge",
+    "tags": [
+      "base model"
+    ]
+  },
+  "checkpoints/illustVector25DIL_v10.safetensors": {
+    "name": "illust-Vector-2.5D_IL",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/f3795fda-c9ac-4140-8eb6-f7e11246736f/anim=false,width=450,optimized=true/ComfyUI-22_00512.jpeg",
+    "civitai_url": "https://civitai.com/models/2066425/illust-vector-25dil",
+    "source_url": "https://civitai.com/models/2066425/illust-vector-25dil",
+    "tags": [
+      "semi realistic",
+      "anime",
+      "sketch",
+      "2.5d",
+      "style"
+    ]
+  },
+  "loras/spo_sdxl_10ep_4k-data_lora_webui.safetensors": {
+    "name": "SPO-SDXL_4k-p_10ep_LoRA_webui",
+    "version": "v1.0",
+    "base_model": "SDXL 1.0",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/da975e99-fed9-4d54-a79c-524c89db1724/original=true/15471700.jpeg",
+    "civitai_url": "https://civitai.red/models/510261/spo-sdxl4k-p10eplorawebui?modelVersionId=567119",
+    "source_url": "https://civitai.red/models/510261/spo-sdxl4k-p10eplorawebui?modelVersionId=567119",
+    "tags": [
+      "base model"
+    ]
+  },
+  "loras/handPatchUnet4Merge.safetensors": {
+    "name": "HandPatch (Unet-Only)",
+    "version": "4merge",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/45a74b09-d340-450e-912c-ad6d6c8918a5/original=true/55175394.jpeg",
+    "civitai_url": "https://civitai.red/models/1206045/handpatch-unet-only?modelVersionId=1358586",
+    "source_url": "https://civitai.red/models/1206045/handpatch-unet-only?modelVersionId=1358586",
+    "tags": [
+      "quickfix",
+      "base model",
+      "hands"
+    ]
   }
 }

@@ -51,16 +51,43 @@ function sortImagesNewestFirst(images: GeneratedImage[]) {
   return [...images].sort((a, b) => b.timestamp - a.timestamp);
 }
 
+function imageIdentityKeys(image: GeneratedImage) {
+  return [
+    image.filename,
+    image.url,
+    image.filename ? `/api/images/${image.filename}` : "",
+    image.id,
+  ].filter(Boolean);
+}
+
 function mergeImages(
   existing: GeneratedImage[],
   incoming: GeneratedImage[]
 ) {
-  const imagesById = new Map<string, GeneratedImage>();
+  const imagesByKey = new Map<string, GeneratedImage>();
 
-  existing.forEach((image) => imagesById.set(image.id, image));
-  incoming.forEach((image) => imagesById.set(image.id, image));
+  const rememberImage = (image: GeneratedImage) => {
+    imageIdentityKeys(image).forEach((key) => imagesByKey.set(key, image));
+  };
 
-  return sortImagesNewestFirst(Array.from(imagesById.values()));
+  existing.forEach(rememberImage);
+  incoming.forEach((image) => {
+    const existingImage = imageIdentityKeys(image)
+      .map((key) => imagesByKey.get(key))
+      .find(Boolean);
+    const mergedImage = existingImage
+      ? {
+          ...existingImage,
+          ...image,
+          id: existingImage.id,
+          generation: existingImage.generation ?? image.generation,
+        }
+      : image;
+
+    rememberImage(mergedImage);
+  });
+
+  return sortImagesNewestFirst(Array.from(new Set(imagesByKey.values())));
 }
 
 export const useStore = create<AppState>((set) => ({
