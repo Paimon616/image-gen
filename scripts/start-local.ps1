@@ -15,7 +15,7 @@ $ErrorActionPreference = "Stop"
 
 $RootDir = Resolve-Path (Join-Path $PSScriptRoot "..")
 if (-not $ImageGenUrl) {
-  $ImageGenUrl = "http://localhost:$ImageGenPort"
+  $ImageGenUrl = "http://${ImageGenHost}:$ImageGenPort"
 }
 if (-not $LogDir) {
   $LogDir = Join-Path $RootDir ".local\logs"
@@ -115,6 +115,70 @@ function Start-LocalService {
   Wait-ForPort -Name $Name -HostName $HostName -Port $Port -Process $Process -StdOutLog $StdOutLog -StdErrLog $StdErrLog
 }
 
+function Wait-ForHttp {
+  param(
+    [string]$Name,
+    [string]$Url,
+    [System.Diagnostics.Process]$Process,
+    [string]$StdOutLog,
+    [string]$StdErrLog
+  )
+
+  for ($i = 0; $i -lt 120; $i++) {
+    try {
+      $Response = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 5
+      if ([int]$Response.StatusCode -ge 200 -and [int]$Response.StatusCode -lt 500) {
+        Write-Host "$Name is responding at $Url."
+        return
+      }
+    } catch {
+    }
+
+    if ($Process -and $Process.HasExited) {
+      Write-Error "$Name stopped before $Url responded. Logs: $StdOutLog / $StdErrLog"
+    }
+
+    Start-Sleep -Seconds 1
+  }
+
+  Write-Error "Timed out waiting for $Name at $Url. Logs: $StdOutLog / $StdErrLog"
+}
+
+function Start-ImageGen {
+  if (Test-Port -HostName $ImageGenHost -Port $ImageGenPort) {
+    Write-Host "Image Gen already appears to be running on port $ImageGenPort."
+    Wait-ForHttp -Name "Image Gen" -Url $ImageGenUrl
+    return
+  }
+
+  $NpmCommand = Ensure-Npm
+
+  Write-Host "Building Image Gen for local launch..."
+  Push-Location $RootDir
+  try {
+    & $NpmCommand run build
+  } finally {
+    Pop-Location
+  }
+
+  $StdOutLog = Join-Path $LogDir "image-gen.out.log"
+  $StdErrLog = Join-Path $LogDir "image-gen.err.log"
+
+  Write-Host "Starting Image Gen..."
+  $Process = Start-Process `
+    -FilePath $NpmCommand `
+    -ArgumentList @("run", "start", "--", "--hostname", $ImageGenHost, "--port", [string]$ImageGenPort) `
+    -WorkingDirectory $RootDir `
+    -RedirectStandardOutput $StdOutLog `
+    -RedirectStandardError $StdErrLog `
+    -PassThru `
+    -WindowStyle Hidden
+
+  $StartedProcesses.Add($Process) | Out-Null
+  Wait-ForPort -Name "Image Gen" -HostName $ImageGenHost -Port $ImageGenPort -Process $Process -StdOutLog $StdOutLog -StdErrLog $StdErrLog
+  Wait-ForHttp -Name "Image Gen" -Url $ImageGenUrl -Process $Process -StdOutLog $StdOutLog -StdErrLog $StdErrLog
+}
+
 try {
   if (-not (Test-Path (Join-Path $RootDir "node_modules"))) {
     Write-Host "Node dependencies are missing. Running npm install..."
@@ -166,11 +230,7 @@ try {
     -Port $ComfyUIPort `
     -Arguments @("run", "comfyui:win", "--", "-HostName", $ComfyUIHost, "-Port", [string]$ComfyUIPort)
 
-  Start-LocalService `
-    -Name "Image Gen" `
-    -HostName $ImageGenHost `
-    -Port $ImageGenPort `
-    -Arguments @("run", "dev", "--", "--hostname", $ImageGenHost, "--port", [string]$ImageGenPort)
+  Start-ImageGen
 
   Write-Host "Opening $ImageGenUrl"
   Start-Process $ImageGenUrl
