@@ -50,7 +50,7 @@ export function sdTrainScript() {
 }
 
 export function loraOutputDir() {
-  return join(comfyUiModelsDir(), "loras");
+  return resolve(comfyUiModelsDir(), "loras");
 }
 
 export interface LoraRunnerStatus {
@@ -194,7 +194,7 @@ export async function getTrainingTarget(baseModel: string): Promise<TrainingTarg
       kind: "sdxl",
       label,
       scriptPath: sdxlTrainScript(),
-      resolution: Number(process.env.LORA_SDXL_RESOLUTION ?? "1024"),
+      resolution: Number(process.env.LORA_SDXL_RESOLUTION ?? "768"),
     };
   }
 

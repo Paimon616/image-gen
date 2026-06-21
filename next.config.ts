@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-import { homedir } from "os";
 
 const comfyUiTraceExcludes = [
   "./ComfyUI/**/*",
@@ -17,7 +16,6 @@ const comfyUiTraceExcludes = [
 ];
 
 const nextConfig: NextConfig = {
-  outputFileTracingRoot: homedir(),
   outputFileTracingExcludes: {
     "/*": comfyUiTraceExcludes,
     "/page": comfyUiTraceExcludes,

@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { join } from "path";
 import { spawn, type ChildProcessWithoutNullStreams } from "child_process";
 import { NextRequest } from "next/server";
+import { killProcessTree } from "@/lib/lora-job-runner";
 import {
   buildSdxlTrainingConfig,
   checkpointPath,
@@ -39,12 +40,18 @@ function field(formData: FormData, name: string) {
 }
 
 function parseProgress(line: string) {
-  const percentMatch = line.match(/(\d{1,3})%\|/);
+  const stepLine = line
+    .split(/\r?\n/)
+    .reverse()
+    .find((value) => /\bsteps:/.test(value));
+  if (!stepLine) return null;
+
+  const percentMatch = stepLine.match(/steps:\s*(\d{1,3})%\|/);
   if (percentMatch) {
     return Math.min(99, Math.max(1, Number(percentMatch[1])));
   }
 
-  const stepMatch = line.match(/steps?:\s*(\d+)\s*\/\s*(\d+)/i);
+  const stepMatch = stepLine.match(/steps:.*?(\d+)\s*\/\s*(\d+)/i);
   if (stepMatch) {
     const current = Number(stepMatch[1]);
     const total = Number(stepMatch[2]);
@@ -106,9 +113,19 @@ function trainingArgs({
   outputName: string;
   trainScript: string;
 }) {
+  const mixedPrecision = process.env.LORA_MIXED_PRECISION ?? defaultMixedPrecision();
+
   return [
     "-m",
     "accelerate.commands.launch",
+    "--num_processes",
+    "1",
+    "--num_machines",
+    "1",
+    "--mixed_precision",
+    mixedPrecision,
+    "--dynamo_backend",
+    "no",
     "--num_cpu_threads_per_process",
     "1",
     trainScript,
@@ -125,9 +142,9 @@ function trainingArgs({
     "--network_module",
     "networks.lora",
     "--network_dim",
-    process.env.LORA_NETWORK_DIM ?? "32",
+    process.env.LORA_NETWORK_DIM ?? "16",
     "--network_alpha",
-    process.env.LORA_NETWORK_ALPHA ?? "16",
+    process.env.LORA_NETWORK_ALPHA ?? "8",
     "--learning_rate",
     process.env.LORA_LEARNING_RATE ?? "1e-4",
     "--unet_lr",
@@ -138,10 +155,12 @@ function trainingArgs({
     process.env.LORA_MAX_TRAIN_EPOCHS ?? "10",
     "--train_batch_size",
     process.env.LORA_TRAIN_BATCH_SIZE ?? "1",
+    "--max_data_loader_n_workers",
+    process.env.LORA_MAX_DATA_LOADER_N_WORKERS ?? "0",
     "--optimizer_type",
     process.env.LORA_OPTIMIZER_TYPE ?? "AdamW",
     "--mixed_precision",
-    process.env.LORA_MIXED_PRECISION ?? defaultMixedPrecision(),
+    mixedPrecision,
     "--save_precision",
     process.env.LORA_SAVE_PRECISION ?? defaultSavePrecision(),
     "--cache_latents",
@@ -206,7 +225,7 @@ export async function POST(req: NextRequest) {
 
   const abortTraining = () => {
     clientDisconnected = true;
-    child?.kill("SIGTERM");
+    void killProcessTree(child?.pid);
   };
 
   req.signal.addEventListener("abort", abortTraining, { once: true });
@@ -272,9 +291,10 @@ export async function POST(req: NextRequest) {
           env: {
             ...process.env,
             PYTHONUTF8: "1",
-            PYTHONIOENCODING: "utf-8",
+            PYTHONIOENCODING: "utf-8:replace",
             PYTHONUNBUFFERED: "1",
           },
+          detached: process.platform !== "win32",
         });
 
         const appendLog = async (chunk: Buffer) => {

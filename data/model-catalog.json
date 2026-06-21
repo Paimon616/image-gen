@@ -870,5 +870,155 @@
       "woman",
       "sex"
     ]
+  },
+  "checkpoints/dessertModels_iceCream.safetensors": {
+    "name": "Dessert - Models 🍰",
+    "version": "Ice Cream",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/0f1399cb-1357-41af-bd94-917139b304d2/original=true/133012210.jpeg",
+    "civitai_url": "https://civitai.red/models/1884582/dessert-models?modelVersionId=3009873",
+    "source_url": "https://civitai.red/models/1884582/dessert-models?modelVersionId=3009873",
+    "tags": [
+      "anime",
+      "illustrious",
+      "base model",
+      "merge",
+      "model",
+      "semirealistic",
+      "2.5d"
+    ]
+  },
+  "loras/remacri_original.safetensors": {
+    "name": "Remacri",
+    "version": "Original",
+    "base_model": "Upscaler",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/b6b3d1d9-6467-4719-9136-877732b4c3aa/original=true/2566828.jpeg",
+    "civitai_url": "https://civitai.red/models/147759/remacri?modelVersionId=164821",
+    "source_url": "https://civitai.red/models/147759/remacri?modelVersionId=164821",
+    "tags": [
+      "base model"
+    ]
+  },
+  "loras/Nobara - Illu.safetensors": {
+    "name": "Nobara Kugisaki - Jujutsu Kaisen 1.5/Pony/Illustrious",
+    "version": "Nobara - Illu",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/fa1b6b91-3b34-4ea0-bfb0-219a83525d8f/original=true/53787543.jpeg",
+    "civitai_url": "https://civitai.red/models/305366/nobara-kugisaki-jujutsu-kaisen-15ponyillustrious?modelVersionId=1327745",
+    "source_url": "https://civitai.red/models/305366/nobara-kugisaki-jujutsu-kaisen-15ponyillustrious?modelVersionId=1327745",
+    "tags": [
+      "jujutsu kaisen",
+      "anime",
+      "character",
+      "woman"
+    ]
+  },
+  "loras/Real_Pussy_Illustrious.safetensors": {
+    "name": "Realistic Pussy Detailer (experimental)",
+    "version": "Illustrious",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/2ad55380-66e2-4034-ac5c-b2f72c514a0e/original=true/103202253.jpeg",
+    "civitai_url": "https://civitai.red/models/2001172/realistic-pussy-detailer-experimental?modelVersionId=2265171",
+    "source_url": "https://civitai.red/models/2001172/realistic-pussy-detailer-experimental?modelVersionId=2265171",
+    "tags": [
+      "realistic",
+      "concept",
+      "vagina"
+    ]
+  },
+  "loras/Niji_Semi_realism_F_N_R_epoch_10.safetensors": {
+    "name": "Niji semi realism",
+    "version": "v4.0 - illustrious",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/fd582376-b9d2-460a-afe8-3e8dba39d419/original=true/127386155.jpeg",
+    "civitai_url": "https://civitai.red/models/534506/niji-semi-realism?modelVersionId=2854725",
+    "source_url": "https://civitai.red/models/534506/niji-semi-realism?modelVersionId=2854725",
+    "tags": [
+      "realistic",
+      "photorealistic",
+      "style",
+      "woman",
+      "girls",
+      "anime",
+      "lora"
+    ]
+  },
+  "checkpoints/prefectIllustriousXL_v8.safetensors": {
+    "name": "Prefect illustrious XL",
+    "version": "v8",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/260a4f85-af91-4ccb-85dc-577810e248d3/original=true/127755419.jpeg",
+    "civitai_url": "https://civitai.red/models/1224788/prefect-illustrious-xl?modelVersionId=2864868",
+    "source_url": "https://civitai.red/models/1224788/prefect-illustrious-xl?modelVersionId=2864868",
+    "tags": [
+      "anime",
+      "girls",
+      "woman",
+      "styles",
+      "base models",
+      "base model",
+      "illustrious xl"
+    ]
+  },
+  "loras/DetailerILv2-000008.safetensors": {
+    "name": "Detailer IL",
+    "version": "v2",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/e2324cf6-7bc5-4c52-a7ff-301ed595c1f8/anim=false,width=450,optimized=true/image(33).jpeg",
+    "civitai_url": "https://civitai.red/models/1231943/detailer-il?modelVersionId=1736373",
+    "source_url": "https://civitai.red/models/1231943/detailer-il?modelVersionId=1736373",
+    "tags": [
+      "illustrious",
+      "detailer",
+      "concept"
+    ]
+  },
+  "loras/People'sWorks_v9_Illusv1.0_128dim.safetensors": {
+    "name": "People's Works: SDXL",
+    "version": "v9_Illusv1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/ea602d1e-7c65-468a-bcb2-f4822bcc5453/original=true/115058227.jpeg",
+    "civitai_url": "https://civitai.red/models/1400090/peoples-works-sdxl?modelVersionId=2524593",
+    "source_url": "https://civitai.red/models/1400090/peoples-works-sdxl?modelVersionId=2524593",
+    "tags": [
+      "anime",
+      "style"
+    ]
+  },
+  "loras/illustriousXLv01_stabilizer_v1.198.safetensors": {
+    "name": "Stabilizer IL/NAI/CK",
+    "version": "illus01 v1.198",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/c898c155-50a3-49a9-ab0c-048e1e09c380/original=true/90933843.jpeg",
+    "civitai_url": "https://civitai.red/models/971952/stabilizer-ilnaick?modelVersionId=2055853",
+    "source_url": "https://civitai.red/models/971952/stabilizer-ilnaick?modelVersionId=2055853",
+    "tags": [
+      "style"
+    ]
+  },
+  "loras/USNR_STYLE_ILL_V1_lokr3-000024.safetensors": {
+    "name": "薄塗り / USNR STYLE",
+    "version": "USNR_STYLE_ILL_V1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/dd811294-d535-4ce8-802f-1ba685727ab0/original=true/64411954.jpeg",
+    "civitai_url": "https://civitai.red/models/176554/usnr-style?modelVersionId=1552087",
+    "source_url": "https://civitai.red/models/176554/usnr-style?modelVersionId=1552087",
+    "tags": [
+      "anime",
+      "girls",
+      "style"
+    ]
+  },
+  "loras/People'sWorks_v10_Illusv1.0.safetensors": {
+    "name": "People's Works: SDXL",
+    "version": "v10_Illusv1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/09082379-1577-4780-a6a8-51bcd0cbb8a6/original=true/131790724.jpeg",
+    "civitai_url": "https://civitai.red/models/1400090/peoples-works-sdxl?modelVersionId=2975889",
+    "source_url": "https://civitai.red/models/1400090/peoples-works-sdxl?modelVersionId=2975889",
+    "tags": [
+      "anime",
+      "style"
+    ]
   }
 }

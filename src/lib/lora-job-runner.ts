@@ -27,6 +27,7 @@ export interface LoraJobStatus {
   error: string;
   startedAt: string;
   updatedAt: string;
+  processId?: number;
   completedAt?: string;
   logTail?: string;
 }
@@ -44,6 +45,7 @@ interface StartLoraJobInput {
 
 type LoraJobRegistry = typeof globalThis & {
   __imageGenLoraJobs?: Map<string, ChildProcessWithoutNullStreams>;
+  __imageGenLoraStatusWrites?: Map<string, Promise<void>>;
 };
 
 function registry() {
@@ -52,6 +54,14 @@ function registry() {
     globalRef.__imageGenLoraJobs = new Map();
   }
   return globalRef.__imageGenLoraJobs;
+}
+
+function statusWriteRegistry() {
+  const globalRef = globalThis as LoraJobRegistry;
+  if (!globalRef.__imageGenLoraStatusWrites) {
+    globalRef.__imageGenLoraStatusWrites = new Map();
+  }
+  return globalRef.__imageGenLoraStatusWrites;
 }
 
 export function trainingRunsDir() {
@@ -117,21 +127,63 @@ async function patchLoraJobStatus(
   runDir: string,
   patch: Partial<Omit<LoraJobStatus, "runId" | "outputName" | "outputPath" | "logPath" | "startedAt">>
 ) {
-  const current = JSON.parse(await readFile(statusPath(runDir), "utf8")) as LoraJobStatus;
-  await writeLoraJobStatus(runDir, {
-    ...current,
-    ...patch,
-    updatedAt: new Date().toISOString(),
-  });
+  const writes = statusWriteRegistry();
+  const previous = writes.get(runDir) ?? Promise.resolve();
+  const next = previous
+    .catch(() => undefined)
+    .then(async () => {
+      const current = JSON.parse(await readFile(statusPath(runDir), "utf8")) as LoraJobStatus;
+      await writeLoraJobStatus(runDir, {
+        ...current,
+        ...patch,
+        updatedAt: new Date().toISOString(),
+      });
+    });
+  writes.set(runDir, next);
+  await next;
+  if (writes.get(runDir) === next) {
+    writes.delete(runDir);
+  }
+}
+
+export async function killProcessTree(processId: number | undefined) {
+  if (!processId || !Number.isFinite(processId) || processId <= 0) return;
+
+  if (process.platform === "win32") {
+    await new Promise<void>((resolve) => {
+      const killer = spawn("taskkill.exe", ["/PID", String(processId), "/T", "/F"], {
+        stdio: "ignore",
+        windowsHide: true,
+      });
+      killer.on("close", () => resolve());
+      killer.on("error", () => resolve());
+    });
+    return;
+  }
+
+  try {
+    process.kill(-processId, "SIGTERM");
+  } catch {
+    try {
+      process.kill(processId, "SIGTERM");
+    } catch {
+    }
+  }
 }
 
 export function parseTrainingProgress(line: string) {
-  const percentMatch = line.match(/(\d{1,3})%\|/);
+  const stepLine = line
+    .split(/\r?\n/)
+    .reverse()
+    .find((value) => /\bsteps:/.test(value));
+  if (!stepLine) return null;
+
+  const percentMatch = stepLine.match(/steps:\s*(\d{1,3})%\|/);
   if (percentMatch) {
     return Math.min(99, Math.max(1, Number(percentMatch[1])));
   }
 
-  const stepMatch = line.match(/steps?:\s*(\d+)\s*\/\s*(\d+)/i);
+  const stepMatch = stepLine.match(/steps:.*?(\d+)\s*\/\s*(\d+)/i);
   if (stepMatch) {
     const current = Number(stepMatch[1]);
     const total = Number(stepMatch[2]);
@@ -160,9 +212,19 @@ export function buildTrainingArgs({
   outputName: string;
   trainScript: string;
 }) {
+  const mixedPrecision = process.env.LORA_MIXED_PRECISION ?? defaultMixedPrecision();
+
   return [
     "-m",
     "accelerate.commands.launch",
+    "--num_processes",
+    "1",
+    "--num_machines",
+    "1",
+    "--mixed_precision",
+    mixedPrecision,
+    "--dynamo_backend",
+    "no",
     "--num_cpu_threads_per_process",
     "1",
     trainScript,
@@ -179,9 +241,9 @@ export function buildTrainingArgs({
     "--network_module",
     "networks.lora",
     "--network_dim",
-    process.env.LORA_NETWORK_DIM ?? "32",
+    process.env.LORA_NETWORK_DIM ?? "16",
     "--network_alpha",
-    process.env.LORA_NETWORK_ALPHA ?? "16",
+    process.env.LORA_NETWORK_ALPHA ?? "8",
     "--learning_rate",
     process.env.LORA_LEARNING_RATE ?? "1e-4",
     "--unet_lr",
@@ -192,10 +254,12 @@ export function buildTrainingArgs({
     process.env.LORA_MAX_TRAIN_EPOCHS ?? "10",
     "--train_batch_size",
     process.env.LORA_TRAIN_BATCH_SIZE ?? "1",
+    "--max_data_loader_n_workers",
+    process.env.LORA_MAX_DATA_LOADER_N_WORKERS ?? "0",
     "--optimizer_type",
     process.env.LORA_OPTIMIZER_TYPE ?? "AdamW",
     "--mixed_precision",
-    process.env.LORA_MIXED_PRECISION ?? defaultMixedPrecision(),
+    mixedPrecision,
     "--save_precision",
     process.env.LORA_SAVE_PRECISION ?? defaultSavePrecision(),
     "--cache_latents",
@@ -282,13 +346,16 @@ export async function startLoraJob({
     env: {
       ...process.env,
       PYTHONUTF8: "1",
-      PYTHONIOENCODING: "utf-8",
+      PYTHONIOENCODING: "utf-8:replace",
       PYTHONUNBUFFERED: "1",
     },
-    detached: false,
+    detached: process.platform !== "win32",
   });
 
   registry().set(runId, child);
+  await patchLoraJobStatus(runDir, {
+    processId: child.pid,
+  });
 
   const handleChunk = async (chunk: Buffer) => {
     await appendFile(logPath, chunk);
@@ -361,15 +428,15 @@ export async function cancelLoraJob(runId: string) {
   if (!current) return null;
 
   const child = registry().get(runId);
-  if (child && !child.killed) {
-    child.kill("SIGTERM");
-  }
+  await killProcessTree(child?.pid);
+  await killProcessTree(current.processId);
   registry().delete(runId);
 
   await patchLoraJobStatus(runDir, {
     state: "cancelled",
     message: "LoRA training cancelled.",
     error: "",
+    processId: undefined,
     completedAt: new Date().toISOString(),
   });
 
