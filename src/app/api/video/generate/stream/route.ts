@@ -6,7 +6,9 @@ import {
   COMFYUI_BASE_URL,
   cancelComfyPrompt,
   fetchComfyMedia,
+  queueComfyAudioPrompt,
   queueComfyVideoPrompt,
+  waitForComfyAudioRefs,
   waitForComfyVideoRefs,
   type ComfyGeneratedMedia,
 } from "@/lib/comfyui";
@@ -18,6 +20,7 @@ import {
 } from "@/lib/types";
 
 const VIDEO_OUTPUT_DIR = join(process.cwd(), "output", "videos");
+const AUDIO_OUTPUT_DIR = join(process.cwd(), "output", "audios");
 
 interface ComfyWsMessage {
   type?: string;
@@ -35,6 +38,7 @@ type VideoStage =
   | "waiting"
   | "executing"
   | "sampling"
+  | "audio"
   | "fetching"
   | "saving"
   | "complete";
@@ -52,10 +56,17 @@ const VIDEO_NODE_LABELS: Record<string, string> = {
   VAEDecodeTiled: "Decoding frames",
   CreateVideo: "Encoding video",
   SaveVideo: "Saving video",
+  EmptyLatentAudio: "Preparing audio latents",
+  VAEDecodeAudio: "Decoding audio",
+  SaveAudio: "Saving audio",
 };
 
 async function ensureVideoOutputDir() {
   await mkdir(VIDEO_OUTPUT_DIR, { recursive: true });
+}
+
+async function ensureAudioOutputDir() {
+  await mkdir(AUDIO_OUTPUT_DIR, { recursive: true });
 }
 
 function extensionForMedia(media: ComfyGeneratedMedia) {
@@ -64,6 +75,18 @@ function extensionForMedia(media: ComfyGeneratedMedia) {
   if (media.contentType === "video/webm") return "webm";
   if (media.contentType === "image/gif") return "gif";
   return "mp4";
+}
+
+function extensionForAudio(media: ComfyGeneratedMedia) {
+  const ext = media.filename.split(".").pop()?.toLowerCase();
+  if (ext && ["wav", "mp3", "flac", "m4a", "aac", "ogg", "opus"].includes(ext)) {
+    return ext;
+  }
+  if (media.contentType === "audio/mpeg") return "mp3";
+  if (media.contentType === "audio/flac") return "flac";
+  if (media.contentType === "audio/mp4") return "m4a";
+  if (media.contentType === "audio/ogg") return "ogg";
+  return "wav";
 }
 
 function clampNumber(value: unknown, fallback: number, min: number, max: number) {
@@ -79,6 +102,12 @@ function normalizeVideoParams(rawBody: Partial<VideoGenerationParams>) {
     DEFAULT_VIDEO_PARAMS.duration_seconds,
     1,
     30
+  );
+  const soundDurationSeconds = clampNumber(
+    rawBody.sound_duration_seconds,
+    durationSeconds,
+    1,
+    300
   );
 
   return {
@@ -111,6 +140,10 @@ function normalizeVideoParams(rawBody: Partial<VideoGenerationParams>) {
     ),
     seed: normalizeGenerationSeed(rawBody.seed),
     source_image: rawBody.source_image?.trim() || null,
+    enable_sound: Boolean(rawBody.enable_sound),
+    sound_prompt: String(rawBody.sound_prompt ?? "").trim(),
+    negative_sound_prompt: String(rawBody.negative_sound_prompt ?? ""),
+    sound_duration_seconds: soundDurationSeconds,
   } satisfies VideoGenerationParams;
 }
 
@@ -130,12 +163,85 @@ async function assertVideoWorkflowConfigured() {
   await access(resolvedPath);
 }
 
+async function assertAudioWorkflowConfigured() {
+  const workflowPath = process.env.COMFYUI_AUDIO_WORKFLOW_PATH?.trim();
+
+  if (!workflowPath) {
+    throw new Error(
+      "Set COMFYUI_AUDIO_WORKFLOW_PATH to a ComfyUI API workflow JSON file before generating sound."
+    );
+  }
+
+  const resolvedPath = isAbsolute(workflowPath)
+    ? workflowPath
+    : join(/*turbopackIgnore: true*/ process.cwd(), workflowPath);
+
+  await access(resolvedPath);
+}
+
+type SavedAudio = {
+  id: string;
+  url: string;
+  filename: string;
+  params: VideoGenerationParams;
+  timestamp: number;
+  contentType: string;
+};
+
+async function saveBufferedAudios({
+  audios,
+  params,
+}: {
+  audios: ComfyGeneratedMedia[];
+  params: VideoGenerationParams;
+}) {
+  await ensureAudioOutputDir();
+
+  return Promise.all(
+    audios.map(async (audio, index) => {
+      const id = randomUUID();
+      const filename = `${id}.${extensionForAudio(audio)}`;
+      const timestamp = Date.now();
+
+      await writeFile(join(AUDIO_OUTPUT_DIR, filename), audio.buffer);
+      await writeFile(
+        join(AUDIO_OUTPUT_DIR, `${id}.json`),
+        JSON.stringify(
+          {
+            id,
+            filename,
+            params,
+            timestamp,
+            original_url: audio.originalUrl,
+            original_filename: audio.filename,
+            contentType: audio.contentType,
+            index,
+          },
+          null,
+          2
+        )
+      );
+
+      return {
+        id,
+        url: `/api/audios/${filename}`,
+        filename,
+        params,
+        timestamp,
+        contentType: audio.contentType,
+      } satisfies SavedAudio;
+    })
+  );
+}
+
 async function saveBufferedVideos({
   videos,
   params,
+  audios = [],
 }: {
   videos: ComfyGeneratedMedia[];
   params: VideoGenerationParams;
+  audios?: SavedAudio[];
 }) {
   await ensureVideoOutputDir();
 
@@ -158,6 +264,7 @@ async function saveBufferedVideos({
             original_filename: video.filename,
             contentType: video.contentType,
             index,
+            audios,
           },
           null,
           2
@@ -171,6 +278,7 @@ async function saveBufferedVideos({
         params,
         timestamp,
         contentType: video.contentType,
+        audios,
       };
     })
   );
@@ -242,13 +350,16 @@ export async function POST(req: NextRequest) {
 
   try {
     await assertVideoWorkflowConfigured();
+    if (body.enable_sound) {
+      await assertAudioWorkflowConfigured();
+    }
   } catch (error) {
     return Response.json(
       {
         error:
           error instanceof Error
             ? error.message
-            : "Video workflow is not configured.",
+            : "Generation workflow is not configured.",
       },
       { status: 400 }
     );
@@ -375,7 +486,49 @@ export async function POST(req: NextRequest) {
           message: "Saving video locally...",
           elapsed_ms: Date.now() - startedAt,
         });
-        const savedVideos = await saveBufferedVideos({ videos, params: body });
+        let savedAudios: SavedAudio[] = [];
+
+        if (body.enable_sound) {
+          send("detail", {
+            stage: "audio" satisfies VideoStage,
+            message: "Queueing sound generation...",
+            elapsed_ms: Date.now() - startedAt,
+          });
+
+          const audioQueued = await queueComfyAudioPrompt(body, clientId);
+          promptId = audioQueued.prompt_id;
+          queuedPrompt = (audioQueued as { prompt?: Record<string, unknown> }).prompt ?? {};
+          lastNodeId = "";
+          lastComfyActivityAt = Date.now();
+          send("detail", {
+            stage: "audio" satisfies VideoStage,
+            message: "Generating sound...",
+            elapsed_ms: Date.now() - startedAt,
+          });
+
+          const audioRefs = await waitForComfyAudioRefs(promptId, {
+            signal: abortController.signal,
+            getLastActivityAt: () => lastComfyActivityAt,
+          });
+          send("detail", {
+            stage: "fetching" satisfies VideoStage,
+            message: "Fetching generated sound from ComfyUI...",
+            elapsed_ms: Date.now() - startedAt,
+          });
+          const audios = await fetchComfyMedia(audioRefs);
+          send("detail", {
+            stage: "saving" satisfies VideoStage,
+            message: "Saving sound locally...",
+            elapsed_ms: Date.now() - startedAt,
+          });
+          savedAudios = await saveBufferedAudios({ audios, params: body });
+        }
+
+        const savedVideos = await saveBufferedVideos({
+          videos,
+          params: body,
+          audios: savedAudios,
+        });
 
         send("progress", {
           progress: 100,
@@ -383,7 +536,7 @@ export async function POST(req: NextRequest) {
           message: "Done",
           elapsed_ms: Date.now() - startedAt,
         });
-        send("complete", { videos: savedVideos });
+        send("complete", { videos: savedVideos, audios: savedAudios });
       } catch (error) {
         if (!clientDisconnected) {
           send("error", {

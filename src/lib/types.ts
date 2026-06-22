@@ -112,6 +112,19 @@ export interface VideoGenerationParams {
   guidance_scale: number;
   seed: number | null;
   source_image: string | null;
+  enable_sound: boolean;
+  sound_prompt: string;
+  negative_sound_prompt: string;
+  sound_duration_seconds: number;
+}
+
+export interface GeneratedAudio {
+  id: string;
+  url: string;
+  params: VideoGenerationParams | null;
+  timestamp: number;
+  filename: string;
+  contentType: string;
 }
 
 export interface GeneratedVideo {
@@ -121,6 +134,7 @@ export interface GeneratedVideo {
   timestamp: number;
   filename: string;
   contentType: string;
+  audios?: GeneratedAudio[];
 }
 
 export interface GenerationStatus {
@@ -221,6 +235,10 @@ export const DEFAULT_VIDEO_PARAMS: VideoGenerationParams = {
   guidance_scale: 5,
   seed: null,
   source_image: null,
+  enable_sound: false,
+  sound_prompt: "",
+  negative_sound_prompt: "",
+  sound_duration_seconds: 6,
 };
 
 export const IMAGE_SIZES = [

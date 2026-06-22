@@ -38,6 +38,8 @@ interface ComfyHistoryOutput {
   images?: ComfyImageRef[];
   gifs?: ComfyMediaRef[];
   videos?: ComfyMediaRef[];
+  audio?: ComfyMediaRef[];
+  audios?: ComfyMediaRef[];
 }
 
 interface ComfyHistoryStatus {
@@ -749,11 +751,23 @@ function isVideoMediaRef(ref: ComfyMediaRef) {
   return /\.(mp4|webm|gif)$/i.test(ref.filename);
 }
 
+function isAudioMediaRef(ref: ComfyMediaRef) {
+  return /\.(wav|mp3|flac|m4a|aac|ogg|opus)$/i.test(ref.filename);
+}
+
 function videoRefsFromHistory(history: ComfyHistoryItem | undefined) {
   return Object.values(history?.outputs ?? {}).flatMap((output) => [
     ...(output.videos ?? []),
     ...(output.gifs ?? []),
     ...(output.images ?? []).filter(isVideoMediaRef),
+  ]);
+}
+
+function audioRefsFromHistory(history: ComfyHistoryItem | undefined) {
+  return Object.values(history?.outputs ?? {}).flatMap((output) => [
+    ...(output.audio ?? []),
+    ...(output.audios ?? []),
+    ...(output.images ?? []).filter(isAudioMediaRef),
   ]);
 }
 
@@ -916,6 +930,55 @@ export async function waitForComfyVideoRefs(
   throw new Error("ComfyUI video generation canceled");
 }
 
+export async function waitForComfyAudioRefs(
+  promptId: string,
+  options: {
+    idleTimeoutMs?: number;
+    getLastActivityAt?: () => number;
+    signal?: AbortSignal;
+  } = {}
+) {
+  const idleTimeoutMs = options.idleTimeoutMs ?? COMFYUI_TIMEOUT_MS;
+  let lastActivityAt = Date.now();
+
+  while (!options.signal?.aborted) {
+    const history = await getHistory(promptId);
+    const promptHistory = history[promptId];
+    const audios = audioRefsFromHistory(promptHistory);
+
+    if (audios.length > 0) {
+      return audios;
+    }
+
+    const historyError = errorFromHistory(promptHistory);
+    if (historyError) {
+      throw new Error(historyError);
+    }
+
+    const externalActivityAt = options.getLastActivityAt?.() ?? 0;
+
+    if (externalActivityAt > lastActivityAt) {
+      lastActivityAt = externalActivityAt;
+    }
+
+    try {
+      if (await isPromptActive(promptId)) {
+        lastActivityAt = Date.now();
+      }
+    } catch {
+      // If the queue endpoint is temporarily unavailable, fall back to idle timeout.
+    }
+
+    if (Date.now() - lastActivityAt >= idleTimeoutMs) {
+      throw new Error("ComfyUI audio generation timed out");
+    }
+
+    await wait(1000, options.signal);
+  }
+
+  throw new Error("ComfyUI audio generation canceled");
+}
+
 export async function cancelComfyPrompt(promptId?: string) {
   const errors: string[] = [];
   let canceled = false;
@@ -967,22 +1030,36 @@ function mediaContentTypeFor(filename: string) {
   if (lower.endsWith(".mp4")) return "video/mp4";
   if (lower.endsWith(".webm")) return "video/webm";
   if (lower.endsWith(".gif")) return "image/gif";
+  if (lower.endsWith(".wav")) return "audio/wav";
+  if (lower.endsWith(".mp3")) return "audio/mpeg";
+  if (lower.endsWith(".flac")) return "audio/flac";
+  if (lower.endsWith(".m4a")) return "audio/mp4";
+  if (lower.endsWith(".aac")) return "audio/aac";
+  if (lower.endsWith(".ogg")) return "audio/ogg";
+  if (lower.endsWith(".opus")) return "audio/ogg";
   if (lower.endsWith(".png")) return "image/png";
   if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
   return "application/octet-stream";
 }
 
-function replaceVideoWorkflowPlaceholders(value: unknown, params: VideoGenerationParams): unknown {
+function replaceWorkflowPlaceholders(value: unknown, params: VideoGenerationParams): unknown {
   if (typeof value === "string") {
+    const soundPrompt = params.sound_prompt.trim() || params.prompt;
     const replacements: Record<string, string | number> = {
       prompt: params.prompt,
       negative_prompt: params.negative_prompt,
+      sound_prompt: soundPrompt,
+      audio_prompt: soundPrompt,
+      negative_sound_prompt: params.negative_sound_prompt,
+      negative_audio_prompt: params.negative_sound_prompt,
       width: params.width,
       height: params.height,
       num_frames: params.num_frames,
       frames: params.num_frames,
       fps: params.fps,
       duration_seconds: params.duration_seconds,
+      sound_duration_seconds: params.sound_duration_seconds,
+      audio_duration_seconds: params.sound_duration_seconds,
       steps: params.num_inference_steps,
       num_inference_steps: params.num_inference_steps,
       high_noise_end_step: Math.max(1, Math.floor(params.num_inference_steps / 2)),
@@ -991,6 +1068,7 @@ function replaceVideoWorkflowPlaceholders(value: unknown, params: VideoGeneratio
       guidance_scale: params.guidance_scale,
       seed: normalizeGenerationSeed(params.seed),
       source_image: params.source_image ?? "",
+      enable_sound: params.enable_sound ? 1 : 0,
     };
 
     const exactPlaceholder = value.match(/^\{\{([a-zA-Z0-9_]+)\}\}$/);
@@ -1004,14 +1082,14 @@ function replaceVideoWorkflowPlaceholders(value: unknown, params: VideoGeneratio
   }
 
   if (Array.isArray(value)) {
-    return value.map((item) => replaceVideoWorkflowPlaceholders(item, params));
+    return value.map((item) => replaceWorkflowPlaceholders(item, params));
   }
 
   if (value && typeof value === "object") {
     return Object.fromEntries(
       Object.entries(value).map(([key, item]) => [
         key,
-        replaceVideoWorkflowPlaceholders(item, params),
+        replaceWorkflowPlaceholders(item, params),
       ])
     );
   }
@@ -1019,12 +1097,15 @@ function replaceVideoWorkflowPlaceholders(value: unknown, params: VideoGeneratio
   return value;
 }
 
-async function loadVideoWorkflow(params: VideoGenerationParams) {
-  const workflowPath = process.env.COMFYUI_VIDEO_WORKFLOW_PATH?.trim();
+async function loadWorkflowFromEnv(
+  envName: "COMFYUI_VIDEO_WORKFLOW_PATH" | "COMFYUI_AUDIO_WORKFLOW_PATH",
+  params: VideoGenerationParams
+) {
+  const workflowPath = process.env[envName]?.trim();
 
   if (!workflowPath) {
     throw new Error(
-      "Set COMFYUI_VIDEO_WORKFLOW_PATH to a ComfyUI API workflow JSON file before generating video."
+      `Set ${envName} to a ComfyUI API workflow JSON file before generating.`
     );
   }
 
@@ -1042,13 +1123,18 @@ async function loadVideoWorkflow(params: VideoGenerationParams) {
       : rawWorkflow;
 
   if (!workflow || typeof workflow !== "object" || Array.isArray(workflow)) {
-    throw new Error("COMFYUI_VIDEO_WORKFLOW_PATH must point to a ComfyUI API workflow JSON object.");
+    throw new Error(`${envName} must point to a ComfyUI API workflow JSON object.`);
   }
 
-  return replaceVideoWorkflowPlaceholders(
-    workflow,
-    resolvedParams
-  ) as Record<string, unknown>;
+  return replaceWorkflowPlaceholders(workflow, resolvedParams) as Record<string, unknown>;
+}
+
+async function loadVideoWorkflow(params: VideoGenerationParams) {
+  return loadWorkflowFromEnv("COMFYUI_VIDEO_WORKFLOW_PATH", params);
+}
+
+async function loadAudioWorkflow(params: VideoGenerationParams) {
+  return loadWorkflowFromEnv("COMFYUI_AUDIO_WORKFLOW_PATH", params);
 }
 
 export async function generateWithComfyUI(params: GenerationParams) {
@@ -1063,6 +1149,15 @@ export async function queueComfyVideoPrompt(
   clientId = crypto.randomUUID()
 ) {
   const prompt = await loadVideoWorkflow(params);
+  const queued = await queueComfyWorkflow(prompt, clientId);
+  return { ...queued, prompt };
+}
+
+export async function queueComfyAudioPrompt(
+  params: VideoGenerationParams,
+  clientId = crypto.randomUUID()
+) {
+  const prompt = await loadAudioWorkflow(params);
   const queued = await queueComfyWorkflow(prompt, clientId);
   return { ...queued, prompt };
 }

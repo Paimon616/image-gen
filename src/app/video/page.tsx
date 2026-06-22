@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   DEFAULT_VIDEO_PARAMS,
@@ -29,15 +30,20 @@ import {
   Loader2,
   Play,
   RefreshCcw,
+  Volume2,
   X,
 } from "lucide-react";
 
-interface VideoConfigState {
+interface WorkflowConfigState {
   configured: boolean;
   exists: boolean;
   ready: boolean;
   missing: string[];
   message: string;
+}
+
+interface VideoConfigState extends WorkflowConfigState {
+  audio: WorkflowConfigState;
 }
 
 interface GenerationDetail {
@@ -186,6 +192,13 @@ export default function VideoPage() {
     ready: true,
     missing: [],
     message: "",
+    audio: {
+      configured: false,
+      exists: false,
+      ready: false,
+      missing: [],
+      message: "Set COMFYUI_AUDIO_WORKFLOW_PATH to enable Sound generation.",
+    },
   });
   const activePromptIdRef = useRef("");
   const generationAbortControllerRef = useRef<AbortController | null>(null);
@@ -193,9 +206,12 @@ export default function VideoPage() {
   const isGenerating = status.state === "generating";
   const videoWorkflowReady =
     videoConfig.configured && videoConfig.exists && videoConfig.ready;
+  const soundWorkflowReady =
+    videoConfig.audio.configured && videoConfig.audio.exists && videoConfig.audio.ready;
   const canGenerate =
     params.prompt.trim().length > 0 &&
     Boolean(params.source_image) &&
+    (!params.enable_sound || soundWorkflowReady) &&
     !isGenerating &&
     videoWorkflowReady;
   const generateButtonProgress = isGenerating
@@ -339,6 +355,15 @@ export default function VideoPage() {
           ready: data.ready !== false,
           missing: Array.isArray(data.missing) ? data.missing.map(String) : [],
           message: String(data.message ?? ""),
+          audio: {
+            configured: Boolean(data.audio?.configured),
+            exists: Boolean(data.audio?.exists),
+            ready: data.audio?.ready === true,
+            missing: Array.isArray(data.audio?.missing)
+              ? data.audio.missing.map(String)
+              : [],
+            message: String(data.audio?.message ?? ""),
+          },
         });
       })
       .catch(() => {
@@ -348,6 +373,13 @@ export default function VideoPage() {
           ready: false,
           missing: [],
           message: "Video generation configuration could not be checked.",
+          audio: {
+            configured: false,
+            exists: false,
+            ready: false,
+            missing: [],
+            message: "Sound generation configuration could not be checked.",
+          },
         });
       });
   }, []);
@@ -372,6 +404,14 @@ export default function VideoPage() {
         state: "error",
         progress: 0,
         message: videoConfig.message || "Video workflow is not configured.",
+      });
+      return;
+    }
+    if (params.enable_sound && !soundWorkflowReady) {
+      setStatus({
+        state: "error",
+        progress: 0,
+        message: videoConfig.audio.message || "Sound workflow is not configured.",
       });
       return;
     }
@@ -483,7 +523,9 @@ export default function VideoPage() {
       setStatus({ state: "completed", progress: 100, message: "Done!" });
       appendGenerationDetail({
         stage: "complete",
-        message: "Video saved locally.",
+        message: params.enable_sound
+          ? "Video and sound saved locally."
+          : "Video saved locally.",
       });
       setTimeout(() => {
         setButtonProgress(0);
@@ -508,7 +550,14 @@ export default function VideoPage() {
       generationAbortControllerRef.current = null;
       activePromptIdRef.current = "";
     }
-  }, [appendGenerationDetail, params, videoConfig.message, videoWorkflowReady]);
+  }, [
+    appendGenerationDetail,
+    params,
+    soundWorkflowReady,
+    videoConfig.audio.message,
+    videoConfig.message,
+    videoWorkflowReady,
+  ]);
 
   const cancelGeneration = useCallback(() => {
     const promptId = activePromptIdRef.current;
@@ -684,6 +733,92 @@ export default function VideoPage() {
                 className="h-28 resize-none text-sm"
               />
             </div>
+
+            <section className="rounded-md border border-border bg-card/80 p-3 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <Label className="flex items-center gap-2 text-xs font-medium text-foreground">
+                    <Volume2 className="h-3.5 w-3.5 text-muted-foreground" />
+                    Generate Sound
+                  </Label>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Uses a separate ComfyUI audio workflow when configured.
+                  </p>
+                </div>
+                <Switch
+                  checked={params.enable_sound}
+                  disabled={!soundWorkflowReady || isGenerating}
+                  onCheckedChange={(checked) =>
+                    updateParams({
+                      enable_sound: Boolean(checked),
+                      sound_prompt:
+                        checked && !params.sound_prompt.trim()
+                          ? params.prompt
+                          : params.sound_prompt,
+                    })
+                  }
+                  aria-label="Generate sound"
+                />
+              </div>
+
+              {!soundWorkflowReady && (
+                <p className="mt-2 text-xs text-yellow-500">
+                  {videoConfig.audio.message ||
+                    "Set COMFYUI_AUDIO_WORKFLOW_PATH to enable sound generation."}
+                </p>
+              )}
+
+              {params.enable_sound && (
+                <div className="mt-3 grid gap-3">
+                  <div>
+                    <Label className="mb-2 block text-xs text-muted-foreground">
+                      Sound Prompt
+                    </Label>
+                    <Textarea
+                      placeholder="Describe the soundtrack, ambience, or sound effects..."
+                      value={params.sound_prompt}
+                      onChange={(event) =>
+                        updateParams({ sound_prompt: event.target.value })
+                      }
+                      className="h-24 resize-none text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="mb-2 block text-xs text-muted-foreground">
+                      Negative Sound Prompt
+                    </Label>
+                    <Textarea
+                      placeholder="Sounds to exclude..."
+                      value={params.negative_sound_prompt}
+                      onChange={(event) =>
+                        updateParams({ negative_sound_prompt: event.target.value })
+                      }
+                      className="h-20 resize-none text-sm"
+                    />
+                  </div>
+                  <div className="max-w-48">
+                    <Label className="mb-1.5 block text-xs text-muted-foreground">
+                      Sound Seconds
+                    </Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={300}
+                      step={0.5}
+                      value={params.sound_duration_seconds}
+                      onChange={(event) =>
+                        updateParams({
+                          sound_duration_seconds: numericValue(
+                            event.target.value,
+                            params.sound_duration_seconds
+                          ),
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+              )}
+            </section>
           </div>
 
           <Separator />
@@ -1021,6 +1156,26 @@ export default function VideoPage() {
                     <p className="text-xs text-muted-foreground">
                       {new Date(video.timestamp).toLocaleString()}
                     </p>
+                    {video.audios && video.audios.length > 0 && (
+                      <div className="space-y-2 pt-2">
+                        {video.audios.map((audio) => (
+                          <div
+                            key={audio.id}
+                            className="rounded-md border border-border bg-background/80 p-2"
+                          >
+                            <div className="mb-1 flex items-center gap-1.5 text-xs font-medium">
+                              <Volume2 className="h-3.5 w-3.5 text-muted-foreground" />
+                              Sound
+                            </div>
+                            <audio
+                              src={audio.url}
+                              controls
+                              className="h-8 w-full"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </article>
               ))}

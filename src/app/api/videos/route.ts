@@ -30,6 +30,7 @@ export async function GET() {
             params: meta.params,
             timestamp: meta.timestamp,
             contentType: meta.contentType ?? contentTypeFor(filename),
+            audios: Array.isArray(meta.audios) ? meta.audios : [],
           };
         } catch {
           return {
@@ -39,6 +40,7 @@ export async function GET() {
             params: null,
             timestamp: 0,
             contentType: contentTypeFor(filename),
+            audios: [],
           };
         }
       })

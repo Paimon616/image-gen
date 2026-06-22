@@ -2,8 +2,8 @@ import { access, readFile } from "fs/promises";
 import { isAbsolute, join } from "path";
 import { NextResponse } from "next/server";
 
-function configuredWorkflowPath() {
-  const workflowPath = process.env.COMFYUI_VIDEO_WORKFLOW_PATH?.trim();
+function configuredWorkflowPath(envName: string) {
+  const workflowPath = process.env[envName]?.trim();
 
   if (!workflowPath) return "";
 
@@ -37,6 +37,14 @@ function collectRequiredModelFiles(workflow: unknown) {
 
     if (classType === "VAELoader" && typeof inputs.vae_name === "string") {
       return [join("vae", inputs.vae_name)];
+    }
+
+    if (typeof inputs.ckpt_name === "string") {
+      return [join("checkpoints", inputs.ckpt_name)];
+    }
+
+    if (typeof inputs.clip_name === "string") {
+      return [join("text_encoders", inputs.clip_name)];
     }
 
     if (
@@ -74,15 +82,17 @@ async function missingModelFiles(workflowPath: string) {
   return missing;
 }
 
-export async function GET() {
-  const workflowPath = configuredWorkflowPath();
+async function workflowStatus(envName: string, label: string) {
+  const workflowPath = configuredWorkflowPath(envName);
 
   if (!workflowPath) {
-    return NextResponse.json({
+    return {
       configured: false,
       exists: false,
-      message: "Set COMFYUI_VIDEO_WORKFLOW_PATH to enable video generation.",
-    });
+      ready: false,
+      missing: [],
+      message: `Set ${envName} to enable ${label} generation.`,
+    };
   }
 
   try {
@@ -90,27 +100,39 @@ export async function GET() {
     const missing = await missingModelFiles(workflowPath);
 
     if (missing.length > 0) {
-      return NextResponse.json({
+      return {
         configured: true,
         exists: true,
         ready: false,
         missing,
-        message: `Video workflow is missing model files: ${missing.join(", ")}`,
-      });
+        message: `${label} workflow is missing model files: ${missing.join(", ")}`,
+      };
     }
 
-    return NextResponse.json({
+    return {
       configured: true,
       exists: true,
       ready: true,
       missing: [],
       message: "",
-    });
+    };
   } catch {
-    return NextResponse.json({
+    return {
       configured: true,
       exists: false,
-      message: "COMFYUI_VIDEO_WORKFLOW_PATH does not point to a readable file.",
-    });
+      ready: false,
+      missing: [],
+      message: `${envName} does not point to a readable file.`,
+    };
   }
+}
+
+export async function GET() {
+  const video = await workflowStatus("COMFYUI_VIDEO_WORKFLOW_PATH", "Video");
+  const audio = await workflowStatus("COMFYUI_AUDIO_WORKFLOW_PATH", "Sound");
+
+  return NextResponse.json({
+    ...video,
+    audio,
+  });
 }
