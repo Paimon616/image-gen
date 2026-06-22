@@ -20,6 +20,7 @@ interface LocalModelAsset {
   version?: string;
   base_model?: string;
   civitai_url?: string | null;
+  source_url?: string | null;
 }
 
 interface LocalModelsResponse {
@@ -50,34 +51,103 @@ function normalizeToken(value: string) {
     .replace(/[^a-z0-9]+/g, "");
 }
 
-function findLocalAsset(assets: LocalModelAsset[], resource: ImportedCivitaiResource) {
+function normalizeWords(value: string) {
+  return value
+    .replace(/\.(safetensors|ckpt|pt|pth)$/i, "")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+}
+
+function assetUrls(asset: LocalModelAsset) {
+  return [asset.civitai_url ?? "", asset.source_url ?? ""].filter(Boolean);
+}
+
+function urlMatchesCivitaiId(urls: string[], kind: "model" | "version", id: string) {
+  if (!id) return false;
+
+  return urls.some((url) => {
+    if (kind === "model" && url.includes(`/models/${id}`)) return true;
+    if (kind === "version" && url.includes(`modelVersionId=${id}`)) return true;
+
+    try {
+      const parsed = new URL(url);
+      return kind === "version" && parsed.searchParams.get("modelVersionId") === id;
+    } catch {
+      return false;
+    }
+  });
+}
+
+function resourceMatchScore(asset: LocalModelAsset, resource: ImportedCivitaiResource) {
   const targetName = normalizeToken(resource.name);
+  const targetVersion = normalizeToken(resource.versionName ?? "");
   const targetHash = resource.hash?.toLowerCase();
   const targetModelId = resource.modelId ? String(resource.modelId) : "";
   const targetVersionId = resource.modelVersionId ? String(resource.modelVersionId) : "";
+  const urls = assetUrls(asset);
+  const candidates = [
+    asset.path,
+    asset.name,
+    asset.version ?? "",
+    asset.civitai_url ?? "",
+    asset.source_url ?? "",
+  ]
+    .map(normalizeToken)
+    .filter(Boolean);
+  const nameCandidates = [asset.name, asset.path].map(normalizeToken).filter(Boolean);
+  const assetVersion = normalizeToken(asset.version ?? "");
+  const combinedTarget = targetVersion ? `${targetName}${targetVersion}` : "";
+  const assetWords = normalizeWords(`${asset.name} ${asset.path}`);
+  const targetWords = normalizeWords(resource.name);
 
-  return assets.find((asset) => {
-    const candidates = [
-      asset.path,
-      asset.name,
-      asset.version ?? "",
-      asset.civitai_url ?? "",
-    ]
-      .map(normalizeToken)
-      .filter(Boolean);
-    const civitaiUrl = asset.civitai_url ?? "";
+  if (urlMatchesCivitaiId(urls, "version", targetVersionId)) return 100;
+  if (urlMatchesCivitaiId(urls, "model", targetModelId)) return 90;
+  if (targetHash && candidates.some((candidate) => candidate.includes(targetHash))) {
+    return 85;
+  }
+  if (
+    targetName &&
+    nameCandidates.some((candidate) => candidate === targetName) &&
+    (!targetVersion || assetVersion === targetVersion)
+  ) {
+    return 80;
+  }
+  if (
+    combinedTarget &&
+    nameCandidates.some((candidate) => candidate === combinedTarget)
+  ) {
+    return 75;
+  }
+  if (targetName && nameCandidates.some((candidate) => candidate === targetName)) {
+    return 70;
+  }
 
-    return (
-      candidates.some(
-        (candidate) => candidate.includes(targetName) || targetName.includes(candidate)
-      ) ||
-      Boolean(
-        targetHash && candidates.some((candidate) => candidate.includes(targetHash))
-      ) ||
-      Boolean(targetModelId && civitaiUrl.includes(`/models/${targetModelId}`)) ||
-      Boolean(targetVersionId && civitaiUrl.includes(`modelVersionId=${targetVersionId}`))
+  if (targetName.length >= 8) {
+    const containsName = nameCandidates.some(
+      (candidate) => candidate.includes(targetName) || targetName.includes(candidate)
     );
-  });
+    if (containsName) return 40;
+  }
+
+  if (
+    targetWords.length > 1 &&
+    targetWords.every((word) => assetWords.includes(word))
+  ) {
+    return 30;
+  }
+
+  return 0;
+}
+
+function findLocalAsset(assets: LocalModelAsset[], resource: ImportedCivitaiResource) {
+  const ranked = assets
+    .map((asset) => ({ asset, score: resourceMatchScore(asset, resource) }))
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  return ranked[0]?.asset;
 }
 
 function resourceBucket(

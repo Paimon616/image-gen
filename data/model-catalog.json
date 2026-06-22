@@ -399,8 +399,9 @@
     "name": "Anima",
     "version": "base-v1.0",
     "base_model": "Anima",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/d6be5d97-d42c-4f31-9466-ba0ebd67ed7c/anim=false,width=450,optimized=true/133467703.jpeg",
-    "civitai_url": "https://civitai.red/models/2458426/anima?modelVersionId=2945208",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/bb377487-c631-4a5d-a37d-eb3b8cb086ce/original=true/130697922.jpeg",
+    "civitai_url": "https://civitai.com/models/2458426/anima?modelVersionId=2945208",
+    "source_url": "https://civitai.com/models/2458426/anima?modelVersionId=2945208",
     "tags": [
       "art",
       "base model",
@@ -1019,6 +1020,176 @@
     "tags": [
       "anime",
       "style"
+    ]
+  },
+  "loras/ANIMA_Niji_Sweet_Spot_v4.safetensors": {
+    "name": "Niji Sweet Spot",
+    "version": "Anima_v4",
+    "base_model": "Anima",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/4d2a179d-1df9-4997-bf0f-667b16a38e02/original=true/133978333.jpeg",
+    "civitai_url": "https://civitai.com/models/2554999/niji-sweet-spot?modelVersionId=3040615",
+    "source_url": "https://civitai.com/models/2554999/niji-sweet-spot?modelVersionId=3040615",
+    "tags": [
+      "semi-realistic",
+      "style",
+      "niji",
+      "anime"
+    ]
+  },
+  "loras/Anima_in_real_epoch_10.safetensors": {
+    "name": "Anime in real",
+    "version": "V0.5 - Anima",
+    "base_model": "Anima",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/f7cc6397-156c-4a9f-8edb-5ef5f9ddb236/original=true/133343136.jpeg",
+    "civitai_url": "https://civitai.com/models/1979448/anime-in-real?modelVersionId=3019001",
+    "source_url": "https://civitai.com/models/1979448/anime-in-real?modelVersionId=3019001",
+    "tags": [
+      "style",
+      "man",
+      "depth of field",
+      "woman",
+      "solo",
+      "blurry background",
+      "boy",
+      "real",
+      "girl",
+      "anime",
+      "realistic"
+    ]
+  },
+  "checkpoints/kirazuriAnima_v30AnimaBase1.safetensors": {
+    "name": "Kirazuri (Anima)",
+    "version": "v3.0 [anima-base-1]",
+    "base_model": "Anima",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/a9c5b7b8-3f9f-4cea-b277-3e6c9584fad7/original=true/133377774.jpeg",
+    "civitai_url": "https://civitai.com/models/2495369/kirazuri-anima?modelVersionId=3020412",
+    "source_url": "https://civitai.com/models/2495369/kirazuri-anima?modelVersionId=3020412",
+    "tags": [
+      "digital illustration",
+      "video games",
+      "base model",
+      "anima",
+      "manga",
+      "anime",
+      "aesthetic"
+    ]
+  },
+  "checkpoints/ponyDiffusionV6XL_v6StartWithThisOne.safetensors": {
+    "name": "Pony Diffusion V6 XL",
+    "version": "V6 (start with this one)",
+    "base_model": "Pony",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/4790674c-e16d-4dc7-b384-af4381fcfa3f/original=true/5706937.jpeg",
+    "civitai_url": "https://civitai.com/models/257749/pony-diffusion-v6-xl?modelVersionId=290640",
+    "source_url": "https://civitai.com/models/257749/pony-diffusion-v6-xl?modelVersionId=290640",
+    "tags": [
+      "western art",
+      "base model",
+      "my little pony"
+    ]
+  },
+  "loras/Niji_oil_painting_drawing-anime.safetensors": {
+    "name": "Niji oil painting drawing",
+    "version": "v2.0 - pony (anime)",
+    "base_model": "Pony",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/760834ca-b1cf-44d9-afde-4cba2cad8122/original=true/67915112.jpeg",
+    "civitai_url": "https://civitai.com/models/1188058/niji-oil-painting-drawing?modelVersionId=1617780",
+    "source_url": "https://civitai.com/models/1188058/niji-oil-painting-drawing?modelVersionId=1617780",
+    "tags": [
+      "anime",
+      "style",
+      "niji",
+      "styles",
+      "hyperrealistic",
+      "cartoon",
+      "woman",
+      "oil painting",
+      "realistic",
+      "man",
+      "lora",
+      "drawing"
+    ]
+  },
+  "checkpoints/tpgSunmmerdreamV4_v4.safetensors": {
+    "name": "TPG_SunmmerDream_V4",
+    "version": "v4",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/c72e3b6c-f4a3-4f52-8cf2-1bdf8c7f75cc/anim=false,width=450,optimized=true/image%20(11).jpeg",
+    "civitai_url": "https://civitai.red/models/2690504/tpgsunmmerdreamv4",
+    "source_url": "https://civitai.red/models/2690504/tpgsunmmerdreamv4",
+    "tags": [
+      "base model"
+    ]
+  },
+  "vae/sdxlVAE_sdxlVAE.safetensors": {
+    "name": "SDXL VAE",
+    "version": "SDXL-VAE",
+    "base_model": "SDXL 1.0",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/78a2f5a9-3e6f-4af5-819c-98fa1dc54049/original=true/6370787.jpeg",
+    "civitai_url": "https://civitai.red/models/296576/sdxl-vae?modelVersionId=333245",
+    "source_url": "https://civitai.red/models/296576/sdxl-vae?modelVersionId=333245",
+    "tags": [
+      "style",
+      "vae",
+      "sdxl",
+      "sdxl vae"
+    ]
+  },
+  "loras/Expressive_H-000001.safetensors": {
+    "name": "ExpressiveH (Hentai LoRa Style) エロアニメ",
+    "version": "ExpressiveH",
+    "base_model": "Pony",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/feeca0e9-029b-4c2d-b5b5-4764d621a3aa/original=true/7662228.jpeg",
+    "civitai_url": "https://civitai.red/models/341353/expressiveh-hentai-lora-style?modelVersionId=382152",
+    "source_url": "https://civitai.red/models/341353/expressiveh-hentai-lora-style?modelVersionId=382152",
+    "tags": [
+      "sexy",
+      "anime",
+      "game character",
+      "girls",
+      "female",
+      "hentai",
+      "woman",
+      "lora",
+      "style",
+      "video game"
+    ]
+  },
+  "loras/MythP0rtr4itStyle.safetensors": {
+    "name": "Velvet's Mythic Fantasy Styles | Flux + Pony + illustrious + ZiT + Anima",
+    "version": "Pony Portrait Style",
+    "base_model": "Pony",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/8dea919f-b2d7-40bc-a913-54c79e41c904/original=true/23237900.jpeg",
+    "civitai_url": "https://civitai.red/models/599757/velvets-mythic-fantasy-styles-or-flux-pony-illustrious-zit-anima?modelVersionId=704723",
+    "source_url": "https://civitai.red/models/599757/velvets-mythic-fantasy-styles-or-flux-pony-illustrious-zit-anima?modelVersionId=704723",
+    "tags": [
+      "nsfw",
+      "styles",
+      "epic",
+      "woman",
+      "anime",
+      "art",
+      "fantasy",
+      "ponyxl",
+      "man",
+      "sfw",
+      "manga",
+      "style"
+    ]
+  },
+  "loras/g0th1c2XLP.safetensors": {
+    "name": "Vixon's Anima/Pony Styles - Gothic Neon",
+    "version": "Gothic Neon v2",
+    "base_model": "Pony",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/05cb4ebc-a82e-4aed-9e15-0808c58689e9/original=true/110507694.jpeg",
+    "civitai_url": "https://civitai.red/models/888231/vixons-animapony-styles-gothic-neon?modelVersionId=1029540",
+    "source_url": "https://civitai.red/models/888231/vixons-animapony-styles-gothic-neon?modelVersionId=1029540",
+    "tags": [
+      "gothic",
+      "style",
+      "neon",
+      "lighting",
+      "gothic neon",
+      "artist styles"
     ]
   }
 }
