@@ -10,11 +10,13 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import {
   DEFAULT_VIDEO_PARAMS,
+  type CivitaiImportResult,
   type GeneratedVideo,
   type GenerationStatus,
+  type GenerationParams,
   type VideoGenerationParams,
 } from "@/lib/types";
-import { Film, Play, RefreshCcw, X } from "lucide-react";
+import { Film, LinkIcon, Loader2, Play, RefreshCcw, X } from "lucide-react";
 
 interface VideoConfigState {
   configured: boolean;
@@ -52,6 +54,30 @@ function isGif(video: GeneratedVideo) {
   return video.contentType === "image/gif" || video.filename.toLowerCase().endsWith(".gif");
 }
 
+function mapCivitaiParamsToVideoParams(
+  imported: CivitaiImportResult
+): Partial<VideoGenerationParams> {
+  const importedParams = imported.params as Partial<GenerationParams>;
+  const mapped: Partial<VideoGenerationParams> = {};
+
+  if (importedParams.prompt) mapped.prompt = importedParams.prompt;
+  if (importedParams.negative_prompt) {
+    mapped.negative_prompt = importedParams.negative_prompt;
+  }
+  if (typeof importedParams.width === "number") mapped.width = importedParams.width;
+  if (typeof importedParams.height === "number") mapped.height = importedParams.height;
+  if (typeof importedParams.num_inference_steps === "number") {
+    mapped.num_inference_steps = importedParams.num_inference_steps;
+  }
+  if (typeof importedParams.guidance_scale === "number") {
+    mapped.guidance_scale = importedParams.guidance_scale;
+  }
+  if (typeof importedParams.seed === "number") mapped.seed = importedParams.seed;
+  if (imported.imageUrl) mapped.source_image = imported.imageUrl;
+
+  return mapped;
+}
+
 export default function VideoPage() {
   const [params, setParams] = useState<VideoGenerationParams>(DEFAULT_VIDEO_PARAMS);
   const [status, setStatus] = useState<GenerationStatus>({
@@ -61,6 +87,9 @@ export default function VideoPage() {
   });
   const [buttonProgress, setButtonProgress] = useState(0);
   const [videos, setVideos] = useState<GeneratedVideo[]>([]);
+  const [civitaiUrl, setCivitaiUrl] = useState("");
+  const [civitaiStatus, setCivitaiStatus] = useState("");
+  const [isImportingCivitai, setIsImportingCivitai] = useState(false);
   const [videoConfig, setVideoConfig] = useState<VideoConfigState>({
     configured: true,
     exists: true,
@@ -88,6 +117,42 @@ export default function VideoPage() {
   const updateParams = useCallback((update: Partial<VideoGenerationParams>) => {
     setParams((current) => ({ ...current, ...update }));
   }, []);
+
+  const importCivitaiMetadata = useCallback(async () => {
+    if (!civitaiUrl.trim() || isImportingCivitai) return;
+
+    setIsImportingCivitai(true);
+    setCivitaiStatus("Fetching Civitai metadata...");
+
+    try {
+      const response = await fetch("/api/civitai/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: civitaiUrl }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to import Civitai metadata");
+      }
+
+      const imported = data as CivitaiImportResult;
+      const mapped = mapCivitaiParamsToVideoParams(imported);
+
+      updateParams(mapped);
+      setCivitaiStatus(
+        imported.metadataHidden
+          ? "Imported available media and size. Prompt metadata is hidden."
+          : "Imported prompt, size, seed, and start image."
+      );
+    } catch (error) {
+      setCivitaiStatus(
+        error instanceof Error ? error.message : "Failed to import Civitai metadata"
+      );
+    } finally {
+      setIsImportingCivitai(false);
+    }
+  }, [civitaiUrl, isImportingCivitai, updateParams]);
 
   const refreshVideos = useCallback(() => {
     fetch("/api/videos")
@@ -267,6 +332,63 @@ export default function VideoPage() {
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto p-4">
+          <section className="rounded-md border border-border bg-card/85 p-3 shadow-sm">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div>
+                <Label className="text-xs text-muted-foreground">
+                  Import from Civitai
+                </Label>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Paste an image or video URL to load compatible video fields.
+                </p>
+              </div>
+              <a
+                href="https://civitai.red/images"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Open Civitai images"
+                title="Open Civitai images"
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-background text-primary shadow-sm transition-colors hover:border-primary/35 hover:bg-secondary"
+              >
+                <LinkIcon className="h-4 w-4" />
+              </a>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+              <Input
+                value={civitaiUrl}
+                onChange={(event) => setCivitaiUrl(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    void importCivitaiMetadata();
+                  }
+                }}
+                placeholder="https://civitai.red/images/..."
+                className="h-9 text-xs"
+              />
+              <Button
+                type="button"
+                onClick={importCivitaiMetadata}
+                disabled={!civitaiUrl.trim() || isImportingCivitai}
+                className="h-9"
+              >
+                {isImportingCivitai ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Importing
+                  </span>
+                ) : (
+                  "Import"
+                )}
+              </Button>
+            </div>
+
+            {civitaiStatus && (
+              <p className="mt-2 text-xs text-muted-foreground">{civitaiStatus}</p>
+            )}
+          </section>
+
           <div className="grid gap-3">
             <div>
               <Label className="mb-2 block text-xs text-muted-foreground">
