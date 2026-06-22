@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ModelMediaThumbnail } from "@/components/model-media-thumbnail";
 
 interface LocalModelAsset {
   path: string;
@@ -32,22 +33,13 @@ function AssetThumbnail({
   asset: LocalModelAsset | undefined;
   className?: string;
 }) {
-  if (asset?.thumbnail_url) {
-    return (
-      <img
-        src={asset.thumbnail_url}
-        alt={asset.name}
-        className={`${className} shrink-0 rounded-md object-cover`}
-      />
-    );
-  }
-
   return (
-    <div
-      className={`${className} flex shrink-0 items-center justify-center rounded-md border border-border bg-muted text-xs font-medium text-muted-foreground`}
-    >
-      {asset?.name.slice(0, 2).toUpperCase() ?? "M"}
-    </div>
+    <ModelMediaThumbnail
+      src={asset?.thumbnail_url}
+      alt={asset?.name ?? "Model"}
+      fallback={asset?.name.slice(0, 2).toUpperCase() ?? "M"}
+      className={`${className} shrink-0`}
+    />
   );
 }
 
@@ -179,17 +171,13 @@ function AssetPickerDialog({
                       className="block w-full text-left"
                     >
                       <div className="relative aspect-[4/3] bg-muted">
-                        {asset.thumbnail_url ? (
-                          <img
-                            src={asset.thumbnail_url}
-                            alt={asset.name}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center text-3xl font-semibold text-muted-foreground">
-                            {asset.name.slice(0, 2).toUpperCase()}
-                          </div>
-                        )}
+                        <ModelMediaThumbnail
+                          src={asset.thumbnail_url}
+                          alt={asset.name}
+                          fallback={asset.name.slice(0, 2).toUpperCase()}
+                          className="h-full w-full"
+                          fallbackClassName="text-3xl font-semibold"
+                        />
                         <Badge className="absolute left-2 top-2 bg-background/80 text-foreground backdrop-blur">
                           {asset.base_model || "Local"}
                         </Badge>

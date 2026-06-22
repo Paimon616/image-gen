@@ -4,8 +4,10 @@ interface CivitaiModelVersion {
   id: number;
   name?: string;
   baseModel?: string;
+  trainedWords?: string[];
   images?: {
     url?: string;
+    type?: string;
   }[];
 }
 
@@ -41,6 +43,24 @@ function parseCivitaiUrl(rawUrl: string) {
   };
 }
 
+async function fetchCivitaiModel(modelId: string) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    return await fetch(`https://civitai.com/api/v1/models/${modelId}`, {
+      cache: "no-store",
+      signal: controller.signal,
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "image-gen-model-management/1.0",
+      },
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function GET(req: NextRequest) {
   const rawUrl = req.nextUrl.searchParams.get("url")?.trim();
 
@@ -50,12 +70,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const { modelId, modelVersionId } = parseCivitaiUrl(rawUrl);
-    const res = await fetch(`https://civitai.com/api/v1/models/${modelId}`, {
-      cache: "no-store",
-      headers: {
-        Accept: "application/json",
-      },
-    });
+    const res = await fetchCivitaiModel(modelId);
 
     if (!res.ok) {
       return NextResponse.json(
@@ -69,7 +84,10 @@ export async function GET(req: NextRequest) {
     const selectedVersion =
       versions.find((version) => version.id === modelVersionId) ?? versions[0];
     const thumbnailUrl =
-      selectedVersion?.images?.find((image) => image.url)?.url ?? null;
+      selectedVersion?.images?.find((image) => image.url && image.type !== "video")
+        ?.url ??
+      selectedVersion?.images?.find((image) => image.url)?.url ??
+      null;
 
     return NextResponse.json(
       {
@@ -78,6 +96,7 @@ export async function GET(req: NextRequest) {
         base_model: selectedVersion?.baseModel ?? "",
         thumbnail_url: thumbnailUrl,
         tags: model.tags ?? [],
+        trigger_words: selectedVersion?.trainedWords ?? [],
       },
       {
         headers: {
@@ -86,6 +105,13 @@ export async function GET(req: NextRequest) {
       }
     );
   } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      return NextResponse.json(
+        { error: "Timed out while loading Civitai info" },
+        { status: 504 }
+      );
+    }
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to load Civitai info" },
       { status: 400 }

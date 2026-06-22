@@ -25,8 +25,34 @@ interface ComfyWsMessage {
     value?: number;
     max?: number;
     prompt_id?: string;
+    node?: string | null;
+    display_node?: string | null;
   };
 }
+
+type VideoStage =
+  | "queued"
+  | "waiting"
+  | "executing"
+  | "sampling"
+  | "fetching"
+  | "saving"
+  | "complete";
+
+const VIDEO_NODE_LABELS: Record<string, string> = {
+  UNETLoader: "Loading video diffusion model",
+  CLIPLoader: "Loading text encoder",
+  VAELoader: "Loading VAE",
+  CLIPTextEncode: "Encoding prompt",
+  LoadImage: "Loading start image",
+  WanImageToVideo: "Preparing image-to-video latents",
+  KSampler: "Sampling",
+  KSamplerAdvanced: "Sampling",
+  VAEDecode: "Decoding frames",
+  VAEDecodeTiled: "Decoding frames",
+  CreateVideo: "Encoding video",
+  SaveVideo: "Saving video",
+};
 
 async function ensureVideoOutputDir() {
   await mkdir(VIDEO_OUTPUT_DIR, { recursive: true });
@@ -182,6 +208,23 @@ function sse(event: string, data: unknown) {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
 
+function nodeClass(prompt: Record<string, unknown>, nodeId: string | null | undefined) {
+  if (!nodeId) return "";
+
+  const node = prompt[nodeId];
+  if (!node || typeof node !== "object" || Array.isArray(node)) return "";
+
+  const classType = (node as { class_type?: unknown }).class_type;
+  return typeof classType === "string" ? classType : "";
+}
+
+function nodeLabel(prompt: Record<string, unknown>, nodeId: string | null | undefined) {
+  const classType = nodeClass(prompt, nodeId);
+  if (!classType) return nodeId ? `Running node ${nodeId}` : "Running workflow";
+
+  return VIDEO_NODE_LABELS[classType] ?? classType;
+}
+
 export async function POST(req: NextRequest) {
   const encoder = new TextEncoder();
   const body = normalizeVideoParams((await req.json()) as Partial<VideoGenerationParams>);
@@ -239,16 +282,45 @@ export async function POST(req: NextRequest) {
       try {
         const clientId = randomUUID();
         ws = await openComfyWebSocket(clientId);
+        let queuedPrompt: Record<string, unknown> = {};
+        let startedAt = Date.now();
+        let lastNodeId = "";
 
         ws.addEventListener("message", (event) => {
           if (typeof event.data !== "string") return;
 
           try {
             const message = JSON.parse(event.data) as ComfyWsMessage;
-            if (message.type !== "progress") return;
             if (!promptId || message.data?.prompt_id !== promptId) return;
 
             lastComfyActivityAt = Date.now();
+
+            if (message.type === "executing") {
+              const nodeId = String(message.data?.node ?? "");
+              if (!nodeId) {
+                send("detail", {
+                  stage: "waiting" satisfies VideoStage,
+                  message: "Waiting for final output...",
+                  elapsed_ms: Date.now() - startedAt,
+                });
+                return;
+              }
+
+              if (nodeId !== lastNodeId) {
+                lastNodeId = nodeId;
+                send("detail", {
+                  stage: "executing" satisfies VideoStage,
+                  node_id: nodeId,
+                  node_type: nodeClass(queuedPrompt, nodeId),
+                  message: nodeLabel(queuedPrompt, nodeId),
+                  elapsed_ms: Date.now() - startedAt,
+                });
+              }
+              return;
+            }
+
+            if (message.type !== "progress") return;
+
             const value = Number(message.data.value ?? 0);
             const max = Number(message.data.max ?? body.num_inference_steps);
             const progress =
@@ -256,30 +328,61 @@ export async function POST(req: NextRequest) {
 
             send("progress", {
               progress,
+              stage: "sampling" satisfies VideoStage,
+              node_id: lastNodeId || undefined,
+              node_type: lastNodeId ? nodeClass(queuedPrompt, lastNodeId) : undefined,
               step: value,
               total_steps: max,
               message: `Step ${value}/${max}`,
+              elapsed_ms: Date.now() - startedAt,
             });
           } catch {
             // Ignore malformed websocket messages from ComfyUI extensions.
           }
         });
 
-        send("progress", { progress: 1, message: "Queued..." });
+        send("progress", {
+          progress: 1,
+          stage: "queued" satisfies VideoStage,
+          message: "Queued...",
+          elapsed_ms: 0,
+        });
         const queued = await queueComfyVideoPrompt(body, clientId);
         promptId = queued.prompt_id;
+        queuedPrompt = (queued as { prompt?: Record<string, unknown> }).prompt ?? {};
+        startedAt = Date.now();
         lastComfyActivityAt = Date.now();
-        send("queued", { prompt_id: promptId });
-        send("progress", { progress: 2, message: "Waiting for ComfyUI..." });
+        send("queued", { prompt_id: promptId, started_at: startedAt });
+        send("progress", {
+          progress: 2,
+          stage: "waiting" satisfies VideoStage,
+          message: "Waiting for ComfyUI...",
+          elapsed_ms: 0,
+        });
 
         const videoRefs = await waitForComfyVideoRefs(promptId, {
           signal: abortController.signal,
           getLastActivityAt: () => lastComfyActivityAt,
         });
+        send("detail", {
+          stage: "fetching" satisfies VideoStage,
+          message: "Fetching generated video from ComfyUI...",
+          elapsed_ms: Date.now() - startedAt,
+        });
         const videos = await fetchComfyMedia(videoRefs);
+        send("detail", {
+          stage: "saving" satisfies VideoStage,
+          message: "Saving video locally...",
+          elapsed_ms: Date.now() - startedAt,
+        });
         const savedVideos = await saveBufferedVideos({ videos, params: body });
 
-        send("progress", { progress: 100, message: "Done" });
+        send("progress", {
+          progress: 100,
+          stage: "complete" satisfies VideoStage,
+          message: "Done",
+          elapsed_ms: Date.now() - startedAt,
+        });
         send("complete", { videos: savedVideos });
       } catch (error) {
         if (!clientDisconnected) {

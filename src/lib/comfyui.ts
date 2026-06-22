@@ -1063,7 +1063,8 @@ export async function queueComfyVideoPrompt(
   clientId = crypto.randomUUID()
 ) {
   const prompt = await loadVideoWorkflow(params);
-  return queueComfyWorkflow(prompt, clientId);
+  const queued = await queueComfyWorkflow(prompt, clientId);
+  return { ...queued, prompt };
 }
 
 export async function generateOpenPosePreview(imageUrl: string, resolution: number) {

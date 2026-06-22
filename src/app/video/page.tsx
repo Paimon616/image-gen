@@ -16,7 +16,21 @@ import {
   type GenerationParams,
   type VideoGenerationParams,
 } from "@/lib/types";
-import { Film, LinkIcon, Loader2, Play, RefreshCcw, X } from "lucide-react";
+import {
+  findMissingCivitaiResources,
+  RESOURCE_LABELS,
+  type LocalModelsResponse,
+  type MissingResource,
+} from "@/lib/civitai-resource-matching";
+import {
+  ExternalLink,
+  Film,
+  LinkIcon,
+  Loader2,
+  Play,
+  RefreshCcw,
+  X,
+} from "lucide-react";
 
 interface VideoConfigState {
   configured: boolean;
@@ -24,6 +38,26 @@ interface VideoConfigState {
   ready: boolean;
   missing: string[];
   message: string;
+}
+
+interface GenerationDetail {
+  id: string;
+  stage: string;
+  message: string;
+  node_id?: string;
+  node_type?: string;
+  step?: number;
+  total_steps?: number;
+  elapsed_ms?: number;
+}
+
+const VIDEO_GENERATION_STATE_KEY = "image-gen-video-generation-state";
+
+interface StoredVideoGenerationState {
+  status: GenerationStatus;
+  buttonProgress: number;
+  activePromptId: string;
+  details: GenerationDetail[];
 }
 
 function parseSseEvent(rawEvent: string) {
@@ -48,6 +82,58 @@ function parseSseEvent(rawEvent: string) {
 function numericValue(value: string, fallback: number) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function formatElapsed(ms: number | undefined) {
+  if (!ms || ms < 0) return "0s";
+
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+}
+
+function detailKey(detail: Omit<GenerationDetail, "id">) {
+  return [
+    detail.stage,
+    detail.node_id ?? "",
+    detail.node_type ?? "",
+    detail.step ?? "",
+    detail.total_steps ?? "",
+    detail.message,
+  ].join(":");
+}
+
+function readStoredGenerationState(): StoredVideoGenerationState | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.sessionStorage.getItem(VIDEO_GENERATION_STATE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as Partial<StoredVideoGenerationState>;
+    if (!parsed.status || !Array.isArray(parsed.details)) return null;
+
+    return {
+      status: parsed.status,
+      buttonProgress: Number(parsed.buttonProgress ?? parsed.status.progress ?? 0),
+      activePromptId: String(parsed.activePromptId ?? ""),
+      details: parsed.details,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredGenerationState(state: StoredVideoGenerationState) {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.setItem(VIDEO_GENERATION_STATE_KEY, JSON.stringify(state));
+}
+
+function clearStoredGenerationState() {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.removeItem(VIDEO_GENERATION_STATE_KEY);
 }
 
 function isGif(video: GeneratedVideo) {
@@ -86,9 +172,13 @@ export default function VideoPage() {
     message: "",
   });
   const [buttonProgress, setButtonProgress] = useState(0);
+  const [generationDetails, setGenerationDetails] = useState<GenerationDetail[]>([]);
   const [videos, setVideos] = useState<GeneratedVideo[]>([]);
   const [civitaiUrl, setCivitaiUrl] = useState("");
   const [civitaiStatus, setCivitaiStatus] = useState("");
+  const [missingCivitaiResources, setMissingCivitaiResources] = useState<
+    MissingResource[]
+  >([]);
   const [isImportingCivitai, setIsImportingCivitai] = useState(false);
   const [videoConfig, setVideoConfig] = useState<VideoConfigState>({
     configured: true,
@@ -118,18 +208,44 @@ export default function VideoPage() {
     setParams((current) => ({ ...current, ...update }));
   }, []);
 
+  const appendGenerationDetail = useCallback(
+    (detail: Omit<GenerationDetail, "id">) => {
+      const key = detailKey(detail);
+
+      setGenerationDetails((current) => {
+        if (current[0]?.id === key) {
+          return [
+            {
+              ...current[0],
+              ...detail,
+              id: key,
+            },
+            ...current.slice(1),
+          ];
+        }
+
+        return [{ ...detail, id: key }, ...current].slice(0, 8);
+      });
+    },
+    []
+  );
+
   const importCivitaiMetadata = useCallback(async () => {
     if (!civitaiUrl.trim() || isImportingCivitai) return;
 
     setIsImportingCivitai(true);
     setCivitaiStatus("Fetching Civitai metadata...");
+    setMissingCivitaiResources([]);
 
     try {
-      const response = await fetch("/api/civitai/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: civitaiUrl }),
-      });
+      const [response, modelsResponse] = await Promise.all([
+        fetch("/api/civitai/import", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: civitaiUrl }),
+        }),
+        fetch("/api/models", { cache: "no-store" }),
+      ]);
       const data = await response.json();
 
       if (!response.ok) {
@@ -137,13 +253,21 @@ export default function VideoPage() {
       }
 
       const imported = data as CivitaiImportResult;
+      const modelsData = (await modelsResponse.json()) as LocalModelsResponse;
       const mapped = mapCivitaiParamsToVideoParams(imported);
+      const missing = findMissingCivitaiResources(imported, modelsData);
 
       updateParams(mapped);
+      setMissingCivitaiResources(missing);
       setCivitaiStatus(
-        imported.metadataHidden
-          ? "Imported available media and size. Prompt metadata is hidden."
-          : "Imported prompt, size, seed, and start image."
+        [
+          imported.metadataHidden
+            ? "Imported available media and size. Prompt metadata is hidden."
+            : "Imported prompt, size, seed, and start image.",
+          missing.length > 0
+            ? `${missing.length} local resource${missing.length > 1 ? "s are" : " is"} missing.`
+            : "Required resources are available locally.",
+        ].join(" ")
       );
     } catch (error) {
       setCivitaiStatus(
@@ -166,6 +290,44 @@ export default function VideoPage() {
   useEffect(() => {
     refreshVideos();
   }, [refreshVideos]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      const stored = readStoredGenerationState();
+      if (!stored) return;
+
+      setStatus(stored.status);
+      setButtonProgress(stored.buttonProgress);
+      setGenerationDetails(stored.details);
+      activePromptIdRef.current = stored.activePromptId;
+
+      if (stored.status.state === "generating") {
+        appendGenerationDetail({
+          stage: "restored",
+          message: "Restored local progress after returning to this page.",
+        });
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, [appendGenerationDetail]);
+
+  useEffect(() => {
+    if (
+      status.state !== "generating" &&
+      status.state !== "canceled" &&
+      status.state !== "error"
+    ) {
+      return;
+    }
+
+    writeStoredGenerationState({
+      status,
+      buttonProgress,
+      activePromptId: activePromptIdRef.current,
+      details: generationDetails,
+    });
+  }, [buttonProgress, generationDetails, status]);
 
   useEffect(() => {
     fetch("/api/video/config")
@@ -217,8 +379,14 @@ export default function VideoPage() {
     const abortController = new AbortController();
     activePromptIdRef.current = "";
     generationAbortControllerRef.current = abortController;
+    setGenerationDetails([]);
     setButtonProgress(1);
     setStatus({ state: "generating", progress: 1, message: "Queued..." });
+    appendGenerationDetail({
+      stage: "queued",
+      message: "Queued request in Image Gen.",
+      elapsed_ms: 0,
+    });
 
     try {
       const res = await fetch("/api/video/generate/stream", {
@@ -263,6 +431,40 @@ export default function VideoPage() {
             const message = String(data?.message ?? "Generating video...");
             setButtonProgress(progress);
             setStatus({ state: "generating", progress, message });
+            appendGenerationDetail({
+              stage: String(data?.stage ?? "progress"),
+              message,
+              node_id: data?.node_id ? String(data.node_id) : undefined,
+              node_type: data?.node_type ? String(data.node_type) : undefined,
+              step:
+                typeof data?.step === "number" ? Number(data.step) : undefined,
+              total_steps:
+                typeof data?.total_steps === "number"
+                  ? Number(data.total_steps)
+                  : undefined,
+              elapsed_ms:
+                typeof data?.elapsed_ms === "number"
+                  ? Number(data.elapsed_ms)
+                  : undefined,
+            });
+          }
+
+          if (event === "detail") {
+            const message = String(data?.message ?? "Working...");
+            setStatus((current) => ({
+              ...current,
+              message,
+            }));
+            appendGenerationDetail({
+              stage: String(data?.stage ?? "detail"),
+              message,
+              node_id: data?.node_id ? String(data.node_id) : undefined,
+              node_type: data?.node_type ? String(data.node_type) : undefined,
+              elapsed_ms:
+                typeof data?.elapsed_ms === "number"
+                  ? Number(data.elapsed_ms)
+                  : undefined,
+            });
           }
 
           if (event === "complete") {
@@ -279,14 +481,20 @@ export default function VideoPage() {
 
       setButtonProgress(100);
       setStatus({ state: "completed", progress: 100, message: "Done!" });
+      appendGenerationDetail({
+        stage: "complete",
+        message: "Video saved locally.",
+      });
       setTimeout(() => {
         setButtonProgress(0);
         setStatus({ state: "idle", progress: 0, message: "" });
+        clearStoredGenerationState();
       }, 2000);
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
         setButtonProgress(0);
         setStatus({ state: "canceled", progress: 0, message: "Canceled." });
+        clearStoredGenerationState();
         return;
       }
 
@@ -300,7 +508,7 @@ export default function VideoPage() {
       generationAbortControllerRef.current = null;
       activePromptIdRef.current = "";
     }
-  }, [params, videoConfig.message, videoWorkflowReady]);
+  }, [appendGenerationDetail, params, videoConfig.message, videoWorkflowReady]);
 
   const cancelGeneration = useCallback(() => {
     const promptId = activePromptIdRef.current;
@@ -317,7 +525,12 @@ export default function VideoPage() {
 
     setButtonProgress(0);
     setStatus({ state: "canceled", progress: 0, message: "Canceled." });
-  }, []);
+    appendGenerationDetail({
+      stage: "canceled",
+      message: "Cancel requested.",
+    });
+    clearStoredGenerationState();
+  }, [appendGenerationDetail]);
 
   return (
     <div className="flex h-screen bg-background">
@@ -386,6 +599,62 @@ export default function VideoPage() {
 
             {civitaiStatus && (
               <p className="mt-2 text-xs text-muted-foreground">{civitaiStatus}</p>
+            )}
+
+            {missingCivitaiResources.length > 0 && (
+              <div className="mt-3 rounded-md border border-dashed border-destructive/30 bg-destructive/10 p-3">
+                <div className="text-xs font-semibold text-destructive">
+                  Missing local resources
+                </div>
+                <div className="mt-2 space-y-1.5">
+                  {missingCivitaiResources.map((resource, index) => {
+                    const content = (
+                      <>
+                        <span className="min-w-0 truncate">
+                          <span className="font-semibold">
+                            {RESOURCE_LABELS[resource.type]}
+                          </span>
+                          <span className="text-muted-foreground">
+                            {" "}
+                            &middot;{" "}
+                          </span>
+                          <span>{resource.name}</span>
+                        </span>
+                        {resource.url ? (
+                          <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                        ) : (
+                          <span className="shrink-0 text-muted-foreground">
+                            Not on CivitAI
+                          </span>
+                        )}
+                      </>
+                    );
+
+                    if (!resource.url) {
+                      return (
+                        <div
+                          key={`${resource.type}-${resource.name}-${index}`}
+                          className="flex min-w-0 items-center justify-between gap-2 rounded-md bg-background/80 px-2 py-1.5 text-xs"
+                        >
+                          {content}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <a
+                        key={`${resource.type}-${resource.name}-${index}`}
+                        href={resource.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex min-w-0 items-center justify-between gap-2 rounded-md bg-background/80 px-2 py-1.5 text-xs hover:text-primary"
+                      >
+                        {content}
+                      </a>
+                    );
+                  })}
+                </div>
+              </div>
             )}
           </section>
 
@@ -576,6 +845,50 @@ export default function VideoPage() {
         </div>
 
         <div className="border-t border-border p-4">
+          {generationDetails.length > 0 && (
+            <div className="mb-3 rounded-md border border-border bg-card/85 p-3 shadow-sm">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <div className="text-xs font-semibold text-foreground">
+                  Generation details
+                </div>
+                {isGenerating && (
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Live
+                  </span>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                {generationDetails.map((detail) => (
+                  <div
+                    key={detail.id}
+                    className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-2 rounded-md bg-background/75 px-2 py-1.5 text-xs"
+                  >
+                    <div className="font-mono text-[11px] text-muted-foreground">
+                      {formatElapsed(detail.elapsed_ms)}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="truncate font-medium text-foreground">
+                        {detail.message}
+                      </div>
+                      <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+                        <span>{detail.stage}</span>
+                        {detail.node_type && <span>{detail.node_type}</span>}
+                        {detail.node_id && <span>node {detail.node_id}</span>}
+                        {typeof detail.step === "number" &&
+                          typeof detail.total_steps === "number" && (
+                            <span>
+                              step {detail.step}/{detail.total_steps}
+                            </span>
+                          )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {status.state === "error" && (
             <p className="mb-2 text-xs text-destructive">{status.message}</p>
           )}

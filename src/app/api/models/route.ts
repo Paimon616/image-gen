@@ -103,16 +103,50 @@ function humanizeFilename(filePath: string) {
   };
 }
 
+function isVideoCheckpointAsset(
+  capabilities: Awaited<ReturnType<typeof getCheckpointCapabilities>>,
+  path: string
+) {
+  return capabilities?.clip === false && !isAnimaCheckpointName(path);
+}
+
+function buildModelAssets(
+  folder: string,
+  paths: string[],
+  catalog: Record<string, LocalModelMetadata>
+) {
+  return paths.map((path) => {
+    const metadata = catalog[`${folder}/${path}`];
+    const fallback = humanizeFilename(path);
+
+    return {
+      path,
+      folder,
+      name: metadata?.name ?? fallback.name,
+      version: metadata?.version ?? fallback.version,
+      base_model: metadata?.base_model ?? "",
+      thumbnail_url: metadata?.thumbnail_url ?? null,
+      civitai_url: metadata?.civitai_url ?? null,
+      source_url: metadata?.source_url ?? metadata?.civitai_url ?? null,
+      tags: metadata?.tags ?? [],
+    };
+  });
+}
+
+async function listModelFiles(folder: string) {
+  const root = modelRoot(folder);
+  return (await listFilesRecursive(root))
+    .filter((file) => hasModelExtension(file))
+    .map((file) => relative(root, file).replaceAll("\\", "/"))
+    .filter((name) => !name.startsWith("put_"));
+}
+
 async function listModelAssets(
   folder: string,
   catalog: Record<string, LocalModelMetadata>
 ) {
   try {
-    const root = modelRoot(folder);
-    const files = (await listFilesRecursive(root))
-      .filter((file) => hasModelExtension(file))
-      .map((file) => relative(root, file).replaceAll("\\", "/"))
-      .filter((name) => !name.startsWith("put_"));
+    const files = await listModelFiles(folder);
 
     const supportedFiles =
       folder === "checkpoints"
@@ -120,29 +154,13 @@ async function listModelAssets(
             await Promise.all(
               files.map(async (path) => {
                 const capabilities = await getCheckpointCapabilities(path);
-                return capabilities?.clip === false && !isAnimaCheckpointName(path)
-                  ? null
-                  : path;
+                return isVideoCheckpointAsset(capabilities, path) ? null : path;
               })
             )
           ).filter((path): path is string => Boolean(path))
         : files;
 
-    const assets = supportedFiles.map((path) => {
-      const metadata = catalog[`${folder}/${path}`];
-      const fallback = humanizeFilename(path);
-
-      return {
-        path,
-        name: metadata?.name ?? fallback.name,
-        version: metadata?.version ?? fallback.version,
-        base_model: metadata?.base_model ?? "",
-        thumbnail_url: metadata?.thumbnail_url ?? null,
-        civitai_url: metadata?.civitai_url ?? null,
-        source_url: metadata?.source_url ?? metadata?.civitai_url ?? null,
-        tags: metadata?.tags ?? [],
-      };
-    });
+    const assets = buildModelAssets(folder, supportedFiles, catalog);
 
     const assetsWithRequirements =
       folder === "checkpoints"
@@ -163,6 +181,26 @@ async function listModelAssets(
   }
 }
 
+async function listVideoModelAssets(catalog: Record<string, LocalModelMetadata>) {
+  const checkpointFiles = await listModelFiles("checkpoints").catch(() => [] as string[]);
+  const videoCheckpointFiles = (
+    await Promise.all(
+      checkpointFiles.map(async (path) => {
+        const capabilities = await getCheckpointCapabilities(path);
+        return isVideoCheckpointAsset(capabilities, path) ? path : null;
+      })
+    )
+  ).filter((path): path is string => Boolean(path));
+  const diffusionModelFiles = await listModelFiles("diffusion_models").catch(
+    () => [] as string[]
+  );
+
+  return [
+    ...buildModelAssets("checkpoints", videoCheckpointFiles, catalog),
+    ...buildModelAssets("diffusion_models", diffusionModelFiles, catalog),
+  ].sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export async function GET() {
   const catalog = await readCatalog();
   const [
@@ -172,6 +210,7 @@ export async function GET() {
     vaeAssets,
     upscaleModelAssets,
     controlnetAssets,
+    videoModelAssets,
   ] = await Promise.all([
     listModelAssets("checkpoints", catalog),
     listModelAssets("loras", catalog),
@@ -179,6 +218,7 @@ export async function GET() {
     listModelAssets("vae", catalog),
     listModelAssets("upscale_models", catalog),
     listModelAssets("controlnet", catalog),
+    listVideoModelAssets(catalog),
   ]);
   const animaMissingRequiredFiles = await getMissingRequiredModelFiles("anima");
 
@@ -190,12 +230,14 @@ export async function GET() {
       vaes: vaeAssets.map((asset) => asset.path),
       upscale_models: upscaleModelAssets.map((asset) => asset.path),
       controlnets: controlnetAssets.map((asset) => asset.path),
+      video_models: videoModelAssets.map((asset) => `${asset.folder}/${asset.path}`),
       checkpointAssets,
       loraAssets,
       embeddingAssets,
       vaeAssets,
       upscaleModelAssets,
       controlnetAssets,
+      videoModelAssets,
       animaMissingRequiredFiles,
     },
     {

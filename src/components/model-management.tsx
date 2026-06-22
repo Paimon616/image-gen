@@ -25,9 +25,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ModelMediaThumbnail } from "@/components/model-media-thumbnail";
 
 interface ModelAsset {
   path: string;
+  folder?: string;
   name: string;
   version: string;
   base_model: string;
@@ -43,6 +45,7 @@ interface ModelsResponse {
   embeddingAssets: ModelAsset[];
   vaeAssets: ModelAsset[];
   upscaleModelAssets: ModelAsset[];
+  videoModelAssets: ModelAsset[];
 }
 
 interface EditableMetadata {
@@ -82,6 +85,7 @@ interface SourceInfo {
 
 const GROUPS = [
   { id: "checkpoints", label: "Checkpoints", folder: "checkpoints", key: "checkpointAssets" },
+  { id: "video_models", label: "Video Models", folder: "checkpoints", key: "videoModelAssets" },
   { id: "loras", label: "LoRA", folder: "loras", key: "loraAssets" },
   { id: "embeddings", label: "Embeddings", folder: "embeddings", key: "embeddingAssets" },
   { id: "vae", label: "VAE", folder: "vae", key: "vaeAssets" },
@@ -97,6 +101,7 @@ function parseTags(value: string) {
 
 function assetKey(asset: ModelAsset) {
   return [
+    asset.folder ?? "",
     asset.path,
     asset.name,
     asset.version,
@@ -123,6 +128,24 @@ function sourceLabel(url: string) {
   if (provider === "huggingface") return "Hugging Face";
   if (provider === "civitai") return "Civitai";
   return "Source";
+}
+
+async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+  timeoutMs = 20000
+) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(input, {
+      ...init,
+      signal: controller.signal,
+    });
+  } finally {
+    window.clearTimeout(timeout);
+  }
 }
 
 function isCivitaiUrl(url: string) {
@@ -155,22 +178,14 @@ function ModelThumb({
   asset: ModelAsset;
   className?: string;
 }) {
-  if (asset.thumbnail_url) {
-    return (
-      <img
-        src={asset.thumbnail_url}
-        alt={asset.name}
-        className={`rounded-md object-cover ${className}`}
-      />
-    );
-  }
-
   return (
-    <div
-      className={`flex items-center justify-center rounded-md border border-primary/15 bg-secondary text-sm font-bold text-secondary-foreground ${className}`}
-    >
-      {asset.name.slice(0, 2).toUpperCase()}
-    </div>
+    <ModelMediaThumbnail
+      src={asset.thumbnail_url}
+      alt={asset.name}
+      fallback={asset.name.slice(0, 2).toUpperCase()}
+      className={className}
+      fallbackClassName="border-primary/15 bg-secondary text-sm font-bold text-secondary-foreground"
+    />
   );
 }
 
@@ -384,7 +399,7 @@ function ModelDetailsDialog({
   const [editMessage, setEditMessage] = useState("");
 
   const saveMetadata = async (metadata: EditableMetadata) => {
-    const res = await fetch("/api/models", {
+    const res = await fetchWithTimeout("/api/models", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -445,7 +460,7 @@ function ModelDetailsDialog({
     setLoadingSource(true);
     setEditMessage("");
     try {
-      const res = await fetch(
+      const res = await fetchWithTimeout(
         `${endpoint}?url=${encodeURIComponent(trimmedUrl)}`,
         { cache: "no-store" }
       );
@@ -488,7 +503,11 @@ function ModelDetailsDialog({
       onSaved();
     } catch (error) {
       setEditMessage(
-        error instanceof Error ? error.message : "Failed to load source metadata."
+        error instanceof Error && error.name === "AbortError"
+          ? "Timed out while loading source metadata."
+          : error instanceof Error
+            ? error.message
+            : "Failed to load source metadata."
       );
     } finally {
       setLoadingSource(false);
@@ -837,8 +856,10 @@ export function ModelManagement() {
         (models?.loraAssets.length ?? 0) +
         (models?.embeddingAssets.length ?? 0) +
         (models?.vaeAssets.length ?? 0) +
-        (models?.upscaleModelAssets.length ?? 0),
+        (models?.upscaleModelAssets.length ?? 0) +
+        (models?.videoModelAssets.length ?? 0),
       checkpoints: models?.checkpointAssets.length ?? 0,
+      video_models: models?.videoModelAssets.length ?? 0,
       loras: models?.loraAssets.length ?? 0,
       embeddings: models?.embeddingAssets.length ?? 0,
       vae: models?.vaeAssets.length ?? 0,
@@ -871,7 +892,7 @@ export function ModelManagement() {
       assetGroups.flatMap((group) =>
         group.assets.map((asset) => ({
           asset,
-          folder: group.folder,
+          folder: asset.folder ?? group.folder,
         }))
       ),
     [assetGroups]
@@ -891,7 +912,7 @@ export function ModelManagement() {
               </h1>
             </div>
             <p className="text-sm font-medium text-muted-foreground">
-              Manage local checkpoints, LoRA, embeddings, VAE, and upscaler metadata.
+              Manage local image models, video models, LoRA, embeddings, VAE, and upscaler metadata.
             </p>
           </div>
           <Button
@@ -972,7 +993,9 @@ export function ModelManagement() {
                     <ModelCard
                       key={assetKey(asset)}
                       asset={asset}
-                      onView={() => setViewing({ asset, folder: group.folder })}
+                      onView={() =>
+                        setViewing({ asset, folder: asset.folder ?? group.folder })
+                      }
                     />
                   ))}
                 </div>
