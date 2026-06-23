@@ -1,4 +1,4 @@
-import { access, mkdir, writeFile } from "fs/promises";
+import { access, mkdir, readFile, writeFile } from "fs/promises";
 import { randomUUID } from "crypto";
 import { isAbsolute, join } from "path";
 import { NextRequest } from "next/server";
@@ -161,6 +161,19 @@ async function assertVideoWorkflowConfigured() {
     : join(/*turbopackIgnore: true*/ process.cwd(), workflowPath);
 
   await access(resolvedPath);
+}
+
+async function configuredVideoWorkflowRequiresSourceImage() {
+  const workflowPath = process.env.COMFYUI_VIDEO_WORKFLOW_PATH?.trim();
+
+  if (!workflowPath) return true;
+
+  const resolvedPath = isAbsolute(workflowPath)
+    ? workflowPath
+    : join(/*turbopackIgnore: true*/ process.cwd(), workflowPath);
+  const rawWorkflow = JSON.parse(await readFile(resolvedPath, "utf-8")) as unknown;
+
+  return JSON.stringify(rawWorkflow).includes("{{source_image}}");
 }
 
 async function assertAudioWorkflowConfigured() {
@@ -341,9 +354,11 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "Prompt is required." }, { status: 400 });
   }
 
-  if (!body.source_image) {
+  const requiresSourceImage = await configuredVideoWorkflowRequiresSourceImage();
+
+  if (requiresSourceImage && !body.source_image) {
     return Response.json(
-      { error: "A start image is required for the configured Wan I2V workflow." },
+      { error: "A start image is required for the configured video workflow." },
       { status: 400 }
     );
   }

@@ -28,6 +28,8 @@ const nextConfig: NextConfig = {
     "/api/lora-training/jobs/*/cancel": comfyUiTraceExcludes,
     "/api/models": comfyUiTraceExcludes,
     "/api/models/thumbnail": comfyUiTraceExcludes,
+    "/api/video/config": comfyUiTraceExcludes,
+    "/api/video/generate/stream": comfyUiTraceExcludes,
   },
 };
 

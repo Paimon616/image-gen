@@ -39,6 +39,8 @@ interface WorkflowConfigState {
   exists: boolean;
   ready: boolean;
   missing: string[];
+  requiresSourceImage?: boolean;
+  includesAudio?: boolean;
   message: string;
 }
 
@@ -206,11 +208,13 @@ export default function VideoPage() {
   const isGenerating = status.state === "generating";
   const videoWorkflowReady =
     videoConfig.configured && videoConfig.exists && videoConfig.ready;
+  const videoRequiresSourceImage = videoConfig.requiresSourceImage !== false;
+  const videoIncludesAudio = Boolean(videoConfig.includesAudio);
   const soundWorkflowReady =
     videoConfig.audio.configured && videoConfig.audio.exists && videoConfig.audio.ready;
   const canGenerate =
     params.prompt.trim().length > 0 &&
-    Boolean(params.source_image) &&
+    (!videoRequiresSourceImage || Boolean(params.source_image)) &&
     (!params.enable_sound || soundWorkflowReady) &&
     !isGenerating &&
     videoWorkflowReady;
@@ -354,6 +358,8 @@ export default function VideoPage() {
           exists: Boolean(data.exists),
           ready: data.ready !== false,
           missing: Array.isArray(data.missing) ? data.missing.map(String) : [],
+          requiresSourceImage: data.requiresSourceImage !== false,
+          includesAudio: Boolean(data.includesAudio),
           message: String(data.message ?? ""),
           audio: {
             configured: Boolean(data.audio?.configured),
@@ -391,7 +397,7 @@ export default function VideoPage() {
 
   const generate = useCallback(async () => {
     if (!params.prompt.trim()) return;
-    if (!params.source_image) {
+    if (videoRequiresSourceImage && !params.source_image) {
       setStatus({
         state: "error",
         progress: 0,
@@ -556,6 +562,7 @@ export default function VideoPage() {
     soundWorkflowReady,
     videoConfig.audio.message,
     videoConfig.message,
+    videoRequiresSourceImage,
     videoWorkflowReady,
   ]);
 
@@ -761,12 +768,16 @@ export default function VideoPage() {
                 />
               </div>
 
-              {!soundWorkflowReady && (
+              {videoIncludesAudio ? (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  The configured video workflow already embeds generated audio.
+                </p>
+              ) : !soundWorkflowReady ? (
                 <p className="mt-2 text-xs text-yellow-500">
                   {videoConfig.audio.message ||
                     "Set COMFYUI_AUDIO_WORKFLOW_PATH to enable sound generation."}
                 </p>
-              )}
+              ) : null}
 
               {params.enable_sound && (
                 <div className="mt-3 grid gap-3">
@@ -830,7 +841,11 @@ export default function VideoPage() {
               </Label>
               <ImageUpload
                 label="Start Image"
-                description="Required for Wan image-to-video"
+                description={
+                  videoRequiresSourceImage
+                    ? "Required for the configured video workflow"
+                    : "Optional for text-to-video workflows"
+                }
                 value={params.source_image}
                 onChange={(url) => updateParams({ source_image: url })}
               />
@@ -1032,11 +1047,14 @@ export default function VideoPage() {
               {videoConfig.message || "Video workflow is not configured."}
             </p>
           )}
-          {videoWorkflowReady && !params.source_image && status.state !== "error" && (
-            <p className="mb-2 text-xs text-yellow-500">
-              Add a start image before generating video.
-            </p>
-          )}
+          {videoWorkflowReady &&
+            videoRequiresSourceImage &&
+            !params.source_image &&
+            status.state !== "error" && (
+              <p className="mb-2 text-xs text-yellow-500">
+                Add a start image before generating video.
+              </p>
+            )}
           {status.state === "completed" && (
             <p className="mb-2 text-xs text-green-500">{status.message}</p>
           )}

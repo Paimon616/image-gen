@@ -1283,5 +1283,20 @@
     "tags": [
       "base model"
     ]
+  },
+  "checkpoints/chilloutmix_NiPrunedFp32Fix.safetensors": {
+    "name": "ChilloutMix",
+    "version": "Chilloutmix-Ni-pruned-fp32-fix",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/20fcc1d7-29ce-42d8-1502-02c4e50e9100/original=true/174703.jpeg",
+    "civitai_url": "https://civitai.red/models/6424/chilloutmix?modelVersionId=11745",
+    "source_url": "https://civitai.red/models/6424/chilloutmix?modelVersionId=11745",
+    "tags": [
+      "porn",
+      "sex",
+      "dreamlikeart",
+      "photorealistic",
+      "base model"
+    ]
   }
 }

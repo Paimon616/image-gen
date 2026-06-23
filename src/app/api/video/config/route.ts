@@ -47,6 +47,14 @@ function collectRequiredModelFiles(workflow: unknown) {
       return [join("text_encoders", inputs.clip_name)];
     }
 
+    if (typeof inputs.text_encoder === "string") {
+      return [join("text_encoders", inputs.text_encoder)];
+    }
+
+    if (typeof inputs.model_name === "string") {
+      return [join("latent_upscale_models", inputs.model_name)];
+    }
+
     if (
       (classType === "LoraLoader" || classType === "LoraLoaderModelOnly") &&
       typeof inputs.lora_name === "string"
@@ -82,6 +90,27 @@ async function missingModelFiles(workflowPath: string) {
   return missing;
 }
 
+function workflowRequiresSourceImage(workflow: unknown) {
+  return JSON.stringify(workflow).includes("{{source_image}}");
+}
+
+function workflowIncludesAudio(workflow: unknown) {
+  if (!workflow || typeof workflow !== "object" || Array.isArray(workflow)) {
+    return false;
+  }
+
+  return Object.values(workflow).some((node) => {
+    if (!node || typeof node !== "object" || Array.isArray(node)) return false;
+
+    const record = node as {
+      class_type?: unknown;
+      inputs?: Record<string, unknown>;
+    };
+
+    return record.class_type === "CreateVideo" && Boolean(record.inputs?.audio);
+  });
+}
+
 async function workflowStatus(envName: string, label: string) {
   const workflowPath = configuredWorkflowPath(envName);
 
@@ -97,6 +126,11 @@ async function workflowStatus(envName: string, label: string) {
 
   try {
     await access(workflowPath);
+    const rawWorkflow = JSON.parse(await readFile(workflowPath, "utf-8")) as unknown;
+    const workflow =
+      rawWorkflow && typeof rawWorkflow === "object" && "prompt" in rawWorkflow
+        ? (rawWorkflow as { prompt: unknown }).prompt
+        : rawWorkflow;
     const missing = await missingModelFiles(workflowPath);
 
     if (missing.length > 0) {
@@ -105,6 +139,8 @@ async function workflowStatus(envName: string, label: string) {
         exists: true,
         ready: false,
         missing,
+        requiresSourceImage: workflowRequiresSourceImage(workflow),
+        includesAudio: workflowIncludesAudio(workflow),
         message: `${label} workflow is missing model files: ${missing.join(", ")}`,
       };
     }
@@ -114,6 +150,8 @@ async function workflowStatus(envName: string, label: string) {
       exists: true,
       ready: true,
       missing: [],
+      requiresSourceImage: workflowRequiresSourceImage(workflow),
+      includesAudio: workflowIncludesAudio(workflow),
       message: "",
     };
   } catch {
