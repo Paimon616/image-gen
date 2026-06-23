@@ -485,7 +485,7 @@
   "319": {
     "class_type": "LTXAVTextEncoderLoader",
     "inputs": {
-      "text_encoder": "gemma_3_12B_it_fp4_mixed.safetensors",
+      "text_encoder": "qwen_3_06b_base.safetensors",
       "ckpt_name": "ltx2310eros_v1.safetensors",
       "device": "default"
     }
