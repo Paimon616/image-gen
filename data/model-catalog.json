@@ -1298,5 +1298,68 @@
       "photorealistic",
       "base model"
     ]
+  },
+  "loras/Asian Cute Face.safetensors": {
+    "name": "Asian Cute Face",
+    "version": "v1.0",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/6f207638-ee7e-4014-b249-11bb2cf665a2/original=true/697402.jpeg",
+    "civitai_url": "https://civitai.red/models/26914/asian-cute-face?modelVersionId=32215",
+    "source_url": "https://civitai.red/models/26914/asian-cute-face?modelVersionId=32215",
+    "tags": [
+      "cute",
+      "style",
+      "photorealistic",
+      "asian girl",
+      "woman",
+      "asian"
+    ]
+  },
+  "loras/JapaneseDollLikeness_v15.safetensors": {
+    "name": "JapaneseDollLikeness (v1.5)",
+    "version": "v1.5",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/42bb3051-7e2c-49fa-88b4-61e624b24f00/original=true/394771.jpeg",
+    "civitai_url": "https://civitai.red/models/28811/japanesedolllikeness-v15?modelVersionId=34562",
+    "source_url": "https://civitai.red/models/28811/japanesedolllikeness-v15?modelVersionId=34562",
+    "tags": [
+      "women",
+      "photorealistic",
+      "asian",
+      "style",
+      "japanese"
+    ]
+  },
+  "loras/nurse_v11-05.safetensors": {
+    "name": "nurse_uniform",
+    "version": "v1.1",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/7a0d59f2-5393-4c41-bdbf-838b5fbf3c00/original=true/487931.jpeg",
+    "civitai_url": "https://civitai.red/models/38953/nurseuniform?modelVersionId=44872",
+    "source_url": "https://civitai.red/models/38953/nurseuniform?modelVersionId=44872",
+    "tags": [
+      "nurse",
+      "nurse_uniform",
+      "uniform",
+      "clothing",
+      "sexy"
+    ]
+  },
+  "checkpoints/goldenHour_v10.safetensors": {
+    "name": "Golden Hour",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/3980bf8d-8aa7-4fe1-a37c-3612ace899cd/original=true/122881109.jpeg",
+    "civitai_url": "https://civitai.red/models/2433139/golden-hour?modelVersionId=2735786",
+    "source_url": "https://civitai.red/models/2433139/golden-hour?modelVersionId=2735786",
+    "tags": [
+      "merge",
+      "styles",
+      "illustrious",
+      "model",
+      "anime",
+      "base model",
+      "semi-real"
+    ]
   }
 }

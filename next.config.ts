@@ -16,6 +16,9 @@ const comfyUiTraceExcludes = [
 ];
 
 const nextConfig: NextConfig = {
+  turbopack: {
+    root: process.env.HOME,
+  },
   outputFileTracingExcludes: {
     "/*": comfyUiTraceExcludes,
     "/page": comfyUiTraceExcludes,

@@ -1,15 +1,40 @@
 import { access, readFile } from "fs/promises";
-import { isAbsolute, join } from "path";
+import { isAbsolute, join, normalize, relative, resolve } from "path";
 import { NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
+const PROJECT_ROOT = process.cwd();
+const WORKFLOWS_DIR = join(/*turbopackIgnore: true*/ PROJECT_ROOT, "workflows");
+const DEFAULT_MODELS_DIR = join(
+  /*turbopackIgnore: true*/ PROJECT_ROOT,
+  "ComfyUI",
+  "models"
+);
+
+function isInsideDirectory(parent: string, child: string) {
+  const relativePath = relative(parent, child);
+  return Boolean(
+    relativePath &&
+      !relativePath.startsWith("..") &&
+      !isAbsolute(relativePath)
+  );
+}
 
 function configuredWorkflowPath(envName: string) {
   const workflowPath = process.env[envName]?.trim();
 
   if (!workflowPath) return "";
 
-  return isAbsolute(workflowPath)
-    ? workflowPath
-    : join(/*turbopackIgnore: true*/ process.cwd(), workflowPath);
+  if (isAbsolute(workflowPath)) return workflowPath;
+
+  const relativeWorkflowPath = normalize(workflowPath).replace(/^workflows\//, "");
+  const resolvedWorkflowPath = resolve(WORKFLOWS_DIR, relativeWorkflowPath);
+
+  return isInsideDirectory(WORKFLOWS_DIR, resolvedWorkflowPath)
+    ? resolvedWorkflowPath
+    : "";
 }
 
 function collectRequiredModelFiles(workflow: unknown) {
@@ -72,10 +97,12 @@ async function missingModelFiles(workflowPath: string) {
     rawWorkflow && typeof rawWorkflow === "object" && "prompt" in rawWorkflow
       ? (rawWorkflow as { prompt: unknown }).prompt
       : rawWorkflow;
-  const modelsDir = process.env.COMFYUI_MODELS_DIR?.trim() || "ComfyUI/models";
-  const absoluteModelsDir = isAbsolute(modelsDir)
-    ? modelsDir
-    : join(/*turbopackIgnore: true*/ process.cwd(), modelsDir);
+  const modelsDir = process.env.COMFYUI_MODELS_DIR?.trim();
+  const absoluteModelsDir = modelsDir
+    ? isAbsolute(modelsDir)
+      ? modelsDir
+      : resolve(PROJECT_ROOT, modelsDir)
+    : DEFAULT_MODELS_DIR;
   const requiredFiles = collectRequiredModelFiles(workflow);
   const missing: string[] = [];
 

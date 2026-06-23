@@ -231,6 +231,7 @@ export function reconcileImportedParams(
   const importedUpscaler = imported.resources.some(
     (resource) => resource.type === "upscaler"
   );
+  const importedGenerationMetadata = imported.metadataHidden !== true;
 
   if (importedCheckpoint && !matched.model_name) {
     matched.model_name = currentParams.model_name;
@@ -242,12 +243,14 @@ export function reconcileImportedParams(
     matched.upscale_model_name = currentParams.upscale_model_name;
   }
   if (
+    importedGenerationMetadata ||
     matchedLoras.length > 0 ||
     imported.resources.some((resource) => resource.type === "lora")
   ) {
     matched.loras = matchedLoras;
   }
   if (
+    importedGenerationMetadata ||
     matchedEmbeddings.length > 0 ||
     imported.resources.some((resource) => resource.type === "embedding")
   ) {
