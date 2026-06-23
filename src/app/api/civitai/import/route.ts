@@ -353,6 +353,23 @@ async function fetchGenerationDataFromPage(imageId: number, origin: string) {
   return extractGenerationDataFromPageHtml(await response.text());
 }
 
+async function fetchGenerationDataFromPageOrigins(imageId: number, origin: string) {
+  const origins = Array.from(new Set([origin, DEFAULT_CIVITAI_ORIGIN]));
+
+  for (const currentOrigin of origins) {
+    const pageGenerationData = await fetchGenerationDataFromPage(
+      imageId,
+      currentOrigin
+    );
+
+    if (pageGenerationData?.meta || (pageGenerationData?.resources?.length ?? 0) > 0) {
+      return pageGenerationData;
+    }
+  }
+
+  return null;
+}
+
 async function fetchVotableTags(imageId: number, origin: string) {
   const input = encodeURIComponent(
     JSON.stringify({
@@ -387,6 +404,17 @@ async function fetchVotableTags(imageId: number, origin: string) {
   return normalizeImportedTags(
     tags.filter((tag): tag is CivitaiVotableTag => Boolean(recordValue(tag)))
   );
+}
+
+async function fetchVotableTagsFromOrigins(imageId: number, origin: string) {
+  const origins = Array.from(new Set([origin, DEFAULT_CIVITAI_ORIGIN]));
+
+  for (const currentOrigin of origins) {
+    const tags = await fetchVotableTags(imageId, currentOrigin);
+    if (tags.length > 0) return tags;
+  }
+
+  return [];
 }
 
 function parseResources(meta: Record<string, unknown>) {
@@ -666,7 +694,10 @@ export async function POST(req: NextRequest) {
   const itemForParsing: CivitaiImageItem = item ?? { id: imageReference.id };
   const pageGenerationData = item?.meta
     ? null
-    : await fetchGenerationDataFromPage(imageReference.id, imageReference.origin);
+    : await fetchGenerationDataFromPageOrigins(
+        imageReference.id,
+        imageReference.origin
+      );
   if (pageGenerationData?.image) {
     itemForParsing.url = itemForParsing.url || pageGenerationData.image.url;
     itemForParsing.width = itemForParsing.width ?? pageGenerationData.image.width;
@@ -677,7 +708,7 @@ export async function POST(req: NextRequest) {
   const meta = item?.meta ?? pageGenerationData?.meta;
 
   const pageResources = pageGenerationData?.resources ?? [];
-  const votableTags = await fetchVotableTags(
+  const votableTags = await fetchVotableTagsFromOrigins(
     imageReference.id,
     imageReference.origin
   );
