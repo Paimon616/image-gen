@@ -5,6 +5,7 @@ import { useStore } from "@/lib/store";
 import type { GeneratedImage, HistoryEntry } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import {
   AlertCircle,
   BookmarkPlus,
@@ -254,6 +255,7 @@ export function Gallery({ onCancelGeneration }: GalleryProps) {
   const [scrappingIds, setScrappingIds] = useState<Set<string>>(new Set());
   const [scrappedKeys, setScrappedKeys] = useState<Set<string>>(new Set());
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_IMAGES);
+  const [columns, setColumns] = useState(3);
 
   const visibleImages = useMemo(
     () => images.slice(0, visibleCount),
@@ -397,7 +399,29 @@ export function Gallery({ onCancelGeneration }: GalleryProps) {
 
   return (
     <div className="flex-1 overflow-y-auto p-3">
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+      <div className="mb-3 flex items-center gap-3 rounded-lg border border-border bg-card/50 px-3 py-2">
+        <span className="shrink-0 text-xs font-medium text-muted-foreground">
+          가로 columns
+        </span>
+        <Slider
+          value={[columns]}
+          onValueChange={(v) => {
+            const val = Array.isArray(v) ? v[0] : v;
+            setColumns(val);
+          }}
+          min={1}
+          max={10}
+          step={1}
+          className="flex-1 max-w-xs"
+        />
+        <span className="w-8 shrink-0 text-center text-xs font-mono tabular-nums text-foreground">
+          {columns}
+        </span>
+      </div>
+      <div
+        className="grid gap-3"
+        style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+      >
         {visibleImages.map((img) => (
           <GalleryCard
             key={img.id}

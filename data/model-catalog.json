@@ -1702,5 +1702,69 @@
       "embedding",
       "style"
     ]
+  },
+  "loras/ponyv4_noob1_2_adamW-000017.safetensors": {
+    "name": "Pony: People's Works v1-v6",
+    "version": "v4_noobEv1.0",
+    "base_model": "NoobAI",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/cbbf73fa-0056-45c6-a676-cd3349450541/original=true/38940789.jpeg",
+    "civitai_url": "https://civitai.red/models/856285/pony-peoples-works-v1-v6?modelVersionId=1036362",
+    "source_url": "https://civitai.red/models/856285/pony-peoples-works-v1-v6?modelVersionId=1036362",
+    "tags": [
+      "style",
+      "anime"
+    ]
+  },
+  "loras/GENESIS_MK0.4.safetensors": {
+    "name": "GENESIS",
+    "version": "v0.4",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/61c85441-c385-465a-bc84-5994c4ee3a03/original=true/48508246.jpeg",
+    "civitai_url": "https://civitai.red/models/846953/genesis?modelVersionId=1219983",
+    "source_url": "https://civitai.red/models/846953/genesis?modelVersionId=1219983",
+    "tags": [
+      "anime",
+      "style",
+      "girls"
+    ]
+  },
+  "loras/DetailedEyes_V3.safetensors": {
+    "name": "DetailedEyes_XL",
+    "version": "v3.0",
+    "base_model": "SDXL 1.0",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/cebd0283-6c71-45e2-b204-c9fa3b6bea1f/original=true/2148743.jpeg",
+    "civitai_url": "https://civitai.red/models/120723/detailedeyesxl?modelVersionId=145907",
+    "source_url": "https://civitai.red/models/120723/detailedeyesxl?modelVersionId=145907",
+    "tags": [
+      "eyes",
+      "detailed eyes",
+      "tool"
+    ]
+  },
+  "checkpoints/majicflus_v10.safetensors": {
+    "name": "MajicFlus beauty 麦橘超美",
+    "version": "v1.0",
+    "base_model": "Flux.1 D",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/d32bcffc-40f3-4698-8a53-bf74211e86d1/original=true/49968360.jpeg",
+    "civitai_url": "https://civitai.red/models/1111989/majicflus-beauty?modelVersionId=1249505",
+    "source_url": "https://civitai.red/models/1111989/majicflus-beauty?modelVersionId=1249505",
+    "tags": [
+      "asian",
+      "character",
+      "realistic"
+    ]
+  },
+  "loras/majicbeauty1.safetensors": {
+    "name": "MajicFlus beauty 麦橘超美",
+    "version": "v1.0",
+    "base_model": "Flux.1 D",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/d32bcffc-40f3-4698-8a53-bf74211e86d1/original=true/49968360.jpeg",
+    "civitai_url": "https://civitai.red/models/1111989/majicflus-beauty?modelVersionId=1249505",
+    "source_url": "https://civitai.red/models/1111989/majicflus-beauty?modelVersionId=1249505",
+    "tags": [
+      "asian",
+      "character",
+      "realistic"
+    ]
   }
 }
