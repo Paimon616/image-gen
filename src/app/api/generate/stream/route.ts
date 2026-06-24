@@ -37,6 +37,10 @@ function extensionForContentType(contentType: string) {
   return contentType === "image/png" ? "png" : "jpeg";
 }
 
+function requestedImageCount(params: GenerationParams) {
+  return Math.max(1, Math.floor(Number(params.num_images) || 1));
+}
+
 async function saveBufferedImages({
   images,
   params,
@@ -47,9 +51,10 @@ async function saveBufferedImages({
   endpoint: string;
 }) {
   await ensureOutputDir();
+  const imagesToSave = images.slice(0, requestedImageCount(params));
 
   return Promise.all(
-    images.map(async (img, i) => {
+    imagesToSave.map(async (img, i) => {
       const id = randomUUID();
       const filename = `${id}.${extensionForContentType(img.contentType)}`;
 
@@ -121,6 +126,7 @@ export async function POST(req: NextRequest) {
     ...rawBody,
     width: normalizeImageDimension(rawBody.width),
     height: normalizeImageDimension(rawBody.height),
+    num_images: 1,
     seed: normalizeGenerationSeed(rawBody.seed),
   };
   const modelConfig = getModelConfig(body.model);

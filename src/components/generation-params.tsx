@@ -207,25 +207,6 @@ export function GenerationParams() {
           </div>
         </div>
 
-        <div>
-          <Label className="text-xs text-muted-foreground mb-2 block">Images</Label>
-          <div className="grid grid-cols-4 gap-1.5">
-            {[1, 2, 3, 4].map((count) => (
-              <button
-                key={count}
-                type="button"
-                onClick={() => setParams({ num_images: count })}
-                className={`text-xs py-1.5 px-2 rounded-md border transition-colors ${
-                  params.num_images === count
-                    ? "border-primary bg-primary/10 text-primary shadow-sm"
-                    : "border-border bg-card/70 text-foreground hover:border-primary/40 hover:bg-secondary/70"
-                }`}
-              >
-                {count}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
 
       <details

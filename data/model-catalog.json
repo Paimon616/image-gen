@@ -1625,5 +1625,82 @@
       "filmed",
       "skin tone"
     ]
+  },
+  "loras/incase_style_v3-1_ponyxl_ilff.safetensors": {
+    "name": "Incase Style [PonyXL]",
+    "version": "v3.0 (PonyXL Edition)",
+    "base_model": "Pony",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/40e8d765-cf6a-4fbb-bed2-3c27bc2e87d6/original=true/9456522.jpeg",
+    "civitai_url": "https://civitai.red/models/300005/incase-style-ponyxl?modelVersionId=436219",
+    "source_url": "https://civitai.red/models/300005/incase-style-ponyxl?modelVersionId=436219",
+    "tags": [
+      "incase",
+      "ponyxl",
+      "art style",
+      "style"
+    ]
+  },
+  "embeddings/easynegative.safetensors": {
+    "name": "EasyNegative",
+    "version": "EasyNegative",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/a2505a48-8eed-4b12-b6a0-6a8ec7e0c600/original=true/88246.jpeg",
+    "civitai_url": "https://civitai.red/models/7808/easynegative?modelVersionId=9208",
+    "source_url": "https://civitai.red/models/7808/easynegative?modelVersionId=9208",
+    "tags": [
+      "easynegative",
+      "anime",
+      "embedding",
+      "negative",
+      "negative embedding",
+      "textual inversion",
+      "tool"
+    ]
+  },
+  "embeddings/lazypos.safetensors": {
+    "name": "✨ Lazy Embeddings for ALL illustrious NoobAI Pony SDXL models LazyPositive LazyNegative (Positive and Negative plus more!)",
+    "version": "lazypos",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/02c0b202-abf9-443e-b5a2-53f0708d8b40/original=true/78484643.jpeg",
+    "civitai_url": "https://civitai.red/models/1302719/lazy-embeddings-for-all-illustrious-noobai-pony-sdxl-models-lazypositive-lazynegative-positive-and-negative-plus-more?modelVersionId=1833157",
+    "source_url": "https://civitai.red/models/1302719/lazy-embeddings-for-all-illustrious-noobai-pony-sdxl-models-lazypositive-lazynegative-positive-and-negative-plus-more?modelVersionId=1833157",
+    "tags": [
+      "lazypos",
+      "helper",
+      "negative embedding",
+      "negative",
+      "positive",
+      "pony",
+      "sdxl",
+      "noobai",
+      "positing embedding",
+      "scores",
+      "illustrious",
+      "embedding",
+      "style"
+    ]
+  },
+  "embeddings/lazyneg.safetensors": {
+    "name": "✨ Lazy Embeddings for ALL illustrious NoobAI Pony SDXL models LazyPositive LazyNegative (Positive and Negative plus more!)",
+    "version": "lazyneg v3",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/0a1ae7eb-8cca-43d8-bb02-90ccdb096788/original=true/80015543.jpeg",
+    "civitai_url": "https://civitai.red/models/1302719/lazy-embeddings-for-all-illustrious-noobai-pony-sdxl-models-lazypositive-lazynegative-positive-and-negative-plus-more?modelVersionId=1860747",
+    "source_url": "https://civitai.red/models/1302719/lazy-embeddings-for-all-illustrious-noobai-pony-sdxl-models-lazypositive-lazynegative-positive-and-negative-plus-more?modelVersionId=1860747",
+    "tags": [
+      "lazyneg",
+      "helper",
+      "negative embedding",
+      "negative",
+      "positive",
+      "pony",
+      "sdxl",
+      "noobai",
+      "positing embedding",
+      "scores",
+      "illustrious",
+      "embedding",
+      "style"
+    ]
   }
 }

@@ -346,7 +346,7 @@ async function buildAnimaWorkflow(params: GenerationParams, checkpoint: string) 
       inputs: {
         width: params.width,
         height: params.height,
-        batch_size: Math.min(Math.max(Number(params.num_images) || 1, 1), 4),
+        batch_size: 1,
       },
     };
   }
@@ -574,7 +574,7 @@ async function buildDefaultWorkflow(params: GenerationParams) {
       inputs: {
         width: params.width,
         height: params.height,
-        batch_size: Math.min(Math.max(Number(params.num_images) || 1, 1), 4),
+        batch_size: 1,
       },
     };
   }

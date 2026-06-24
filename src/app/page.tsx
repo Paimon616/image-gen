@@ -81,7 +81,10 @@ interface GenerationQueueItem {
 }
 
 function cloneGenerationParams(params: GenerationParamsType) {
-  return JSON.parse(JSON.stringify(params)) as GenerationParamsType;
+  return {
+    ...(JSON.parse(JSON.stringify(params)) as GenerationParamsType),
+    num_images: 1,
+  };
 }
 
 export default function Home() {
