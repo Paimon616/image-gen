@@ -805,7 +805,7 @@ export default function Home() {
                 min={1}
                 max={10}
                 step={1}
-                className="w-24"
+                className="w-48"
               />
               <span className="w-6 text-center text-xs font-mono tabular-nums text-foreground">
                 {galleryColumns}
