@@ -20,6 +20,7 @@ import { CivitaiImport } from "@/components/civitai-import";
 import { Gallery } from "@/components/gallery";
 import { ImageViewer } from "@/components/image-viewer";
 import { AppSidebar } from "@/components/app-sidebar";
+import { Slider } from "@/components/ui/slider";
 import type {
   GeneratedImage,
   GenerationParams as GenerationParamsType,
@@ -99,6 +100,7 @@ export default function Home() {
   const [posePreviewUrl, setPosePreviewUrl] = useState<string | null>(null);
   const [posePreviewStatus, setPosePreviewStatus] = useState("");
   const [sourceImagePreviewOpen, setSourceImagePreviewOpen] = useState(false);
+  const [galleryColumns, setGalleryColumns] = useState(3);
   const [generationQueue, setGenerationQueue] = useState<GenerationQueueItem[]>([]);
   const [activeGeneration, setActiveGeneration] =
     useState<GenerationQueueItem | null>(null);
@@ -789,13 +791,32 @@ export default function Home() {
 
       {/* Main Content - Gallery */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        <div className="p-4 border-b border-border flex items-center justify-between">
-          <h2 className="text-sm font-medium">Gallery</h2>
+        <div className="p-4 border-b border-border flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-medium">Gallery</h2>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">가로 columns</span>
+              <Slider
+                value={[galleryColumns]}
+                onValueChange={(v) => {
+                  const val = Array.isArray(v) ? v[0] : v;
+                  setGalleryColumns(val);
+                }}
+                min={1}
+                max={10}
+                step={1}
+                className="w-24"
+              />
+              <span className="w-6 text-center text-xs font-mono tabular-nums text-foreground">
+                {galleryColumns}
+              </span>
+            </div>
+          </div>
           <span className="text-xs text-muted-foreground">
             {images.length} images
           </span>
         </div>
-        <Gallery onCancelGeneration={(image) => cancelGeneration(image.id)} />
+        <Gallery onCancelGeneration={(image) => cancelGeneration(image.id)} columns={galleryColumns} />
       </main>
 
       {/* Image Viewer Dialog */}

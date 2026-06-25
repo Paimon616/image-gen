@@ -1766,5 +1766,64 @@
       "character",
       "realistic"
     ]
+  },
+  "loras/Censored_for_Betas.safetensors": {
+    "name": "Censored for Betas (Illustrious LoRa)",
+    "version": "v0.5",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/8ced3f50-d672-421f-880e-7e27a75ca9c4/original=true/63150103.jpeg",
+    "civitai_url": "https://civitai.red/models/1346103/censored-for-betas-illustrious-lora",
+    "source_url": "https://civitai.red/models/1346103/censored-for-betas-illustrious-lora",
+    "tags": [
+      "censored",
+      "ntr",
+      "beta",
+      "hentai",
+      "netorare",
+      "concept"
+    ]
+  },
+  "loras/silvana-style-AB10-01.safetensors": {
+    "name": "Silvana Style Lora | Anima",
+    "version": "v1.0",
+    "base_model": "Anima",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/6f6d5786-9909-4a1e-8a74-9fa4298c4e8c/original=true/130883657.jpeg",
+    "civitai_url": "https://civitai.red/models/2627091/silvana-style-lora-or-anima?modelVersionId=2950020",
+    "source_url": "https://civitai.red/models/2627091/silvana-style-lora-or-anima?modelVersionId=2950020",
+    "tags": [
+      "@silvana",
+      "anima",
+      "style",
+      "portrait",
+      "landscape"
+    ]
+  },
+  "loras/rimixao5050.safetensors": {
+    "name": "Ri-mix - Style LORA [ Illustrious + Anima]",
+    "version": "Ri-mix α (Anima)",
+    "base_model": "Anima",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/2d13d953-7aaf-4994-9c84-1e60dfbd6040/original=true/133392505.jpeg",
+    "civitai_url": "https://civitai.red/models/996220/ri-mix-style-lora-illustrious-anima?modelVersionId=3011920",
+    "source_url": "https://civitai.red/models/996220/ri-mix-style-lora-illustrious-anima?modelVersionId=3011920",
+    "tags": [
+      "illustration",
+      "illustrious",
+      "style",
+      "anima",
+      "flux",
+      "pony"
+    ]
+  },
+  "checkpoints/riMixIllustriousAnima_riMixAnima.safetensors": {
+    "name": "Ri-mix - [Illustrious + Anima]",
+    "version": "Ri-mix α (Anima)",
+    "base_model": "Anima",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/50c3cec7-6c56-4b4e-8204-75ee3d1ae2c8/original=true/133494618.jpeg",
+    "civitai_url": "https://civitai.red/models/996495/ri-mix-illustrious-anima?modelVersionId=3020951",
+    "source_url": "https://civitai.red/models/996495/ri-mix-illustrious-anima?modelVersionId=3020951",
+    "tags": [
+      "illustrtion",
+      "style"
+    ]
   }
 }
