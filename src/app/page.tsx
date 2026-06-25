@@ -805,7 +805,7 @@ export default function Home() {
                 min={1}
                 max={10}
                 step={1}
-                style={{ width: "300px" }}
+                style={{ width: "50px" }}
               />
               <span className="w-6 text-center text-xs font-mono tabular-nums text-foreground">
                 {galleryColumns}
