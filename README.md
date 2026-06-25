@@ -21,6 +21,18 @@ Install app dependencies:
 npm install
 ```
 
+Configure the local git merge driver once after cloning:
+
+```bash
+npm run setup:git-merge
+```
+
+On Windows PowerShell:
+
+```powershell
+npm run setup:git-merge:win
+```
+
 Install ComfyUI into the project root on macOS/Linux:
 
 ```bash
@@ -49,6 +61,12 @@ ComfyUI/models/controlnet/
 ```
 
 Files such as `.safetensors` stay local. Model metadata can be committed through `data/model-catalog.json`.
+
+`data/model-catalog.json` is shared, but every user may have different local
+models. The repo includes a custom git merge driver for that file. During
+`git pull`, it keeps your local catalog values for matching model paths and
+adds new catalog entries from the pulled branch when they do not exist locally.
+Run `npm run setup:git-merge` once per clone so git can use that merge driver.
 
 ## Run
 

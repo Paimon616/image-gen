@@ -26,6 +26,12 @@ cleanup() {
     echo
     echo "Stopping local servers..."
     kill "${STARTED_PIDS[@]}" 2>/dev/null || true
+    for pid in "${STARTED_PIDS[@]}"; do
+      if kill -0 "$pid" >/dev/null 2>&1; then
+        sleep 1
+        kill -KILL "$pid" 2>/dev/null || true
+      fi
+    done
   fi
 }
 
@@ -41,6 +47,70 @@ require_command() {
 port_listening() {
   local port="$1"
   lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1
+}
+
+port_pids() {
+  lsof -nP -iTCP:"$1" -sTCP:LISTEN -t 2>/dev/null || true
+}
+
+# Kill anything currently listening on the given port. Tries SIGTERM first,
+# waits briefly, then escalates to SIGKILL. Returns 0 only when the port is
+# finally free (or was already free).
+kill_port() {
+  local port="$1"
+  local label="${2:-}"
+  local pids
+  local still
+
+  pids="$(port_pids "$port")"
+  if [ -z "$pids" ]; then
+    return 0
+  fi
+
+  if [ -n "$label" ]; then
+    echo "Stopping existing $label process(es) on port $port (PIDs: $(echo "$pids" | tr '\n' ' '))..."
+  else
+    echo "Stopping existing process(es) on port $port (PIDs: $(echo "$pids" | tr '\n' ' '))..."
+  fi
+
+  kill -TERM $pids 2>/dev/null || true
+
+  for _ in $(seq 1 40); do
+    still="$(port_pids "$port")"
+    if [ -z "$still" ]; then
+      return 0
+    fi
+    sleep 0.25
+  done
+
+  still="$(port_pids "$port")"
+  if [ -n "$still" ]; then
+    echo "Port $port did not stop after SIGTERM; force killing (PIDs: $(echo "$still" | tr '\n' ' '))..." >&2
+    kill -KILL $still 2>/dev/null || true
+    for _ in $(seq 1 20); do
+      still="$(port_pids "$port")"
+      if [ -z "$still" ]; then
+        return 0
+      fi
+      sleep 0.25
+    done
+  fi
+
+  if [ -n "$(port_pids "$port")" ]; then
+    echo "ERROR: could not free port $port; something is still listening there." >&2
+    echo "  Run: lsof -nP -iTCP:$port -sTCP:LISTEN" >&2
+    return 1
+  fi
+  return 0
+}
+
+# Also sweep stray next-server / python ComfyUI processes that may not be
+# holding the configured port anymore (e.g. crashed children). We only target
+# processes whose listening socket is one of our configured ports, to stay
+# surgical.
+kill_managed_ports() {
+  kill_port "$COMFYUI_PORT" "ComfyUI" || exit 1
+  kill_port "$IMAGE_GEN_PORT" "Image Gen" || exit 1
 }
 
 wait_for_port() {
@@ -104,10 +174,15 @@ start_service() {
   local log_file="$3"
   shift 3
 
+  # Always start fresh. Any lingering process on this port should already have
+  # been killed earlier, but double-check and clean again just in case something
+  # grabbed it between sweeps.
   if port_listening "$port"; then
-    echo "$name already appears to be running on port $port."
-    return 0
+    echo "$name port $port is unexpectedly busy; cleaning up before launch..."
+    kill_port "$port" "$name" || exit 1
   fi
+
+  : >"$log_file"
 
   echo "Starting $name..."
   (
@@ -155,14 +230,13 @@ wait_for_http() {
 start_image_gen() {
   local log_file="$LOG_DIR/image-gen.log"
 
-  if port_listening "$IMAGE_GEN_PORT"; then
-    echo "Image Gen already appears to be running on port $IMAGE_GEN_PORT."
-    wait_for_http "Image Gen" "$IMAGE_GEN_URL"
-    return 0
-  fi
+  # Make sure nothing is squatting the Image Gen port before we even build.
+  kill_port "$IMAGE_GEN_PORT" "Image Gen" || exit 1
 
   echo "Building Image Gen for local launch..."
   (cd "$ROOT_DIR" && npm run build)
+
+  : >"$log_file"
 
   echo "Starting Image Gen..."
   (
@@ -201,7 +275,19 @@ if [ ! -f "$LORA_RUNNER_DIR/sdxl_train_network.py" ] || [ ! -x "$LORA_RUNNER_DIR
   (cd "$ROOT_DIR" && npm run setup:lora-runner)
 fi
 
+# --- Fresh start: clean any leftover processes on our managed ports. ---
+echo "Cleaning up any previous local instances..."
+kill_managed_ports
+
+# Truncate old logs so the current run is easy to read.
+: >"$LOG_DIR/comfyui.log" 2>/dev/null || true
+: >"$LOG_DIR/image-gen.log" 2>/dev/null || true
+
 start_service "ComfyUI" "$COMFYUI_PORT" "$LOG_DIR/comfyui.log" npm run comfyui
+
+# Re-sweep the Image Gen port right before launch in case anything grabbed it
+# during the ComfyUI startup wait.
+kill_port "$IMAGE_GEN_PORT" "Image Gen" || exit 1
 
 start_image_gen
 

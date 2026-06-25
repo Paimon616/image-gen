@@ -11,6 +11,8 @@
     "local:win": "powershell -ExecutionPolicy Bypass -File scripts/start-local.ps1",
     "setup:comfyui": "bash scripts/setup-comfyui.sh",
     "setup:comfyui:win": "powershell -ExecutionPolicy Bypass -File scripts/setup-comfyui.ps1",
+    "setup:git-merge": "bash scripts/setup-git-merge-driver.sh",
+    "setup:git-merge:win": "powershell -ExecutionPolicy Bypass -File scripts/setup-git-merge-driver.ps1",
     "setup:lora-runner": "bash scripts/setup-lora-runner.sh",
     "setup:lora-runner:win": "powershell -ExecutionPolicy Bypass -File scripts/setup-lora-runner.ps1",
     "comfyui": "bash scripts/run-comfyui.sh",
