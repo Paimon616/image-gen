@@ -16,7 +16,9 @@
     "setup:lora-runner": "bash scripts/setup-lora-runner.sh",
     "setup:lora-runner:win": "powershell -ExecutionPolicy Bypass -File scripts/setup-lora-runner.ps1",
     "comfyui": "bash scripts/run-comfyui.sh",
-    "comfyui:win": "powershell -ExecutionPolicy Bypass -File scripts/run-comfyui.ps1"
+    "comfyui:win": "powershell -ExecutionPolicy Bypass -File scripts/run-comfyui.ps1",
+    "runpod:deploy": "bash scripts/runpod-deploy.sh",
+    "runpod:start": "bash scripts/runpod-start.sh"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
