@@ -1,0 +1,7 @@
+# Modified Prompt
+
+## Positive Prompt
+1girl, solo, black hair, large breasts, big breast, navel, stomach, barefoot, wearing dolphin shorts, shorts, no top, topless, shirtless, bare shoulders, towel around neck, towel, towel on head, wet hair, wet skin, water droplets, damp skin, just out of shower, post-shower, shower scene, steam, sitting, on chair, swivel chair, office chair, facing viewer, front view, from front, sitting at desk, computer, monitor, on computer, hands resting on lap, empty hands, open hands, hands visible, not holding anything, bookshelf, room, indoors, inside, window, fan, air conditioner, sweat, summer, dimples of venus, collarbone, bare arms, casual, relaxed posture, looking at monitor, masterwork, masterpiece, best quality, high quality, absurdres, highres, detailed, depth of field, high detail, best quality, very aesthetic, aged up
+
+## Negative Prompt
+rain, raining, raindrops, storm, umbrella, wet from rain, rain on window, holding object, holding something, holding phone, holding cup, holding controller, typing, keyboard, gripping, clenched fist, holding weapon, low quality, blurry, deformed, ugly, bad anatomy, bad hands, missing fingers
