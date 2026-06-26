@@ -1,18 +1,7 @@
-# Modified Prompt — Korean Female Idol Singer (Solo, Stage, 19yo, Superstar)
+# Modified Prompt
 
 ## Positive Prompt
-masterpiece, best quality, score_9, score_8, @silvana,
-1girl, solo,
-19 years old, korean girl, korean female idol singer, superstar, idol,
-beautiful face, detailed eyes, glossy lips, stage makeup,
-black hair, long hair, wavy hair, parted bangs, sidelocks, hair ornament, glittering hair accessories,
-large breasts, slender body, collarbone, bare shoulders, navel,
-sparkling stage outfit, sequin dress, mini skirt, thighhighs, high heels, choker, earrings, jewelry,
-singing, holding microphone, microphone stand, hand on mic,
-stage, concert stage, spotlight, stage lights, light beams, laser lights, fog, confetti, large led screen, crowd in background, audience,
-dynamic pose, confident expression, looking at viewer, open mouth, singing expression,
-dramatic lighting, rim light, backlight, colorful stage lighting, cinematic lighting,
-<lora:silvana-style-AB10-01.safetensors:1.0>
+1girl, solo, black hair, large breasts, big breast, navel, stomach, barefoot, wearing dolphin shorts, shorts, no top, topless, shirtless, bare shoulders, towel around neck, towel, towel on head, wet hair, wet skin, water droplets, damp skin, just out of shower, post-shower, shower scene, steam, upper body, bust shot, cowboy shot, close-up face, highly detailed face, facial focus, beautiful face, detailed eyes, sitting, on chair, swivel chair, office chair, facing viewer, front view, from front, sitting at desk, computer, monitor, on computer, hands resting on lap, empty hands, open hands, hands visible, not holding anything, bookshelf, room, indoors, inside, window, fan, air conditioner, sweat, summer, dimples of venus, collarbone, bare arms, casual, relaxed posture, looking at viewer, masterwork, masterpiece, best quality, high quality, absurdres, highres, detailed, depth of field, high detail, best quality, very aesthetic, aged up
 
 ## Negative Prompt
-worst quality, low quality, score_1, score_2, score_3, bad anatomy, bad hands, missing fingers, extra digits, deformed, blurry, jpeg artifacts, signature, watermark, text, logo, artist name, censored, 1boy, multiple girls, 2girls, lesbian, yuri, couple, bench, sitting together, outside, plain background, dark face, harsh shadow, child, loli
+rain, raining, raindrops, storm, umbrella, wet from rain, rain on window, holding object, holding something, holding phone, holding cup, holding controller, typing, keyboard, gripping, clenched fist, holding weapon, full body, wide shot, far away, distant, low quality, blurry, deformed, ugly, bad anatomy, bad hands, missing fingers
