@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ChangeEvent, ReactNode } from "react";
 import {
+  Check,
   Download,
   ExternalLink,
   FileDown,
@@ -14,6 +15,7 @@ import {
   Sparkles,
   Tags,
   Trash2,
+  X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -116,6 +118,22 @@ function assetKey(asset: ModelAsset) {
     asset.source_url ?? "",
     asset.tags.join(","),
   ].join(":");
+}
+
+function catalogKey(folder: string, asset: ModelAsset) {
+  return `${folder}/${asset.path}`;
+}
+
+function metadataFromAsset(asset: ModelAsset): EditableMetadata {
+  return {
+    name: asset.name,
+    version: asset.version,
+    base_model: asset.base_model,
+    thumbnail_url: asset.thumbnail_url,
+    civitai_url: asset.civitai_url,
+    source_url: asset.source_url,
+    tags: asset.tags,
+  };
 }
 
 function getSourceUrl(asset: Pick<ModelAsset, "source_url" | "civitai_url">) {
@@ -221,9 +239,15 @@ function TagPill({
 function ModelCard({
   asset,
   onView,
+  selecting = false,
+  selected = false,
+  onToggleSelect,
 }: {
   asset: ModelAsset;
   onView: () => void;
+  selecting?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }) {
   const [showAllTags, setShowAllTags] = useState(false);
   const visibleTags = showAllTags ? asset.tags : asset.tags.slice(0, 4);
@@ -233,15 +257,35 @@ function ModelCard({
     <article
       role="button"
       tabIndex={0}
-      onClick={onView}
+      onClick={selecting ? onToggleSelect : onView}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          onView();
+          if (selecting) {
+            onToggleSelect?.();
+          } else {
+            onView();
+          }
         }
       }}
-      className="group grid min-h-40 cursor-pointer grid-cols-[6rem_minmax(0,1fr)] gap-3 rounded-lg border border-border bg-card p-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md focus:outline-none focus-visible:border-primary/25 focus-visible:ring-3 focus-visible:ring-ring/20 focus-within:border-primary/25 focus-within:shadow-md"
+      className={`group relative grid min-h-40 cursor-pointer grid-cols-[6rem_minmax(0,1fr)] gap-3 rounded-lg border bg-card p-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md focus:outline-none focus-visible:border-primary/25 focus-visible:ring-3 focus-visible:ring-ring/20 focus-within:border-primary/25 focus-within:shadow-md ${
+        selected
+          ? "border-primary ring-3 ring-primary/15"
+          : "border-border"
+      }`}
     >
+      {selecting && (
+        <div className="absolute right-2 top-2 z-10 rounded-md border border-border bg-card/95 p-1 shadow-sm">
+          <input
+            type="checkbox"
+            checked={selected}
+            onClick={(event) => event.stopPropagation()}
+            onChange={onToggleSelect}
+            aria-label={`Select ${asset.name}`}
+            className="block h-4 w-4 accent-primary"
+          />
+        </div>
+      )}
       <ModelThumb asset={asset} className="h-28 w-full shadow-sm" />
 
       <div className="flex min-w-0 flex-col">
@@ -325,11 +369,24 @@ function ModelCard({
               className="h-7 px-2 text-xs"
               onClick={(event) => {
                 event.stopPropagation();
-                onView();
+                if (selecting) {
+                  onToggleSelect?.();
+                } else {
+                  onView();
+                }
               }}
             >
-              <Info className="h-3.5 w-3.5" />
-              Details
+              {selecting ? (
+                <>
+                  <Check className="h-3.5 w-3.5" />
+                  {selected ? "Selected" : "Select"}
+                </>
+              ) : (
+                <>
+                  <Info className="h-3.5 w-3.5" />
+                  Details
+                </>
+              )}
             </Button>
             {sourceUrl && (
               <a
@@ -1065,6 +1122,10 @@ export function ModelManagement() {
   const [error, setError] = useState("");
   const [catalogImportOpen, setCatalogImportOpen] = useState(false);
   const [savingCatalog, setSavingCatalog] = useState(false);
+  const [exportSelectionMode, setExportSelectionMode] = useState(false);
+  const [selectedCatalogKeys, setSelectedCatalogKeys] = useState<Set<string>>(
+    () => new Set()
+  );
   const [selectedTag, setSelectedTag] = useState("all");
   const [viewing, setViewing] = useState<{
     asset: ModelAsset;
@@ -1084,19 +1145,29 @@ export function ModelManagement() {
       });
   }, []);
 
-  const saveCatalogJson = async () => {
+  const saveSelectedCatalogJson = async () => {
     setSavingCatalog(true);
     setError("");
 
     try {
-      const res = await fetchWithTimeout("/api/models", { cache: "no-store" });
-      const data = (await res.json()) as ModelsResponse & { error?: string };
+      const selectedCatalog = catalogAssets.reduce<Record<string, EditableMetadata>>(
+        (catalog, { asset, folder }) => {
+          const key = catalogKey(folder, asset);
 
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to load model metadata.");
+          if (selectedCatalogKeys.has(key)) {
+            catalog[key] = models?.catalog?.[key] ?? metadataFromAsset(asset);
+          }
+
+          return catalog;
+        },
+        {}
+      );
+
+      if (Object.keys(selectedCatalog).length === 0) {
+        throw new Error("Select at least one model metadata entry.");
       }
 
-      const blob = new Blob([JSON.stringify(data.catalog ?? {}, null, 2)], {
+      const blob = new Blob([JSON.stringify(selectedCatalog, null, 2)], {
         type: "application/json",
       });
       const url = URL.createObjectURL(blob);
@@ -1104,11 +1175,13 @@ export function ModelManagement() {
       const date = new Date().toISOString().slice(0, 10);
 
       link.href = url;
-      link.download = `model-catalog-${date}.json`;
+      link.download = `model-catalog-selected-${date}.json`;
       document.body.appendChild(link);
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
+      setExportSelectionMode(false);
+      setSelectedCatalogKeys(new Set());
     } catch (error) {
       setError(
         error instanceof Error ? error.message : "Failed to save model metadata."
@@ -1116,6 +1189,32 @@ export function ModelManagement() {
     } finally {
       setSavingCatalog(false);
     }
+  };
+
+  const startCatalogExport = () => {
+    setError("");
+    setExportSelectionMode(true);
+    setSelectedCatalogKeys(new Set());
+  };
+
+  const cancelCatalogExport = () => {
+    setError("");
+    setExportSelectionMode(false);
+    setSelectedCatalogKeys(new Set());
+  };
+
+  const toggleCatalogSelection = (key: string) => {
+    setSelectedCatalogKeys((current) => {
+      const next = new Set(current);
+
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+
+      return next;
+    });
   };
 
   useEffect(() => {
@@ -1160,6 +1259,13 @@ export function ModelManagement() {
     [models, selectedTag]
   );
 
+  const catalogAssets = GROUPS.flatMap((group) =>
+    (models?.[group.key] ?? []).map((asset) => ({
+      asset,
+      folder: asset.folder ?? group.folder,
+    }))
+  );
+
   const allAssets = useMemo(
     () =>
       assetGroups.flatMap((group) =>
@@ -1170,6 +1276,7 @@ export function ModelManagement() {
       ),
     [assetGroups]
   );
+  const selectedCatalogCount = selectedCatalogKeys.size;
 
   return (
     <div className="flex h-screen flex-1 flex-col overflow-hidden bg-background">
@@ -1189,20 +1296,47 @@ export function ModelManagement() {
             </p>
           </div>
           <div className="flex shrink-0 flex-wrap justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={saveCatalogJson}
-              disabled={savingCatalog}
-            >
-              {savingCatalog ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
+            {exportSelectionMode ? (
+              <>
+                <Badge variant="secondary" className="h-7 rounded-md px-2.5">
+                  선택 {selectedCatalogCount}
+                </Badge>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={cancelCatalogExport}
+                  disabled={savingCatalog}
+                >
+                  <X className="h-4 w-4" />
+                  취소
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={saveSelectedCatalogJson}
+                  disabled={savingCatalog || selectedCatalogCount === 0}
+                >
+                  {savingCatalog ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Check className="h-4 w-4" />
+                  )}
+                  확인
+                </Button>
+              </>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={startCatalogExport}
+                disabled={savingCatalog}
+              >
                 <FileDown className="h-4 w-4" />
-              )}
-              JSON 저장하기
-            </Button>
+                JSON 내보내기
+              </Button>
+            )}
             <Button
               type="button"
               variant="outline"
@@ -1273,6 +1407,11 @@ export function ModelManagement() {
                   <ModelCard
                     key={`${folder}:${assetKey(asset)}`}
                     asset={asset}
+                    selecting={exportSelectionMode}
+                    selected={selectedCatalogKeys.has(catalogKey(folder, asset))}
+                    onToggleSelect={() =>
+                      toggleCatalogSelection(catalogKey(folder, asset))
+                    }
                     onView={() => setViewing({ asset, folder })}
                   />
                 ))}
@@ -1290,6 +1429,15 @@ export function ModelManagement() {
                     <ModelCard
                       key={assetKey(asset)}
                       asset={asset}
+                      selecting={exportSelectionMode}
+                      selected={selectedCatalogKeys.has(
+                        catalogKey(asset.folder ?? group.folder, asset)
+                      )}
+                      onToggleSelect={() =>
+                        toggleCatalogSelection(
+                          catalogKey(asset.folder ?? group.folder, asset)
+                        )
+                      }
                       onView={() =>
                         setViewing({ asset, folder: asset.folder ?? group.folder })
                       }
@@ -1328,5 +1476,4 @@ export function ModelManagement() {
     </div>
   );
 }
-
 
