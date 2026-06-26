@@ -1,10 +1,12 @@
 ﻿"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { ReactNode } from "react";
+import type { ChangeEvent, ReactNode } from "react";
 import {
   Download,
   ExternalLink,
+  FileDown,
+  FileUp,
   Heart,
   Info,
   Loader2,
@@ -26,6 +28,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { ModelMediaThumbnail } from "@/components/model-media-thumbnail";
 
 interface ModelAsset {
@@ -47,6 +50,7 @@ interface ModelsResponse {
   vaeAssets: ModelAsset[];
   upscaleModelAssets: ModelAsset[];
   videoModelAssets: ModelAsset[];
+  catalog: Record<string, EditableMetadata>;
 }
 
 interface EditableMetadata {
@@ -370,6 +374,165 @@ function MetadataRow({
       </div>
       <div className="min-w-0 text-sm font-medium text-foreground">{value}</div>
     </div>
+  );
+}
+
+function CatalogImportDialog({
+  open,
+  onOpenChange,
+  onImported,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onImported: () => void;
+}) {
+  const [jsonText, setJsonText] = useState("");
+  const [importingMode, setImportingMode] = useState<"merge" | "replace" | null>(
+    null
+  );
+  const [message, setMessage] = useState("");
+
+  const importCatalog = async (mode: "merge" | "replace") => {
+    setImportingMode(mode);
+    setMessage("");
+
+    try {
+      const catalog = JSON.parse(jsonText) as unknown;
+      const res = await fetchWithTimeout("/api/models", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode, catalog }),
+      });
+      const data = (await res.json()) as {
+        imported?: number;
+        total?: number;
+        error?: string;
+      };
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to import model metadata.");
+      }
+
+      setMessage(
+        `${data.imported ?? 0} entries imported. Total ${data.total ?? 0}.`
+      );
+      onImported();
+    } catch (error) {
+      setMessage(
+        error instanceof SyntaxError
+          ? "Invalid JSON."
+          : error instanceof Error
+            ? error.message
+            : "Failed to import model metadata."
+      );
+    } finally {
+      setImportingMode(null);
+    }
+  };
+
+  const loadFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setMessage("");
+    setJsonText(await file.text());
+    event.target.value = "";
+  };
+
+  const busy = Boolean(importingMode);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] overflow-hidden border border-border bg-card p-0 shadow-xl sm:max-w-3xl">
+        <DialogHeader className="border-b border-border bg-secondary/50 px-5 py-4">
+          <DialogTitle>Import model metadata</DialogTitle>
+          <DialogDescription>
+            Paste a JSON catalog keyed by model path, or load a JSON file.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-4 bg-background/70 px-5 py-4">
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
+              JSON
+            </Label>
+            <Textarea
+              value={jsonText}
+              onChange={(event) => setJsonText(event.target.value)}
+              className="min-h-72 resize-y font-mono text-xs"
+              spellCheck={false}
+              placeholder={`{
+  "checkpoints/example.safetensors": {
+    "name": "Example",
+    "version": "v1",
+    "base_model": "Illustrious",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": null,
+    "tags": ["style"]
+  }
+}`}
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Label className="inline-flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-border bg-card px-2.5 text-sm font-semibold shadow-sm transition-colors hover:border-primary/35 hover:bg-secondary hover:text-secondary-foreground">
+              <FileUp className="h-4 w-4" />
+              JSON 선택
+              <input
+                type="file"
+                accept="application/json,.json"
+                className="sr-only"
+                onChange={loadFile}
+                disabled={busy}
+              />
+            </Label>
+
+            {message && (
+              <div className="min-w-0 rounded-md border border-primary/15 bg-secondary/70 px-3 py-2 text-xs font-medium text-secondary-foreground">
+                {message}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={busy}
+          >
+            Close
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => importCatalog("merge")}
+            disabled={busy || !jsonText.trim()}
+          >
+            {importingMode === "merge" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <FileUp className="h-4 w-4" />
+            )}
+            추가하기
+          </Button>
+          <Button
+            type="button"
+            onClick={() => importCatalog("replace")}
+            disabled={busy || !jsonText.trim()}
+          >
+            {importingMode === "replace" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <FileDown className="h-4 w-4" />
+            )}
+            교체하기
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -900,6 +1063,8 @@ export function ModelManagement() {
   const [models, setModels] = useState<ModelsResponse | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [error, setError] = useState("");
+  const [catalogImportOpen, setCatalogImportOpen] = useState(false);
+  const [savingCatalog, setSavingCatalog] = useState(false);
   const [selectedTag, setSelectedTag] = useState("all");
   const [viewing, setViewing] = useState<{
     asset: ModelAsset;
@@ -918,6 +1083,40 @@ export function ModelManagement() {
         setError(err instanceof Error ? err.message : "Failed to load models");
       });
   }, []);
+
+  const saveCatalogJson = async () => {
+    setSavingCatalog(true);
+    setError("");
+
+    try {
+      const res = await fetchWithTimeout("/api/models", { cache: "no-store" });
+      const data = (await res.json()) as ModelsResponse & { error?: string };
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to load model metadata.");
+      }
+
+      const blob = new Blob([JSON.stringify(data.catalog ?? {}, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const date = new Date().toISOString().slice(0, 10);
+
+      link.href = url;
+      link.download = `model-catalog-${date}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      setError(
+        error instanceof Error ? error.message : "Failed to save model metadata."
+      );
+    } finally {
+      setSavingCatalog(false);
+    }
+  };
 
   useEffect(() => {
     refreshModels();
@@ -989,16 +1188,40 @@ export function ModelManagement() {
               Manage local image models, video models, LoRA, embeddings, VAE, and upscaler metadata.
             </p>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={refreshModels}
-            className="shrink-0"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </Button>
+          <div className="flex shrink-0 flex-wrap justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={saveCatalogJson}
+              disabled={savingCatalog}
+            >
+              {savingCatalog ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <FileDown className="h-4 w-4" />
+              )}
+              JSON 저장하기
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setCatalogImportOpen(true)}
+            >
+              <FileUp className="h-4 w-4" />
+              JSON 불러오기
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={refreshModels}
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -1097,6 +1320,11 @@ export function ModelManagement() {
           }}
         />
       )}
+      <CatalogImportDialog
+        open={catalogImportOpen}
+        onOpenChange={setCatalogImportOpen}
+        onImported={() => setRefreshKey((key) => key + 1)}
+      />
     </div>
   );
 }

@@ -32,6 +32,8 @@ interface LocalModelMetadata {
   tags?: string[];
 }
 
+type CatalogImportMode = "merge" | "replace";
+
 const DEFAULT_MODEL_CATALOG: Record<string, LocalModelMetadata> = {
   "checkpoints/waiIllustriousSDXL_v140.safetensors": {
     name: "WAI-illustrious-SDXL",
@@ -67,6 +69,54 @@ async function readCatalog() {
 async function writeCatalog(catalog: Record<string, LocalModelMetadata>) {
   await mkdir("data", { recursive: true });
   await writeFile(MODEL_CATALOG_PATH, JSON.stringify(catalog, null, 2));
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function normalizeMetadata(value: unknown): LocalModelMetadata | null {
+  if (!isRecord(value) || typeof value.name !== "string" || !value.name.trim()) {
+    return null;
+  }
+
+  return {
+    name: value.name.trim(),
+    version: typeof value.version === "string" ? value.version : "",
+    base_model: typeof value.base_model === "string" ? value.base_model : "",
+    thumbnail_url:
+      typeof value.thumbnail_url === "string" ? value.thumbnail_url : null,
+    civitai_url: typeof value.civitai_url === "string" ? value.civitai_url : null,
+    source_url:
+      typeof value.source_url === "string"
+        ? value.source_url
+        : typeof value.civitai_url === "string"
+          ? value.civitai_url
+          : null,
+    tags: Array.isArray(value.tags)
+      ? value.tags.filter((tag): tag is string => typeof tag === "string")
+      : [],
+  };
+}
+
+function normalizeCatalog(value: unknown) {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const catalog: Record<string, LocalModelMetadata> = {};
+
+  for (const [key, metadata] of Object.entries(value)) {
+    const normalized = normalizeMetadata(metadata);
+
+    if (!key.trim() || !normalized) {
+      return null;
+    }
+
+    catalog[key] = normalized;
+  }
+
+  return catalog;
 }
 
 function modelRoot(folder: string) {
@@ -266,6 +316,7 @@ export async function GET() {
       controlnetAssets,
       videoModelAssets,
       animaMissingRequiredFiles,
+      catalog,
     },
     {
       headers: {
@@ -301,6 +352,38 @@ export async function PATCH(req: NextRequest) {
   await writeCatalog(catalog);
 
   return NextResponse.json({ ok: true, catalog });
+}
+
+export async function POST(req: NextRequest) {
+  const body = (await req.json()) as {
+    mode?: CatalogImportMode;
+    catalog?: unknown;
+  };
+  const mode = body.mode === "replace" ? "replace" : "merge";
+  const importedCatalog = normalizeCatalog(body.catalog);
+
+  if (!importedCatalog) {
+    return NextResponse.json(
+      { error: "catalog must be a JSON object of model metadata keyed by model path" },
+      { status: 400 }
+    );
+  }
+
+  const currentCatalog = mode === "merge" ? await readCatalog() : {};
+  const catalog = {
+    ...currentCatalog,
+    ...importedCatalog,
+  };
+
+  await writeCatalog(catalog);
+
+  return NextResponse.json({
+    ok: true,
+    mode,
+    imported: Object.keys(importedCatalog).length,
+    total: Object.keys(catalog).length,
+    catalog,
+  });
 }
 
 export async function DELETE(req: NextRequest) {
@@ -341,5 +424,3 @@ export async function DELETE(req: NextRequest) {
     );
   }
 }
-
-
