@@ -217,7 +217,7 @@ const GalleryCard = memo(function GalleryCard({
             disabled={!img.params}
           >
             <CopyPlus />
-            정보 그대로 가져다쓰기
+            가져오기
           </Button>
           <Button
             type="button"
