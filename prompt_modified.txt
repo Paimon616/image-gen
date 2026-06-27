@@ -1,7 +1,65 @@
-# Modified Prompt
+# 양아치 여대생 벽 구멍에 끼임 — Illustrious 프롬프트
+
+## Recommended Checkpoint
+`waiIllustriousSDXL_v140.safetensors`
+
+## Recommended LoRAs
+| LoRA | Strength | 용도 |
+|------|----------|------|
+| `Smooth_Booster_v3.safetensors` | 0.6 | 피부 매끄러움 + 광택 |
+| `majicbeauty1.safetensors` | 0.4 | 뷰티 디테일 강화 |
+| `DetailedEyes_V3.safetensors` | 0.4 | 눈 디테일 |
+
+## Recommended Settings
+- **Width × Height**: 832 × 1216 (세로 기준 상반신 비율)
+- **Steps**: 32
+- **CFG Scale**: 5.0
+- **Sampler**: dpmpp_2m
+- **Scheduler**: karras
+- **Clip Skip**: 2
+- **VAE**: (체크포인트 번들 VAE 사용)
+
+---
 
 ## Positive Prompt
-1girl, solo, black hair, large breasts, big breast, navel, stomach, barefoot, wearing dolphin shorts, shorts, no top, topless, shirtless, bare shoulders, towel around neck, towel, towel on head, wet hair, wet skin, water droplets, damp skin, just out of shower, post-shower, shower scene, steam, upper body, bust shot, cowboy shot, close-up face, highly detailed face, facial focus, beautiful face, detailed eyes, sitting, on chair, swivel chair, office chair, facing viewer, front view, from front, sitting at desk, computer, monitor, on computer, hands resting on lap, empty hands, open hands, hands visible, not holding anything, bookshelf, room, indoors, inside, window, fan, air conditioner, sweat, summer, dimples of venus, collarbone, bare arms, casual, relaxed posture, looking at viewer, masterwork, masterpiece, best quality, high quality, absurdres, highres, detailed, depth of field, high detail, best quality, very aesthetic, aged up
+
+```
+masterpiece, best quality, very aesthetic, absurdres, highres, 1girl, solo, female college student, delinquent girl, gyaru vibe, bleached hair, blonde hair with dark roots, messy hair, hair over one eye, sharp eyes, smug smile, smirk, tongue out, choker, loose oversized jacket off shoulder, crop top, navel, midriff, fishnet thighhighs, stuck in wall, wall hole, hole in wall, trapped in wall, waist stuck in wall, upper body through wall, body through hole, upper body, upper body only, waist caught in wall, wall around waist, brick wall, wall partition, split by wall, arms resting on wall, hands on wall, leaning on wall, helpless, embarrassed, flushed face, sweating, glossy skin, shiny skin, oiled skin, wet skin, body shine, skin pores, detailed skin, skin highlights, collarbone, bare shoulders, cleavage, midriff squeezed, clothes pulled, dim lighting, alley, neon lights, night, cinematic lighting, rim light, depth of field, detailed background
+```
 
 ## Negative Prompt
-rain, raining, raindrops, storm, umbrella, wet from rain, rain on window, holding object, holding something, holding phone, holding cup, holding controller, typing, keyboard, gripping, clenched fist, holding weapon, full body, wide shot, far away, distant, low quality, blurry, deformed, ugly, bad anatomy, bad hands, missing fingers
+
+```
+worst quality, low quality, bad anatomy, bad hands, missing fingers, extra fingers, deformed, ugly, blurry, text, watermark, signature, child, loli, flat chest, standing, walking, full body visible, free standing, pressed against wall, back against wall, dry skin, matte skin, rough skin, casual clothes, winter clothes, coat, jacket zipped up, smiling gently, innocent, cute, childlike
+```
+
+---
+
+## 프롬프트 구성 설명
+
+### 캐릭터 (양아치 여대생)
+- `delinquent girl`, `gyaru vibe` — 양아치/반항적 분위기
+- `bleached hair`, `blonde hair with dark roots`, `messy hair` — 탈색한 염색머리
+- `smug smile`, `smirk`, `tongue out` — 도발적 표정
+- `choker`, `loose oversized jacket off shoulder`, `crop top`, `fishnet thighhighs` — 양아치 패션
+
+### 핵심: 벽 구멍에 끼임 (stuck in wall)
+- `stuck in wall`, `wall hole`, `hole in wall`, `trapped in wall` — 벽 구멍에 끼인 상태
+- `waist stuck in wall`, `upper body through wall`, `body through hole` — 허리가 벽에 끼여 상반신만 한쪽에 노출
+- `wall around waist`, `wall partition`, `split by wall` — 벽이 허리 부분을 가로막아 몸이 양쪽으로 나뉨
+- `upper body`, `upper body only` — 상반신 중심 구도
+- `arms resting on wall`, `hands on wall`, `leaning on wall` — 벽에 팔/손을 올린 상태
+- `helpless`, `embarrassed`, `flushed face` — 끼여서 당황한 표정
+- **Negative**에 `standing`, `walking`, `full body visible`, `pressed against wall`, `back against wall` 추가 → 벽에 기대는 포즈가 아님을 명확히 강제
+
+### 피부 광택 (최대한 반딱이게)
+- `glossy skin`, `shiny skin`, `oiled skin`, `wet skin`, `body shine` — 핵심 광택 태그
+- `skin pores`, `detailed skin`, `skin highlights` — 피부 디테일로 광택 질감 극대화
+- `sweating`, `flushed face` — 땀+홍조로 자연스러운 윤기
+- `midriff squeezed`, `clothes pulled` — 벽에 끼워져 옷이 당겨진 디테일
+- **Smooth_Booster_v3 LoRA (0.6)** — 피부 매끄러움 + 광택
+- **Negative**에 `dry skin`, `matte skin`, `rough skin` 추가로 광택 방해 요소 차단
+
+### 분위기/배경
+- `alley`, `brick wall`, `neon lights`, `night` — 골목 벽, 네온, 밤 분위기
+- `dim lighting`, `cinematic lighting`, `rim light` — 피부 광택을 돋보이게 하는 조명
