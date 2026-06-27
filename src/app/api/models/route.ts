@@ -1,5 +1,5 @@
-import { mkdir, readdir, readFile, writeFile } from "fs/promises";
-import { basename, extname, join, relative } from "path";
+﻿import { mkdir, readdir, readFile, rm, writeFile } from "fs/promises";
+import { basename, extname, join, normalize, relative } from "path";
 import { NextRequest, NextResponse } from "next/server";
 import {
   COMFYUI_MODELS_DIR,
@@ -12,6 +12,15 @@ import {
 export const dynamic = "force-dynamic";
 
 const MODEL_CATALOG_PATH = "data/model-catalog.json";
+const ALLOWED_MODEL_FOLDERS = new Set([
+  "checkpoints",
+  "diffusion_models",
+  "loras",
+  "embeddings",
+  "vae",
+  "upscale_models",
+  "controlnet",
+]);
 
 interface LocalModelMetadata {
   name: string;
@@ -62,6 +71,24 @@ async function writeCatalog(catalog: Record<string, LocalModelMetadata>) {
 
 function modelRoot(folder: string) {
   return join(COMFYUI_MODELS_DIR, folder);
+}
+
+function safeModelFilePath(folder: string, modelName: string) {
+  if (!ALLOWED_MODEL_FOLDERS.has(folder)) {
+    throw new Error("Invalid model folder");
+  }
+
+  const root = normalize(modelRoot(folder));
+  const fullPath = normalize(join(root, modelName));
+
+  if (
+    fullPath === root ||
+    (!fullPath.startsWith(`${root}/`) && !fullPath.startsWith(`${root}\\`))
+  ) {
+    throw new Error("Invalid model path");
+  }
+
+  return fullPath;
 }
 
 async function listFilesRecursive(root: string): Promise<string[]> {
@@ -275,3 +302,44 @@ export async function PATCH(req: NextRequest) {
 
   return NextResponse.json({ ok: true, catalog });
 }
+
+export async function DELETE(req: NextRequest) {
+  const body = (await req.json()) as {
+    folder?: string;
+    path?: string;
+  };
+
+  if (!body.folder || !body.path) {
+    return NextResponse.json(
+      { error: "folder and path are required" },
+      { status: 400 }
+    );
+  }
+
+  if (!hasModelExtension(body.path)) {
+    return NextResponse.json(
+      { error: "Only model files can be deleted" },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const fullPath = safeModelFilePath(body.folder, body.path);
+    await rm(fullPath, { force: false });
+
+    const catalog = await readCatalog();
+    delete catalog[`${body.folder}/${body.path}`];
+    await writeCatalog(catalog);
+
+    return NextResponse.json({ ok: true, catalog });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "Failed to delete model",
+      },
+      { status: 400 }
+    );
+  }
+}
+
+

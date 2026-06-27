@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   CivitaiImportResult,
   GenerationParams,
   ImportedCivitaiResource,
@@ -94,7 +94,6 @@ function resourceMatchScore(asset: LocalModelAsset, resource: ImportedCivitaiRes
   const targetWords = normalizeWords(resource.name);
 
   if (urlMatchesCivitaiId(urls, "version", targetVersionId)) return 100;
-  if (urlMatchesCivitaiId(urls, "model", targetModelId)) return 90;
   if (targetHash && candidates.some((candidate) => candidate.includes(targetHash))) {
     return 85;
   }
@@ -111,6 +110,11 @@ function resourceMatchScore(asset: LocalModelAsset, resource: ImportedCivitaiRes
   ) {
     return 75;
   }
+  if (targetVersionId || targetVersion) {
+    return 0;
+  }
+
+  if (urlMatchesCivitaiId(urls, "model", targetModelId)) return 90;
   if (targetName && nameCandidates.some((candidate) => candidate === targetName)) {
     return 70;
   }
@@ -259,3 +263,4 @@ export function reconcileImportedParams(
 
   return { matched, missing };
 }
+

@@ -1,6 +1,13 @@
 "use client";
 
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  memo,
+  type UIEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useStore } from "@/lib/store";
 import type { GeneratedImage, HistoryEntry } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
@@ -16,8 +23,8 @@ import {
   XCircle,
 } from "lucide-react";
 
-const INITIAL_VISIBLE_IMAGES = 36;
-const LOAD_MORE_IMAGES = 36;
+const INITIAL_VISIBLE_IMAGES = 18;
+const LOAD_MORE_IMAGES = INITIAL_VISIBLE_IMAGES;
 
 function generatedImageKeys(img: GeneratedImage) {
   return [
@@ -62,6 +69,9 @@ const GalleryCard = memo(function GalleryCard({
 }: GalleryCardProps) {
   const generation = img.generation;
   const hasImage = Boolean(img.url);
+  const displayUrl =
+    img.thumbnailUrl ||
+    (img.filename ? `/api/images/thumb/${img.filename}` : img.url);
   const displayState =
     generation?.state === "generating" &&
     /queued|waiting for comfyui/i.test(generation.message)
@@ -108,10 +118,12 @@ const GalleryCard = memo(function GalleryCard({
           aria-label="Open image details"
         >
           <img
-            src={img.url}
+            src={displayUrl}
             alt=""
             className="h-full w-full object-cover"
             loading="lazy"
+            decoding="async"
+            fetchPriority="low"
           />
         </button>
       ) : (
@@ -246,6 +258,12 @@ interface GalleryProps {
   columns?: number;
 }
 
+interface ImagesResponse {
+  images?: GeneratedImage[];
+  nextCursor?: number | null;
+  total?: number;
+}
+
 export function Gallery({ onCancelGeneration, columns = 3 }: GalleryProps) {
   const images = useStore((state) => state.images);
   const setSelectedImage = useStore((state) => state.setSelectedImage);
@@ -254,12 +272,11 @@ export function Gallery({ onCancelGeneration, columns = 3 }: GalleryProps) {
   const removeImage = useStore((state) => state.removeImage);
   const [scrappingIds, setScrappingIds] = useState<Set<string>>(new Set());
   const [scrappedKeys, setScrappedKeys] = useState<Set<string>>(new Set());
-  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_IMAGES);
+  const [nextCursor, setNextCursor] = useState<number | null>(null);
+  const [totalImages, setTotalImages] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  const visibleImages = useMemo(
-    () => images.slice(0, visibleCount),
-    [images, visibleCount]
-  );
+  const visibleImages = images;
   const scrappedImageIds = useMemo(() => {
     const ids = new Set<string>();
 
@@ -271,18 +288,29 @@ export function Gallery({ onCancelGeneration, columns = 3 }: GalleryProps) {
 
     return ids;
   }, [visibleImages, scrappedKeys]);
-  const hasMoreImages = visibleCount < images.length;
+  const hasMoreImages = nextCursor !== null;
+
+  const loadImagePage = useCallback(
+    async (cursor: number) => {
+      const response = await fetch(
+        `/api/images?cursor=${cursor}&limit=${LOAD_MORE_IMAGES}`,
+        { cache: "no-store" }
+      );
+      const data = (await response.json()) as ImagesResponse;
+
+      if (Array.isArray(data.images)) {
+        addImages(data.images);
+      }
+
+      setNextCursor(data.nextCursor ?? null);
+      setTotalImages(data.total ?? 0);
+    },
+    [addImages]
+  );
 
   useEffect(() => {
-    fetch("/api/images")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.images) {
-          addImages(data.images);
-        }
-      })
-      .catch(() => {});
-  }, [addImages]);
+    loadImagePage(0).catch(() => {});
+  }, [loadImagePage]);
 
   useEffect(() => {
     fetch("/api/scrap", { cache: "no-store" })
@@ -364,11 +392,29 @@ export function Gallery({ onCancelGeneration, columns = 3 }: GalleryProps) {
     [removeImage]
   );
 
-  const handleLoadMore = useCallback(() => {
-    setVisibleCount((count) =>
-      Math.min(count + LOAD_MORE_IMAGES, images.length)
-    );
-  }, [images.length]);
+  const handleLoadMore = useCallback(async () => {
+    if (nextCursor === null || loadingMore) return;
+
+    setLoadingMore(true);
+    try {
+      await loadImagePage(nextCursor);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadImagePage, loadingMore, nextCursor]);
+
+  const handleGalleryScroll = useCallback(
+    (event: UIEvent<HTMLDivElement>) => {
+      const target = event.currentTarget;
+      const distanceToBottom =
+        target.scrollHeight - target.scrollTop - target.clientHeight;
+
+      if (distanceToBottom <= 80) {
+        void handleLoadMore();
+      }
+    },
+    [handleLoadMore]
+  );
 
   if (images.length === 0) {
     return (
@@ -397,7 +443,7 @@ export function Gallery({ onCancelGeneration, columns = 3 }: GalleryProps) {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-3">
+    <div className="flex-1 overflow-y-auto p-3" onScroll={handleGalleryScroll}>
       <div
         className="grid gap-3"
         style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
@@ -419,9 +465,14 @@ export function Gallery({ onCancelGeneration, columns = 3 }: GalleryProps) {
       {hasMoreImages && (
         <div className="flex flex-col items-center gap-2 py-4">
           <p className="text-xs text-muted-foreground">
-            {visibleImages.length} / {images.length} images
+            {visibleImages.length} / {totalImages} images
           </p>
-          <Button type="button" variant="outline" onClick={handleLoadMore}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleLoadMore}
+            disabled={loadingMore}
+          >
             더 보기
           </Button>
         </div>

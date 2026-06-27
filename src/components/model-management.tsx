@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
@@ -11,6 +11,7 @@ import {
   RefreshCw,
   Sparkles,
   Tags,
+  Trash2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -378,12 +379,14 @@ function ModelDetailsDialog({
   open,
   onOpenChange,
   onSaved,
+  onDeleted,
 }: {
   asset: ModelAsset;
   folder: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
+  onDeleted: () => void;
 }) {
   const [name, setName] = useState(asset.name);
   const [version, setVersion] = useState(asset.version);
@@ -392,6 +395,8 @@ function ModelDetailsDialog({
   const [sourceUrl, setSourceUrl] = useState(getSourceUrl(asset));
   const [tags, setTags] = useState(asset.tags.join(", "));
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [loadingSource, setLoadingSource] = useState(false);
   const provider = sourceProvider(sourceUrl);
   const [sourceInfo, setSourceInfo] = useState<SourceInfo | null>(null);
@@ -430,10 +435,39 @@ function ModelDetailsDialog({
       await saveMetadata(currentMetadata());
       setEditMessage("Saved.");
       onSaved();
+      onOpenChange(false);
     } catch (error) {
       setEditMessage(error instanceof Error ? error.message : "Failed to save.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const deleteModel = async () => {
+    setDeleting(true);
+    setEditMessage("");
+    try {
+      const res = await fetchWithTimeout("/api/models", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          folder,
+          path: asset.path,
+        }),
+      });
+      const data = (await res.json()) as { error?: string };
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to delete model");
+      }
+
+      setConfirmDeleteOpen(false);
+      onDeleted();
+      onOpenChange(false);
+    } catch (error) {
+      setEditMessage(error instanceof Error ? error.message : "Failed to delete model.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -800,24 +834,64 @@ function ModelDetailsDialog({
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="justify-between gap-2 sm:justify-between">
           <Button
             type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={saving || loadingSource}
+            variant="destructive"
+            onClick={() => setConfirmDeleteOpen(true)}
+            disabled={saving || loadingSource || deleting}
           >
-            Close
+            <Trash2 className="h-4 w-4" />
+            Delete
           </Button>
-          <Button
-            type="button"
-            onClick={save}
-            disabled={saving || loadingSource || !name.trim()}
-          >
-            {saving ? "Saving" : "Save"}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={saving || loadingSource || deleting}
+            >
+              Close
+            </Button>
+            <Button
+              type="button"
+              onClick={save}
+              disabled={saving || loadingSource || deleting || !name.trim()}
+            >
+              {saving ? "Saving" : "Save"}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
+
+      <Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <DialogContent className="border border-border bg-card sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete model file?</DialogTitle>
+            <DialogDescription>
+              This will permanently remove {asset.path} from ComfyUI models and remove its local catalog metadata.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirmDeleteOpen(false)}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={deleteModel}
+              disabled={deleting}
+            >
+              {deleting ? "Deleting" : "Delete file"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
@@ -1014,9 +1088,17 @@ export function ModelManagement() {
           onOpenChange={(open) => {
             if (!open) setViewing(null);
           }}
-          onSaved={() => setRefreshKey((key) => key + 1)}
+          onSaved={() => {
+            setRefreshKey((key) => key + 1);
+          }}
+          onDeleted={() => {
+            setViewing(null);
+            setRefreshKey((key) => key + 1);
+          }}
         />
       )}
     </div>
   );
 }
+
+

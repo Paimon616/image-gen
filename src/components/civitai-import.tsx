@@ -1,15 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { ExternalLink, LinkIcon, Loader2 } from "lucide-react";
+import { LinkIcon, Loader2 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import type { CivitaiImportResult } from "@/lib/types";
 import {
   reconcileImportedParams,
-  RESOURCE_LABELS,
   type LocalModelsResponse,
   type MissingResource,
 } from "@/lib/civitai-resource-matching";
+import { CivitaiMissingResources } from "@/components/civitai-missing-resources";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -160,58 +160,20 @@ export function CivitaiImport() {
 
       {status && <p className="mt-2 text-xs text-muted-foreground">{status}</p>}
 
-      {missingResources.length > 0 && (
-        <div className="mt-3 rounded-md border border-dashed border-destructive/30 bg-destructive/10 p-3">
-          <div className="text-xs font-semibold text-destructive">
-            {language === "ko" ? "누락된 로컬 리소스" : "Missing local resources"}
-          </div>
-          <div className="mt-2 space-y-1.5">
-            {missingResources.map((resource, index) => {
-              const content = (
-                <>
-                  <span className="min-w-0 truncate">
-                    <span className="font-semibold">
-                      {RESOURCE_LABELS[resource.type]}
-                    </span>
-                    <span className="text-muted-foreground"> · </span>
-                    <span>{resource.name}</span>
-                  </span>
-                  {resource.url ? (
-                    <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-                  ) : (
-                    <span className="shrink-0 text-muted-foreground">
-                      {language === "ko" ? "CivitAI에 없음" : "Not on CivitAI"}
-                    </span>
-                  )}
-                </>
-              );
-
-              if (!resource.url) {
-                return (
-                  <div
-                    key={`${resource.type}-${resource.name}-${index}`}
-                    className="flex min-w-0 items-center justify-between gap-2 rounded-md bg-background/80 px-2 py-1.5 text-xs"
-                  >
-                    {content}
-                  </div>
-                );
-              }
-
-              return (
-                <a
-                  key={`${resource.type}-${resource.name}-${index}`}
-                  href={resource.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex min-w-0 items-center justify-between gap-2 rounded-md bg-background/80 px-2 py-1.5 text-xs hover:text-primary"
-                >
-                  {content}
-                </a>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      <CivitaiMissingResources
+        resources={missingResources}
+        language={language}
+        onDownloaded={(resource) => {
+          setMissingResources((current) =>
+            current.filter(
+              (item) =>
+                item.type !== resource.type ||
+                item.modelVersionId !== resource.modelVersionId ||
+                item.name !== resource.name
+            )
+          );
+        }}
+      />
     </section>
   );
 }

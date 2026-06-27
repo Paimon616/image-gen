@@ -88,6 +88,7 @@ export interface ControlNetConfig {
 export interface GeneratedImage {
   id: string;
   url: string;
+  thumbnailUrl?: string;
   params: GenerationParams | null;
   timestamp: number;
   filename: string;

@@ -1,6 +1,5 @@
 import { mkdir, writeFile } from "fs/promises";
 import { randomUUID } from "crypto";
-import { join } from "path";
 import { NextRequest } from "next/server";
 import {
   COMFYUI_BASE_URL,
@@ -16,8 +15,7 @@ import {
   normalizeImageDimension,
 } from "@/lib/types";
 import type { GenerationParams } from "@/lib/types";
-
-const OUTPUT_DIR = join(process.cwd(), "output");
+import { imageUrl, OUTPUT_DIR, thumbnailUrl } from "@/lib/server-images";
 
 interface ComfyWsMessage {
   type?: string;
@@ -53,9 +51,9 @@ async function saveBufferedImages({
       const id = randomUUID();
       const filename = `${id}.${extensionForContentType(img.contentType)}`;
 
-      await writeFile(join(OUTPUT_DIR, filename), img.buffer);
+      await writeFile(`${OUTPUT_DIR}/${filename}`, img.buffer);
       await writeFile(
-        join(OUTPUT_DIR, `${id}.json`),
+        `${OUTPUT_DIR}/${id}.json`,
         JSON.stringify(
           {
             id,
@@ -73,7 +71,8 @@ async function saveBufferedImages({
 
       return {
         id,
-        url: `/api/images/${filename}`,
+        url: imageUrl(filename),
+        thumbnailUrl: thumbnailUrl(filename),
         filename,
         params,
         timestamp: Date.now(),

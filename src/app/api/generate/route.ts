@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateWithComfyUI } from "@/lib/comfyui";
 import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
 import { randomUUID } from "crypto";
 import {
   getModelConfig,
@@ -9,8 +8,7 @@ import {
   normalizeImageDimension,
 } from "@/lib/types";
 import type { GenerationParams } from "@/lib/types";
-
-const OUTPUT_DIR = join(process.cwd(), "output");
+import { imageUrl, OUTPUT_DIR, thumbnailUrl } from "@/lib/server-images";
 
 async function ensureOutputDir() {
   await mkdir(OUTPUT_DIR, { recursive: true });
@@ -36,11 +34,11 @@ async function saveBufferedImages({
       const id = randomUUID();
       const filename = `${id}.${extensionForContentType(img.contentType)}`;
 
-      await writeFile(join(OUTPUT_DIR, filename), img.buffer);
+      await writeFile(`${OUTPUT_DIR}/${filename}`, img.buffer);
 
       const metaFilename = `${id}.json`;
       await writeFile(
-        join(OUTPUT_DIR, metaFilename),
+        `${OUTPUT_DIR}/${metaFilename}`,
         JSON.stringify(
           {
             id,
@@ -58,7 +56,8 @@ async function saveBufferedImages({
 
       return {
         id,
-        url: `/api/images/${filename}`,
+        url: imageUrl(filename),
+        thumbnailUrl: thumbnailUrl(filename),
         filename,
         params,
         timestamp: Date.now(),

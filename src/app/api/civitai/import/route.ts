@@ -692,12 +692,10 @@ export async function POST(req: NextRequest) {
   const data = (await response.json()) as { items?: CivitaiImageItem[] };
   const item = data.items?.[0];
   const itemForParsing: CivitaiImageItem = item ?? { id: imageReference.id };
-  const pageGenerationData = item?.meta
-    ? null
-    : await fetchGenerationDataFromPageOrigins(
-        imageReference.id,
-        imageReference.origin
-      );
+  const pageGenerationData = await fetchGenerationDataFromPageOrigins(
+    imageReference.id,
+    imageReference.origin
+  );
   if (pageGenerationData?.image) {
     itemForParsing.url = itemForParsing.url || pageGenerationData.image.url;
     itemForParsing.width = itemForParsing.width ?? pageGenerationData.image.width;

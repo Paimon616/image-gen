@@ -1825,5 +1825,35 @@
       "illustrtion",
       "style"
     ]
+  },
+  "checkpoints/oneObsession_v22.safetensors": {
+    "name": "One obsession",
+    "version": "v22",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/020d40da-0aa3-4d63-9ff5-8d51f1197693/original=true/133262346.jpeg",
+    "civitai_url": "https://civitai.red/models/1318945/one-obsession?modelVersionId=3016651",
+    "source_url": "https://civitai.red/models/1318945/one-obsession?modelVersionId=3016651",
+    "tags": [
+      "base model",
+      "one",
+      "anime",
+      "noob",
+      "one obsession",
+      "sdxl",
+      "obsession",
+      "my style"
+    ]
+  },
+  "checkpoints/riMixIllustriousAnima_riMixV2.safetensors": {
+    "name": "Ri-mix - [Illustrious + Anima]",
+    "version": "Ri-mix Ω v2",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/f1c966db-15c1-42a7-836a-57cea72b7984/original=true/125704533.jpeg",
+    "civitai_url": "https://civitai.red/models/996495/ri-mix-illustrious-anima?modelVersionId=2811854",
+    "source_url": "https://civitai.red/models/996495/ri-mix-illustrious-anima?modelVersionId=2811854",
+    "tags": [
+      "illustrtion",
+      "style"
+    ]
   }
 }
