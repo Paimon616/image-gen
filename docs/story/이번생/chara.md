@@ -1,6 +1,6 @@
 # 이번 생은 모두가 내 전 약혼자입니다 - 캐릭터 이미지 프롬프트
 
-원본: `docs/story/이번생.md`
+원본: `docs/story/이번생/이번생.md`
 
 ## 공통 스타일
 
@@ -37,7 +37,7 @@ adult woman, mysterious imperial honored guest, graceful noble lady with calm bu
 플레이어가 황후였고 제국이 멸망한 미래를 기억한다. 침착한 황태자지만 플레이어 앞에서는 감정을 숨기지 못한다.
 
 ```text
-adult man, imperial crown prince, regal and composed but emotionally shaken expression, golden blond hair neatly styled, deep crimson eyes, white and gold imperial military formal coat, black cape with red lining, ornate crown prince brooch, subtle imperial eagle motif, standing in a grand palace corridor, fractured golden clocklight behind him, restrained sorrow, possessive regret, noble authority, romantic fantasy male lead, upper body portrait, three-quarter view
+adult man, imperial crown prince, regal and composed with a faint gentle smile, golden blond hair neatly styled, deep crimson eyes, confident but tender gaze, white and gold imperial military formal coat, black cape with red lining, ornate crown prince brooch, subtle imperial eagle motif, standing in a grand palace corridor, warm golden clocklight behind him, elegant restraint, quiet longing, noble authority, romantic fantasy male lead, upper body portrait, three-quarter view
 ```
 
 ## 카엘 드 윈터 - 북부 대공
@@ -93,6 +93,5 @@ adult man, imperial physician and time memory researcher, intelligent and gentle
 ## 단체 이미지 프롬프트
 
 ```text
-masterpiece, best quality, romantic fantasy otome game key visual, one adult heroine at the center in an ivory rose dress, surrounded by seven adult male leads, imperial crown prince in white and gold, northern grand duke in black fur coat holding an old engagement ring, imperial knight commander in silver armor, remorseful ducal heir in cream and emerald, mysterious imperial mage in black violet robes, secretive information broker in burgundy and black, elegant imperial physician in white coat, EverBloom mansion grand hall, blooming flowers, fractured clock motifs, tense love triangle atmosphere, mystery regression fantasy, cinematic lighting, highly detailed, polished anime illustration, no text
+masterpiece, best quality, romantic fantasy otome game key visual, one adult heroine at the center in an ivory rose dress, surrounded by seven adult male leads, elegant imperial crown prince in white and gold with a calm gentle smile, northern grand duke in black fur coat holding an old engagement ring, imperial knight commander in silver armor, remorseful ducal heir in cream and emerald, mysterious imperial mage in black violet robes, secretive information broker in burgundy and black, elegant imperial physician in white coat, EverBloom mansion grand hall, blooming flowers, fractured clock motifs, tense romantic atmosphere, mystery regression fantasy, cinematic lighting, highly detailed, polished anime illustration, no text
 ```
-
