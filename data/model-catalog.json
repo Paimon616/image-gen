@@ -2029,5 +2029,81 @@
       "shiiro",
       "manga artist"
     ]
+  },
+  "loras/[Style filter] Xu Er thick paint composition light texture enhancement Illustrious.safetensors": {
+    "name": "[Style filter] Xu Er thick paint composition light texture enhancement",
+    "version": "Illustrious",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/1fb212a9-d954-497c-827b-da52fe006e89/original=true/51375361.jpeg",
+    "civitai_url": "https://civitai.red/models/768917/style-filter-xu-er-thick-paint-composition-light-texture-enhancement?modelVersionId=1278054",
+    "source_url": "https://civitai.red/models/768917/style-filter-xu-er-thick-paint-composition-light-texture-enhancement?modelVersionId=1278054",
+    "tags": [
+      "XUER guangying",
+      "anime",
+      "photorealistic",
+      "sexy",
+      "style",
+      "woman",
+      "game character",
+      "girls",
+      "realistic"
+    ]
+  },
+  "loras/MythicCraft_IL_(semi-real).safetensors": {
+    "name": "MythicCraft",
+    "version": "IL v2.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/8cb9c948-d126-4d9c-abf8-57e01954e29d/original=true/95446561.jpeg",
+    "civitai_url": "https://civitai.red/models/1840501/mythiccraft?modelVersionId=2132517",
+    "source_url": "https://civitai.red/models/1840501/mythiccraft?modelVersionId=2132517",
+    "tags": [
+      "anime",
+      "photorealistic",
+      "art",
+      "manga",
+      "style",
+      "paint",
+      "art style",
+      "woman",
+      "artist",
+      "artstyle",
+      "cartoon",
+      "male",
+      "man",
+      "realistic",
+      "semi-realistic",
+      "detail",
+      "nsfw",
+      "sfw",
+      "backgrounds",
+      "abstract painting",
+      "manga artist"
+    ]
+  },
+  "loras/ponyv3_ill01_2_adamW-000017.safetensors": {
+    "name": "Pony: People's Works v1-v6",
+    "version": "v3_illu0.1",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/fdfe1680-17fe-4f5d-b660-f98da4cdae9c/original=true/37972213.jpeg",
+    "civitai_url": "https://civitai.red/models/856285/pony-people-s-works-v1-v6?modelVersionId=1020899",
+    "source_url": "https://civitai.red/models/856285/pony-people-s-works-v1-v6?modelVersionId=1020899",
+    "tags": [
+      "style",
+      "anime"
+    ]
+  },
+  "checkpoints/riMixIllustriousAnima_riMix.safetensors": {
+    "name": "Ri-mix - [Illustrious + Anima]",
+    "version": "Ri-mix Ω",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/77b1f5c7-96a7-427d-9568-b1cbc750d104/original=true/83053151.jpeg",
+    "civitai_url": "https://civitai.red/models/996495/ri-mix-illustrious-anima?modelVersionId=1916444",
+    "source_url": "https://civitai.red/models/996495/ri-mix-illustrious-anima?modelVersionId=1916444",
+    "tags": [
+      "pos: masterwork, masterpiece, best quality, detailed, depth of field, high detail, very aesthetic",
+      "neg: lowres, worst quality, low quality, bad anatomy, bad hands",
+      "style",
+      "illustrtion"
+    ]
   }
 }
