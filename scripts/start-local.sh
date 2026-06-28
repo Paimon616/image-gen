@@ -200,8 +200,9 @@ wait_for_http() {
   local url="$2"
   local pid="${3:-}"
   local log_file="${4:-}"
+  local attempt
 
-  for _ in $(seq 1 120); do
+  for attempt in $(seq 1 120); do
     if curl -fsS --max-time 5 "$url" >/dev/null 2>&1; then
       echo "$name is responding at $url."
       return 0
@@ -214,6 +215,10 @@ wait_for_http() {
         tail -n 60 "$log_file" >&2
       fi
       exit 1
+    fi
+
+    if [ $((attempt % 10)) -eq 0 ]; then
+      echo "Still waiting for $name to finish compiling at $url..."
     fi
 
     sleep 1
@@ -244,6 +249,7 @@ start_image_gen() {
   local pid="$!"
   STARTED_PIDS+=("$pid")
   wait_for_port "Image Gen" "$IMAGE_GEN_PORT" "$pid" "$log_file"
+  echo "Image Gen is compiling the first page. The browser may show a loading state briefly."
   wait_for_http "Image Gen" "$IMAGE_GEN_URL" "$pid" "$log_file"
 }
 
