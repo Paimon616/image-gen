@@ -145,6 +145,21 @@ export async function readOriginalImage(filename: string) {
   };
 }
 
+export async function readImageMetadata(filename: string) {
+  if (!isValidImageFilename(filename)) {
+    return null;
+  }
+
+  const metadataPath = join(OUTPUT_DIR, filename.replace(/\.\w+$/, ".json"));
+  const buffer = await readFile(metadataPath).catch(() => null);
+
+  if (!buffer) {
+    return null;
+  }
+
+  return buffer;
+}
+
 export async function readOrCreateThumbnail(filename: string) {
   if (!isValidImageFilename(filename)) {
     return null;

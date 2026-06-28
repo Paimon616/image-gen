@@ -79,6 +79,14 @@ export function ImageViewer() {
   };
 
   const handleMetadataDownload = () => {
+    if (selectedImage.filename) {
+      const a = document.createElement("a");
+      a.href = `/api/images/${selectedImage.filename}/metadata`;
+      a.download = metadataDownloadFilename(selectedImage.filename);
+      a.click();
+      return;
+    }
+
     const metadata = {
       id: selectedImage.id,
       filename: selectedImage.filename,
