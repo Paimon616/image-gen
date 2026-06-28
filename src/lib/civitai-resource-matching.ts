@@ -3,6 +3,7 @@
   GenerationParams,
   ImportedCivitaiResource,
 } from "@/lib/types";
+import { civitaiUrlMatchesId } from "@/lib/civitai-url";
 
 export interface LocalModelAsset {
   path: string;
@@ -58,17 +59,7 @@ function assetUrls(asset: LocalModelAsset) {
 function urlMatchesCivitaiId(urls: string[], kind: "model" | "version", id: string) {
   if (!id) return false;
 
-  return urls.some((url) => {
-    if (kind === "model" && url.includes(`/models/${id}`)) return true;
-    if (kind === "version" && url.includes(`modelVersionId=${id}`)) return true;
-
-    try {
-      const parsed = new URL(url);
-      return kind === "version" && parsed.searchParams.get("modelVersionId") === id;
-    } catch {
-      return false;
-    }
-  });
+  return urls.some((url) => civitaiUrlMatchesId(url, kind, id));
 }
 
 function resourceMatchScore(asset: LocalModelAsset, resource: ImportedCivitaiResource) {

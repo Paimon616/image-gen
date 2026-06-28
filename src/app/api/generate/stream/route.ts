@@ -16,6 +16,7 @@ import {
 } from "@/lib/types";
 import type { GenerationParams } from "@/lib/types";
 import { imageUrl, OUTPUT_DIR, thumbnailUrl } from "@/lib/server-images";
+import { buildGenerationResources } from "@/lib/generation-resource-links";
 
 interface ComfyWsMessage {
   type?: string;
@@ -52,6 +53,9 @@ async function saveBufferedImages({
       const filename = `${id}.${extensionForContentType(img.contentType)}`;
 
       await writeFile(`${OUTPUT_DIR}/${filename}`, img.buffer);
+      const timestamp = Date.now();
+      const resources = await buildGenerationResources(params);
+
       await writeFile(
         `${OUTPUT_DIR}/${id}.json`,
         JSON.stringify(
@@ -59,8 +63,9 @@ async function saveBufferedImages({
             id,
             filename,
             params,
+            resources,
             endpoint,
-            timestamp: Date.now(),
+            timestamp,
             original_url: img.originalUrl,
             index: i,
           },
@@ -75,7 +80,7 @@ async function saveBufferedImages({
         thumbnailUrl: thumbnailUrl(filename),
         filename,
         params,
-        timestamp: Date.now(),
+        timestamp,
       };
     })
   );

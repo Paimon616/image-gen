@@ -151,6 +151,11 @@ export function CivitaiMissingResources({
         percent: 100,
         message: language === "ko" ? "완료" : "Complete",
       });
+      window.dispatchEvent(
+        new CustomEvent("local-models-changed", {
+          detail: { resource, path, metadata: event.metadata },
+        })
+      );
       onDownloaded?.(resource, path);
       setDownloadStatus(
         language === "ko"

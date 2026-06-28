@@ -9,6 +9,7 @@ import {
   type LocalModelsResponse,
   type MissingResource,
 } from "@/lib/civitai-resource-matching";
+import { civitaiUrlMatchesId, parseCivitaiUrlIds } from "@/lib/civitai-url";
 
 type ResourceType = ImportedCivitaiResource["type"];
 
@@ -26,6 +27,7 @@ const PARAM_KEYS = Object.keys(DEFAULT_PARAMS) as (keyof GenerationParams)[];
 export interface ParsedGenerationMetadata {
   params: GenerationParams;
   resources: ImportedCivitaiResource[];
+  hasExplicitResources: boolean;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -97,31 +99,28 @@ function normalizeResourceType(value: unknown): ResourceType {
 }
 
 function extractCivitaiIds(rawUrl: string) {
-  try {
-    const url = new URL(rawUrl);
-    const modelId = url.pathname.match(/\/models\/(\d+)/)?.[1];
-    const modelVersionId = url.searchParams.get("modelVersionId");
+  const ids = parseCivitaiUrlIds(rawUrl);
 
-    return {
-      modelId: modelId ? Number(modelId) : undefined,
-      modelVersionId: modelVersionId ? Number(modelVersionId) : undefined,
-    };
-  } catch {
-    return {};
-  }
+  return {
+    modelId: ids.modelId ? Number(ids.modelId) : undefined,
+    modelVersionId: ids.modelVersionId ? Number(ids.modelVersionId) : undefined,
+  };
 }
 
 function normalizeResource(value: unknown): ImportedCivitaiResource | null {
   if (!isRecord(value)) return null;
 
   const name =
+    stringValue(value.path) ||
     stringValue(value.name) ||
     stringValue(value.modelName) ||
-    stringValue(value.model_name) ||
-    stringValue(value.path);
+    stringValue(value.model_name);
   if (!name) return null;
 
-  const url = stringValue(value.url) || stringValue(value.civitai_url);
+  const url =
+    stringValue(value.url) ||
+    stringValue(value.civitai_url) ||
+    stringValue(value.source_url);
   const ids = extractCivitaiIds(url);
   const resource: ImportedCivitaiResource = {
     type: normalizeResourceType(value.type ?? value.modelType),
@@ -370,9 +369,10 @@ export function parseGenerationMetadataJson(rawJson: string): ParsedGenerationMe
 
   const params = normalizeParams(extractParamsRecord(parsed));
   const explicitResources = extractResources(parsed);
-  const resources = explicitResources.length > 0 ? explicitResources : resourcesFromParams(params);
+  const hasExplicitResources = explicitResources.length > 0;
+  const resources = hasExplicitResources ? explicitResources : resourcesFromParams(params);
 
-  return { params, resources };
+  return { params, resources, hasExplicitResources };
 }
 
 function normalizeToken(value: string) {
@@ -393,45 +393,66 @@ function modelAssets(models: LocalModelsResponse, type: ResourceType) {
   return [];
 }
 
-function assetMatchesResource(asset: LocalModelAsset, resource: ImportedCivitaiResource) {
+function assetResourceMatchScore(asset: LocalModelAsset, resource: ImportedCivitaiResource) {
+  const assetPath = normalizeToken(asset.path);
   const names = [asset.path, asset.name, asset.version ?? ""].map(normalizeToken);
   const targetName = normalizeToken(resource.name);
   const targetVersion = normalizeToken(resource.versionName ?? "");
+  const modelId = resource.modelId ? String(resource.modelId) : "";
   const versionId = resource.modelVersionId ? String(resource.modelVersionId) : "";
   const urls = [asset.civitai_url ?? "", asset.source_url ?? ""];
 
-  if (versionId && urls.some((url) => url.includes(`modelVersionId=${versionId}`))) {
-    return true;
+  if (targetName && assetPath === targetName) return 120;
+  if (versionId && urls.some((url) => civitaiUrlMatchesId(url, "version", versionId))) {
+    return 110;
   }
-  if (targetName && names.some((name) => name === targetName)) return true;
+
+  if (versionId || targetVersion) return 0;
+
+  if (modelId && urls.some((url) => civitaiUrlMatchesId(url, "model", modelId))) {
+    return 90;
+  }
+  if (targetName && names.some((name) => name === targetName)) return 80;
   if (
     targetName.length >= 8 &&
     names.some((name) => name.includes(targetName) || targetName.includes(name))
   ) {
-    return true;
-  }
-  if (targetName && targetVersion) {
-    return names.some((name) => name === `${targetName}${targetVersion}`);
+    return 40;
   }
 
-  return false;
+  return 0;
 }
 
 function findMatchingAsset(
   models: LocalModelsResponse,
   resource: ImportedCivitaiResource
 ) {
-  return modelAssets(models, resource.type).find((asset) =>
-    assetMatchesResource(asset, resource)
-  );
+  const ranked = modelAssets(models, resource.type)
+    .map((asset) => ({ asset, score: assetResourceMatchScore(asset, resource) }))
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  return ranked[0]?.asset;
 }
 
 export function reconcileMetadataResources(
   parsed: ParsedGenerationMetadata,
   models: LocalModelsResponse
 ) {
-  const params: GenerationParams = { ...parsed.params };
+  const params: GenerationParams = parsed.hasExplicitResources
+    ? { ...parsed.params, loras: [], embeddings: [] }
+    : { ...parsed.params };
   const missing: MissingResource[] = [];
+  let matchedCheckpoint = false;
+  let matchedVae = false;
+  let matchedUpscaler = false;
+  const importedCheckpoint = parsed.resources.some(
+    (resource) => resource.type === "checkpoint"
+  );
+  const importedVae = parsed.resources.some((resource) => resource.type === "vae");
+  const importedUpscaler = parsed.resources.some(
+    (resource) => resource.type === "upscaler"
+  );
 
   parsed.resources.forEach((resource) => {
     if (resource.type === "other") return;
@@ -442,25 +463,43 @@ export function reconcileMetadataResources(
       return;
     }
 
-    if (resource.type === "checkpoint") params.model_name = match.path;
+    if (resource.type === "checkpoint") {
+      params.model_name = match.path;
+      matchedCheckpoint = true;
+    }
     if (resource.type === "lora") {
       params.loras = [
-        ...params.loras.filter((lora) => lora.path !== resource.name),
+        ...params.loras.filter((lora) => lora.path !== match.path),
         {
           path: match.path,
-          scale: resource.weight ?? params.loras.find((lora) => lora.path === resource.name)?.scale ?? 0.8,
+          scale:
+            resource.weight ??
+            parsed.params.loras.find((lora) => lora.path === resource.name)?.scale ??
+            0.8,
         },
       ];
     }
     if (resource.type === "embedding") {
       params.embeddings = [
-        ...params.embeddings.filter((embedding) => embedding.path !== resource.name),
+        ...params.embeddings.filter((embedding) => embedding.path !== match.path),
         { path: match.path, tokens: resource.name },
       ];
     }
-    if (resource.type === "vae") params.vae_name = match.path;
-    if (resource.type === "upscaler") params.upscale_model_name = match.path;
+    if (resource.type === "vae") {
+      params.vae_name = match.path;
+      matchedVae = true;
+    }
+    if (resource.type === "upscaler") {
+      params.upscale_model_name = match.path;
+      matchedUpscaler = true;
+    }
   });
+
+  if (parsed.hasExplicitResources) {
+    if (importedCheckpoint && !matchedCheckpoint) params.model_name = "";
+    if (importedVae && !matchedVae) params.vae_name = "";
+    if (importedUpscaler && !matchedUpscaler) params.upscale_model_name = "";
+  }
 
   return { params, missing };
 }

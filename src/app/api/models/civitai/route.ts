@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { parseCivitaiUrlIds } from "@/lib/civitai-url";
 
 interface CivitaiModelVersion {
   id: number;
@@ -30,8 +31,7 @@ function parseCivitaiUrl(rawUrl: string) {
     throw new Error("URL must be from civitai.com or civitai.red");
   }
 
-  const modelId = url.pathname.match(/\/models\/(\d+)/)?.[1];
-  const modelVersionId = url.searchParams.get("modelVersionId");
+  const { modelId, modelVersionId } = parseCivitaiUrlIds(rawUrl);
 
   if (!modelId) {
     throw new Error("Civitai model ID was not found in the URL");

@@ -2,6 +2,7 @@ import { mkdir, open, readFile, rename, stat, unlink, writeFile } from "fs/promi
 import { basename, join, normalize } from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { COMFYUI_MODELS_DIR } from "@/lib/comfyui-model-files";
+import { normalizeCivitaiModelUrl, parseCivitaiUrlIds } from "@/lib/civitai-url";
 import type { ImportedCivitaiResource } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -148,11 +149,7 @@ function downloadOrigin(resourceUrl: string) {
 function modelIdFromResource(resource: ImportedCivitaiResource) {
   if (resource.modelId) return String(resource.modelId);
 
-  try {
-    return new URL(resource.url).pathname.match(/\/models\/(\d+)/)?.[1] ?? null;
-  } catch {
-    return null;
-  }
+  return parseCivitaiUrlIds(resource.url).modelId ?? null;
 }
 
 async function readCatalog() {
@@ -215,16 +212,28 @@ async function updateCatalog(
 ) {
   const catalog = await readCatalog();
   const loadedMetadata = await fetchCivitaiMetadata(resource).catch(() => null);
+  const civitaiUrl = normalizeCivitaiModelUrl({
+    modelId: resource.modelId,
+    modelVersionId: resource.modelVersionId,
+    name: loadedMetadata?.name ?? resource.name,
+    fallbackUrl: resource.url,
+  });
 
-  catalog[`${folder}/${filename}`] = loadedMetadata ?? {
-    name: resource.name,
-    version: resource.versionName ?? "",
-    base_model: resource.baseModel ?? "",
-    thumbnail_url: null,
-    civitai_url: resource.url,
-    source_url: resource.url,
-    tags: [],
-  };
+  catalog[`${folder}/${filename}`] = loadedMetadata
+    ? {
+        ...loadedMetadata,
+        civitai_url: civitaiUrl || loadedMetadata.civitai_url,
+        source_url: civitaiUrl || loadedMetadata.source_url,
+      }
+    : {
+        name: resource.name,
+        version: resource.versionName ?? "",
+        base_model: resource.baseModel ?? "",
+        thumbnail_url: null,
+        civitai_url: civitaiUrl || resource.url,
+        source_url: civitaiUrl || resource.url,
+        tags: [],
+      };
   await writeCatalog(catalog);
 
   return catalog[`${folder}/${filename}`];

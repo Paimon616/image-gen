@@ -318,6 +318,14 @@ export function ModelSelector() {
     refreshLocalModels();
   }, [refreshLocalModels]);
 
+  useEffect(() => {
+    window.addEventListener("local-models-changed", refreshLocalModels);
+
+    return () => {
+      window.removeEventListener("local-models-changed", refreshLocalModels);
+    };
+  }, [refreshLocalModels]);
+
   const addEmptyLora = () => {
     setParams({ loras: [...params.loras, { path: "", scale: 0.8 }] });
   };

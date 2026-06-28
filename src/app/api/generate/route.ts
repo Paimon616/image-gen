@@ -9,6 +9,7 @@ import {
 } from "@/lib/types";
 import type { GenerationParams } from "@/lib/types";
 import { imageUrl, OUTPUT_DIR, thumbnailUrl } from "@/lib/server-images";
+import { buildGenerationResources } from "@/lib/generation-resource-links";
 
 async function ensureOutputDir() {
   await mkdir(OUTPUT_DIR, { recursive: true });
@@ -37,6 +38,9 @@ async function saveBufferedImages({
       await writeFile(`${OUTPUT_DIR}/${filename}`, img.buffer);
 
       const metaFilename = `${id}.json`;
+      const timestamp = Date.now();
+      const resources = await buildGenerationResources(params);
+
       await writeFile(
         `${OUTPUT_DIR}/${metaFilename}`,
         JSON.stringify(
@@ -44,8 +48,9 @@ async function saveBufferedImages({
             id,
             filename,
             params,
+            resources,
             endpoint,
-            timestamp: Date.now(),
+            timestamp,
             original_url: img.originalUrl,
             index: i,
           },
@@ -60,7 +65,7 @@ async function saveBufferedImages({
         thumbnailUrl: thumbnailUrl(filename),
         filename,
         params,
-        timestamp: Date.now(),
+        timestamp,
       };
     })
   );
