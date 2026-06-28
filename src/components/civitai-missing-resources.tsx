@@ -24,7 +24,7 @@ interface DownloadProgress {
 interface CivitaiMissingResourcesProps {
   resources: MissingResource[];
   language?: "ko" | "en";
-  onDownloaded?: (resource: MissingResource) => void;
+  onDownloaded?: (resource: MissingResource, path: string) => void;
 }
 
 function missingResourceKey(resource: MissingResource, index: number) {
@@ -140,15 +140,22 @@ export function CivitaiMissingResources({
     }
 
     if (event.type === "complete") {
+      const path =
+        typeof event.filename === "string"
+          ? event.filename
+          : typeof event.path === "string"
+            ? event.path
+            : "";
+
       updateProgress(key, {
         percent: 100,
         message: language === "ko" ? "완료" : "Complete",
       });
-      onDownloaded?.(resource);
+      onDownloaded?.(resource, path);
       setDownloadStatus(
         language === "ko"
-          ? `다운로드 완료: ${String(event.path ?? resource.name)}`
-          : `Downloaded: ${String(event.path ?? resource.name)}`
+          ? `다운로드 완료: ${path || resource.name}`
+          : `Downloaded: ${path || resource.name}`
       );
       return;
     }

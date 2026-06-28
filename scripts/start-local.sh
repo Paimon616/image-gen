@@ -218,7 +218,7 @@ wait_for_http() {
     fi
 
     if [ $((attempt % 10)) -eq 0 ]; then
-      echo "Still waiting for $name to finish compiling at $url..."
+      echo "Still waiting for $name to respond at $url..."
     fi
 
     sleep 1
@@ -232,6 +232,14 @@ wait_for_http() {
   exit 1
 }
 
+build_image_gen() {
+  echo "Building Image Gen for local launch..."
+  (
+    cd "$ROOT_DIR"
+    npm run build
+  )
+}
+
 start_image_gen() {
   local log_file="$LOG_DIR/image-gen.log"
 
@@ -240,16 +248,15 @@ start_image_gen() {
 
   : >"$log_file"
 
-  echo "Starting Image Gen dev server..."
+  echo "Starting Image Gen server..."
   (
     cd "$ROOT_DIR"
-    npm run dev -- --hostname "$IMAGE_GEN_HOST" --port "$IMAGE_GEN_PORT"
+    npm run start -- --hostname "$IMAGE_GEN_HOST" --port "$IMAGE_GEN_PORT"
   ) >"$log_file" 2>&1 &
 
   local pid="$!"
   STARTED_PIDS+=("$pid")
   wait_for_port "Image Gen" "$IMAGE_GEN_PORT" "$pid" "$log_file"
-  echo "Image Gen is compiling the first page. The browser may show a loading state briefly."
   wait_for_http "Image Gen" "$IMAGE_GEN_URL" "$pid" "$log_file"
 }
 
@@ -285,6 +292,8 @@ kill_managed_ports
 # Truncate old logs so the current run is easy to read.
 : >"$LOG_DIR/comfyui.log" 2>/dev/null || true
 : >"$LOG_DIR/image-gen.log" 2>/dev/null || true
+
+build_image_gen
 
 start_service "ComfyUI" "$COMFYUI_PORT" "$LOG_DIR/comfyui.log" npm run comfyui
 

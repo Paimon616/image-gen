@@ -187,6 +187,7 @@ export function reconcileImportedParams(
   const missing: MissingResource[] = [];
   const matchedLoras: GenerationParams["loras"] = [];
   const matchedEmbeddings: GenerationParams["embeddings"] = [];
+  let matchedCheckpoint = false;
 
   imported.resources.forEach((resource) => {
     if (resource.type === "other") return;
@@ -203,6 +204,7 @@ export function reconcileImportedParams(
 
     if (resource.type === "checkpoint") {
       matched.model_name = match.path;
+      matchedCheckpoint = true;
     }
 
     if (resource.type === "lora") {
@@ -237,8 +239,11 @@ export function reconcileImportedParams(
   );
   const importedGenerationMetadata = imported.metadataHidden !== true;
 
-  if (importedCheckpoint && !matched.model_name) {
-    matched.model_name = currentParams.model_name;
+  if (!Object.hasOwn(imported.params, "prompt")) {
+    matched.prompt = "";
+  }
+  if (importedCheckpoint && !matchedCheckpoint) {
+    matched.model_name = "";
   }
   if (importedVae && !matched.vae_name) {
     matched.vae_name = currentParams.vae_name;
@@ -263,4 +268,3 @@ export function reconcileImportedParams(
 
   return { matched, missing };
 }
-

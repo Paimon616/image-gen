@@ -16,6 +16,19 @@ import { Label } from "@/components/ui/label";
 
 const CIVITAI_IMAGES_URL = "https://civitai.red/images";
 
+function localResourcePath(resource: MissingResource, path: string) {
+  const trimmed = path.trim();
+
+  if (resource.type === "checkpoint") {
+    return trimmed.replace(/^checkpoints\//, "");
+  }
+  if (resource.type === "lora") {
+    return trimmed.replace(/^loras\//, "");
+  }
+
+  return trimmed;
+}
+
 function importStatusText(
   options: { metadataHidden: boolean; missingCount: number },
   language: "ko" | "en"
@@ -163,7 +176,27 @@ export function CivitaiImport() {
       <CivitaiMissingResources
         resources={missingResources}
         language={language}
-        onDownloaded={(resource) => {
+        onDownloaded={(resource, downloadedPath) => {
+          const path = localResourcePath(resource, downloadedPath);
+
+          if (path && resource.type === "checkpoint") {
+            setParams({ model_name: path });
+          }
+          if (path && resource.type === "lora") {
+            const currentLoras = useStore.getState().params.loras;
+            const nextLora = {
+              path,
+              scale: resource.weight ?? 0.8,
+            };
+
+            setParams({
+              loras: [
+                ...currentLoras.filter((lora) => lora.path !== path),
+                nextLora,
+              ],
+            });
+          }
+
           setMissingResources((current) =>
             current.filter(
               (item) =>
