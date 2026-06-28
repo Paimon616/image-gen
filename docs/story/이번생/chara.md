@@ -53,7 +53,13 @@ adult man, northern grand duke, cold and solemn presence, long dark blue black h
 플레이어를 끝까지 호위했고 자신은 죽었으며 플레이어만 살아남은 미래를 기억한다. 보호를 사명으로 여긴다.
 
 ```text
-adult man, imperial knight commander, loyal and resolute expression, short chestnut brown hair, warm amber eyes, athletic build, polished silver armor mixed with formal navy knight uniform, red imperial sash, sword held upright in a knightly oath pose, kneeling or standing before soft palace light, scar near eyebrow, solemn devotion, guardian energy, romantic fantasy knight, upper body portrait, three-quarter view
+single adult man, imperial knight commander, visible handsome face, no helmet, loyal and resolute expression with a calm protective gaze, short chestnut brown hair, warm amber eyes, athletic build, navy imperial commander uniform with polished silver shoulder armor and breastplate accents, red imperial sash, sword sheathed at his waist, one hand resting over his heart in a formal knightly oath, standing upright before soft palace light, scar near eyebrow, solemn devotion, refined guardian presence, romantic fantasy knight captain, upper body portrait, three-quarter view, clean single character composition
+```
+
+### 레온 전용 Negative Prompt
+
+```text
+helmet, full face helmet, faceless armor, giant armor, oversized knight behind character, second person, child, kneeling child, multiple characters, mecha armor, bulky full plate armor, flaming halo, throne pose, sitting pose
 ```
 
 ## 에이드리언 블랑슈 - 공작가 후계자
@@ -93,5 +99,5 @@ adult man, imperial physician and time memory researcher, intelligent and gentle
 ## 단체 이미지 프롬프트
 
 ```text
-masterpiece, best quality, romantic fantasy otome game key visual, one adult heroine at the center in an ivory rose dress, surrounded by seven adult male leads, elegant imperial crown prince in white and gold with a calm gentle smile, northern grand duke in black fur coat holding an old engagement ring, imperial knight commander in silver armor, remorseful ducal heir in cream and emerald, mysterious imperial mage in black violet robes, secretive information broker in burgundy and black, elegant imperial physician in white coat, EverBloom mansion grand hall, blooming flowers, fractured clock motifs, tense romantic atmosphere, mystery regression fantasy, cinematic lighting, highly detailed, polished anime illustration, no text
+masterpiece, best quality, romantic fantasy otome game key visual, one adult heroine at the center in an ivory rose dress, surrounded by seven adult male leads, elegant imperial crown prince in white and gold with a calm gentle smile, northern grand duke in black fur coat holding an old engagement ring, imperial knight commander in navy formal uniform with light silver armor accents and visible face, remorseful ducal heir in cream and emerald, mysterious imperial mage in black violet robes, secretive information broker in burgundy and black, elegant imperial physician in white coat, EverBloom mansion grand hall, blooming flowers, fractured clock motifs, tense romantic atmosphere, mystery regression fantasy, cinematic lighting, highly detailed, polished anime illustration, no text
 ```
