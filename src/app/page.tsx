@@ -17,6 +17,7 @@ import { ImageUpload } from "@/components/image-upload";
 import { GenerationParams } from "@/components/generation-params";
 import { ModelSelector } from "@/components/model-selector";
 import { CivitaiImport } from "@/components/civitai-import";
+import { MetadataImport } from "@/components/metadata-import";
 import { Gallery } from "@/components/gallery";
 import { ImageViewer } from "@/components/image-viewer";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -459,6 +460,8 @@ export default function Home() {
           <ModelSelector />
 
           <CivitaiImport />
+
+          <MetadataImport />
 
           <Separator />
 
