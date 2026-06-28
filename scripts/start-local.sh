@@ -230,18 +230,15 @@ wait_for_http() {
 start_image_gen() {
   local log_file="$LOG_DIR/image-gen.log"
 
-  # Make sure nothing is squatting the Image Gen port before we even build.
+  # Make sure nothing is squatting the Image Gen port before launch.
   kill_port "$IMAGE_GEN_PORT" "Image Gen" || exit 1
-
-  echo "Building Image Gen for local launch..."
-  (cd "$ROOT_DIR" && npm run build)
 
   : >"$log_file"
 
-  echo "Starting Image Gen..."
+  echo "Starting Image Gen dev server..."
   (
     cd "$ROOT_DIR"
-    npm run start -- --hostname "$IMAGE_GEN_HOST" --port "$IMAGE_GEN_PORT"
+    npm run dev -- --hostname "$IMAGE_GEN_HOST" --port "$IMAGE_GEN_PORT"
   ) >"$log_file" 2>&1 &
 
   local pid="$!"

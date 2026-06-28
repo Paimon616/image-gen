@@ -70,7 +70,7 @@ Run `npm run setup:git-merge` once per clone so git can use that merge driver.
 
 ## Run
 
-On macOS, double-click `Launch Image Gen.command` from Finder. It starts ComfyUI and the Next.js app, then opens `http://localhost:3100`.
+On macOS, double-click `Launch Image Gen.command` from Finder. It starts ComfyUI and the Next.js app, then opens `http://localhost:5353`.
 
 On Windows, double-click `Launch Image Gen.bat`. It runs the same local launcher through PowerShell.
 
@@ -101,10 +101,10 @@ npm run comfyui:win
 Start the Next.js app in another terminal:
 
 ```bash
-npm run dev -- --port 3100
+npm run dev -- --port 5353
 ```
 
-Open `http://localhost:3100`.
+Open `http://localhost:5353`.
 
 By default the app connects to `http://127.0.0.1:8188` and reads models from `ComfyUI/models`. Copy `.env.example` to `.env.local` if you need to override those paths.
 

@@ -310,21 +310,13 @@ function Wait-ForHttp {
 function Start-ImageGen {
   $NpmCommand = Ensure-Npm
 
-  Write-Host "Building Image Gen for local launch..."
-  Push-Location $RootDir
-  try {
-    & $NpmCommand run build
-  } finally {
-    Pop-Location
-  }
-
   $StdOutLog = Join-Path $LogDir "image-gen.out.log"
   $StdErrLog = Join-Path $LogDir "image-gen.err.log"
 
-  Write-Host "Starting Image Gen..."
+  Write-Host "Starting Image Gen dev server..."
   $Process = Start-Process `
     -FilePath $NpmCommand `
-    -ArgumentList @("run", "start", "--", "--hostname", $ImageGenHost, "--port", [string]$ImageGenPort) `
+    -ArgumentList @("run", "dev", "--", "--hostname", $ImageGenHost, "--port", [string]$ImageGenPort) `
     -WorkingDirectory $RootDir `
     -RedirectStandardOutput $StdOutLog `
     -RedirectStandardError $StdErrLog `
