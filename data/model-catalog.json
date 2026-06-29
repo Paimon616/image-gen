@@ -2210,5 +2210,54 @@
       "semi-real",
       "dramatic lighting"
     ]
+  },
+  "loras/SDXL_Hanbok_LoRA_beta7.safetensors": {
+    "name": "Hanbok_Woman_XL Korean traditional clothes",
+    "version": "beta7",
+    "base_model": "SDXL 1.0",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/77a37bca-1967-41af-8782-cc14a8ba4d94/original=true/4603288.jpeg",
+    "civitai_url": "https://civitai.red/models/185244/hanbok-woman-xl-korean-traditional-clothes?modelVersionId=263344",
+    "source_url": "https://civitai.red/models/185244/hanbok-woman-xl-korean-traditional-clothes?modelVersionId=263344",
+    "tags": [
+      "hanbok",
+      "anime",
+      "female",
+      "woman",
+      "clothing",
+      "girls",
+      "realistic"
+    ]
+  },
+  "loras/Hanbok-V2.safetensors": {
+    "name": "Hanbok",
+    "version": "v2.0",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/b7e68d0e-ffa5-4260-949c-1434427532cd/original=true/7213864.jpeg",
+    "civitai_url": "https://civitai.red/models/223206/hanbok?modelVersionId=365088",
+    "source_url": "https://civitai.red/models/223206/hanbok?modelVersionId=365088",
+    "tags": [
+      "hanbok",
+      "clothing",
+      "korean",
+      "korean clothes"
+    ]
+  },
+  "checkpoints/oneObsession_15Noobai.safetensors": {
+    "name": "One obsession",
+    "version": "15_NoobAI",
+    "base_model": "NoobAI",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/6f3988b5-08e4-4d58-8727-5b8f73545abc/original=true/86154217.jpeg",
+    "civitai_url": "https://civitai.red/models/1318945/one-obsession?modelVersionId=1972020",
+    "source_url": "https://civitai.red/models/1318945/one-obsession?modelVersionId=1972020",
+    "tags": [
+      "anime",
+      "base model",
+      "one",
+      "noob",
+      "sdxl",
+      "obsession",
+      "my style",
+      "one obsession"
+    ]
   }
 }
