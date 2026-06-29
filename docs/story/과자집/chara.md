@@ -220,36 +220,35 @@ watermark, text, logo, signature
 
 ### 외형 설정
 
-- 헤어스타일: pale mint lavender hair, 어깨에 닿지 않는 soft layered bob, 바깥으로 말리는 끝머리, 얇은 braid 한 줄
-- 악세사리: 작은 꽃관이 아니라 한쪽 귀 뒤의 생화 장식, 라벤더 리본, 말린 꽃 펜던트
-- 의상: 세이지 그린 cropped vest, 크림색 blouse, 꽃 자수 apron, 넓은 소매, 부드러운 botanical style
-- 분위기: 맑고 섬세함, 계절 꽃의 향기, 약간 수줍지만 밝음
-- 차별점: 가장 중성적이고 부드러운 실루엣, 꽃과 리본이 많음
+- 헤어스타일: pale sage green hair, 짧은 textured crop, 자연스럽게 헝클어진 앞머리, 귀와 목선이 드러나는 남성형 짧은 머리
+- 악세사리: 말린 꽃 펜던트, 작은 brass leaf pin, 앞치마 벨트에 꽂은 꽃가위, 손목의 얇은 leather cord
+- 의상: 크림색 band collar shirt, 세이지 그린 canvas florist vest, 카키색 utility apron, 꽃가위 holster, 작은 작업용 포켓
+- 분위기: 맑고 섬세하지만 실무적인 플로리스트, 손님에게 꽃을 골라주는 온화한 청년
+- 차별점: 짧은 머리와 작업복 실루엣으로 남성 플로리스트처럼 보이게 함, 리본과 보브컷을 쓰지 않음
 
 ### Prompt
 
 ```text
 masterpiece, best quality, absurdres,
 1boy, solo, male focus,
-androgynous young florist, delicate flower arranger, romantic botanical mood,
+young male florist, gentle flower shop artisan, practical botanical cafe mood,
 
 distinct character design,
-pale mint lavender hair, soft layered bob haircut,
-outward curled hair ends, one thin side braid,
-airy translucent hair silhouette, small flower tucked behind one ear,
-clear violet eyes, soft round eyes, small delicate face,
-shy bright smile, tender expression, gentle welcoming gaze,
+pale sage green hair, short textured crop haircut,
+messy natural bangs, exposed ears, visible nape, masculine short hair silhouette,
+clear violet eyes, gentle eyes, slim youthful male face,
+fresh bright smile, tender expression, calm welcoming gaze,
 
-lavender ribbon, dried flower pendant, tiny floral brooch,
-cream blouse with wide sleeves, sage green cropped vest,
-floral embroidered apron, soft botanical cafe outfit,
-light fabric, ribbon details, pastel accent colors,
+brass leaf pin, dried flower pendant, thin leather cord bracelet,
+cream band collar shirt, sage green canvas florist vest,
+khaki utility apron, apron belt, pruning shears holster,
+small work pockets, practical florist workwear, clean botanical uniform,
 
-holding a seasonal bouquet close to his chest,
-lavender flowers, pale roses, small wildflowers, satin ribbon,
-flower basket, tiny flower scissors, fresh petals,
+holding a hand-tied seasonal bouquet at waist level,
+lavender flowers, pale roses, small wildflowers, kraft paper wrap,
+twine string, flower basket on the counter, pruning shears, fresh petals,
 
-slightly tilted head, careful delicate pose,
+standing upright, relaxed professional pose, one hand adjusting flower stems,
 luxury dessert cafe decorated with flowers,
 dark green walls, wooden furniture, window light,
 warm golden lighting, cozy glow, soft bokeh,
@@ -263,6 +262,9 @@ soft shading, beautiful lighting, depth of field
 ```text
 1girl, female, woman,
 old man, beard, mustache, muscular body,
+long hair, bob haircut, twin braids, side braid, braided pigtails,
+hair ribbon, big ribbon, flower crown, lace blouse, frilly blouse,
+dress, skirt, puff sleeves, wide flowing sleeves,
 black hair, silver hair, dark brown hair, slick back hair,
 sharp masculine face, rugged face, stern mature face,
 angry expression, frown, scowl, gloomy face, cold stare,
@@ -416,7 +418,7 @@ six distinct male cafe staff members, each character has a different silhouette,
 calm dark brown side-parted chocolatier with gold cacao brooch,
 playful strawberry blond fluffy pastry chef with red neckerchief,
 mature ash gray tea sommelier with silver rim glasses and navy long vest,
-androgynous mint lavender florist with side braid and flower accessory,
+young sage green short-haired male florist with canvas vest and pruning shears,
 stoic black wolf-cut barista with copper ear cuff and leather apron,
 polished platinum silver undercut hall manager with rectangular glasses and reservation book,
 
