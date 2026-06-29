@@ -59,6 +59,78 @@ sci-fi, cyberpunk, school uniform, child, underage,
 overly revealing clothes, excessive gore, horror
 ```
 
+## 복식 프롬프트 사전
+
+계급과 직책이 중요한 컷에서는 `hanbok`만 쓰지 말고 아래 구문을 prompt 앞쪽에 붙인다. 모델이 한복을 뭉뚱그려 그릴 때는 의복명, 색, 관모, 흉배/용보, 허리띠, 신발 순서로 반복하면 안정적이다.
+
+### 국왕 어진복
+
+왕의 공식 초상화나 국왕 알현 장면에 사용한다.
+
+```text
+Joseon king official portrait attire, ikseongwan black winged royal crown,
+deep scarlet red gonryongpo royal dragon robe, round collar robe,
+large golden five-clawed dragon roundels on chest, back, and both shoulders,
+gold embroidered clouds, jade belt, black royal boots,
+wide formal sleeves, dignified king's official robe, royal portrait costume
+```
+
+### 왕세자 상복
+
+이도 기본 prompt에 사용한다. 왕과 구분하려면 붉은색보다 `아청색`, `흑청색`, `dark blue black`을 앞에 둔다.
+
+```text
+Joseon crown prince official attire, ikseongwan black winged crown,
+dark blue black acheong gonryongpo crown prince dragon robe,
+round collar robe, four-clawed dragon roundels on chest, back, and both shoulders,
+subtle gold embroidery, jade belt, black boots,
+wide formal sleeves, restrained heir's ceremonial robe
+```
+
+### 문관 관복
+
+윤서진, 최연우처럼 규장각과 홍문관 계열 인물에 사용한다.
+
+```text
+Joseon civil official scholar attire, samo black official hat,
+dark blue or teal danryeong official robe, white collar,
+embroidered rank badge on chest, slim silk belt,
+formal scholar-official silhouette, clean restrained sleeves
+```
+
+### 무관 복식
+
+강무진처럼 왕실 호위 무관에 사용한다.
+
+```text
+Joseon military officer attire, dark navy cheollik robe,
+leather waist belt, wrist guards, subtle shoulder armor pieces,
+red inner sleeve lining, royal guard badge, sheathed hwando sword,
+practical martial hanbok silhouette, strong straight sleeves
+```
+
+### 내의원 의원복
+
+서하진처럼 의학 계열 인물에 사용한다.
+
+```text
+Joseon royal physician attire, clean white jeogori,
+pale jade green durumagi, medicinal leaf embroidery,
+Naeuiwon belt, herbal pouch, silver acupuncture needle case,
+wide clean sleeves, gentle medical court hanbok
+```
+
+### 도화서 화원복
+
+플레이어와 한시온처럼 화원 계열 인물에 사용한다.
+
+```text
+Joseon royal painter attire, refined practical artist hanbok,
+ivory jeogori, pale colored baeja or durumagi,
+paint-stained handkerchief, brush ornament, pigment box,
+brushstroke embroidery on sleeve cuffs, elegant atelier workwear
+```
+
 ---
 
 ## 플레이어 - 황실 전속 화가
@@ -123,11 +195,11 @@ text, watermark, logo, signature
 ### 외형 설정
 
 - 헤어스타일: 윤기 있는 흑발, 단정한 상투, 왕세자용 익선관, 흐트러짐 없는 왕실 실루엣
-- 악세사리: 옥잠, 금실 흉배 장식, 붉은 허리띠, 왕세자 인장 끈
-- 의상: 깊은 홍색 곤룡포풍 한복, 금룡 자수, 검은 동정, 넓고 무거운 소매
+- 악세사리: 옥잠, 사조룡 원보 장식, 옥대, 왕세자 인장 끈
+- 의상: 아청색 또는 흑청색 왕세자 곤룡포, 둥근 깃, 사조룡 원보, 검은 동정, 넓고 무거운 소매
 - 소품: 초상화 모델용 옥좌, 반쯤 접힌 교서, 아직 쓰지 않은 왕관 받침
 - 분위기: 완벽한 차기 군주와 불안한 청년이 공존. 플레이어 앞에서만 미세하게 긴장을 푼 표정
-- 차별점: 가장 왕실적이며 붉은색과 금룡 자수가 중심
+- 차별점: 국왕의 대홍색 곤룡포와 구분되는 아청색 세자복. 사조룡 원보와 옥대가 핵심
 
 ### Positive Prompt
 
@@ -138,6 +210,10 @@ masterpiece, best quality, amazing quality, absurdres,
 crown prince of a powerful alternate Joseon empire,
 perfect royal heir sitting for an official portrait,
 composed in public, quietly vulnerable before the painter,
+Joseon crown prince official attire, ikseongwan black winged crown,
+dark blue black acheong gonryongpo crown prince dragon robe,
+round collar robe, four-clawed dragon roundels on chest, back, and both shoulders,
+subtle gold embroidery, jade belt, black boots,
 
 distinct character design,
 glossy black hair in neat sangtu topknot, small royal ikseongwan,
@@ -145,9 +221,9 @@ jade hairpin, clean noble hairline, deep warm brown eyes,
 handsome calm face, restrained anxiety beneath a gentle expression,
 softened gaze that only the painter can see,
 
-deep crimson royal hanbok, crown prince gonryongpo inspired robe,
-gold dragon embroidery on chest roundel, black collar trim,
-wide formal sleeves, red silk belt, jade royal ornament,
+dark blue black royal hanbok, crown prince gonryongpo robe,
+gold four-clawed dragon embroidery on round chest badge,
+black collar trim, wide formal sleeves, jade royal ornament,
 layered ceremonial silk, dignified palace clothing,
 
 seated beside a low royal portrait chair,
@@ -518,7 +594,7 @@ the first imperial court painter at the center holding an unfinished portrait al
 seven adult male leads around her as portrait models,
 all wearing distinct richly detailed hanbok,
 
-vulnerable crown prince in deep crimson dragon embroidered royal robe,
+vulnerable crown prince in dark blue black acheong gonryongpo with four-clawed dragon roundels,
 stoic royal guard commander in dark navy cheollik without armor,
 cool Gyujanggak reformist scholar in blue white dopo,
 gentle Naeuiwon physician in white and pale jade medical hanbok,
