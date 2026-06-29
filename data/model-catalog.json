@@ -1919,9 +1919,10 @@
     "civitai_url": "https://civitai.red/models/176554/usnr-style?modelVersionId=1552087",
     "source_url": "https://civitai.red/models/176554/usnr-style?modelVersionId=1552087",
     "tags": [
+      "usnr",
       "anime",
-      "girls",
-      "style"
+      "style",
+      "girls"
     ]
   },
   "loras/vcalicia-anima-nvwls-v1.safetensors": {
@@ -2104,6 +2105,110 @@
       "neg: lowres, worst quality, low quality, bad anatomy, bad hands",
       "style",
       "illustrtion"
+    ]
+  },
+  "loras/748cmSDXL.safetensors": {
+    "name": "748cm | Style for Illustrious/NoobAI 0.75",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/f3227aa2-66d4-40c0-b3ba-c3d9fc056c2a/original=true/39840876.jpeg",
+    "civitai_url": "https://civitai.red/models/943607/748cm-style-for-illustrious-noobai-0-75?modelVersionId=1056404",
+    "source_url": "https://civitai.red/models/943607/748cm-style-for-illustrious-noobai-0-75?modelVersionId=1056404",
+    "tags": [
+      "748cmstyle",
+      "anime",
+      "style",
+      "woman",
+      "cute",
+      "girls"
+    ]
+  },
+  "loras/Eye_Enhancer.safetensors": {
+    "name": "Eye Enhancer",
+    "version": "v1.1",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/bfe885fa-19dc-4469-8a8b-2daaa7c94d22/original=true/85456705.jpeg",
+    "civitai_url": "https://civitai.red/models/1731594/eye-enhancer?modelVersionId=1959770",
+    "source_url": "https://civitai.red/models/1731594/eye-enhancer?modelVersionId=1959770",
+    "tags": [
+      "detailed eyes,anime eyes,high detail eyes,multicolored iris,detailed iris,",
+      "detailed eyes,anime eyes,high detail eyes,multicolored iris,detailed iris,anime style",
+      "eye enhancer",
+      "anime",
+      "eye",
+      "enhancer",
+      "concept"
+    ]
+  },
+  "loras/flatline_v2_-_Illus_x_Niji.safetensors": {
+    "name": "Flatline - Anima/Illus x Niji [BETA]",
+    "version": "v2.0 Remix",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/cd5cffa3-1d69-4bf7-ad5b-593e5d14d714/original=true/77086709.jpeg",
+    "civitai_url": "https://civitai.red/models/1233370/flatline-anima-illus-x-niji-beta?modelVersionId=1805073",
+    "source_url": "https://civitai.red/models/1233370/flatline-anima-illus-x-niji-beta?modelVersionId=1805073",
+    "tags": [
+      "Flatline, Flat vector illustration",
+      "style",
+      "artstyle",
+      "flatline"
+    ]
+  },
+  "loras/748cm_illu.safetensors": {
+    "name": "748cm | Shiiro's Styles | Niji",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/80b5b4e9-398d-4ea9-ab68-98027d1ed7ed/original=true/55998052.jpeg",
+    "civitai_url": "https://civitai.red/models/1221007/748cm-shiiro-s-styles-niji?modelVersionId=1375651",
+    "source_url": "https://civitai.red/models/1221007/748cm-shiiro-s-styles-niji?modelVersionId=1375651",
+    "tags": [
+      "7481llu",
+      "photorealistic",
+      "art",
+      "cartoon",
+      "woman",
+      "styles",
+      "artstyle",
+      "background pony",
+      "male",
+      "color",
+      "shapes",
+      "background plate",
+      "flowers",
+      "abstract painting",
+      "artist",
+      "geometry",
+      "paint",
+      "backgrounds",
+      "detail",
+      "anime",
+      "lora",
+      "manga",
+      "shiiro",
+      "style",
+      "game character",
+      "manga artist",
+      "man",
+      "girls",
+      "realistic",
+      "art style"
+    ]
+  },
+  "checkpoints/celestrealAnimeSemi_v20.safetensors": {
+    "name": "CelestReal - Anime / semi-reality fusion",
+    "version": "v2.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/0edb2bea-605a-4678-8e2b-4f4d3be7ec9c/original=true/97682514.jpeg",
+    "civitai_url": "https://civitai.red/models/1862393/celestreal-anime-semi-reality-fusion?modelVersionId=2170227",
+    "source_url": "https://civitai.red/models/1862393/celestreal-anime-semi-reality-fusion?modelVersionId=2170227",
+    "tags": [
+      "anime",
+      "base model",
+      "fusion",
+      "nsfw",
+      "semi realistic",
+      "semi-real",
+      "dramatic lighting"
     ]
   }
 }

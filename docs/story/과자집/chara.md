@@ -2,9 +2,11 @@
 
 기준 키 아트: `377fd8b3-7ade-4d2e-840f-51974a6d4a90.png`
 
-키 아트의 `aMixIllustrious_aMix.safetensors` 기반 anime illustration, 따뜻한 디저트 살롱, 여성향 BL, 부드러운 미소년풍을 기준으로 한다. 공용 prompt 조합 없이, 각 캐릭터마다 그대로 복사해 사용할 수 있는 완성형 prompt와 negative prompt를 작성한다.
+목표는 같은 작품의 그림체를 유지하되, 캐릭터가 머리색만 다른 클론처럼 보이지 않게 만드는 것이다. 각 prompt는 공용 prefix 없이 그대로 복사해서 사용할 수 있도록 작성했다. LoRA가 얼굴을 비슷하게 끌고 가는 경향이 있으므로, 캐릭터를 구분하는 `hair silhouette`, `accessory`, `outfit shape`, `pose`, `mood`를 prompt 앞쪽에 강하게 배치한다.
 
 ## 권장 생성 설정
+
+개성 확인용 1차 테스트에서는 LoRA를 낮춰 쓰는 것을 권장한다.
 
 ```json
 {
@@ -18,73 +20,71 @@
   "scheduler": "normal",
   "clip_skip": 2,
   "loras": [
-    { "path": "5byue5dnijistyleE291.cNux.safetensors", "scale": 0.8 },
-    { "path": "USNR STYLE_XL_lokr.safetensors", "scale": 0.6 },
-    { "path": "DemonerithIllustrious.safetensors", "scale": 0.5 },
-    { "path": "nnestyle.safetensors", "scale": 0.3 },
-    { "path": "Pb0y.safetensors", "scale": 0.4 }
+    { "path": "5byue5dnijistyleE291.cNux.safetensors", "scale": 0.55 },
+    { "path": "USNR STYLE_XL_lokr.safetensors", "scale": 0.35 },
+    { "path": "Pb0y.safetensors", "scale": 0.25 }
   ]
 }
 ```
+
+기존 키 아트 느낌을 더 강하게 유지하고 싶을 때만 `DemonerithIllustrious.safetensors`와 `nnestyle.safetensors`를 추가한다. 캐릭터 얼굴 차이를 확인할 때는 일단 제외하는 쪽이 낫다.
 
 ---
 
 ## 에리안
 
-오너 쇼콜라티에. 28세. 세계 초콜릿 대회 우승자. 조용하고 다정하며 감정을 초콜릿으로 표현한다.
+오너 쇼콜라티에. 28세. 세계 초콜릿 대회 우승자. 조용하고 다정하다. 감정을 초콜릿으로 표현한다.
 
 ### 외형 설정
 
-- 체형: 슬림하고 곧은 자세, 손끝이 섬세한 장인형
-- 얼굴: 부드러운 계란형 얼굴, 낮은 긴장감, 다정한 눈매
-- 머리: 짧고 단정한 다크 브라운 헤어, 앞머리는 자연스럽게 옆으로 흐름
-- 눈: 따뜻한 앰버색 눈, 차분하지만 어둡지 않은 시선
-- 의상: 아이보리 셔츠, 다크 초콜릿색 베스트, 골드 버튼, 브라운 쇼콜라티에 앞치마
-- 소품: 봉봉 쇼콜라 박스, 초콜릿 몰드, 금색 디저트 집게
+- 헤어스타일: 짧은 다크 초콜릿 브라운, 단정한 side part, 귀가 드러나는 깔끔한 옆머리, 한쪽 앞머리만 부드럽게 내려옴
+- 악세사리: 금색 카카오 열매 브로치, 얇은 브라운 가죽 장갑 한쪽, 작은 금색 체인
+- 의상: 아이보리 셔츠, 다크 브라운 더블 브레스트 베스트, 초콜릿색 롱 앞치마, 소매는 정갈하게 접음
+- 분위기: 조용한 장인, 따뜻한 오너, 낮은 목소리의 다정함, 고급 초콜릿 살롱
+- 차별점: 가장 성숙하고 안정적인 인상, 움직임이 적고 손끝이 섬세함
 
 ### Prompt
 
 ```text
 masterpiece, best quality, absurdres,
-1boy, solo, beautiful boy, pretty boy, bishounen, male focus,
-young man, elegant male, refined male, gentle handsome man,
-owner chocolatier, premium chocolate artisan,
-soft oval face, delicate facial features, slim body, graceful posture,
-short dark brown hair, neatly styled soft hair, side swept bangs,
-warm amber eyes, gentle eyes, kind eyes,
-soft affectionate gaze, calm warm smile, slight smile, welcoming expression,
-looking at viewer,
+1boy, solo, male focus,
+adult young man, refined chocolatier, calm owner of a luxury dessert salon,
 
-ivory dress shirt, dark chocolate brown vest, gold buttons,
-silk brown necktie, elegant chocolatier apron, small gold brooch,
-clean cafe uniform, refined dessert salon outfit,
+distinct character design,
+short dark chocolate brown hair, neat side part haircut, clean exposed ears,
+one soft side bang, compact hair silhouette,
+warm amber eyes, low gentle eyes, mature soft oval face,
+calm warm smile, affectionate gaze, quiet welcoming expression,
 
-holding assorted bonbon chocolate box,
-beautiful handmade chocolates, chocolate mold, small gold dessert tong,
-glossy chocolate, premium confectionery details,
+gold cacao bean brooch, thin gold chain, one brown leather glove,
+ivory dress shirt, dark brown double breasted vest,
+chocolate brown long apron, gold buttons, neatly folded sleeves,
+tailored chocolatier uniform, elegant but practical outfit,
 
-luxury dessert cafe, premium chocolate salon, elegant cafe, victorian cafe,
-dark green walls, polished wooden counter, framed dessert paintings,
-warm lighting, golden lighting, cozy atmosphere, soft glow, bokeh,
+holding a small gold dessert tong,
+presenting an open box of glossy bonbon chocolates,
+chocolate mold on the counter, premium handmade chocolate,
 
-upper body, character portrait,
-anime illustration, highly detailed, soft shading, beautiful lighting, depth of field
+straight posture, graceful hands, quiet artisan mood,
+luxury chocolate salon, dark green walls, polished wooden counter,
+framed dessert paintings, warm golden lighting, cozy glow, soft bokeh,
+
+upper body portrait, anime illustration, highly detailed,
+soft shading, beautiful lighting, depth of field
 ```
 
 ### Negative Prompt
 
 ```text
 1girl, female, woman,
-old man, middle aged man, beard, mustache,
-muscular, bodybuilder, broad shoulders, thick neck,
-sharp jawline, extreme jawline, gaunt face,
-angry expression, frown, scowl, gloomy face, sad face, cold stare,
-evil smile, arrogant smirk, emotionless face, tired eyes,
-dark fantasy, horror, monster, demon, dragon, gothic horror,
-battle, weapon, armor, blood,
-long hair, ponytail, twin tails,
-dress, skirt,
-messy dirty clothes, chef hat, crown,
+teenage boy, child, old man, beard, mustache,
+long hair, messy wolf cut, ponytail, twin tails,
+round childish face, overly cute face,
+angry expression, frown, scowl, gloomy face, cold stare,
+evil smile, arrogant smirk, emotionless face,
+crown, royal cape, military uniform, armor, weapon,
+chef hat, tall hat, dirty apron,
+dark fantasy, horror, monster, demon, blood,
 low quality, worst quality, blurry, bad anatomy, bad hands,
 extra fingers, missing fingers, deformed fingers,
 watermark, text, logo, signature
@@ -94,60 +94,58 @@ watermark, text, logo, signature
 
 ## 루카
 
-수석 파티시에. 26세. 천재 제과사. 장난기가 많고 분위기 메이커지만 플레이어를 가장 많이 챙겨준다.
+수석 파티시에. 26세. 천재 제과사. 장난기가 많고 분위기 메이커다.
 
 ### 외형 설정
 
-- 체형: 가볍고 날렵한 체형, 밝은 에너지가 느껴지는 포즈
-- 얼굴: 소년미가 남은 귀여운 미남, 웃을 때 눈꼬리가 올라감
-- 머리: 짧고 폭신한 스트로베리 블론드 헤어, 약간 흐트러진 앞머리
-- 눈: 라이트 그린 눈, 장난기 있지만 친근한 시선
-- 의상: 흰 파티시에 재킷, 크림색 앞치마, 딸기색 리본 포인트
-- 소품: 짤주머니, 딸기 쇼트케이크, 작은 스패출러, 크림 볼
+- 헤어스타일: 짧고 폭신한 strawberry blond, 둥근 fluffy crop, 위쪽으로 살짝 튀는 ahoge, 흐트러진 앞머리
+- 악세사리: 딸기 모양 핀, 빨간 체크 손수건, 작은 별 모양 설탕 장식 핀
+- 의상: 흰 파티시에 재킷, 비대칭 단추, 짧은 크림색 waist apron, 빨간 neckerchief
+- 분위기: 장난스러운 천재, 밝은 에너지, 디저트 페어의 중심
+- 차별점: 가장 활동적이고 귀여운 인상, 포즈에 움직임이 있음
 
 ### Prompt
 
 ```text
 masterpiece, best quality, absurdres,
-1boy, solo, beautiful boy, pretty boy, bishounen, male focus,
-young man, cute male, lively male, charming pastry chef,
-head pastry chef, genius patissier,
-soft youthful face, bright facial features, slim agile body,
-short fluffy strawberry blond hair, messy soft hair, airy bangs,
-light green eyes, sparkling eyes, playful eyes,
-bright smile, teasing but kind smile, cheerful expression, friendly expression,
-looking at viewer,
+1boy, solo, male focus,
+playful young pastry chef, genius patissier, lively cafe mood,
 
-white pastry chef jacket, cream colored apron, red ribbon accent,
-gold buttons, rolled up sleeves, clean patissier uniform,
-small decorative pin, cute elegant cafe outfit,
+distinct character design,
+short fluffy strawberry blond hair, round fluffy crop haircut,
+small ahoge, tousled airy bangs, bouncy hair silhouette,
+light green eyes, large sparkling eyes, youthful round face,
+wide cheerful smile, teasing but kind expression, bright friendly gaze,
 
-holding piping bag, strawberry shortcake, whipped cream,
-fresh strawberries, cream bowl, small spatula,
-tiny sugar decorations, delicate cake details,
+strawberry hairpin, red check handkerchief, tiny sugar star pin,
+white patissier jacket with asymmetric buttons,
+short cream waist apron, red neckerchief, rolled up sleeves,
+cute professional pastry uniform, light energetic outfit,
 
-luxury dessert cafe, pastry kitchen corner, cute cafe, elegant cafe,
-dark green walls, wooden furniture, dessert display case,
-warm lighting, golden lighting, cozy atmosphere, soft glow, bokeh,
+holding a piping bag in one hand,
+small spatula in the other hand,
+strawberry shortcake with whipped cream, fresh strawberries,
+cream bowl, sugar decorations, cake display case,
 
-upper body, character portrait,
-anime illustration, highly detailed, soft shading, beautiful lighting, depth of field
+slightly leaning forward, playful pose, lively hands,
+luxury dessert cafe kitchen corner, dark green walls, wooden shelves,
+warm golden lighting, cozy glow, soft bokeh,
+
+upper body portrait, anime illustration, highly detailed,
+soft shading, beautiful lighting, depth of field
 ```
 
 ### Negative Prompt
 
 ```text
 1girl, female, woman,
-old man, middle aged man, beard, mustache,
-muscular, bodybuilder, broad shoulders, thick neck,
-sharp jawline, extreme jawline, mature face,
-angry expression, frown, scowl, gloomy face, sad face, cold stare,
-mean smile, evil smile, arrogant smirk, emotionless face,
-dark fantasy, horror, monster, demon, dragon, gothic horror,
-battle, weapon, armor, blood,
-long hair, ponytail, twin tails,
-dress, skirt,
-dirty apron, messy food stains, tall chef hat, crown,
+old man, beard, mustache, mature stern man,
+long straight hair, center parted long hair, ponytail,
+silver hair, black hair, dark brown hair,
+calm stoic pose, emotionless face, gloomy face, cold stare,
+angry expression, frown, scowl,
+formal suit, royal outfit, military uniform, armor, weapon,
+large chef hat, dirty apron, dark horror mood,
 low quality, worst quality, blurry, bad anatomy, bad hands,
 extra fingers, missing fingers, deformed fingers,
 watermark, text, logo, signature
@@ -157,60 +155,58 @@ watermark, text, logo, signature
 
 ## 노아
 
-홍차 소믈리에. 30세. 손님의 기분만 보고 어울리는 차를 고르며, 모두의 고민 상담을 맡는 침착한 인물.
+홍차 소믈리에. 30세. 손님의 기분만 보고 어울리는 차를 고른다. 모두의 고민 상담을 맡는 침착한 인물.
 
 ### 외형 설정
 
-- 체형: 길고 단정한 실루엣, 움직임이 느리고 안정적임
-- 얼굴: 지적인 미남, 온화한 상담자 같은 분위기
-- 머리: 짧은 애쉬 그레이 헤어, 깔끔한 가르마
-- 눈: 딥 네이비 눈, 낮고 편안한 시선
-- 의상: 흰 셔츠, 네이비 베스트, 그레이 크라바트, 얇은 체인 장식
-- 소품: 포셀린 찻잔, 실버 티포트, 찻잎 틴, 애프터눈 티 세트
+- 헤어스타일: 애쉬 그레이, 긴 앞머리를 7:3으로 넘긴 sleek side swept hair, 뒷머리는 목덜미를 살짝 덮는 short nape length
+- 악세사리: 얇은 silver rim glasses, 찻잎 모양 타이핀, 얇은 시계줄
+- 의상: 네이비 롱 베스트, 흰 셔츠, 회색 cravat, 긴 소매, 포멀한 tea sommelier uniform
+- 분위기: 지적인 상담자, 고요한 안정감, 홍차 향이 느껴지는 인물
+- 차별점: 가장 차분하고 성숙함, 안경과 긴 실루엣으로 구분
 
 ### Prompt
 
 ```text
 masterpiece, best quality, absurdres,
-1boy, solo, beautiful boy, pretty boy, bishounen, male focus,
-young man, elegant male, intellectual male, gentle tea sommelier,
-tea sommelier, calm counselor atmosphere,
-soft refined face, slender body, straight posture, graceful hands,
-short ash gray hair, neatly parted hair, smooth side bangs,
-deep navy eyes, serene eyes, warm gentle eyes,
-peaceful smile, calm friendly smile, relaxed expression, reassuring expression,
-looking at viewer,
+1boy, solo, male focus,
+adult tea sommelier, calm counselor, intelligent mature charm,
 
-white dress shirt, navy vest, brass buttons,
-gray cravat, thin gold chain accessory, elegant cafe uniform,
-clean tailored outfit, refined tea salon style,
+distinct character design,
+ash gray hair, sleek side swept hair, long 7:3 bangs,
+short nape length hair, smooth elegant hair silhouette,
+thin silver rim glasses, deep navy eyes behind glasses,
+long narrow face, calm mature features, gentle tired eyes,
+peaceful smile, reassuring expression, relaxed warm gaze,
 
-holding porcelain teacup, silver teapot, tea leaves tin,
-afternoon tea set, gentle steam from tea, delicate saucer,
-small macarons beside teacup,
+tea leaf tie pin, slim wristwatch, thin silver chain,
+white dress shirt, navy long vest, gray cravat,
+formal tea sommelier uniform, long clean sleeves,
+elegant tailored outfit, quiet intellectual style,
 
-luxury dessert cafe, tea salon corner, victorian cafe, elegant cafe,
-dark green walls, wooden table, framed dessert paintings,
-warm lighting, golden lighting, cozy atmosphere, soft glow, bokeh,
+holding a porcelain teacup near his chest,
+silver teapot, tea leaves tin, afternoon tea tray,
+gentle steam from black tea, macarons on saucer,
 
-upper body, character portrait,
-anime illustration, highly detailed, soft shading, beautiful lighting, depth of field
+upright still posture, one hand calmly supporting saucer,
+luxury tea salon corner, dark green walls, wooden table,
+framed paintings, warm golden lighting, cozy glow, soft bokeh,
+
+upper body portrait, anime illustration, highly detailed,
+soft shading, beautiful lighting, depth of field
 ```
 
 ### Negative Prompt
 
 ```text
 1girl, female, woman,
-old man, middle aged man, beard, mustache,
-muscular, bodybuilder, broad shoulders, thick neck,
-sharp jawline, extreme jawline, gaunt face,
-angry expression, frown, scowl, gloomy face, sad face, cold stare,
-stern expression, emotionless face, exhausted face, villain face,
-dark fantasy, horror, monster, demon, dragon, gothic horror,
-battle, weapon, armor, blood,
-long hair, ponytail, twin tails,
-dress, skirt,
-doctor coat, lab coat, crown,
+child, teenage boy, old man, beard, mustache,
+fluffy crop hair, ahoge, messy wild hair, very short buzz cut,
+no glasses, sunglasses, eyepatch,
+wide childish grin, playful teasing face, angry expression,
+frown, scowl, gloomy face, cold hostile stare,
+chef jacket, apron, barista apron, royal cape, crown,
+weapon, armor, dark fantasy, horror, monster, demon, blood,
 low quality, worst quality, blurry, bad anatomy, bad hands,
 extra fingers, missing fingers, deformed fingers,
 watermark, text, logo, signature
@@ -220,60 +216,60 @@ watermark, text, logo, signature
 
 ## 카엘
 
-플로리스트. 계절마다 카페를 꾸미고 꽃말을 좋아한다. 손님에게 어울리는 꽃을 추천해 준다.
+플로리스트. 계절마다 카페를 꾸미고 꽃말을 좋아한다. 손님에게 꽃을 추천해 준다.
 
 ### 외형 설정
 
-- 체형: 가늘고 섬세한 실루엣, 꽃다발을 조심스럽게 안는 포즈
-- 얼굴: 맑고 투명한 인상, 살짝 수줍지만 밝은 미소
-- 머리: 짧은 소프트 라벤더 헤어, 부드러운 웨이브
-- 눈: 맑은 바이올렛 눈, 섬세하고 호의적인 시선
-- 의상: 크림 셔츠, 세이지 그린 베스트, 라벤더 리본 타이, 꽃 자수 앞치마
-- 소품: 계절 꽃다발, 리본, 작은 꽃가위, 꽃 장식 바구니
+- 헤어스타일: pale mint lavender hair, 어깨에 닿지 않는 soft layered bob, 바깥으로 말리는 끝머리, 얇은 braid 한 줄
+- 악세사리: 작은 꽃관이 아니라 한쪽 귀 뒤의 생화 장식, 라벤더 리본, 말린 꽃 펜던트
+- 의상: 세이지 그린 cropped vest, 크림색 blouse, 꽃 자수 apron, 넓은 소매, 부드러운 botanical style
+- 분위기: 맑고 섬세함, 계절 꽃의 향기, 약간 수줍지만 밝음
+- 차별점: 가장 중성적이고 부드러운 실루엣, 꽃과 리본이 많음
 
 ### Prompt
 
 ```text
 masterpiece, best quality, absurdres,
-1boy, solo, beautiful boy, pretty boy, bishounen, male focus,
-young man, delicate male, elegant male, gentle florist,
-florist, romantic flower arranger,
-soft clear face, delicate facial features, slender body, graceful posture,
-short soft lavender hair, slightly wavy hair, fluffy side bangs,
-clear violet eyes, gentle eyes, bright kind eyes,
-shy smile, tender smile, sweet expression, soft welcoming expression,
-looking at viewer,
+1boy, solo, male focus,
+androgynous young florist, delicate flower arranger, romantic botanical mood,
 
-cream shirt, sage green vest, lavender ribbon tie,
-floral embroidered apron, small flower brooch,
-clean elegant cafe uniform, soft romantic outfit,
+distinct character design,
+pale mint lavender hair, soft layered bob haircut,
+outward curled hair ends, one thin side braid,
+airy translucent hair silhouette, small flower tucked behind one ear,
+clear violet eyes, soft round eyes, small delicate face,
+shy bright smile, tender expression, gentle welcoming gaze,
 
-holding seasonal flower bouquet, pale roses, small wildflowers,
-lavender flowers, satin ribbon, flower basket, tiny flower scissors,
-fresh petals, delicate floral details,
+lavender ribbon, dried flower pendant, tiny floral brooch,
+cream blouse with wide sleeves, sage green cropped vest,
+floral embroidered apron, soft botanical cafe outfit,
+light fabric, ribbon details, pastel accent colors,
 
-luxury dessert cafe, cafe decorated with flowers, elegant cafe, victorian cafe,
-dark green walls, wooden furniture, framed dessert paintings,
-warm lighting, golden lighting, cozy atmosphere, soft glow, bokeh,
+holding a seasonal bouquet close to his chest,
+lavender flowers, pale roses, small wildflowers, satin ribbon,
+flower basket, tiny flower scissors, fresh petals,
 
-upper body, character portrait,
-anime illustration, highly detailed, soft shading, beautiful lighting, depth of field
+slightly tilted head, careful delicate pose,
+luxury dessert cafe decorated with flowers,
+dark green walls, wooden furniture, window light,
+warm golden lighting, cozy glow, soft bokeh,
+
+upper body portrait, anime illustration, highly detailed,
+soft shading, beautiful lighting, depth of field
 ```
 
 ### Negative Prompt
 
 ```text
 1girl, female, woman,
-old man, middle aged man, beard, mustache,
-muscular, bodybuilder, broad shoulders, thick neck,
-sharp jawline, extreme jawline, mature face,
-angry expression, frown, scowl, gloomy face, sad face, cold stare,
-crying, vacant eyes, emotionless face, creepy smile,
-dark fantasy, horror, monster, demon, dragon, gothic horror,
-battle, weapon, armor, blood,
-long hair, ponytail, twin tails,
-dress, skirt,
-thorn crown, crown, funeral flowers,
+old man, beard, mustache, muscular body,
+black hair, silver hair, dark brown hair, slick back hair,
+sharp masculine face, rugged face, stern mature face,
+angry expression, frown, scowl, gloomy face, cold stare,
+creepy smile, vacant eyes, crying,
+crown, royal cape, military uniform, armor, weapon,
+funeral flowers, thorn crown, horror mood,
+dirty apron, barista apron, chef jacket,
 low quality, worst quality, blurry, bad anatomy, bad hands,
 extra fingers, missing fingers, deformed fingers,
 watermark, text, logo, signature
@@ -287,56 +283,56 @@ watermark, text, logo, signature
 
 ### 외형 설정
 
-- 체형: 탄탄하지만 과하게 근육질은 아닌 슬림한 체형, 안정적인 자세
-- 얼굴: 말수는 적지만 차갑지 않은 미남, 입가에 아주 옅은 미소
-- 머리: 짧은 블랙 헤어, 자연스럽게 흐트러진 앞머리
-- 눈: 깊은 커피 브라운 눈, 집중력 있고 신뢰감 있는 시선
-- 의상: 블랙 셔츠, 에스프레소 브라운 앞치마, 구리색 버튼, 심플한 타이
-- 소품: 라떼 아트 컵, 포터필터, 커피 원두, 구리색 드립포트
+- 헤어스타일: 짧은 블랙 wolf cut, 거친 레이어, 한쪽 눈썹을 살짝 가리는 앞머리, 뒷머리는 짧게 삐침
+- 악세사리: 작은 copper ear cuff, 가죽 팔찌, 앞치마의 heart latte pin
+- 의상: 검은 셔츠, espresso brown cross-back leather apron, 구리색 버클, 소매는 팔꿈치까지 걷음
+- 분위기: 무뚝뚝하지만 믿음직함, 커피 장인의 집중력, 따뜻한 침묵
+- 차별점: 가장 어둡고 직선적인 실루엣, 손과 도구가 강하게 보임
 
 ### Prompt
 
 ```text
 masterpiece, best quality, absurdres,
-1boy, solo, beautiful boy, pretty boy, bishounen, male focus,
-young man, cool male, elegant male, sincere barista,
-champion barista, artisan coffee maker,
-handsome soft face, slim fit body, steady posture, calm presence,
-short black hair, slightly tousled hair, natural bangs,
-deep coffee brown eyes, focused eyes, trustworthy eyes,
-subtle warm smile, quiet gentle smile, calm friendly expression,
-looking at viewer,
+1boy, solo, male focus,
+stoic barista, champion coffee artisan, quiet sincere charm,
 
-black shirt, espresso brown apron, copper buttons,
-rolled up sleeves, simple dark tie, clean barista uniform,
-small copper accessory, refined coffee salon outfit,
+distinct character design,
+short black wolf cut, rough layered hair,
+bangs partly covering one eyebrow, short spiky nape,
+sharp dark hair silhouette,
+deep coffee brown eyes, low focused eyes, straight brows,
+slightly angular face, calm reliable features,
+subtle warm smile, quiet friendly expression, trustworthy gaze,
 
-holding latte art cup, heart shaped latte art,
-portafilter, roasted coffee beans, copper drip kettle,
-espresso machine in background, warm coffee steam,
+small copper ear cuff, leather bracelet, heart latte pin,
+black shirt, espresso brown cross-back leather apron,
+copper buckles, sleeves rolled to elbows,
+practical barista uniform, dark coffee color palette,
 
-luxury dessert cafe, barista counter, elegant cafe, victorian cafe,
-dark green walls, polished wooden counter, framed dessert paintings,
-warm lighting, golden lighting, cozy atmosphere, soft glow, bokeh,
+holding a latte art cup with heart foam,
+portafilter in the other hand, roasted coffee beans,
+copper drip kettle, espresso machine, warm coffee steam,
 
-upper body, character portrait,
-anime illustration, highly detailed, soft shading, beautiful lighting, depth of field
+leaning against wooden bar counter, steady working pose,
+luxury dessert cafe barista counter, dark green walls,
+polished wood, coffee equipment, warm golden lighting, soft bokeh,
+
+upper body portrait, anime illustration, highly detailed,
+soft shading, beautiful lighting, depth of field
 ```
 
 ### Negative Prompt
 
 ```text
 1girl, female, woman,
-old man, middle aged man, beard, mustache,
-muscular, bodybuilder, broad shoulders, thick neck,
-sharp jawline, extreme jawline, rugged face,
-angry expression, frown, scowl, gloomy face, sad face, cold stare,
-stern expression, intimidating face, emotionless face, hostile expression,
-dark fantasy, horror, monster, demon, dragon, gothic horror,
-battle, weapon, armor, blood,
-long hair, ponytail, twin tails,
-dress, skirt,
-dirty apron, cigarette, alcohol bottle, crown,
+child, old man, beard, mustache,
+fluffy blond hair, pastel hair, silver hair, long elegant hair,
+round cute face, overly delicate floral look,
+wide cheerful grin, playful pose, shy flower pose,
+angry expression, frown, scowl, gloomy face, hostile stare,
+formal suit, navy long vest, chef jacket, royal cape, crown,
+weapon, armor, cigarette, alcohol bottle, blood,
+dark fantasy, horror, monster, demon,
 low quality, worst quality, blurry, bad anatomy, bad hands,
 extra fingers, missing fingers, deformed fingers,
 watermark, text, logo, signature
@@ -350,55 +346,57 @@ watermark, text, logo, signature
 
 ### 외형 설정
 
-- 체형: 단정하고 균형 잡힌 실루엣, 빈틈없이 정리된 자세
-- 얼굴: 깔끔하고 세련된 미남, 친절하지만 너무 차갑지 않은 눈빛
-- 머리: 짧은 실버 헤어, 부드럽게 정돈된 앞머리
-- 눈: 와인 레드 눈, 예리하지만 다정한 시선
-- 의상: 흰 셔츠, 블랙 베스트, 와인 레드 리본 타이, 실버 버튼, 회중시계 체인
-- 소품: 예약 장부, 만년필, 디저트 메뉴판, 작은 회중시계
+- 헤어스타일: platinum silver hair, 깔끔한 short undercut, 앞머리는 사선으로 정리, 전체 실루엣은 가장 정돈됨
+- 악세사리: silver monocle chain이 아니라 얇은 rectangular glasses, 회중시계 체인, 예약용 만년필
+- 의상: 검은 fitted vest, 와인 레드 ribbon tie, 흰 셔츠, silver cufflinks, 짧은 black waist apron
+- 분위기: 유능한 매니저, 빠르고 정확한 접객, 친절하지만 빈틈없는 해결사
+- 차별점: 가장 세련되고 날카로운 인상, 왕족이 아니라 서비스 전문가처럼 보이게 함
 
 ### Prompt
 
 ```text
 masterpiece, best quality, absurdres,
-1boy, solo, beautiful boy, pretty boy, bishounen, male focus,
-young man, elegant male, polished male, refined hall manager,
-hall manager, professional dessert salon host,
-clean handsome face, balanced slim body, precise graceful posture,
-short silver hair, neatly styled hair, soft side bangs,
-wine red eyes, sharp gentle eyes, attentive eyes,
-professional warm smile, polite smile, composed friendly expression,
-looking at viewer,
+1boy, solo, male focus,
+polished hall manager, professional dessert salon host, precise elegant service,
 
-white dress shirt, black vest, wine red ribbon tie,
-silver buttons, small pocket watch chain,
-elegant cafe uniform, neat formal service outfit,
+distinct character design,
+platinum silver hair, neat short undercut,
+diagonal side bangs, clean sharp hair silhouette,
+thin rectangular glasses, wine red eyes, attentive sharp eyes,
+balanced slim face, polished handsome features,
+professional warm smile, polite composed expression, alert friendly gaze,
 
-holding reservation book, fountain pen, dessert menu,
-guest list, small pocket watch, polished reception desk,
+thin rectangular glasses, silver cufflinks, pocket watch chain,
+white dress shirt, fitted black vest, wine red ribbon tie,
+short black waist apron, silver buttons,
+neat formal cafe service uniform, clean modern victorian style,
 
-luxury dessert cafe, front hall, reservation desk, elegant cafe, victorian cafe,
-dark green walls, wooden furniture, framed dessert paintings,
-gift box, warm lighting, golden lighting, cozy atmosphere, soft glow, bokeh,
+holding an open reservation book,
+fountain pen between fingers, dessert menu tucked under arm,
+small pocket watch, reception desk, guest list,
 
-upper body, character portrait,
-anime illustration, highly detailed, soft shading, beautiful lighting, depth of field
+straight precise posture, one hand gesturing politely,
+luxury dessert cafe front hall, reservation desk,
+dark green walls, framed dessert paintings, wooden furniture,
+gift boxes, warm golden lighting, cozy glow, soft bokeh,
+
+upper body portrait, anime illustration, highly detailed,
+soft shading, beautiful lighting, depth of field
 ```
 
 ### Negative Prompt
 
 ```text
 1girl, female, woman,
-old man, middle aged man, beard, mustache,
-muscular, bodybuilder, broad shoulders, thick neck,
-sharp jawline, extreme jawline, gaunt face,
-angry expression, frown, scowl, gloomy face, sad face, cold stare,
-evil smile, arrogant smirk, emotionless face, villain face,
-dark fantasy, horror, monster, demon, dragon, gothic horror,
-battle, weapon, armor, blood,
-long hair, ponytail, twin tails,
-dress, skirt,
-crown, royal cape, military uniform,
+old man, beard, mustache, child,
+long silver hair, messy long hair, fluffy blond hair,
+soft childish face, overly cute round face,
+angry expression, frown, scowl, gloomy face, cold stare,
+evil smile, arrogant smirk, villain face,
+crown, tiara, royal cape, prince outfit, emperor outfit,
+military uniform, epaulettes, armor, weapon,
+tea sommelier cravat, barista leather apron, chef jacket,
+dark fantasy, horror, monster, demon, blood,
 low quality, worst quality, blurry, bad anatomy, bad hands,
 extra fingers, missing fingers, deformed fingers,
 watermark, text, logo, signature
@@ -412,27 +410,25 @@ watermark, text, logo, signature
 
 ```text
 masterpiece, best quality, absurdres,
-6boys, beautiful boys, pretty boys, bishounen, male focus,
-premium dessert salon staff, visual novel key visual,
-owner chocolatier, head pastry chef, tea sommelier, florist, barista, hall manager,
+6boys, male focus, visual novel key visual,
+six distinct male cafe staff members, each character has a different silhouette,
 
-six elegant young men standing together behind dessert cafe counter,
-all characters have warm smiles, friendly expressions, gentle romantic atmosphere,
-soft affectionate gazes, cozy slow romance mood,
+calm dark brown side-parted chocolatier with gold cacao brooch,
+playful strawberry blond fluffy pastry chef with red neckerchief,
+mature ash gray tea sommelier with silver rim glasses and navy long vest,
+androgynous mint lavender florist with side braid and flower accessory,
+stoic black wolf-cut barista with copper ear cuff and leather apron,
+polished platinum silver undercut hall manager with rectangular glasses and reservation book,
 
-dark brown haired chocolatier holding bonbon chocolate box,
-strawberry blond pastry chef holding strawberry shortcake,
-ash gray haired tea sommelier holding porcelain teacup,
-lavender haired florist holding seasonal bouquet,
-black haired barista holding latte art cup,
-silver haired hall manager holding reservation book,
+standing together behind a luxury dessert cafe counter,
+different hairstyles, different accessories, different uniforms, different poses,
+warm smiles, friendly expressions, gentle romantic atmosphere,
 
-luxury dessert cafe, elegant cafe, victorian cafe,
+bonbon chocolate box, strawberry shortcake, porcelain teacup,
+seasonal bouquet, latte art cup, reservation book,
 dark green walls, framed dessert paintings, wooden furniture,
 dessert display case, teddy bear, gift box,
-bonbon chocolates, strawberry shortcake, porcelain teacups,
-seasonal flower bouquet, latte art, reservation book,
-warm lighting, golden lighting, cozy atmosphere, soft glow, depth of field,
+warm golden lighting, cozy glow, soft bokeh,
 
 anime illustration, highly detailed, soft shading, beautiful lighting
 ```
@@ -440,14 +436,14 @@ anime illustration, highly detailed, soft shading, beautiful lighting
 ### Negative Prompt
 
 ```text
+same face, identical faces, same hairstyle, same outfit,
+cloned characters, indistinguishable characters,
 1girl, female, woman,
 old men, beards, muscular bodies,
-angry expressions, frowns, gloomy faces, sad faces, cold stares,
+angry expressions, frowns, gloomy faces, cold stares,
 evil smiles, hostile expressions, emotionless faces,
-dark fantasy, horror, monsters, demons, dragons, gothic horror,
-battle, weapons, armor, blood,
-crowns, royal capes, military uniforms,
-long hair, ponytails, twin tails, dresses, skirts,
+crowns, royal capes, prince outfits, military uniforms,
+armor, weapons, blood, dark fantasy, horror, monsters, demons,
 low quality, worst quality, blurry, bad anatomy, bad hands,
 extra fingers, missing fingers, deformed fingers,
 watermark, text, logo, signature
