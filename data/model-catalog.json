@@ -2259,5 +2259,66 @@
       "my style",
       "one obsession"
     ]
+  },
+  "loras/MGE_V6.1_IL_Final_R1.safetensors": {
+    "name": "MGE Monster Girls",
+    "version": "V6.1 - Illustrious",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/b11b6f2d-49a8-410d-8eb4-c10c69f4855b/original=true/88432268.jpeg",
+    "civitai_url": "https://civitai.red/models/556479/mge-monster-girls?modelVersionId=1888209",
+    "source_url": "https://civitai.red/models/556479/mge-monster-girls?modelVersionId=1888209",
+    "tags": [
+      "concept",
+      "woman",
+      "girls",
+      "monster girl",
+      "lora",
+      "monster girl encyclopedia",
+      "mge",
+      "aio"
+    ]
+  },
+  "loras/lightingSlider.safetensors": {
+    "name": "Lighting / darkness slider",
+    "version": "Illustrious",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/826ffc46-906a-4690-9fd8-99932d2fdf21/original=true/59283093.jpeg",
+    "civitai_url": "https://civitai.red/models/1280702/lighting-darkness-slider?modelVersionId=1444863",
+    "source_url": "https://civitai.red/models/1280702/lighting-darkness-slider?modelVersionId=1444863",
+    "tags": [
+      "dark",
+      "late night",
+      "blue hour",
+      "lighting",
+      "women",
+      "brightness",
+      "tool",
+      "slider"
+    ]
+  },
+  "loras/NOOB_vp1_detailer_by_volnovik_v1.safetensors": {
+    "name": "NoobAI-XL Detailer",
+    "version": "V-Pred1_V1",
+    "base_model": "NoobAI",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/338914f2-931c-4911-83b8-dd4d4231b0c2/original=true/53694076.jpeg",
+    "civitai_url": "https://civitai.red/models/987736/noobai-xl-detailer?modelVersionId=1209350",
+    "source_url": "https://civitai.red/models/987736/noobai-xl-detailer?modelVersionId=1209350",
+    "tags": [
+      "concept",
+      "detailer",
+      "noobai-xl"
+    ]
+  },
+  "loras/ppw_v8_Illuv2stable_128.safetensors": {
+    "name": "People's Works: SDXL",
+    "version": "v8_Illusv2.0Stable",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/bb716379-14e3-47c3-8539-e8a5a9fa39fa/original=true/105969300.jpeg",
+    "civitai_url": "https://civitai.red/models/1400090/people-s-works-sdxl?modelVersionId=2034730",
+    "source_url": "https://civitai.red/models/1400090/people-s-works-sdxl?modelVersionId=2034730",
+    "tags": [
+      "anime",
+      "style"
+    ]
   }
 }
