@@ -320,7 +320,7 @@ wavy center parted hair, thick adult eyebrows, same face
 
 ### 외형 설정
 
-- 단정한 검은 단발, 흐트러진 머리를 귀 뒤로 넘김
+- 검은 머리를 낮게 말아 묶은 low bun, 목덜미의 단정한 chignon, 잔머리 몇 가닥, 은색 실핀
 - 날카로운 눈매, 피곤하지만 고압적인 표정
 - 마트 관리자 조끼, 흰 블라우스, 검은 슬랙스, 사원증
 - 열쇠 뭉치, 매장 무전기, 구겨진 매장 지도
@@ -331,7 +331,8 @@ wavy center parted hair, thick adult eyebrows, same face
 ```text
 horror, intense angle, night, ((solo)), ((1girl)), upper body,
 Korean supermarket manager survivor, normal human face, visible eyes, not a monster,
-neat black bob haircut, hair tucked behind one ear,
+black hair tied into a low tight bun, neat chignon at the nape,
+silver hairpins, a few loose strands near temples, no bob haircut,
 sharp eyes, tired authoritative expression, haunted, controlled fear,
 store manager vest, white blouse, black slacks, employee ID badge,
 ((dirty clothes)), dust on vest, wet blouse cuffs,
@@ -351,7 +352,9 @@ worst quality, low quality, normal quality, signature, username, artist name,
 closed eyes, EasyNegative, bad-artist-anime, bad-artist, ng_deepnegative_v1_75t,
 male, child, zombie face, monster face, mask, faceless, princess dress,
 maid outfit, office glamour, military uniform, two people, crowd,
-exposed organs, dismemberment
+exposed organs, dismemberment,
+bob haircut, short bob, loose short hair, nurse hairstyle, twin tails,
+long flowing hair, ponytail, same hairstyle as nurse
 ```
 
 ---
