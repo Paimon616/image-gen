@@ -443,7 +443,7 @@ exposed organs, dismemberment
 
 ### 외형 설정
 
-- 짧은 검은 머리, 얼음 결정과 땀으로 엉겨 붙은 앞머리
+- 40대 후반 아저씨형 짧은 스포츠머리, receding hairline, 넓은 이마, thinning hair, 웨이브 앞머리 없음
 - 회색빛 피부, 초점 없는 눈, 턱 주변의 검은 핏자국
 - 녹색 마트 식품관 유니폼, 흰 앞치마, 찢어진 명찰
 - 냉동고 문 유리 너머 성에 낀 손자국
@@ -454,7 +454,10 @@ exposed organs, dismemberment
 ```text
 horror, intense angle, night, ((solo)), ((1boy)), upper body,
 infected Korean supermarket food court worker, zombie pose, arms up,
-short black hair stuck with frost and sweat, uneven hairline,
+middle-aged Korean man, late 40s, uncle-like face, not handsome,
+short cropped black hair, old man sport haircut, receding hairline,
+wide forehead, thinning hair on top, sparse flat hair, buzzed sides,
+no bangs, no wavy hair, no center part, frost stuck to short hair,
 sunken cheeks, asymmetrical face, gray dead skin, cloudy unfocused eyes,
 collapsed nose bridge, slack jaw, torn dry lips, haunted, dead expression,
 subtle dark blood around mouth, no excessive gore,
@@ -477,7 +480,8 @@ female, child, handsome clean face, normal healthy skin, cute monster,
 fantasy demon, horns, huge zombie horde, two people, crowd,
 exposed organs, dismemberment, bright daylight, clean background
 handsome idol face, symmetrical clean face, sharp V jaw, healthy skin,
-wavy center parted hair, perfect eyebrows, same face
+wavy center parted hair, wavy bangs, long bangs, fluffy hair,
+hair over forehead, young handsome hair, perfect eyebrows, same face
 ```
 
 ---
