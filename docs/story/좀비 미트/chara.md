@@ -1,21 +1,17 @@
-# 좀비 미트 - 등장인물 이미지 생성 프롬프트
+# 좀비 미트 - ReV Animated 캐릭터 프롬프트
 
 원본: `docs/story/좀비 미트/story.md`
 
 ## 공용 체크포인트
 
-세계관은 대형마트 식품관, 냉동고, 직원 통로, 지하주차장을 오가는 폐쇄형 좀비 생존 호러다. ReV Animated는 `horror`와 `Horror Colors`를 강하게 주면 인물을 후드 괴물이나 무표정한 크리처로 밀어버리는 경향이 있으므로, 생존자 프롬프트에서는 캐릭터 고정 요소를 먼저 쓰고 공포 스타일은 뒤쪽에 둔다.
-
-LoRA는 사용하지 않는다. 아래 prompt는 공용 prefix 없이 그대로 복사해서 사용할 수 있도록 캐릭터별로 완성형으로 작성했다. 마석훈을 제외한 생존자는 반드시 `normal human face`, `visible eyes`, `not a monster`, `no hood covering head`를 포함한다.
-
-## 권장 생성 설정
+ReV Animated 기준으로 다시 작성했다. 예시 프롬프트의 `horror`, `intense angle`, `night`, `upper body`, `dirty clothes`, `haunted`, `ultra detailed spooky environment`, `volumetric fog` 구조를 가져오되, LoRA와 원작 캐릭터 태그는 사용하지 않는다. 생존자는 괴물이 아니라 공포 상황 속 인간으로 고정하고, 마석훈만 감염체로 분리한다.
 
 ```json
 {
   "model": "comfyui/local",
   "model_name": "revAnimated_v11-inpainting.safetensors",
   "num_inference_steps": 32,
-  "guidance_scale": 7,
+  "guidance_scale": 7.5,
   "width": 768,
   "height": 1024,
   "sampler_name": "dpmpp_2m",
@@ -26,35 +22,20 @@ LoRA는 사용하지 않는다. 아래 prompt는 공용 prefix 없이 그대로 
 }
 ```
 
-## 공통 스타일 기준
-
-### 공통 Positive Style
+## 공통 Negative Prompt
 
 ```text
-((best quality)), ((masterpiece)), ((realistic)), (detailed),
-Korean modern supermarket survival horror, normal human survivors,
-visible human face, visible eyes, not a monster, no hood covering head,
-professional majestic horror oil painting, cinematic survival horror portrait,
-intricate, high detail, sharp focus, dramatic lighting,
-photorealistic painting, oppressive atmosphere, deep shadows,
-(horror:1.12), (Horror Colors:1.25), sickly green fluorescent light, emergency red light,
-cold blue freezer mist, wet reflective floor, dark supermarket after the apocalypse
-```
-
-### 공통 Negative Prompt
-
-```text
-(bad-image-v2-39000, bad_prompt_version2, bad-hands-5, EasyNegative, NG_DeepNegative_V1_4T, bad-artist-anime:0.7),
-(worst quality, low quality:1.3), (depth of field, blurry:1.2),
-(greyscale, monochrome:1.1), cropped, lowres, text, jpeg artifacts,
-signature, watermark, username, artist name, trademark, title,
-multiple view, reference sheet, long neck, bad anatomy, bad hands,
-extra fingers, missing fingers, deformed fingers, distorted face,
-duplicate character, multiple people, clean bright studio, cute cheerful mood,
+((monochrome)), (painting by bad-artist-anime:0.9), (painting by bad-artist:0.9),
+watermark, text, error, blurry, jpeg artifacts, cropped,
+worst quality, low quality, normal quality, signature, username, artist name,
+(worst quality, low quality:1.4), bad anatomy, bad_prompt_version2,
+closed eyes, EasyNegative, bad-artist-anime, bad-artist, ng_deepnegative_v1_75t,
+bad hands, extra fingers, missing fingers, deformed fingers, long neck,
+multiple view, reference sheet, duplicate character, two people, crowd,
+clean clothes, clean bright studio, daylight, comedy mood, cute smile,
 fantasy armor, medieval costume, sci-fi armor, cyberpunk city,
-excessive gore, exposed organs, dismemberment,
-hood up, hood covering head, mask, gas mask, skull face, monster face,
-faceless, black empty face, glowing eyes, demon, ghost, creature
+mask, gas mask, skull mask, hood covering face, faceless, black empty face,
+demon horns, monster girl, animal ears, exposed organs, dismemberment
 ```
 
 ---
@@ -64,41 +45,39 @@ faceless, black empty face, glowing eyes, demon, ghost, creature
 ### 외형 설정
 
 - 짧은 흑갈색 머리, 땀과 먼지로 이마에 붙은 앞머리
-- 평범하고 지친 얼굴, 눈 밑 그늘, 입술을 다문 긴장감
-- 회색 후드 집업, 낡은 검은 바람막이, 어두운 청바지, 작은 백팩
-- 손전등, 찢어진 장바구니, 통조림 몇 개
+- 평범하고 지친 한국 남성, 눈 밑 그늘, 입술을 다문 긴장감
+- 회색 후드 집업은 hood down, 낡은 검은 바람막이, 어두운 청바지, 작은 백팩
+- 손전등, 찢어진 장바구니, 통조림
+- 배경: 식품관 진열대, 엎어진 상품, 젖은 바닥
 
 ### Positive Prompt
 
 ```text
-solo, single person, upper body portrait,
-ordinary Korean male survivor named Yoon Jae, normal human face, visible eyes,
-not a monster, no mask, no hood covering head,
+horror, intense angle, night, ((solo)), ((1boy)), upper body,
+ordinary Korean male survivor, normal human face, visible eyes, not a monster,
 short dark brown black hair, sweaty bangs stuck to forehead,
-tired average face, shadow under eyes, tense closed lips,
+tired average face, shadow under eyes, tense closed lips, haunted expression,
 gray zip hoodie with hood down, worn black windbreaker, dark jeans, small backpack,
-holding a flashlight and torn shopping basket with canned food,
-standing beside overturned supermarket shelves with visible Korean product packages, fearful but calculating gaze,
-flickering fluorescent food court, emergency red light, cold freezer mist,
-wet reflective floor, dark aisle behind him, sense of being hunted,
-((best quality)), ((masterpiece)), ((realistic)), (detailed),
-professional majestic horror oil painting, cinematic survival horror portrait,
-intricate, high detail, sharp focus, dramatic lighting, photorealistic painting,
-oppressive atmosphere, deep shadows, (horror:1.12), (Horror Colors:1.25)
+((dirty clothes)), wet clothes, dust, rain stains,
+holding a flashlight, torn shopping basket with canned food,
+defensive survival pose, shoulders tense, looking toward a noise off screen,
+dark supermarket food court, overturned shelves, visible Korean product packages,
+scattered cans, broken price tags, wet reflective floor, emergency red light,
+sickly green fluorescent light, cold freezer mist, ultra detailed spooky supermarket environment,
+volumetric fog, dramatic shadows, realistic, detailed, ((best quality)), ((masterpiece))
 ```
 
 ### Negative Prompt
 
 ```text
-(bad-image-v2-39000, bad_prompt_version2, bad-hands-5, EasyNegative, NG_DeepNegative_V1_4T, bad-artist-anime:0.7),
-female, woman, child, handsome idol face, perfect smile, heroic pose,
-clean clothes, soldier uniform, assault rifle, sword, zombie face,
-hood up, hood covering head, mask, skull face, monster face, faceless,
-glowing eyes, demon, ghost, creature, black empty face,
-(worst quality, low quality:1.3), (depth of field, blurry:1.2),
-greyscale, monochrome, cropped, lowres, text, jpeg artifacts,
-signature, watermark, long neck, bad anatomy, bad hands, extra fingers,
-multiple people, reference sheet, excessive gore
+((monochrome)), (painting by bad-artist-anime:0.9), (painting by bad-artist:0.9),
+watermark, text, error, blurry, jpeg artifacts, cropped,
+worst quality, low quality, normal quality, signature, username, artist name,
+(worst quality, low quality:1.4), bad anatomy, bad_prompt_version2,
+closed eyes, EasyNegative, bad-artist-anime, bad-artist, ng_deepnegative_v1_75t,
+female, woman, child, zombie face, monster face, glowing demon eyes,
+hood covering face, mask, faceless, two people, crowd, clean clothes,
+heroic smile, soldier uniform, assault rifle, sword, exposed organs, dismemberment
 ```
 
 ---
@@ -109,38 +88,35 @@ multiple people, reference sheet, excessive gore
 
 - 짧은 검은 머리, 단정한 옆머리, 각진 턱
 - 피로한 눈, 손목 근처 오래된 화상 자국
-- 남색 기능성 재킷, 소방 구조대 티셔츠, 튼튼한 작업 장갑
+- 남색 기능성 재킷, 낡은 소방 구조대 티셔츠, 작업 장갑
 - 쇠지렛대, 죽은 무전기
+- 배경: 직원 통로, 방화문, 경고 표지, 소화기 분말
 
 ### Positive Prompt
 
 ```text
-solo, single person, upper body portrait,
-Korean former firefighter survivor leader named Kang Junho, normal human face,
-visible eyes, not a monster, no mask, no hood covering head,
+horror, intense angle, night, ((solo)), ((1boy)), upper body,
+Korean former firefighter survivor leader, normal human face, visible eyes, not a monster,
 short practical black hair, strong jaw, exhausted eyes, restrained grief,
 navy utility jacket, old fire rescue t-shirt, heavy work gloves,
-small burn scar near wrist, holding a crowbar and broken radio,
-protective stance, giving a silent order in a dark supermarket employee corridor,
-warning signs on walls, smoke haze, scattered fire extinguisher powder,
-emergency red light, harsh fluorescent flicker, wet concrete floor,
-((best quality)), ((masterpiece)), ((realistic)), (detailed),
-professional majestic horror oil painting, cinematic survival horror portrait,
-intricate, high detail, sharp focus, dramatic lighting, photorealistic painting,
-oppressive atmosphere, deep shadows, (Horror Colors:1.5)
+small burn scar near wrist, ((dirty clothes)), ash stains, wet sleeves,
+holding a crowbar and broken radio, protective stance, arms raised slightly to signal silence,
+dark supermarket employee corridor, staff only door, fire door, warning signs,
+scattered fire extinguisher powder, smoke haze, emergency red light,
+sickly green fluorescent light, wet concrete floor, ultra detailed spooky supermarket backroom,
+volumetric fog, dramatic shadows, realistic, detailed, ((best quality)), ((masterpiece))
 ```
 
 ### Negative Prompt
 
 ```text
-(bad-image-v2-39000, bad_prompt_version2, bad-hands-5, EasyNegative, NG_DeepNegative_V1_4T, bad-artist-anime:0.7),
-female, child, old man, beard, full armor, helmet, smiling brightly,
-relaxed pose, clean formal suit, police uniform, huge axe, flames,
-hood up, hood covering head, mask, skull face, monster face, faceless,
-glowing eyes, demon, ghost, creature, black empty face,
-(worst quality, low quality:1.3), (depth of field, blurry:1.2),
-greyscale, monochrome, cropped, lowres, text, watermark, long neck,
-bad anatomy, bad hands, extra fingers, multiple people, excessive gore
+((monochrome)), watermark, text, error, blurry, jpeg artifacts, cropped,
+worst quality, low quality, normal quality, signature, username, artist name,
+(worst quality, low quality:1.4), bad anatomy, bad_prompt_version2,
+closed eyes, EasyNegative, bad-artist-anime, bad-artist, ng_deepnegative_v1_75t,
+female, child, old man, beard, zombie face, monster face, glowing eyes,
+hood covering face, mask, full armor, helmet, police uniform, huge axe,
+two people, crowd, clean formal suit, exposed organs, dismemberment
 ```
 
 ---
@@ -150,41 +126,37 @@ bad anatomy, bad hands, extra fingers, multiple people, excessive gore
 ### 외형 설정
 
 - 어깨 아래 검은 생머리, 흐트러진 낮은 포니테일
-- 단정한 얼굴, 부드러운 미소, 계산적인 눈빛
+- 단정한 얼굴, 부드러운 미소 뒤의 계산적인 눈빛
 - 베이지 트렌치코트, 검은 니트, 슬림한 팬츠, 얇은 가죽 장갑
-- 작은 손거울, 숨긴 비상식량, 접이식 칼의 암시
+- 작은 손거울, 숨긴 비상식량, 접이식 칼 암시
+- 배경: 화장품 코너, 가격표, 깨진 거울, 흩어진 상품
 
 ### Positive Prompt
 
 ```text
-solo, single person, upper body portrait,
-calm calculating Korean woman survivor named Lee Soyeon, normal human face,
-visible eyes, not a monster, no mask, no hood covering head,
+horror, intense angle, night, ((solo)), ((1girl)), upper body,
+calm calculating Korean woman survivor, normal human face, visible eyes, not a monster,
 long straight black hair in a low messy ponytail,
-neat beautiful face, soft polite smile, sharp distrustful eyes,
+neat face, soft polite smile, sharp distrustful eyes, haunted, subtle evil_smirk,
 beige trench coat, black knit top, slim dark pants, thin leather gloves,
-small mirror in one hand, hidden snack bars in coat pocket,
-one hand near a small folding knife, not openly threatening,
-standing in a dark supermarket cosmetics aisle connected to the food court, visible shelves and price tags,
-scattered packages, flickering fluorescent light, emergency red glow,
-the smile of someone about to lock a door behind another survivor,
-((best quality)), ((masterpiece)), ((realistic)), (detailed),
-professional majestic horror oil painting, cinematic survival horror portrait,
-intricate, high detail, sharp focus, dramatic lighting, photorealistic painting,
-oppressive atmosphere, deep shadows, (Horror Colors:1.5)
+((dirty clothes)), dust on coat, wet hem, small mirror in one hand,
+hidden snack bars in coat pocket, one hand near a small folding knife,
+standing in a dark supermarket cosmetics aisle, visible shelves and price tags,
+broken mirror, scattered packages, emergency red light, sickly green fluorescent light,
+ultra detailed spooky supermarket environment, volumetric fog, dramatic shadows,
+realistic, detailed, ((best quality)), ((masterpiece))
 ```
 
 ### Negative Prompt
 
 ```text
-(bad-image-v2-39000, bad_prompt_version2, bad-hands-5, EasyNegative, NG_DeepNegative_V1_4T, bad-artist-anime:0.7),
-male, child, school uniform, princess dress, fantasy outfit,
-overly sexy outfit, cheerful idol smile, innocent cute face,
-crying helpless pose, large weapon, blood splatter on face,
-hood up, hood covering head, mask, skull face, monster face, faceless,
-glowing eyes, demon, ghost, creature, black empty face,
-(worst quality, low quality:1.3), blurry, greyscale, monochrome,
-cropped, lowres, text, watermark, long neck, bad hands, multiple people
+((monochrome)), watermark, text, error, blurry, jpeg artifacts, cropped,
+worst quality, low quality, normal quality, signature, username, artist name,
+(worst quality, low quality:1.4), bad anatomy, bad_prompt_version2,
+closed eyes, EasyNegative, bad-artist-anime, bad-artist, ng_deepnegative_v1_75t,
+male, child, zombie face, monster face, glowing demon eyes, mask, faceless,
+school uniform, princess dress, fantasy outfit, sexy outfit, large breasts,
+two people, crowd, clean clothes, exposed organs, dismemberment
 ```
 
 ---
@@ -197,38 +169,34 @@ cropped, lowres, text, watermark, long neck, bad hands, multiple people
 - 넓은 얼굴, 낮은 눈썹, 무표정에 가까운 시선
 - 얼룩진 카키 작업복 점퍼, 검은 티셔츠, 두꺼운 장갑
 - 테이프로 감은 쇠파이프
+- 배경: 정육 코너, 고기 진열대, 비닐 커튼, 차가운 냉장 조명
 
 ### Positive Prompt
 
 ```text
-solo, single person, upper body portrait,
-dangerous Korean male survivor named Park Dongsik in a supermarket butcher section,
-normal human face, visible eyes, not a monster, no mask, no hood covering head,
-very short black hair, rough blunt silhouette,
-broad face, heavy brows, low emotionless stare,
-stained khaki work jacket, black t-shirt, thick gloves,
-holding a taped metal pipe at his side, large muscular build,
-silent violent tension, standing near meat counter and hanging plastic strips,
-cold white freezer light, red emergency reflection, dark blood colored shadows,
-not a monster, a living man becoming more frightening than the dead,
-((best quality)), ((masterpiece)), ((realistic)), (detailed),
-professional majestic horror oil painting, cinematic survival horror portrait,
-intricate, high detail, sharp focus, dramatic lighting, photorealistic painting,
-oppressive atmosphere, deep shadows, (horror:1.2), (Horror Colors:1.35)
+horror, intense angle, night, ((solo)), ((1boy)), upper body,
+dangerous Korean male survivor in a supermarket butcher section,
+normal human face, visible eyes, not a monster,
+very short black hair, rough blunt silhouette, broad face, heavy brows,
+low emotionless stare, haunted, faint evil_smirk,
+stained khaki work jacket, black t-shirt, thick gloves, ((dirty clothes)),
+holding a taped metal pipe, arms tense, ready to strike, zombie hunter pose,
+meat counter, hanging plastic strips, cold white freezer light,
+dark red reflections, scattered butcher paper, wet reflective floor,
+ultra detailed spooky supermarket butcher environment, volumetric fog,
+dramatic shadows, realistic, detailed, ((best quality)), ((masterpiece))
 ```
 
 ### Negative Prompt
 
 ```text
-(bad-image-v2-39000, bad_prompt_version2, bad-hands-5, EasyNegative, NG_DeepNegative_V1_4T, bad-artist-anime:0.7),
-female, child, slim pretty boy, idol face, cheerful smile,
-formal suit, fantasy armor, military commander, gun, sword,
-exposed organs, dismemberment, full zombie transformation,
-hood up, hood covering head, mask, skull face, monster face, faceless,
-glowing eyes, demon, ghost, creature, black empty face,
-(worst quality, low quality:1.3), blurry, greyscale, monochrome,
-cropped, lowres, text, watermark, long neck, bad anatomy, bad hands,
-extra fingers, multiple people
+((monochrome)), watermark, text, error, blurry, jpeg artifacts, cropped,
+worst quality, low quality, normal quality, signature, username, artist name,
+(worst quality, low quality:1.4), bad anatomy, bad_prompt_version2,
+closed eyes, EasyNegative, bad-artist-anime, bad-artist, ng_deepnegative_v1_75t,
+female, child, pretty idol face, cheerful smile, zombie face, monster face,
+mask, faceless, full armor, gun, sword, two people, crowd,
+exposed organs, dismemberment
 ```
 
 ---
@@ -241,37 +209,35 @@ extra fingers, multiple people
 - 부드러운 눈매, 창백한 피부, 울음을 참는 표정
 - 하늘색 셔츠, 흰 카디건, 어두운 슬랙스, 임시 의료 파우치
 - 붕대, 작은 소독약, 거의 빈 진통제 팩
+- 배경: 약국 코너, 흩어진 약 상자, 임시 처치대
 
 ### Positive Prompt
 
 ```text
-solo, single person, upper body portrait,
-Korean nurse survivor named Choi Yuna in a ruined supermarket pharmacy aisle,
-normal human face, visible eyes, not a monster, no mask, no hood covering head,
+horror, intense angle, night, ((solo)), ((1girl)), upper body,
+Korean nurse survivor in a ruined supermarket pharmacy aisle,
+normal human face, visible eyes, not a monster,
 shoulder length dark brown bob hair, one side pinned back,
-gentle eyes, pale tired face, holding back tears,
+gentle eyes, pale tired face, haunted expression, holding back tears,
 light blue shirt, white cardigan, dark slacks, small medical pouch,
-bandages, tiny disinfectant bottle, almost empty painkiller blister pack,
-compassionate but firm expression, forced to decide who can be treated,
-scattered medicine boxes, flickering fluorescent light, emergency red glow,
-medical supplies arranged like a desperate triage corner,
-((best quality)), ((masterpiece)), ((realistic)), (detailed),
-professional majestic horror oil painting, cinematic survival horror portrait,
-intricate, high detail, sharp focus, dramatic lighting, photorealistic painting,
-oppressive atmosphere, deep shadows, (Horror Colors:1.5)
+((dirty clothes)), bloodless dirt stains, wet cardigan cuffs,
+holding bandages, tiny disinfectant bottle, almost empty painkiller blister pack,
+arms raised slightly while checking supplies, desperate triage pose,
+scattered medicine boxes, broken pharmacy shelf, emergency red light,
+sickly green fluorescent light, ultra detailed spooky pharmacy corner,
+volumetric fog, dramatic shadows, realistic, detailed, ((best quality)), ((masterpiece))
 ```
 
 ### Negative Prompt
 
 ```text
-(bad-image-v2-39000, bad_prompt_version2, bad-hands-5, EasyNegative, NG_DeepNegative_V1_4T, bad-artist-anime:0.7),
-male, child, sexy nurse costume, hospital fetish outfit, bright clean hospital,
-cheerful smile, fantasy healer robe, large syringe, surgery scene,
-excessive gore, zombie face, (worst quality, low quality:1.3),
-hood up, hood covering head, mask, skull face, monster face, faceless,
-glowing eyes, demon, ghost, creature, black empty face,
-blurry, greyscale, monochrome, cropped, lowres, text, watermark,
-long neck, bad anatomy, bad hands, extra fingers, multiple people
+((monochrome)), watermark, text, error, blurry, jpeg artifacts, cropped,
+worst quality, low quality, normal quality, signature, username, artist name,
+(worst quality, low quality:1.4), bad anatomy, bad_prompt_version2,
+closed eyes, EasyNegative, bad-artist-anime, bad-artist, ng_deepnegative_v1_75t,
+male, child, sexy nurse costume, hospital fetish outfit, zombie face,
+monster face, mask, faceless, bright clean hospital, two people, crowd,
+large syringe, surgery room, exposed organs, dismemberment
 ```
 
 ---
@@ -282,41 +248,36 @@ long neck, bad anatomy, bad hands, extra fingers, multiple people
 
 - 짧고 삐친 검은 머리, 땀 때문에 흐트러진 앞머리
 - 앳된 얼굴, 겁먹은 눈을 일부러 사납게 뜸
-- 교복 셔츠 위 검은 후드, 풀어진 넥타이, 운동화
+- 교복 셔츠 위 검은 후드, hood down, 풀어진 넥타이, 운동화
 - 금 간 휴대폰, 과자 봉지, 작은 커터칼
+- 배경: 과자 코너, 떨어진 봉지, 어두운 진열대
 
 ### Positive Prompt
 
 ```text
-solo, single person, upper body portrait,
-Korean teenage high school boy survivor named Oh Taewoo, normal human face,
-visible eyes, not a monster, no mask, no hood covering head,
-short spiky black hair, sweaty messy bangs,
-young anxious face, frightened eyes trying to look tough,
-school shirt under black hoodie with hood down, loosened tie, sneakers,
-holding a cracked phone and a small snack bag,
-small utility cutter clipped to pocket, defensive posture,
-standing in a dark supermarket snack aisle, visible snack packages, fallen chips on wet floor,
-flickering fluorescent light, red emergency glow, deep shadow behind shelves,
-a scared kid pretending not to need help,
-((best quality)), ((masterpiece)), ((realistic)), (detailed),
-professional majestic horror oil painting, cinematic survival horror portrait,
-intricate, high detail, sharp focus, dramatic lighting, photorealistic painting,
-oppressive atmosphere, deep shadows, (Horror Colors:1.45)
+horror, intense angle, night, ((solo)), ((1boy)), upper body,
+Korean teenage high school boy survivor, normal human face, visible eyes, not a monster,
+short spiky black hair, sweaty messy bangs, young anxious face,
+frightened eyes trying to look tough, haunted, nervous expression,
+school shirt under black hoodie with hood down, loosened red necktie, sneakers,
+((dirty clothes)), dusty school shirt, wet sleeves,
+holding a cracked phone and a small snack bag, small utility cutter clipped to pocket,
+defensive pose, arms up slightly, pretending not to be scared,
+dark supermarket snack aisle, visible snack packages, fallen chips on wet floor,
+emergency red light, sickly green fluorescent light, ultra detailed spooky aisle,
+volumetric fog, dramatic shadows, realistic, detailed, ((best quality)), ((masterpiece))
 ```
 
 ### Negative Prompt
 
 ```text
-(bad-image-v2-39000, bad_prompt_version2, bad-hands-5, EasyNegative, NG_DeepNegative_V1_4T, bad-artist-anime:0.7),
-adult man, old man, female, elementary student, overly cute child,
-sexy outfit, idol stage outfit, fantasy armor, large weapon,
-confident hero smile, calm mature expression, gore,
-hood up, hood covering head, mask, skull face, monster face, faceless,
-glowing eyes, demon, ghost, creature, black empty face,
-(worst quality, low quality:1.3), blurry, greyscale, monochrome,
-cropped, lowres, text, watermark, long neck, bad hands, extra fingers,
-multiple people
+((monochrome)), watermark, text, error, blurry, jpeg artifacts, cropped,
+worst quality, low quality, normal quality, signature, username, artist name,
+(worst quality, low quality:1.4), bad anatomy, bad_prompt_version2,
+closed eyes, EasyNegative, bad-artist-anime, bad-artist, ng_deepnegative_v1_75t,
+adult man, old man, female, elementary student, zombie face, monster face,
+mask, faceless, hood covering face, idol outfit, fantasy armor, large weapon,
+two people, crowd, exposed organs, dismemberment
 ```
 
 ---
@@ -329,37 +290,34 @@ multiple people
 - 날카로운 눈매, 피곤하지만 고압적인 표정
 - 마트 관리자 조끼, 흰 블라우스, 검은 슬랙스, 사원증
 - 열쇠 뭉치, 매장 무전기, 구겨진 매장 지도
+- 배경: 직원 전용 문, 사무실 입구, 경고 라벨
 
 ### Positive Prompt
 
 ```text
-solo, single person, upper body portrait,
-Korean supermarket manager survivor named Jung Mira, normal human face,
-visible eyes, not a monster, no mask, no hood covering head,
+horror, intense angle, night, ((solo)), ((1girl)), upper body,
+Korean supermarket manager survivor, normal human face, visible eyes, not a monster,
 neat black bob haircut, hair tucked behind one ear,
-sharp eyes, tired authoritative expression,
+sharp eyes, tired authoritative expression, haunted, controlled fear,
 store manager vest, white blouse, black slacks, employee ID badge,
+((dirty clothes)), dust on vest, wet blouse cuffs,
 holding a keyring, store radio, crumpled floor map,
-standing in front of a staff only door like she owns the last exit,
-warning labels, dark office entrance, flickering fluorescent light,
-emergency red glow, suspicion and control in her posture,
-((best quality)), ((masterpiece)), ((realistic)), (detailed),
-professional majestic horror oil painting, cinematic survival horror portrait,
-intricate, high detail, sharp focus, dramatic lighting, photorealistic painting,
-oppressive atmosphere, deep shadows, (Horror Colors:1.5)
+arms up slightly as if blocking access to the staff only door,
+staff only door, dark office entrance, warning labels, broken fluorescent light,
+emergency red light, ultra detailed spooky supermarket back office,
+volumetric fog, dramatic shadows, realistic, detailed, ((best quality)), ((masterpiece))
 ```
 
 ### Negative Prompt
 
 ```text
-(bad-image-v2-39000, bad_prompt_version2, bad-hands-5, EasyNegative, NG_DeepNegative_V1_4T, bad-artist-anime:0.7),
-male, child, idol smile, princess dress, office lady glamour,
-maid outfit, fantasy robe, military uniform, blood-covered clothes,
-helpless crying pose, zombie face, (worst quality, low quality:1.3),
-hood up, hood covering head, mask, skull face, monster face, faceless,
-glowing eyes, demon, ghost, creature, black empty face,
-blurry, greyscale, monochrome, cropped, lowres, text, watermark,
-long neck, bad anatomy, bad hands, extra fingers, multiple people
+((monochrome)), watermark, text, error, blurry, jpeg artifacts, cropped,
+worst quality, low quality, normal quality, signature, username, artist name,
+(worst quality, low quality:1.4), bad anatomy, bad_prompt_version2,
+closed eyes, EasyNegative, bad-artist-anime, bad-artist, ng_deepnegative_v1_75t,
+male, child, zombie face, monster face, mask, faceless, princess dress,
+maid outfit, office glamour, military uniform, two people, crowd,
+exposed organs, dismemberment
 ```
 
 ---
@@ -372,38 +330,33 @@ long neck, bad anatomy, bad hands, extra fingers, multiple people
 - 마른 얼굴, 떨리는 눈, 핏기 없는 입술
 - 낡은 경비복, 어깨가 내려앉은 방검 조끼, 손전등 벨트
 - 냉동고 열쇠, 경비봉, 구겨진 근무표
+- 배경: 성에 낀 냉동고 문, 긁힌 자국, 차가운 안개
 
 ### Positive Prompt
 
 ```text
-solo, single person, upper body portrait,
-guilty Korean supermarket security guard survivor named Han Seungwoo,
-normal human face, visible eyes, not a monster, no mask, no hood covering head,
+horror, intense angle, night, ((solo)), ((1boy)), upper body,
+guilty Korean supermarket security guard survivor, normal human face, visible eyes, not a monster,
 short gray brown hair, messy bangs, thin tired face,
-trembling eyes, pale lips, worn security uniform,
-sagging protective vest, flashlight belt,
-holding a freezer key and crumpled duty roster,
-security baton hanging unused at his side, hunched posture,
-standing near a closed freezer door with frost and scratch marks,
-cold blue freezer mist, red emergency reflection, metal door dented from inside,
-a man listening to the monster he locked away,
-((best quality)), ((masterpiece)), ((realistic)), (detailed),
-professional majestic horror oil painting, cinematic survival horror portrait,
-intricate, high detail, sharp focus, dramatic lighting, photorealistic painting,
-oppressive atmosphere, deep shadows, (horror:1.18), (Horror Colors:1.35)
+trembling eyes, pale lips, haunted expression, frightened guilt,
+worn security uniform, sagging protective vest, flashlight belt,
+((dirty clothes)), dust and frost stains,
+holding a freezer key and crumpled duty roster, security baton hanging unused,
+arms close to chest, listening to the monster behind the freezer door,
+closed industrial freezer door, frost, scratch marks, dented metal,
+cold blue freezer mist, emergency red light, ultra detailed spooky freezer area,
+volumetric fog, dramatic shadows, realistic, detailed, ((best quality)), ((masterpiece))
 ```
 
 ### Negative Prompt
 
 ```text
-(bad-image-v2-39000, bad_prompt_version2, bad-hands-5, EasyNegative, NG_DeepNegative_V1_4T, bad-artist-anime:0.7),
-female, child, police officer hero, soldier, confident smile,
-clean formal uniform, fantasy armor, gun, attacking pose,
-zombie bite wound, excessive gore, (worst quality, low quality:1.3),
-hood up, hood covering head, mask, skull face, monster face, faceless,
-glowing eyes, demon, ghost, creature, black empty face,
-blurry, greyscale, monochrome, cropped, lowres, text, watermark,
-long neck, bad anatomy, bad hands, extra fingers, multiple people
+((monochrome)), watermark, text, error, blurry, jpeg artifacts, cropped,
+worst quality, low quality, normal quality, signature, username, artist name,
+(worst quality, low quality:1.4), bad anatomy, bad_prompt_version2,
+closed eyes, EasyNegative, bad-artist-anime, bad-artist, ng_deepnegative_v1_75t,
+female, child, police hero, soldier, zombie face, monster face, mask,
+faceless, gun, attacking pose, two people, crowd, exposed organs, dismemberment
 ```
 
 ---
@@ -416,38 +369,34 @@ long neck, bad anatomy, bad hands, extra fingers, multiple people
 - 마른 뺨, 붉어진 눈가, 불안하게 떨리는 입술
 - 아이보리 니트, 긴 카키 코트, 편한 바지
 - 딸 사진이 뜬 휴대폰, 작은 머리핀, 분유통
+- 배경: 아기용품 코너, 기저귀 패키지, 떨어진 분유통
 
 ### Positive Prompt
 
 ```text
-solo, single person, upper body portrait,
-desperate Korean mother survivor named Kim Bora, normal human face,
-visible eyes, not a monster, no mask, no hood covering head,
+horror, intense angle, night, ((solo)), ((1girl)), upper body,
+desperate Korean mother survivor, normal human face, visible eyes, not a monster,
 shoulder length brown hair in a rushed low ponytail,
-thin cheeks, reddened eyes, trembling lips,
+thin cheeks, reddened eyes, trembling lips, haunted expression, quiet panic,
 ivory knit sweater, long khaki coat, practical pants,
-holding a phone showing her daughter's photo,
-small child hairpin and baby formula can in tote bag,
-standing in a supermarket baby goods aisle, visible diaper packages, fallen diapers, dim shelves,
-quiet panic about to break, maternal fear under emergency red light,
-flickering fluorescent light, wet floor, dark aisle like a tunnel behind her,
-((best quality)), ((masterpiece)), ((realistic)), (detailed),
-professional majestic horror oil painting, cinematic survival horror portrait,
-intricate, high detail, sharp focus, dramatic lighting, photorealistic painting,
-oppressive atmosphere, deep shadows, (Horror Colors:1.5)
+((dirty clothes)), wet coat hem, dusty sleeves,
+holding a phone showing her daughter's photo, small child hairpin,
+baby formula can in tote bag, arms raised protectively around the phone,
+supermarket baby goods aisle, visible diaper packages, fallen diapers, dim shelves,
+emergency red light, sickly green fluorescent light, ultra detailed spooky baby aisle,
+volumetric fog, dramatic shadows, realistic, detailed, ((best quality)), ((masterpiece))
 ```
 
 ### Negative Prompt
 
 ```text
-(bad-image-v2-39000, bad_prompt_version2, bad-hands-5, EasyNegative, NG_DeepNegative_V1_4T, bad-artist-anime:0.7),
-male, child, pregnant belly emphasis, glamour pose, sexy outfit,
-cheerful smile, fantasy dress, queen, magical girl, large weapon,
-zombie face, excessive gore, (worst quality, low quality:1.3),
-hood up, hood covering head, mask, skull face, monster face, faceless,
-glowing eyes, demon, ghost, creature, black empty face,
-blurry, greyscale, monochrome, cropped, lowres, text, watermark,
-long neck, bad anatomy, bad hands, extra fingers, multiple people
+((monochrome)), watermark, text, error, blurry, jpeg artifacts, cropped,
+worst quality, low quality, normal quality, signature, username, artist name,
+(worst quality, low quality:1.4), bad anatomy, bad_prompt_version2,
+closed eyes, EasyNegative, bad-artist-anime, bad-artist, ng_deepnegative_v1_75t,
+male, child, pregnant belly emphasis, zombie face, monster face, mask,
+faceless, glamour pose, sexy outfit, queen, magical girl, two people, crowd,
+exposed organs, dismemberment
 ```
 
 ---
@@ -460,37 +409,34 @@ long neck, bad anatomy, bad hands, extra fingers, multiple people
 - 회색빛 피부, 초점 없는 눈, 턱 주변의 검은 핏자국
 - 녹색 마트 식품관 유니폼, 흰 앞치마, 찢어진 명찰
 - 냉동고 문 유리 너머 성에 낀 손자국
+- 배경: 산업용 냉동고 내부, 긁힌 철문, 차가운 안개
 
 ### Positive Prompt
 
 ```text
-solo, single infected person, upper body portrait,
-(horror:1.55), portrait of an infected Korean supermarket food court worker trapped inside a freezer,
+horror, intense angle, night, ((solo)), ((1boy)), upper body,
+infected Korean supermarket food court worker, zombie pose, arms up,
 short black hair stuck with frost and sweat,
-gray dead skin, unfocused cloudy eyes, slack jaw,
+gray dead skin, unfocused creepy eyes, slack jaw, haunted, dead expression,
 subtle dark blood around mouth, no excessive gore,
-green supermarket food court uniform, white apron, torn name tag,
-frosted hands pressed against freezer glass,
-industrial freezer interior, scratch marks on metal door,
-cold blue freezer mist, harsh fluorescent light, red emergency reflection,
-tragic former human presence, slow aggressive movement,
-his employee badge still hanging from his neck, the door about to open,
-((best quality)), ((masterpiece)), ((realistic)), (detailed),
-professional majestic horror oil painting, cinematic survival horror portrait,
-intricate, high detail, sharp focus, dramatic lighting, photorealistic painting,
-oppressive atmosphere, deep shadows, (Horror Colors:1.75)
+green supermarket food court uniform, white apron, torn name tag, employee badge,
+((dirty clothes)), frost covered uniform, wet apron,
+frosted hands pressed against freezer glass, trapped inside industrial freezer,
+scratch marks on metal door, cold blue freezer mist, emergency red light,
+ultra detailed spooky freezer environment, volumetric fog,
+dramatic shadows, realistic, detailed, ((best quality)), ((masterpiece))
 ```
 
 ### Negative Prompt
 
 ```text
-(bad-image-v2-39000, bad_prompt_version2, bad-hands-5, EasyNegative, NG_DeepNegative_V1_4T, bad-artist-anime:0.7),
-female, child, handsome clean face, normal healthy skin,
-smiling human expression, cute monster, fantasy demon, horns,
-exposed organs, dismemberment, huge zombie horde,
-bright daylight, clean background, (worst quality, low quality:1.3),
-blurry, greyscale, monochrome, cropped, lowres, text, watermark,
-long neck, bad anatomy, bad hands, extra fingers, multiple people
+((monochrome)), watermark, text, error, blurry, jpeg artifacts, cropped,
+worst quality, low quality, normal quality, signature, username, artist name,
+(worst quality, low quality:1.4), bad anatomy, bad_prompt_version2,
+closed eyes, EasyNegative, bad-artist-anime, bad-artist, ng_deepnegative_v1_75t,
+female, child, handsome clean face, normal healthy skin, cute monster,
+fantasy demon, horns, huge zombie horde, two people, crowd,
+exposed organs, dismemberment, bright daylight, clean background
 ```
 
 ---
@@ -500,31 +446,30 @@ long neck, bad anatomy, bad hands, extra fingers, multiple people
 ### Positive Prompt
 
 ```text
-(horror:1.35), Korean modern zombie survival horror key visual,
-nine survivors trapped in a dark supermarket food court,
-ordinary male protagonist with flashlight at center,
-former firefighter leader, calculating woman in trench coat,
-dangerous man with metal pipe, nurse with medical pouch,
-teenage student with cracked phone, supermarket manager with keyring,
-guilty security guard, desperate mother with daughter's phone,
-infected supermarket worker silhouette behind frosted freezer door,
-flickering fluorescent lights, emergency red light, cold blue freezer mist,
-scattered groceries, wet reflective floor, crushed shutter, dark aisles,
-everyone looking in different directions, distrust, panic, survival tension,
-((best quality)), ((masterpiece)), ((realistic)), (detailed),
-professional majestic horror oil painting, cinematic survival horror poster,
-intricate, high detail, sharp focus, dramatic lighting, photorealistic painting,
-oppressive atmosphere, deep shadows, (Horror Colors:1.65), no text
+horror, intense angle, night, upper body group poster,
+Korean modern zombie survival horror, nine human survivors trapped in a supermarket food court,
+one infected supermarket worker silhouette behind a frosted freezer door,
+ordinary male survivor with flashlight, former firefighter with crowbar,
+calculating woman in beige trench coat, dangerous man with metal pipe,
+nurse with medical pouch, teenage boy in school shirt and black hoodie hood down,
+supermarket manager with keyring and map, guilty security guard with freezer key,
+desperate mother holding phone with daughter's photo,
+((dirty clothes)), haunted faces, fear, distrust, panic,
+crushed shutter, visible Korean product packages, scattered groceries,
+wet reflective floor, emergency red light, sickly green fluorescent light,
+cold blue freezer mist, ultra detailed spooky supermarket environment,
+volumetric fog, dramatic shadows, realistic, detailed, ((best quality)), ((masterpiece))
 ```
 
 ### Negative Prompt
 
 ```text
-(bad-image-v2-39000, bad_prompt_version2, bad-hands-5, EasyNegative, NG_DeepNegative_V1_4T, bad-artist-anime:0.7),
-(worst quality, low quality:1.3), (depth of field, blurry:1.2),
-greyscale, monochrome, text, logo, watermark, title, reference sheet,
+((monochrome)), watermark, text, error, blurry, jpeg artifacts, cropped,
+worst quality, low quality, normal quality, signature, username, artist name,
+(worst quality, low quality:1.4), bad anatomy, bad_prompt_version2,
+closed eyes, EasyNegative, bad-artist-anime, bad-artist, ng_deepnegative_v1_75t,
 same face, identical hairstyles, duplicate bodies, missing characters,
 more than ten main characters, fewer than ten story figures,
 fantasy armor, medieval setting, cyberpunk city, comedy mood,
-excessive gore, dismemberment, exposed organs, bad hands, long neck
+exposed organs, dismemberment, bright daylight, clean background
 ```
