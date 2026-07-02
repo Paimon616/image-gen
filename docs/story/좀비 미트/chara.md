@@ -363,7 +363,7 @@ long flowing hair, ponytail, same hairstyle as nurse
 
 ### 외형 설정
 
-- 짧은 회갈색 머리, 흐트러진 앞머리
+- 40대 초중반 아저씨다운 짧은 salt and pepper hair, 관자놀이의 흰머리, 이마가 보이는 짧은 경비원 머리
 - 마른 얼굴, 떨리는 눈, 핏기 없는 입술
 - 낡은 경비복, 어깨가 내려앉은 방검 조끼, 손전등 벨트
 - 냉동고 열쇠, 경비봉, 구겨진 근무표
@@ -374,9 +374,10 @@ long flowing hair, ponytail, same hairstyle as nurse
 ```text
 horror, intense angle, night, ((solo)), ((1boy)), upper body,
 guilty Korean supermarket security guard survivor, normal human face, visible eyes, not a monster,
-mid 30s gaunt Korean man, long narrow face, hollow cheeks,
+early 40s gaunt Korean man, tired uncle-like security guard, long narrow face, hollow cheeks,
 thin nose, drooping eyelids, small trembling eyes, thin uneven eyebrows,
-short gray brown hair, messy flat bangs, thin tired face,
+short cropped salt and pepper hair, gray hair at temples, receding temples,
+visible forehead, thin flat hair, no bangs, no wavy hair, thin tired face,
 thin pale lips, weak chin, haunted expression, frightened guilt,
 worn security uniform, sagging protective vest, flashlight belt,
 ((dirty clothes)), dust and frost stains,
@@ -397,7 +398,9 @@ closed eyes, EasyNegative, bad-artist-anime, bad-artist, ng_deepnegative_v1_75t,
 female, child, police hero, soldier, zombie face, monster face, mask,
 faceless, gun, attacking pose, two people, crowd, exposed organs, dismemberment
 handsome idol face, sharp V jaw, long sharp nose, wavy center parted hair,
-strong heroic face, thick perfect eyebrows, same face
+strong heroic face, thick perfect eyebrows, same face,
+young handsome hair, long bangs, fluffy hair, hair over forehead,
+black idol hair, clean youthful face
 ```
 
 ---
