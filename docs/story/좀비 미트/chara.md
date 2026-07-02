@@ -104,9 +104,10 @@ perfect eyebrows, model face, same face
 
 ### 외형 설정
 
-- 짧은 검은 머리, 단정한 옆머리, 각진 턱
-- 피로한 눈, 손목 근처 오래된 화상 자국
-- 남색 기능성 재킷, 낡은 소방 구조대 티셔츠, 작업 장갑
+- 아주 짧은 검은 crew cut, 짧게 민 옆머리, 앞머리 없음, 웨이브 없음
+- 넓은 이마, 넓은 광대, 사각턱, 넓고 낮은 코, 두꺼운 목
+- 듬직한 소방관 체형, broad shoulders, stocky muscular build, 두꺼운 팔뚝
+- 남색 기능성 소방 재킷, 낡은 소방 구조대 티셔츠, 작업 장갑
 - 쇠지렛대, 죽은 무전기
 - 배경: 직원 통로, 방화문, 경고 표지, 소화기 분말
 
@@ -115,10 +116,12 @@ perfect eyebrows, model face, same face
 ```text
 horror, intense angle, night, ((solo)), ((1boy)), upper body,
 Korean former firefighter survivor leader, normal human face, visible eyes, not a monster,
-late 30s rugged Korean man, square jaw, broad nose, thick neck,
-short black crew cut, clean side trim, tired downturned eyes,
-slightly crooked eyebrows, firm wide mouth, restrained grief,
-navy utility jacket, old fire rescue t-shirt, heavy work gloves,
+late 30s rugged Korean firefighter, dependable rescue worker face,
+very short black crew cut, buzzed sides, no bangs, no wavy hair, no center part,
+broad forehead, wide cheekbones, square jaw, broad low nose, thick neck,
+stocky muscular firefighter build, broad shoulders, thick forearms, solid chest,
+tired downturned eyes, slightly crooked eyebrows, firm wide mouth, restrained grief,
+navy firefighter utility jacket, old fire rescue t-shirt, heavy work gloves,
 small burn scar near wrist, ((dirty clothes)), ash stains, wet sleeves,
 holding a crowbar and broken radio, protective stance, arms raised slightly to signal silence,
 dark supermarket employee corridor, staff only door, fire door, warning signs,
@@ -138,7 +141,8 @@ female, child, old man, beard, zombie face, monster face, glowing eyes,
 hood covering face, mask, full armor, helmet, police uniform, huge axe,
 two people, crowd, clean formal suit, exposed organs, dismemberment
 handsome idol face, pretty boy, sharp V jaw, long sharp nose,
-wavy center parted hair, delicate face, same face
+wavy center parted hair, fluffy wavy hair, long bangs, hair over forehead,
+delicate face, slim neck, narrow shoulders, skinny body, same face
 ```
 
 ---
