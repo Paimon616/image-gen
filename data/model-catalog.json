@@ -2428,5 +2428,94 @@
       "fantasy",
       "cartoon"
     ]
+  },
+  "checkpoints/revAnimated_v122EOL.safetensors": {
+    "name": "ReV Animated",
+    "version": "v1.2.2-EOL",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/13303d08-1b18-4b89-728f-82aa3b4aaa00/original=true/506112.jpeg",
+    "civitai_url": "https://civitai.red/models/7371/rev-animated?modelVersionId=46846",
+    "source_url": "https://civitai.red/models/7371/rev-animated?modelVersionId=46846",
+    "tags": [
+      "anime",
+      "portraits",
+      "illustration",
+      "base model",
+      "fantasy",
+      "cartoon"
+    ]
+  },
+  "loras/ILwatercolor.safetensors": {
+    "name": "WatercolorStyle",
+    "version": "Illustrious",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/db072fa5-b590-49c5-8146-524ae5b5affc/original=true/44817755.jpeg",
+    "civitai_url": "https://civitai.red/models/963176/watercolorstyle?modelVersionId=1150702",
+    "source_url": "https://civitai.red/models/963176/watercolorstyle?modelVersionId=1150702",
+    "tags": [
+      "Watercolor",
+      "styles",
+      "lora",
+      "style",
+      "pony,",
+      "watercolor"
+    ]
+  },
+  "loras/RetroNijiIL.safetensors": {
+    "name": "[Illustrious XL] Niji | Retro Anime Style LoRA",
+    "version": "Mix V1",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/c15758a3-917b-4e86-b982-eae26b83dde6/original=true/76155980.jpeg",
+    "civitai_url": "https://civitai.red/models/1575260/illustrious-xl-niji-retro-anime-style-lora?modelVersionId=1782598",
+    "source_url": "https://civitai.red/models/1575260/illustrious-xl-niji-retro-anime-style-lora?modelVersionId=1782598",
+    "tags": [
+      "retroniji, retro",
+      "niji",
+      "anime",
+      "girls",
+      "nijijourney",
+      "esthetic",
+      "aesthetic",
+      "retro artsyle",
+      "90s style",
+      "vintage",
+      "boys",
+      "fashion",
+      "man",
+      "artsyle",
+      "retro",
+      "woman",
+      "style"
+    ]
+  },
+  "loras/Devilight.safetensors": {
+    "name": "Devilight 💡 - Lore Taker Custom Style #06",
+    "version": "v1.1 RELEASE",
+    "base_model": "Pony",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/0eb17a6e-b062-4df3-b938-3bb4a14928d1/original=true/34681939.jpeg",
+    "civitai_url": "https://civitai.red/models/849402/devilight-lore-taker-custom-style-06?modelVersionId=957911",
+    "source_url": "https://civitai.red/models/849402/devilight-lore-taker-custom-style-06?modelVersionId=957911",
+    "tags": [
+      "Devilight",
+      "style",
+      "anime"
+    ]
+  },
+  "checkpoints/hiddenCanvas_v10.safetensors": {
+    "name": "Hidden Canvas",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/8c26fd1c-0fa2-4f8c-affb-08df69bbccd7/original=true/84477651.jpeg",
+    "civitai_url": "https://civitai.red/models/1716457/hidden-canvas?modelVersionId=1942411",
+    "source_url": "https://civitai.red/models/1716457/hidden-canvas?modelVersionId=1942411",
+    "tags": [
+      "woman",
+      "fine-detail",
+      "masterpiece-potential",
+      "creative-unlocked",
+      "hidden-depths",
+      "style",
+      "conceptual-art"
+    ]
   }
 }

@@ -35,8 +35,22 @@ multiple view, reference sheet, duplicate character, two people, crowd,
 clean clothes, clean bright studio, daylight, comedy mood, cute smile,
 fantasy armor, medieval costume, sci-fi armor, cyberpunk city,
 mask, gas mask, skull mask, hood covering face, faceless, black empty face,
-demon horns, monster girl, animal ears, exposed organs, dismemberment
+demon horns, monster girl, animal ears, exposed organs, dismemberment,
+same face, identical male face, handsome idol face, pretty boy face,
+sharp V jaw, long sharp nose, wavy center parted black hair,
+perfect straight eyebrows, model face
 ```
+
+## 남성 캐릭터 얼굴 차별화 규칙
+
+ReV Animated는 남성 캐릭터를 `black wavy center-part hair`, `sharp V jaw`, `handsome idol face`, `long sharp nose`, `thick straight eyebrows`로 수렴시키는 경향이 있다. 남자 캐릭터를 생성할 때는 각 prompt 앞쪽의 얼굴형, 눈, 코, 입, 헤어 실루엣을 유지한다.
+
+- 윤재: 평범한 20대 후반, 부드러운 oval face, 낮은 콧대, 처진 피곤한 눈, 짧고 납작한 messy hair
+- 강준호: 30대 후반, square jaw, 넓은 코, 짧은 crew cut, 굵은 목, 소방관 같은 단단한 인상
+- 박동식: 40대 초반, broad round face, broken nose, very short buzz cut, 작은 deep-set eyes, 무거운 턱
+- 오태우: 10대, round youthful face, 작은 코, 큰 불안한 눈, spiky schoolboy hair, 턱선 미성숙
+- 한승우: 30대 중반, long narrow gaunt face, 얇은 코, 처진 눈꺼풀, 짧은 회갈색 머리, 얇은 입술
+- 마석훈: 감염체, sunken cheeks, cloudy eyes, slack jaw, frost-stuck short hair, 인간 미남형 금지
 
 ---
 
@@ -55,7 +69,9 @@ demon horns, monster girl, animal ears, exposed organs, dismemberment
 ```text
 horror, intense angle, night, ((solo)), ((1boy)), upper body,
 ordinary Korean male survivor, normal human face, visible eyes, not a monster,
-short dark brown black hair, sweaty bangs stuck to forehead,
+plain ordinary face, soft oval face, low nose bridge, small tired eyes,
+slightly downturned eyes, natural uneven eyebrows, narrow lips, no sharp jaw,
+short flat messy dark brown black hair, sweaty bangs stuck to forehead,
 tired average face, shadow under eyes, tense closed lips, haunted expression,
 gray zip hoodie with hood down, worn black windbreaker, dark jeans, small backpack,
 ((dirty clothes)), wet clothes, dust, rain stains,
@@ -78,6 +94,8 @@ closed eyes, EasyNegative, bad-artist-anime, bad-artist, ng_deepnegative_v1_75t,
 female, woman, child, zombie face, monster face, glowing demon eyes,
 hood covering face, mask, faceless, two people, crowd, clean clothes,
 heroic smile, soldier uniform, assault rifle, sword, exposed organs, dismemberment
+handsome idol face, sharp V jaw, long sharp nose, wavy center parted hair,
+perfect eyebrows, model face, same face
 ```
 
 ---
@@ -97,7 +115,9 @@ heroic smile, soldier uniform, assault rifle, sword, exposed organs, dismemberme
 ```text
 horror, intense angle, night, ((solo)), ((1boy)), upper body,
 Korean former firefighter survivor leader, normal human face, visible eyes, not a monster,
-short practical black hair, strong jaw, exhausted eyes, restrained grief,
+late 30s rugged Korean man, square jaw, broad nose, thick neck,
+short black crew cut, clean side trim, tired downturned eyes,
+slightly crooked eyebrows, firm wide mouth, restrained grief,
 navy utility jacket, old fire rescue t-shirt, heavy work gloves,
 small burn scar near wrist, ((dirty clothes)), ash stains, wet sleeves,
 holding a crowbar and broken radio, protective stance, arms raised slightly to signal silence,
@@ -117,6 +137,8 @@ closed eyes, EasyNegative, bad-artist-anime, bad-artist, ng_deepnegative_v1_75t,
 female, child, old man, beard, zombie face, monster face, glowing eyes,
 hood covering face, mask, full armor, helmet, police uniform, huge axe,
 two people, crowd, clean formal suit, exposed organs, dismemberment
+handsome idol face, pretty boy, sharp V jaw, long sharp nose,
+wavy center parted hair, delicate face, same face
 ```
 
 ---
@@ -177,8 +199,10 @@ two people, crowd, clean clothes, exposed organs, dismemberment
 horror, intense angle, night, ((solo)), ((1boy)), upper body,
 dangerous Korean male survivor in a supermarket butcher section,
 normal human face, visible eyes, not a monster,
-very short black hair, rough blunt silhouette, broad face, heavy brows,
-low emotionless stare, haunted, faint evil_smirk,
+early 40s rough Korean laborer, broad round face, heavy square chin,
+broken nose, flattened nose bridge, small deep-set eyes, heavy eyelids,
+very short black buzz cut, rough blunt silhouette, thick heavy brows,
+low emotionless stare, wide pressed lips, haunted, faint evil_smirk,
 stained khaki work jacket, black t-shirt, thick gloves, ((dirty clothes)),
 holding a taped metal pipe, arms tense, ready to strike, zombie hunter pose,
 meat counter, hanging plastic strips, cold white freezer light,
@@ -197,6 +221,8 @@ closed eyes, EasyNegative, bad-artist-anime, bad-artist, ng_deepnegative_v1_75t,
 female, child, pretty idol face, cheerful smile, zombie face, monster face,
 mask, faceless, full armor, gun, sword, two people, crowd,
 exposed organs, dismemberment
+handsome idol face, pretty boy, slim face, sharp V jaw, long sharp nose,
+wavy center parted hair, delicate eyebrows, same face
 ```
 
 ---
@@ -257,8 +283,10 @@ large syringe, surgery room, exposed organs, dismemberment
 ```text
 horror, intense angle, night, ((solo)), ((1boy)), upper body,
 Korean teenage high school boy survivor, normal human face, visible eyes, not a monster,
-short spiky black hair, sweaty messy bangs, young anxious face,
-frightened eyes trying to look tough, haunted, nervous expression,
+teenage boy, round youthful face, soft cheeks, small nose,
+large anxious eyes, thin nervous eyebrows, immature jawline,
+short spiky black schoolboy hair, sweaty messy bangs, young anxious face,
+frightened eyes trying to look tough, slightly open tense mouth, haunted, nervous expression,
 school shirt under black hoodie with hood down, loosened red necktie, sneakers,
 ((dirty clothes)), dusty school shirt, wet sleeves,
 holding a cracked phone and a small snack bag, small utility cutter clipped to pocket,
@@ -278,6 +306,8 @@ closed eyes, EasyNegative, bad-artist-anime, bad-artist, ng_deepnegative_v1_75t,
 adult man, old man, female, elementary student, zombie face, monster face,
 mask, faceless, hood covering face, idol outfit, fantasy armor, large weapon,
 two people, crowd, exposed organs, dismemberment
+mature masculine face, sharp V jaw, long sharp nose, model face,
+wavy center parted hair, thick adult eyebrows, same face
 ```
 
 ---
@@ -337,8 +367,10 @@ exposed organs, dismemberment
 ```text
 horror, intense angle, night, ((solo)), ((1boy)), upper body,
 guilty Korean supermarket security guard survivor, normal human face, visible eyes, not a monster,
-short gray brown hair, messy bangs, thin tired face,
-trembling eyes, pale lips, haunted expression, frightened guilt,
+mid 30s gaunt Korean man, long narrow face, hollow cheeks,
+thin nose, drooping eyelids, small trembling eyes, thin uneven eyebrows,
+short gray brown hair, messy flat bangs, thin tired face,
+thin pale lips, weak chin, haunted expression, frightened guilt,
 worn security uniform, sagging protective vest, flashlight belt,
 ((dirty clothes)), dust and frost stains,
 holding a freezer key and crumpled duty roster, security baton hanging unused,
@@ -357,6 +389,8 @@ worst quality, low quality, normal quality, signature, username, artist name,
 closed eyes, EasyNegative, bad-artist-anime, bad-artist, ng_deepnegative_v1_75t,
 female, child, police hero, soldier, zombie face, monster face, mask,
 faceless, gun, attacking pose, two people, crowd, exposed organs, dismemberment
+handsome idol face, sharp V jaw, long sharp nose, wavy center parted hair,
+strong heroic face, thick perfect eyebrows, same face
 ```
 
 ---
@@ -416,8 +450,9 @@ exposed organs, dismemberment
 ```text
 horror, intense angle, night, ((solo)), ((1boy)), upper body,
 infected Korean supermarket food court worker, zombie pose, arms up,
-short black hair stuck with frost and sweat,
-gray dead skin, unfocused creepy eyes, slack jaw, haunted, dead expression,
+short black hair stuck with frost and sweat, uneven hairline,
+sunken cheeks, asymmetrical face, gray dead skin, cloudy unfocused eyes,
+collapsed nose bridge, slack jaw, torn dry lips, haunted, dead expression,
 subtle dark blood around mouth, no excessive gore,
 green supermarket food court uniform, white apron, torn name tag, employee badge,
 ((dirty clothes)), frost covered uniform, wet apron,
@@ -437,6 +472,8 @@ closed eyes, EasyNegative, bad-artist-anime, bad-artist, ng_deepnegative_v1_75t,
 female, child, handsome clean face, normal healthy skin, cute monster,
 fantasy demon, horns, huge zombie horde, two people, crowd,
 exposed organs, dismemberment, bright daylight, clean background
+handsome idol face, symmetrical clean face, sharp V jaw, healthy skin,
+wavy center parted hair, perfect eyebrows, same face
 ```
 
 ---
