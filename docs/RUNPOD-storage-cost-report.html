@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RunPod Storage Cost Report</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f7f8fb;
+        --panel: #ffffff;
+        --text: #1f2933;
+        --muted: #5d6978;
+        --line: #d9dee8;
+        --accent: #305cde;
+        --accent-soft: #e8efff;
+        --warn: #8a5a00;
+        --warn-soft: #fff3cf;
+        --good: #116149;
+        --good-soft: #ddf7ee;
+        --code: #f0f3f8;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        line-height: 1.65;
+      }
+
+      main {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 48px 24px 72px;
+      }
+
+      header {
+        margin-bottom: 28px;
+      }
+
+      h1 {
+        margin: 0 0 12px;
+        font-size: 34px;
+        line-height: 1.2;
+        letter-spacing: 0;
+      }
+
+      h2 {
+        margin: 36px 0 14px;
+        font-size: 23px;
+        line-height: 1.3;
+        letter-spacing: 0;
+      }
+
+      h3 {
+        margin: 24px 0 10px;
+        font-size: 18px;
+        line-height: 1.35;
+        letter-spacing: 0;
+      }
+
+      p {
+        margin: 0 0 14px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 16px 0 22px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+      }
+
+      th,
+      td {
+        padding: 11px 12px;
+        border: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        background: #eef2f8;
+        font-weight: 700;
+      }
+
+      code {
+        background: var(--code);
+        padding: 2px 5px;
+        border-radius: 4px;
+        font-family:
+          ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          Monaco,
+          Consolas,
+          "Liberation Mono",
+          monospace;
+        font-size: 0.94em;
+      }
+
+      pre {
+        overflow: auto;
+        background: var(--code);
+        padding: 14px 16px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+      }
+
+      pre code {
+        background: transparent;
+        padding: 0;
+      }
+
+      ul,
+      ol {
+        margin: 8px 0 18px 22px;
+        padding: 0;
+      }
+
+      li {
+        margin: 5px 0;
+      }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 18px 20px;
+        margin: 16px 0;
+      }
+
+      .summary {
+        border-left: 4px solid var(--accent);
+        background: var(--accent-soft);
+      }
+
+      .good {
+        border-left: 4px solid var(--good);
+        background: var(--good-soft);
+      }
+
+      .warn {
+        border-left: 4px solid var(--warn);
+        background: var(--warn-soft);
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .num {
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>RunPod Storage Cost Report</h1>
+        <p class="muted">작성일: 2026-07-07</p>
+        <p>
+          이 문서는 LTX-2.3 NSFW Pod를 RunPod에서 운영할 때, Container disk,
+          Volume Disk, Network Volume 비용과 재설치 최소화 전략을 정리한 보고서다.
+        </p>
+      </header>
+
+      <section class="card summary">
+        <h2>결론</h2>
+        <p>
+          600GB 규모의 모델, checkpoint, LoRA, workflow, output을 장기 보존해야 한다면
+          <strong>Volume Disk보다 Standard Network Volume이 비용상 유리</strong>하다.
+        </p>
+        <p>
+          추천 구조는 <code>EUR-IS-1 Standard Network Volume 600GB</code>에 데이터를 보존하고,
+          Pod는 필요할 때만 생성해 실행한 뒤 종료하는 방식이다. LTX-2.3 NSFW 최초 세팅에
+          320GB Container disk가 필요하더라도, 이후 앱과 모델을 <code>/workspace</code>로
+          이관하면 더 작은 runtime Pod로 운영할 가능성이 있다.
+        </p>
+      </section>
+
+      <section>
+        <h2>기준 정보</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>항목</th>
+              <th>값</th>
+              <th>메모</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>대상 workload</td>
+              <td>LTX-2.3 NSFW</td>
+              <td><code>docker.io/antilopax/ltx23:v9</code></td>
+            </tr>
+            <tr>
+              <td>GPU</td>
+              <td>RTX 5090</td>
+              <td class="num">$0.99/hour 기준으로 계산</td>
+            </tr>
+            <tr>
+              <td>초기 Container disk</td>
+              <td class="num">320GB 필요</td>
+              <td>최초 템플릿 세팅에 필요한 용량</td>
+            </tr>
+            <tr>
+              <td>보존 대상 데이터</td>
+              <td class="num">약 500GB에서 600GB</td>
+              <td>checkpoint, LoRA, model, workflow, output 등</td>
+            </tr>
+            <tr>
+              <td>추천 storage</td>
+              <td>Standard Network Volume</td>
+              <td><code>EUR-IS-1</code>, S3 compatible datacenter 우선</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Storage 비용 비교</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>방식</th>
+              <th>단가</th>
+              <th>600GB 월 비용</th>
+              <th>판단</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Standard Network Volume</td>
+              <td class="num">$0.07/GB/month</td>
+              <td class="num"><strong>$42/month</strong></td>
+              <td>장기 보존용으로 가장 적합</td>
+            </tr>
+            <tr>
+              <td>High-performance Network Volume</td>
+              <td class="num">$0.14/GB/month</td>
+              <td class="num">$84/month</td>
+              <td>I/O 병목이 확실할 때만 고려</td>
+            </tr>
+            <tr>
+              <td>Volume Disk, running</td>
+              <td class="num">$0.10/GB/month</td>
+              <td class="num">$60/month</td>
+              <td>해당 Pod 실행 중에는 가능하지만 재사용성이 낮음</td>
+            </tr>
+            <tr>
+              <td>Volume Disk, stopped</td>
+              <td class="num">$0.20/GB/month</td>
+              <td class="num">$120/month</td>
+              <td>장기 보존용으로 비쌈</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="card warn">
+          <h3>주의</h3>
+          <p>
+            Volume Disk는 Pod가 stopped 상태여도 600GB 기준 월 약 $120가 계속 발생한다.
+            반면 Standard Network Volume은 600GB 기준 월 약 $42로, 장기 보존 비용을 크게 낮출 수 있다.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <h2>Volume Disk 600GB 구성 비용</h2>
+        <p>
+          첨부 이미지에서 확인한 기존 구성은 Container disk 400GB, Persistent storage
+          600GB, RTX 5090 Pod 기준이었다.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>항목</th>
+              <th>시간당 비용</th>
+              <th>월 720시간 기준</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>GPU</td>
+              <td class="num">$0.99/hour</td>
+              <td class="num">약 $713/month</td>
+            </tr>
+            <tr>
+              <td>Container disk 400GB</td>
+              <td class="num">$0.056/hour</td>
+              <td class="num">약 $40/month</td>
+            </tr>
+            <tr>
+              <td>Volume disk 600GB, running</td>
+              <td class="num">$0.083/hour</td>
+              <td class="num">약 $60/month</td>
+            </tr>
+            <tr>
+              <td>Volume disk 600GB, stopped</td>
+              <td class="num">$0.167/hour</td>
+              <td class="num">약 $120/month</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Network Volume 600GB 구성 비용</h2>
+        <p>
+          아래 계산은 <code>EUR-IS-1 Standard Network Volume 600GB</code>와
+          RTX 5090 <code>$0.99/hour</code>를 기준으로 한다.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>사용 패턴</th>
+              <th>GPU 비용</th>
+              <th>Container 320GB</th>
+              <th>Network Volume 600GB</th>
+              <th>월 합계</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Storage만 보존, Pod 없음</td>
+              <td class="num">$0</td>
+              <td class="num">$0</td>
+              <td class="num">$42</td>
+              <td class="num"><strong>$42/month</strong></td>
+            </tr>
+            <tr>
+              <td>하루 2시간 사용</td>
+              <td class="num">약 $59</td>
+              <td class="num">약 $2.7</td>
+              <td class="num">$42</td>
+              <td class="num"><strong>약 $104/month</strong></td>
+            </tr>
+            <tr>
+              <td>하루 4시간 사용</td>
+              <td class="num">약 $119</td>
+              <td class="num">약 $5.3</td>
+              <td class="num">$42</td>
+              <td class="num"><strong>약 $166/month</strong></td>
+            </tr>
+            <tr>
+              <td>하루 8시간 사용</td>
+              <td class="num">약 $238</td>
+              <td class="num">약 $10.7</td>
+              <td class="num">$42</td>
+              <td class="num"><strong>약 $291/month</strong></td>
+            </tr>
+            <tr>
+              <td>24시간 계속 running</td>
+              <td class="num">약 $713</td>
+              <td class="num">$32</td>
+              <td class="num">$42</td>
+              <td class="num"><strong>약 $787/month</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Network Volume 옵션 의미</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>옵션</th>
+              <th>의미</th>
+              <th>이번 운영에서의 필요도</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>High-performance</td>
+              <td>Standard Network Volume보다 read/write가 빠른 storage</td>
+              <td>낮음에서 중간. 비용은 2배라 I/O 병목이 있을 때만 선택</td>
+            </tr>
+            <tr>
+              <td>Global Networking</td>
+              <td>같은 계정의 여러 Pod가 private network로 통신</td>
+              <td>낮음. 단일 ComfyUI/LTX Pod 운영이면 거의 필요 없음</td>
+            </tr>
+            <tr>
+              <td>S3 compatible</td>
+              <td>Pod를 켜지 않고 S3 API로 Network Volume 파일 접근</td>
+              <td>높음. 모델 업로드, 백업, 파일 관리 비용을 줄일 수 있음</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>모델 파일을 Network Volume에 둬도 되는가</h2>
+        <div class="card good">
+          <p>
+            가능하다. checkpoint, LoRA, VAE, CLIP, text encoder, diffusion model 같은
+            모델 파일은 Container disk가 아니라 Network Volume 또는 Volume Disk에 둬도 동작한다.
+          </p>
+        </div>
+        <p>
+          중요한 것은 파일 위치 자체가 아니라 ComfyUI/LTX가 해당 경로를 알고 있는지다.
+          일반적으로 <code>/workspace/models</code> 아래에 모델을 두고, symlink 또는
+          <code>extra_model_paths.yaml</code>로 경로를 연결하면 된다.
+        </p>
+        <pre><code>/workspace
+  /models
+    /checkpoints
+    /loras
+    /vae
+    /clip
+    /text_encoders
+    /diffusion_models</code></pre>
+      </section>
+
+      <section>
+        <h2>권장 운영 구조</h2>
+        <pre><code>Container disk
+  - Docker image runtime
+  - OS / CUDA / Python 기본 환경
+  - temporary files
+  - logs/cache
+
+Network Volume /workspace
+  - ComfyUI / LTX 앱
+  - models
+  - checkpoints
+  - LoRA
+  - custom_nodes
+  - python venv
+  - workflows
+  - outputs
+  - scripts/start.sh</code></pre>
+
+        <p>
+          진짜로 모든 파일을 Network Volume에 넣고 Container disk를 0GB처럼 쓰는 것은 불가능하다.
+          Docker image layer, OS runtime, CUDA/Python 기본 라이브러리, 임시 파일은 container
+          쪽에 필요하다. 다만 앱, 모델, custom node, venv, workflow, output을 모두
+          <code>/workspace</code>에 두면 작은 runtime Pod로 운영할 수 있다.
+        </p>
+      </section>
+
+      <section>
+        <h2>부트스트랩 후 작은 Pod로 전환하는 절차</h2>
+        <ol>
+          <li>
+            최초 Pod를 <code>docker.io/antilopax/ltx23:v9</code>, Container disk 320GB,
+            Network Volume 600GB로 생성한다.
+          </li>
+          <li>
+            최초 설치와 모델 다운로드를 완료한다.
+          </li>
+          <li>
+            재사용해야 하는 파일을 <code>/workspace</code>로 이동한다.
+          </li>
+          <li>
+            ComfyUI/LTX의 model path를 <code>/workspace/models</code> 기준으로 변경한다.
+          </li>
+          <li>
+            <code>/workspace/scripts/start.sh</code>만으로 실행되도록 정리한다.
+          </li>
+          <li>
+            현재 Pod에서 <code>start.sh</code>로 이미지 또는 영상 생성까지 검증한다.
+          </li>
+          <li>
+            새 Pod를 같은 Network Volume으로 attach하되 Container disk를 100GB로 낮춰 테스트한다.
+          </li>
+          <li>
+            성공하면 75GB, 50GB 순서로 낮춰 최저 안정 용량을 찾는다.
+          </li>
+        </ol>
+      </section>
+
+      <section>
+        <h2>검증 명령어</h2>
+        <p>현재 Pod에서 큰 파일이 어디에 남아 있는지 확인한다.</p>
+        <pre><code>du -sh /workspace
+du -sh /root /opt /usr/local 2&gt;/dev/null
+df -h</code></pre>
+
+        <p>
+          <code>/root</code>, <code>/opt</code>, <code>/usr/local</code>에 LTX 실행에 필요한
+          대형 파일이 많이 남아 있다면 이관이 아직 끝나지 않은 상태다.
+        </p>
+      </section>
+
+      <section>
+        <h2>최종 추천</h2>
+        <ul>
+          <li>보존 storage는 <code>EUR-IS-1 Standard Network Volume 600GB</code>를 우선 선택한다.</li>
+          <li>S3 compatible datacenter를 선택해 Pod 없이 파일 관리가 가능하게 한다.</li>
+          <li>최초 1회는 320GB Container disk로 부트스트랩한다.</li>
+          <li>모델, 앱, custom nodes, venv, workflow, output은 모두 <code>/workspace</code>로 이관한다.</li>
+          <li>이후 Pod는 100GB Container disk부터 테스트하고, 안정화되면 75GB 또는 50GB까지 낮춘다.</li>
+          <li>Volume Disk stopped 상태로 600GB를 장기 보존하는 방식은 피한다.</li>
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>
