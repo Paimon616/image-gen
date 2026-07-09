@@ -26,7 +26,7 @@ import type {
   GeneratedImage,
   GenerationParams as GenerationParamsType,
 } from "@/lib/types";
-import { getModelConfig } from "@/lib/types";
+import { getModelConfig, randomGenerationSeed } from "@/lib/types";
 import { ImageIcon, ImageUp, ScanLine, X } from "lucide-react";
 
 function choosePoseControlNet(controlnets: string[]) {
@@ -347,6 +347,9 @@ export default function Home() {
     }
 
     const jobParams = cloneGenerationParams(params);
+    if (jobParams.seed == null || jobParams.seed < 0) {
+      jobParams.seed = randomGenerationSeed();
+    }
     const id = crypto.randomUUID();
 
     addImage({
