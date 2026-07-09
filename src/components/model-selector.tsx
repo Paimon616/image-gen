@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ModelMediaThumbnail } from "@/components/model-media-thumbnail";
+import { ModelRiskBadge, type ModelRisk } from "@/components/model-risk-badge";
 
 interface LocalModelAsset {
   path: string;
@@ -24,6 +25,7 @@ interface LocalModelAsset {
   base_model: string;
   thumbnail_url: string | null;
   missing_required_files?: string[];
+  risk?: ModelRisk | null;
 }
 
 function AssetThumbnail({
@@ -46,7 +48,10 @@ function AssetThumbnail({
 function AssetText({ asset }: { asset: LocalModelAsset }) {
   return (
     <div className="min-w-0">
-      <div className="truncate text-sm font-medium text-primary">{asset.name}</div>
+      <div className="flex min-w-0 items-center gap-1.5">
+        <span className="truncate text-sm font-medium text-primary">{asset.name}</span>
+        <ModelRiskBadge risk={asset.risk} size={14} className="shrink-0" />
+      </div>
       <div className="truncate text-xs text-muted-foreground">
         {[asset.version, asset.base_model].filter(Boolean).join(" · ") || asset.path}
       </div>
@@ -161,7 +166,7 @@ function AssetPickerDialog({
                 return (
                   <div
                     key={asset.path}
-                    className={`overflow-hidden rounded-md border bg-card ${
+                    className={`relative overflow-hidden rounded-md border bg-card ${
                       selected ? "border-primary ring-2 ring-primary/25" : "border-border"
                     }`}
                   >
@@ -183,6 +188,9 @@ function AssetPickerDialog({
                         </Badge>
                       </div>
                     </button>
+                    <div className="absolute right-2 top-2 z-10">
+                      <ModelRiskBadge risk={asset.risk} size={18} className="bg-background/85 backdrop-blur" />
+                    </div>
                     <div className="space-y-3 p-3">
                       <div className="min-w-0">
                         <div className="truncate text-sm font-semibold">

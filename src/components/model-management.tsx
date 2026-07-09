@@ -32,6 +32,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { ModelMediaThumbnail } from "@/components/model-media-thumbnail";
+import { ModelRiskBadge, type ModelRisk } from "@/components/model-risk-badge";
 
 interface ModelAsset {
   path: string;
@@ -43,6 +44,7 @@ interface ModelAsset {
   civitai_url: string | null;
   source_url: string | null;
   tags: string[];
+  risk?: ModelRisk | null;
 }
 
 interface ModelsResponse {
@@ -63,6 +65,7 @@ interface EditableMetadata {
   civitai_url: string | null;
   source_url: string | null;
   tags: string[];
+  risk?: ModelRisk | null;
 }
 
 interface SourceInfo {
@@ -292,9 +295,12 @@ function ModelCard({
         <div className="min-w-0">
           <div className="flex min-w-0 items-start justify-between gap-2">
             <div className="min-w-0">
-              <h3 className="truncate text-sm font-bold leading-5 text-foreground">
-                {asset.name}
-              </h3>
+              <div className="flex min-w-0 items-center gap-1.5">
+                <h3 className="truncate text-sm font-bold leading-5 text-foreground">
+                  {asset.name}
+                </h3>
+                <ModelRiskBadge risk={asset.risk} size={14} className="shrink-0" />
+              </div>
               <p className="mt-1 truncate text-xs font-medium text-muted-foreground">
                 {asset.path}
               </p>

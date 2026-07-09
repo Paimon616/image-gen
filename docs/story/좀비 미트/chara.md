@@ -452,8 +452,8 @@ exposed organs, dismemberment
 
 ### 외형 설정
 
-- 40대 후반 아저씨형 짧은 스포츠머리, receding hairline, 넓은 이마, thinning hair, 웨이브 앞머리 없음
-- 회색빛 피부, 초점 없는 눈, 턱 주변의 검은 핏자국
+- 40대 후반 아저씨형 얼굴, receding hairline, 넓은 이마, thinning hair, 얼음과 땀에 뭉쳐 사방으로 삐친 헝클어진 짧은 머리
+- 회녹색으로 변색된 피부, 핏발 선 광기 어린 눈, 벌어진 입, 검은 침, 뒤틀린 표정
 - 녹색 마트 식품관 유니폼, 흰 앞치마, 찢어진 명찰
 - 냉동고 문 유리 너머 성에 낀 손자국
 - 배경: 산업용 냉동고 내부, 긁힌 철문, 차가운 안개
@@ -462,18 +462,24 @@ exposed organs, dismemberment
 
 ```text
 horror, intense angle, night, ((solo)), ((1boy)), upper body,
-infected Korean supermarket food court worker, zombie pose, arms up,
+infected Korean supermarket food court worker, aggressive zombie, lunging pose,
+arms raised violently, clawing at the freezer glass, twisted shoulders,
 middle-aged Korean man, late 40s, uncle-like face, not handsome,
-short cropped black hair, old man sport haircut, receding hairline,
-wide forehead, thinning hair on top, sparse flat hair, buzzed sides,
-no bangs, no wavy hair, no center part, frost stuck to short hair,
-sunken cheeks, asymmetrical face, gray dead skin, cloudy unfocused eyes,
-collapsed nose bridge, slack jaw, torn dry lips, haunted, dead expression,
-subtle dark blood around mouth, no excessive gore,
+messy short thinning black hair, disheveled sparse hair, receding hairline,
+wide forehead, thinning hair on top, uneven hair clumps, jagged short strands sticking out,
+frost and sweat clumped hair, dirty wet hair, messy side hair, broken hair silhouette,
+no stylish haircut, no clean side fade, no neat parting, no long bangs, no wavy idol hair,
+sunken cheeks, asymmetrical face, mottled gray green dead skin,
+bulging bloodshot eyes, manic infected eyes, tiny white pupils, wild stare,
+collapsed nose bridge, open snarling mouth, black saliva, torn dry lips,
+exposed dark gums, clenched rotten teeth, frantic rage expression,
+dark veins under skin, frostbite patches, blackened fingertips,
+dark blood around mouth and collar, horror zombie face,
 green supermarket food court uniform, white apron, torn name tag, employee badge,
 ((dirty clothes)), frost covered uniform, wet apron,
-frosted hands pressed against freezer glass, trapped inside industrial freezer,
-scratch marks on metal door, cold blue freezer mist, emergency red light,
+one hand scraping the glass with bent fingers, other hand slamming the door,
+dynamic motion, body twisted forward, trapped inside industrial freezer,
+fresh scratch marks on glass, dented metal door, cold blue freezer mist, emergency red light,
 ultra detailed spooky freezer environment, volumetric fog,
 dramatic shadows, realistic, detailed, ((best quality)), ((masterpiece))
 ```
@@ -485,12 +491,15 @@ dramatic shadows, realistic, detailed, ((best quality)), ((masterpiece))
 worst quality, low quality, normal quality, signature, username, artist name,
 (worst quality, low quality:1.4), bad anatomy, bad_prompt_version2,
 closed eyes, EasyNegative, bad-artist-anime, bad-artist, ng_deepnegative_v1_75t,
-female, child, handsome clean face, normal healthy skin, cute monster,
+female, child, handsome clean face, normal healthy skin, sad human face,
+cute monster, calm pose, standing still, hands flat on glass,
 fantasy demon, horns, huge zombie horde, two people, crowd,
 exposed organs, dismemberment, bright daylight, clean background
 handsome idol face, symmetrical clean face, sharp V jaw, healthy skin,
 wavy center parted hair, wavy bangs, long bangs, fluffy hair,
-hair over forehead, young handsome hair, perfect eyebrows, same face
+hair over forehead, young handsome hair, perfect eyebrows, same face,
+neat haircut, clean side fade, undercut, styled hair, combed hair,
+slick hair, barber cut, symmetrical haircut, clean crew cut, polished sport haircut, tidy hair
 ```
 
 ---

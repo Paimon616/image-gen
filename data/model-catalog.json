@@ -11,7 +11,12 @@
       "base model",
       "anime",
       "women"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "checkpoints/anima_baseV10.safetensors": {
     "name": "Anima",
@@ -25,7 +30,12 @@
       "base model",
       "anime",
       "illustration"
-    ]
+    ],
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Rent 미허가(제3자 유료호스팅 불가)",
+      "allow_commercial_use": "N"
+    }
   },
   "checkpoints/chilloutmix_NiPrunedFp32Fix.safetensors": {
     "name": "ChilloutMix",
@@ -40,7 +50,16 @@
       "dreamlikeart",
       "photorealistic",
       "base model"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "실인물 유사성 의심(검수); Civitai 상업권 없음",
+      "flags": [
+        "person",
+        "nsfw"
+      ],
+      "allow_commercial_use": "N"
+    }
   },
   "checkpoints/dessertModels_iceCream.safetensors": {
     "name": "Dessert - Models 🍰",
@@ -57,7 +76,12 @@
       "model",
       "semirealistic",
       "2.5d"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "checkpoints/epicrealism_naturalSinRC1VAE.safetensors": {
     "name": "epiCRealism",
@@ -80,7 +104,12 @@
       "realistic",
       "photoshoot",
       "natural colors"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "checkpoints/goldenHour_v10.safetensors": {
     "name": "Golden Hour",
@@ -97,7 +126,12 @@
       "anime",
       "base model",
       "semi-real"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "checkpoints/hardcoreAsianCosplay_ilV11.safetensors": {
     "name": "Hardcore Asian Cosplay Porn",
@@ -116,7 +150,16 @@
       "asian",
       "woman",
       "sex"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "실인물 유사성 의심(검수)",
+      "flags": [
+        "person",
+        "nsfw"
+      ],
+      "allow_commercial_use": "Y"
+    }
   },
   "checkpoints/hassakuXLIllustrious_v22.safetensors": {
     "name": "Hassaku XL (Illustrious)",
@@ -133,7 +176,15 @@
       "woman",
       "hentai",
       "characters"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "flags": [
+        "nsfw"
+      ],
+      "allow_commercial_use": "Y"
+    }
   },
   "checkpoints/illustrij_v19.safetensors": {
     "name": "Illustrij",
@@ -149,7 +200,12 @@
       "identity model",
       "semireal",
       "id model"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "checkpoints/illustriousXL_v01.safetensors": {
     "name": "Illustrious-XL",
@@ -160,7 +216,12 @@
     "tags": [
       "anime",
       "base model"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "checkpoints/illustVector25DIL_v10.safetensors": {
     "name": "illust-Vector-2.5D_IL",
@@ -175,7 +236,12 @@
       "sketch",
       "2.5d",
       "style"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "checkpoints/JANIMA_v10.safetensors": {
     "name": "✨ JANIMA ✨",
@@ -186,7 +252,12 @@
     "source_url": "https://civitai.red/models/2642932/janima?modelVersionId=2967640",
     "tags": [
       "base model"
-    ]
+    ],
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Rent 미허가(제3자 유료호스팅 불가)",
+      "allow_commercial_use": "N"
+    }
   },
   "checkpoints/kirazuriAnima_v30AnimaBase1.safetensors": {
     "name": "Kirazuri (Anima)",
@@ -203,7 +274,12 @@
       "manga",
       "anime",
       "aesthetic"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "Civitai 상업권 없음",
+      "allow_commercial_use": "N"
+    }
   },
   "checkpoints/ltx2310eros_v1.safetensors": {
     "name": "LTX2.3 10Eros",
@@ -214,7 +290,15 @@
     "source_url": "https://civitai.red/models/2447875/ltx23-10eros?modelVersionId=2892069",
     "tags": [
       "base model"
-    ]
+    ],
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Rent 미허가(제3자 유료호스팅 불가); 확인필요(LTX-Video 라이선스)",
+      "flags": [
+        "nsfw"
+      ],
+      "allow_commercial_use": "N"
+    }
   },
   "checkpoints/majicflus_v10.safetensors": {
     "name": "MajicFlus beauty 麦橘超美",
@@ -227,7 +311,12 @@
       "asian",
       "character",
       "realistic"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "상업금지(FLUX dev 비상업 라이선스)",
+      "allow_commercial_use": "Y"
+    }
   },
   "checkpoints/majicmixRealistic_v7.safetensors": {
     "name": "majicMIX realistic 麦橘写实",
@@ -241,7 +330,12 @@
       "photoralistic",
       "realistic",
       "base model"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "checkpoints/nova3DCGXL_ilV90.safetensors": {
     "name": "Nova 3DCG XL",
@@ -266,7 +360,12 @@
       "3dcg",
       "xl",
       "sdxl"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "checkpoints/novaOrangeXL_v130.safetensors": {
     "name": "Nova Orange XL",
@@ -288,7 +387,12 @@
       "colorful",
       "illustration",
       "2d"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "checkpoints/oneObsession_v22.safetensors": {
     "name": "One obsession",
@@ -306,7 +410,12 @@
       "sdxl",
       "obsession",
       "my style"
-    ]
+    ],
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Rent 미허가(제3자 유료호스팅 불가)",
+      "allow_commercial_use": "N"
+    }
   },
   "checkpoints/picxReal_10.safetensors": {
     "name": "PicX_real",
@@ -322,7 +431,12 @@
       "sci-fi",
       "fantasy",
       "nsfw"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "Civitai 상업권 없음",
+      "allow_commercial_use": "N"
+    }
   },
   "checkpoints/pieModels_nutella.safetensors": {
     "name": "Pie - Models 🥧",
@@ -337,7 +451,12 @@
       "anime",
       "illustrious",
       "base model"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "Civitai 상업권 없음",
+      "allow_commercial_use": "N"
+    }
   },
   "checkpoints/ponyDiffusionV6XL_v6StartWithThisOne.safetensors": {
     "name": "Pony Diffusion V6 XL",
@@ -350,7 +469,12 @@
       "western art",
       "base model",
       "my little pony"
-    ]
+    ],
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Rent 미허가(제3자 유료호스팅 불가)",
+      "allow_commercial_use": "N"
+    }
   },
   "checkpoints/prefectIllustriousXL_v8.safetensors": {
     "name": "Prefect illustrious XL",
@@ -367,7 +491,15 @@
       "base models",
       "base model",
       "illustrious xl"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "Civitai 상업권 없음",
+      "flags": [
+        "nsfw"
+      ],
+      "allow_commercial_use": "N"
+    }
   },
   "checkpoints/quiets25DIllusMerge_v10.safetensors": {
     "name": "Quiet's 2.5D Illus_Merge",
@@ -378,7 +510,12 @@
     "source_url": "https://civitai.com/models/2657073/quiets-25d-illusmerge",
     "tags": [
       "base model"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "checkpoints/redLilyIllu_v10.safetensors": {
     "name": "Red Lily | Illu",
@@ -417,7 +554,12 @@
       "nsfw",
       "abstract painting",
       "man"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "Civitai 상업권 없음",
+      "allow_commercial_use": "N"
+    }
   },
   "checkpoints/riMixIllustriousAnima_riMixAnima.safetensors": {
     "name": "Ri-mix - [Illustrious + Anima]",
@@ -429,7 +571,12 @@
     "tags": [
       "illustrtion",
       "style"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "checkpoints/riMixIllustriousAnima_riMixV2.safetensors": {
     "name": "Ri-mix - [Illustrious + Anima]",
@@ -441,7 +588,12 @@
     "tags": [
       "illustrtion",
       "style"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "checkpoints/tpgSunmmerdreamV4_v4.safetensors": {
     "name": "TPG_SunmmerDream_V4",
@@ -452,7 +604,15 @@
     "source_url": "https://civitai.red/models/2690504/tpgsunmmerdreamv4",
     "tags": [
       "base model"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "flags": [
+        "nsfw"
+      ],
+      "allow_commercial_use": "Y"
+    }
   },
   "checkpoints/ultra_v14.safetensors": {
     "name": "ULTRA",
@@ -467,7 +627,12 @@
       "asian",
       "base model",
       "realistic"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "checkpoints/waiANIMA_v10Base10.safetensors": {
     "name": "WAI-ANIMA",
@@ -477,7 +642,12 @@
     "civitai_url": "https://civitai.com/models/2544636/wai-anima?modelVersionId=2983680",
     "tags": [
       "base model"
-    ]
+    ],
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Rent 미허가(제3자 유료호스팅 불가)",
+      "allow_commercial_use": "N"
+    }
   },
   "checkpoints/waiIllustriousSDXL_v140.safetensors": {
     "name": "WAI-illustrious-SDXL",
@@ -488,7 +658,15 @@
     "tags": [
       "base model",
       "anime"
-    ]
+    ],
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Rent 미허가(제3자 유료호스팅 불가)",
+      "flags": [
+        "nsfw"
+      ],
+      "allow_commercial_use": "N"
+    }
   },
   "checkpoints/waiIllustriousSDXL_v160.safetensors": {
     "name": "WAI-illustrious-SDXL",
@@ -499,7 +677,15 @@
     "tags": [
       "base model",
       "anime"
-    ]
+    ],
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Rent 미허가(제3자 유료호스팅 불가)",
+      "flags": [
+        "nsfw"
+      ],
+      "allow_commercial_use": "N"
+    }
   },
   "checkpoints/waiIllustriousSDXL_v170.safetensors": {
     "name": "WAI-illustrious-SDXL",
@@ -510,7 +696,15 @@
     "tags": [
       "base model",
       "anime"
-    ]
+    ],
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Rent 미허가(제3자 유료호스팅 불가)",
+      "flags": [
+        "nsfw"
+      ],
+      "allow_commercial_use": "N"
+    }
   },
   "checkpoints/waiREALISM_v10.safetensors": {
     "name": "WAI-REALISM-Illustrious",
@@ -521,7 +715,12 @@
     "source_url": "https://civitai.red/models/2233797/wai-realism-illustrious?modelVersionId=2514670",
     "tags": [
       "base model"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "embeddings/easynegative.safetensors": {
     "name": "EasyNegative",
@@ -538,7 +737,12 @@
       "negative embedding",
       "textual inversion",
       "tool"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "embeddings/lazyneg.safetensors": {
     "name": "✨ Lazy Embeddings for ALL illustrious NoobAI Pony SDXL models LazyPositive LazyNegative (Positive and Negative plus more!)",
@@ -561,7 +765,12 @@
       "illustrious",
       "embedding",
       "style"
-    ]
+    ],
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Rent 미허가(제3자 유료호스팅 불가)",
+      "allow_commercial_use": "N"
+    }
   },
   "embeddings/lazypos.safetensors": {
     "name": "✨ Lazy Embeddings for ALL illustrious NoobAI Pony SDXL models LazyPositive LazyNegative (Positive and Negative plus more!)",
@@ -584,13 +793,23 @@
       "illustrious",
       "embedding",
       "style"
-    ]
+    ],
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Rent 미허가(제3자 유료호스팅 불가)",
+      "allow_commercial_use": "N"
+    }
   },
   "embeddings/zPDXLxxx.pt": {
     "name": "Pony PDXL Negative Embeddings",
     "version": "vXXX Rating",
     "base_model": "Pony",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/1d7adf5d-ce34-476e-93e0-527d765faa8f/original=true/7603310.jpeg"
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/1d7adf5d-ce34-476e-93e0-527d765faa8f/original=true/7603310.jpeg",
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Civitai 조회 실패 — 수동확인",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/1990s ShoujoManga Anime Style [XLlora].safetensors": {
     "name": "1990s ShoujoManga Anime Style [XLlora]",
@@ -606,7 +825,12 @@
       "styles",
       "girls",
       "1990s"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/5byue5dnijistyleE291.cNux.safetensors": {
     "name": "Niji-male-style①",
@@ -620,7 +844,12 @@
       "male",
       "style",
       "boys"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/96YOTTEA-WAI.safetensors": {
     "name": "96YOTTEA style | Illustrious",
@@ -634,19 +863,37 @@
       "anime",
       "painting",
       "aesthetic"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/AFAE-000010.safetensors": {
     "name": "Handsome Boy.1",
     "version": "v1.0",
     "base_model": "Pony",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/88fdf3cd-a805-4025-81dc-261f5c7a378c/anim=false,width=450,optimized=true/111_05769_.jpeg"
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/88fdf3cd-a805-4025-81dc-261f5c7a378c/anim=false,width=450,optimized=true/111_05769_.jpeg",
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Civitai 조회 실패 — 수동확인",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/Alastor_(hazbin_hotel).safetensors": {
     "name": "Alastor | Charlie (hazbin hotel)",
     "version": "v1.0",
     "base_model": "SD 1.5",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/8516df52-7167-4de8-9568-560c996a7bf5/original=true/11152579.jpeg"
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/8516df52-7167-4de8-9568-560c996a7bf5/original=true/11152579.jpeg",
+    "risk": {
+      "level": "HIGH",
+      "reason": "저작권 캐릭터 의심(검수)",
+      "flags": [
+        "ip"
+      ],
+      "allow_commercial_use": "N"
+    }
   },
   "loras/amateur_style_v1_pony.safetensors": {
     "name": "Amateur style - slider",
@@ -673,7 +920,12 @@
       "slider",
       "rawfully",
       "amateur"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "Civitai 상업권 없음",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/analobjill_r1.safetensors": {
     "name": "Anal Object Insertion (Illustrious)",
@@ -687,7 +939,15 @@
       "masturbation",
       "concept",
       "anal"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "flags": [
+        "nsfw"
+      ],
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/Anima_in_real_epoch_10.safetensors": {
     "name": "Anime in real",
@@ -708,7 +968,12 @@
       "girl",
       "anime",
       "realistic"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/ANIMA_Niji_Sweet_Spot_v4.safetensors": {
     "name": "Niji Sweet Spot",
@@ -722,7 +987,12 @@
       "style",
       "niji",
       "anime"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/anima-base-1-masterpiece-v51.safetensors": {
     "name": "Aesthetic Quality Modifiers - Masterpiece",
@@ -738,7 +1008,12 @@
       "anime",
       "aesthetic",
       "concept"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/anima-highres-aesthetic-boost.safetensors": {
     "name": "Anima Highres/Aesthetic Boost",
@@ -750,7 +1025,12 @@
     "tags": [
       "anime",
       "style"
-    ]
+    ],
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Rent 미허가(제3자 유료호스팅 불가)",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/anima-turbo-lora-v0.2.safetensors": {
     "name": "Anima Turbo LoRA",
@@ -764,7 +1044,12 @@
       "base model",
       "turbo",
       "distill"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/AnimaNSS4RE.safetensors": {
     "name": "Niji Sweet Spot",
@@ -777,7 +1062,12 @@
       "style",
       "niji",
       "anime"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/AntherimOC-000004.safetensors": {
     "name": "AntherimOC",
@@ -793,7 +1083,15 @@
       "man",
       "femboy",
       "character"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "flags": [
+        "nsfw"
+      ],
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/Arweverse_-_OC-000007.safetensors": {
     "name": "Arweverse - [OC]",
@@ -803,7 +1101,15 @@
     "civitai_url": "https://civitai.red/models/1492410/arweverse-oc?modelVersionId=1688253",
     "tags": [
       "character"
-    ]
+    ],
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Rent 미허가(제3자 유료호스팅 불가)",
+      "flags": [
+        "nsfw"
+      ],
+      "allow_commercial_use": "N"
+    }
   },
   "loras/Asian Cute Face.safetensors": {
     "name": "Asian Cute Face",
@@ -819,7 +1125,15 @@
       "asian girl",
       "woman",
       "asian"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "실인물 유사성 의심(검수)",
+      "flags": [
+        "person"
+      ],
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/atreidsv2style.safetensors": {
     "name": "Arsnitida Style | Illustrious",
@@ -834,7 +1148,12 @@
       "digital painting",
       "mix",
       "illustration"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/ayori_v1_step3400.safetensors": {
     "name": "[Anima & SDXL] Ayori Art Style",
@@ -851,7 +1170,12 @@
       "artist",
       "style",
       "anima"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "Civitai 상업권 없음",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/Beautiful_Girls_V4.safetensors": {
     "name": "Beautiful Girls",
@@ -869,7 +1193,16 @@
       "beautiful",
       "underwear",
       "girls"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "실인물 유사성 의심(검수)",
+      "flags": [
+        "person",
+        "nsfw"
+      ],
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/BunnySlop_Anima.safetensors": {
     "name": "BunnySlop AI Style [IL/Anima]",
@@ -882,7 +1215,15 @@
       "slop",
       "hentai",
       "style"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "flags": [
+        "nsfw"
+      ],
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/Censored_for_Betas.safetensors": {
     "name": "Censored for Betas (Illustrious LoRa)",
@@ -898,7 +1239,15 @@
       "hentai",
       "netorare",
       "concept"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "Civitai 상업권 없음",
+      "flags": [
+        "nsfw"
+      ],
+      "allow_commercial_use": "N"
+    }
   },
   "loras/cinematic photography detailed illu xl v5.safetensors": {
     "name": "Realistic Skin Texture style (Detailed Skin) XL + SD1.5 + F1D + Pony + Illu + ZIT + ZIB",
@@ -993,7 +1342,12 @@
       "skin pore",
       "filmed",
       "skin tone"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "Civitai 상업권 없음",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/Dark_Bara-10.safetensors": {
     "name": "Muscular Male / Bara Mix Styles",
@@ -1008,7 +1362,15 @@
       "style",
       "beard",
       "bara"
-    ]
+    ],
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Rent 미허가(제3자 유료호스팅 불가)",
+      "flags": [
+        "nsfw"
+      ],
+      "allow_commercial_use": "N"
+    }
   },
   "loras/DaSiWa_LTX23_NSFW_Bodyphysics_Fluid_Motion_Enhancer_v01.safetensors": {
     "name": "NSFW Body Physics Fluid Motion Enhancer | Lora | LTX2.3",
@@ -1025,7 +1387,15 @@
       "dasiwa",
       "ltx23",
       "concept"
-    ]
+    ],
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Rent 미허가(제3자 유료호스팅 불가); 확인필요(LTX-Video 라이선스)",
+      "flags": [
+        "nsfw"
+      ],
+      "allow_commercial_use": "N"
+    }
   },
   "loras/DemonerithIllustrious.safetensors": {
     "name": "Demonerith Style",
@@ -1038,7 +1408,12 @@
       "anime",
       "artist styles",
       "style"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/detailed_pussy-10.safetensors": {
     "name": "Detailed Pussy [PONY]",
@@ -1056,7 +1431,15 @@
       "realistic",
       "woman",
       "vagina"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "Civitai 상업권 없음",
+      "flags": [
+        "nsfw"
+      ],
+      "allow_commercial_use": "N"
+    }
   },
   "loras/DetailedEyes_V3.safetensors": {
     "name": "DetailedEyes_XL",
@@ -1069,13 +1452,23 @@
       "eyes",
       "detailed eyes",
       "tool"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/Detailer_NoobAI_Incrs_v1.safetensors": {
     "name": "Detailer | Tool / Concept LoRA IllustriousXL",
     "version": "v1.0",
     "base_model": "Illustrious",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/c6a910e7-8f98-46a3-8103-2b32862fc389/original=true/46971638.jpeg"
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/c6a910e7-8f98-46a3-8103-2b32862fc389/original=true/46971638.jpeg",
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Civitai 조회 실패 — 수동확인",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/DetailerILv2-000008.safetensors": {
     "name": "Detailer IL",
@@ -1088,7 +1481,12 @@
       "illustrious",
       "detailer",
       "concept"
-    ]
+    ],
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Rent 미허가(제3자 유료호스팅 불가)",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/DR34ML4Y_LTXXX_V2.safetensors": {
     "name": "DR34ML4Y - All-In-One NSFW (WAN/LTX2)",
@@ -1107,7 +1505,15 @@
       "wan",
       "concept",
       "sex"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "Civitai 상업권 없음",
+      "flags": [
+        "nsfw"
+      ],
+      "allow_commercial_use": "N"
+    }
   },
   "loras/Elle_based_on_Rick__Morty_Anime-000009.safetensors": {
     "name": "Elle (based on Rick & Morty Anime) - Illustrious",
@@ -1121,7 +1527,15 @@
       "character",
       "nsfw",
       "woman"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "저작권 캐릭터 의심(검수)",
+      "flags": [
+        "ip"
+      ],
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/ep5.safetensors": {
     "name": "Exotic Dildos!",
@@ -1134,7 +1548,15 @@
       "sex toy",
       "dildo",
       "concept"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "flags": [
+        "nsfw"
+      ],
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/Expressive_H-000001.safetensors": {
     "name": "ExpressiveH (Hentai LoRa Style) エロアニメ",
@@ -1154,7 +1576,15 @@
       "lora",
       "style",
       "video game"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "flags": [
+        "nsfw"
+      ],
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/flux dildo riding.safetensors": {
     "name": "dildo riding flux",
@@ -1180,7 +1610,12 @@
       "game character",
       "concept",
       "nsfw"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "상업금지(FLUX dev 비상업 라이선스)",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/Futurabbitstyle_animaV1.5-000016.safetensors": {
     "name": "Futurabbitstyle_anima",
@@ -1191,7 +1626,12 @@
     "tags": [
       "futurabbit",
       "style"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/g0th1c2XLP.safetensors": {
     "name": "Vixon's Anima/Pony Styles - Gothic Neon",
@@ -1207,7 +1647,12 @@
       "lighting",
       "gothic neon",
       "artist styles"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "Civitai 상업권 없음",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/GENESIS_MK0.4.safetensors": {
     "name": "GENESIS",
@@ -1220,7 +1665,12 @@
       "anime",
       "style",
       "girls"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "Civitai 상업권 없음",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/Hand pony style v1.safetensors": {
     "name": "Hands XL + SD 1.5 + F1D + Pony + Illustrious + zit + ZIB",
@@ -1265,7 +1715,12 @@
       "part",
       "flux",
       "assets"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "Civitai 상업권 없음",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/handPatchUnet4Merge.safetensors": {
     "name": "HandPatch (Unet-Only)",
@@ -1278,7 +1733,12 @@
       "quickfix",
       "base model",
       "hands"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/hansame-000019.safetensors": {
     "name": "Flower Boy Style",
@@ -1289,7 +1749,12 @@
     "tags": [
       "style",
       "boys"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/hassakuXLIllustrious_v22.safetensors": {
     "name": "Hassaku XL (Illustrious)",
@@ -1306,7 +1771,15 @@
       "woman",
       "hentai",
       "characters"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "flags": [
+        "nsfw"
+      ],
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/illustriousXLv01_stabilizer_v1.121.safetensors": {
     "name": "Stabilizer IL/NAI/CK",
@@ -1317,7 +1790,12 @@
     "source_url": "https://civitai.red/models/971952/stabilizer-ilnaick?modelVersionId=1674551",
     "tags": [
       "style"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "Civitai 상업권 없음",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/illustriousXLv01_stabilizer_v1.198.safetensors": {
     "name": "Stabilizer IL/NAI/CK",
@@ -1328,7 +1806,12 @@
     "source_url": "https://civitai.red/models/971952/stabilizer-ilnaick?modelVersionId=2055853",
     "tags": [
       "style"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "Civitai 상업권 없음",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/ILXL_Realism_Slider_V.1.safetensors": {
     "name": "Illustrious Realism Slider",
@@ -1354,7 +1837,12 @@
       "photorealism",
       "detail enhancing",
       "detailed"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "Civitai 상업권 없음",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/ily-scat-smear.safetensors": {
     "name": "ily-scat-smear",
@@ -1366,7 +1854,12 @@
       "lora",
       "huggingface",
       "illustrious"
-    ]
+    ],
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Civitai 조회 실패 — 수동확인",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/incase_style_v3-1_ponyxl_ilff.safetensors": {
     "name": "Incase Style [PonyXL]",
@@ -1380,7 +1873,12 @@
       "ponyxl",
       "art style",
       "style"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/JapaneseDollLikeness_v15.safetensors": {
     "name": "JapaneseDollLikeness (v1.5)",
@@ -1395,7 +1893,16 @@
       "asian",
       "style",
       "japanese"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "실인물 유사성 의심(검수)",
+      "flags": [
+        "person",
+        "nsfw"
+      ],
+      "allow_commercial_use": "N"
+    }
   },
   "loras/knva retro illustration.safetensors": {
     "name": "Retro Anime Illustration",
@@ -1412,7 +1919,12 @@
       "anime",
       "style",
       "illustration"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/LUT_slider_xxXL_V1.safetensors": {
     "name": "LUT Color Grading - Slider",
@@ -1434,7 +1946,12 @@
       "slider",
       "style",
       "realistic"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "Civitai 상업권 없음",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/ma1ma1helmes_b-000014.safetensors": {
     "name": "ma1ma1helmes | Shiiro's Styles | Niji",
@@ -1475,7 +1992,12 @@
       "background plate",
       "man",
       "style"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "Civitai 상업권 없음",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/mai_bj_clothing_12.safetensors": {
     "name": "Clothing: Sexy office lady 3",
@@ -1486,7 +2008,15 @@
     "tags": [
       "cat girl",
       "clothing"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "flags": [
+        "nsfw"
+      ],
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/majicbeauty1.safetensors": {
     "name": "MajicFlus beauty 麦橘超美",
@@ -1499,7 +2029,15 @@
       "asian",
       "character",
       "realistic"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "상업금지(FLUX dev 비상업 라이선스); 실인물 유사성 의심(검수)",
+      "flags": [
+        "person"
+      ],
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/more_details.safetensors": {
     "name": "Add More Details - Detail Enhancer / Tweaker (细节调整) LoRA",
@@ -1519,7 +2057,12 @@
       "details",
       "backgrounds",
       "detail tweaker"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/MoriiMee_Gothic_Niji_Style_Illustrious_r1.safetensors": {
     "name": "MoriiMee Gothic Niji | LoRA Style",
@@ -1538,7 +2081,15 @@
       "goth",
       "midjourney",
       "beautiful face"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "flags": [
+        "nsfw"
+      ],
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/MuseInDark_IL-NAI-Tweak-3.0.safetensors": {
     "name": "[Styles] Muses in Dark | Semi-real Style - Illustrious/PonyXL - Illustrious|NAI",
@@ -1559,7 +2110,12 @@
       "lighting",
       "male",
       "gay"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/MythP0rtr4itStyle.safetensors": {
     "name": "Velvet's Mythic Fantasy Styles | Flux + Pony + illustrious + ZiT + Anima",
@@ -1581,7 +2137,12 @@
       "sfw",
       "manga",
       "style"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/Niji_oil_painting_drawing-anime.safetensors": {
     "name": "Niji oil painting drawing",
@@ -1603,7 +2164,12 @@
       "man",
       "lora",
       "drawing"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/Niji_Semi_realism_F_N_R_epoch_10.safetensors": {
     "name": "Niji semi realism",
@@ -1620,7 +2186,12 @@
       "girls",
       "anime",
       "lora"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/nnestyle.safetensors": {
     "name": "Nene Mix style | Illustrious",
@@ -1635,7 +2206,12 @@
       "surreal",
       "illustrious",
       "style"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/Nobara - Illu.safetensors": {
     "name": "Nobara Kugisaki - Jujutsu Kaisen 1.5/Pony/Illustrious",
@@ -1649,7 +2225,15 @@
       "anime",
       "character",
       "woman"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "저작권 캐릭터 의심(검수)",
+      "flags": [
+        "ip"
+      ],
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/nurse_v11-05.safetensors": {
     "name": "nurse_uniform",
@@ -1664,13 +2248,23 @@
       "uniform",
       "clothing",
       "sexy"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/p0nyd1sney1ncasev1x0n2-v2.safetensors": {
     "name": "Incase + Vixon's Gothic Neon + Disney Style [Anima | IL]",
     "version": "vIL v2.0",
     "base_model": "Illustrious",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/f862308a-ca23-48cd-9ef4-84a6b891249d/original=true/80001748.jpeg"
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/f862308a-ca23-48cd-9ef4-84a6b891249d/original=true/80001748.jpeg",
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Civitai 조회 실패 — 수동확인",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/Pb0y.safetensors": {
     "name": "BL-Manhwa Styles",
@@ -1683,7 +2277,12 @@
       "msngluv",
       "manhwa",
       "boyslove"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "Civitai 상업권 없음",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/People'sWorks_v10_Illusv1.0.safetensors": {
     "name": "People's Works: SDXL",
@@ -1695,7 +2294,12 @@
     "tags": [
       "anime",
       "style"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/People'sWorks_v9_Illusv1.0_128dim.safetensors": {
     "name": "People's Works: SDXL",
@@ -1707,7 +2311,12 @@
     "tags": [
       "anime",
       "style"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/ponyv4_noob1_2_adamW-000017.safetensors": {
     "name": "Pony: People's Works v1-v6",
@@ -1719,7 +2328,12 @@
     "tags": [
       "style",
       "anime"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/Real_Pussy_Illustrious.safetensors": {
     "name": "Realistic Pussy Detailer (experimental)",
@@ -1732,7 +2346,15 @@
       "realistic",
       "concept",
       "vagina"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "flags": [
+        "nsfw"
+      ],
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/realistic filter [IL].safetensors": {
     "name": "Realistic filter [IL]",
@@ -1747,7 +2369,12 @@
       "realism",
       "2.5d style",
       "2.5d"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/remacri_original.safetensors": {
     "name": "Remacri",
@@ -1758,7 +2385,12 @@
     "source_url": "https://civitai.red/models/147759/remacri?modelVersionId=164821",
     "tags": [
       "base model"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/rimixao5050.safetensors": {
     "name": "Ri-mix - Style LORA [ Illustrious + Anima]",
@@ -1774,7 +2406,12 @@
       "anima",
       "flux",
       "pony"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/S4bit4mago.safetensors": {
     "name": "Sabitamago | Style LoRa",
@@ -1819,7 +2456,12 @@
       "background pony",
       "shiiro",
       "style"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "Civitai 상업권 없음",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/silvana-style-AB10-01.safetensors": {
     "name": "Silvana Style Lora | Anima",
@@ -1834,7 +2476,15 @@
       "style",
       "portrait",
       "landscape"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "flags": [
+        "nsfw"
+      ],
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/skzW0rld-IXL.safetensors": {
     "name": "skzW0rld",
@@ -1847,7 +2497,12 @@
       "style",
       "niji",
       "gothic"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "Civitai 상업권 없음",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/Smooth_Booster_v3.safetensors": {
     "name": "Smooth Detailer Booster (NoobAI/Illustrious/Pony)",
@@ -1867,7 +2522,12 @@
       "detailed art",
       "quality",
       "more details"
-    ]
+    ],
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Rent 미허가(제3자 유료호스팅 불가)",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/Smooth_Booster_v5.safetensors": {
     "name": "Smooth Detailer Booster (NoobAI/Illustrious/Pony)",
@@ -1886,7 +2546,12 @@
       "detailed art",
       "quality",
       "more details"
-    ]
+    ],
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Rent 미허가(제3자 유료호스팅 불가)",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/spo_sdxl_10ep_4k-data_lora_webui.safetensors": {
     "name": "SPO-SDXL_4k-p_10ep_LoRA_webui",
@@ -1897,7 +2562,12 @@
     "source_url": "https://civitai.red/models/510261/spo-sdxl4k-p10eplorawebui?modelVersionId=567119",
     "tags": [
       "base model"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/USNR STYLE_XL_lokr.safetensors": {
     "name": "薄塗り / USNR STYLE",
@@ -1909,7 +2579,12 @@
       "anime",
       "girls",
       "style"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/USNR_STYLE_ILL_V1_lokr3-000024.safetensors": {
     "name": "薄塗り / USNR STYLE",
@@ -1923,13 +2598,23 @@
       "anime",
       "style",
       "girls"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/vcalicia-anima-nvwls-v1.safetensors": {
     "name": "Alicia Melchiott/アリシア・メルキオット (Valkyria Chronicles) SDXL LoRA [Pony Diffusion]",
     "version": "v1 (Pony Diffusion XL)",
     "base_model": "Pony",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/028c3ab0-9e07-453a-96f6-476da77f44d2/original=true/12168419.jpeg"
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/028c3ab0-9e07-453a-96f6-476da77f44d2/original=true/12168419.jpeg",
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Civitai 조회 실패 — 수동확인",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/Wet_Hair_-_Wet_Hair_Look_-_Dripping-000006.safetensors": {
     "name": "Wet Hair - Wet Hair Look - Dripping",
@@ -1944,7 +2629,15 @@
       "wet hair",
       "shower",
       "dripping"
-    ]
+    ],
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Rent 미허가(제3자 유료호스팅 불가)",
+      "flags": [
+        "nsfw"
+      ],
+      "allow_commercial_use": "N"
+    }
   },
   "loras/ZodaPlus.safetensors": {
     "name": "ZodaPlus 🍾 – Detailer",
@@ -1955,7 +2648,12 @@
     "source_url": "https://civitai.red/models/2632704/zodaplus-detailer?modelVersionId=2955921",
     "tags": [
       "style"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "upscale_models/remacri_original.safetensors": {
     "name": "Remacri",
@@ -1965,7 +2663,12 @@
     "civitai_url": "https://civitai.red/models/147759/remacri?modelVersionId=164821",
     "tags": [
       "base model"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "vae/sdxlVAE_sdxlVAE.safetensors": {
     "name": "SDXL VAE",
@@ -1979,13 +2682,23 @@
       "vae",
       "sdxl",
       "sdxl vae"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "vae/vaeKlF8Anime2_klF8Anime2VAE.safetensors": {
     "name": "VAE-kl-f8-anime2",
     "version": "vkl-f8-anime2 VAE",
     "base_model": "SD 1.5",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/cef0de43-694a-4b02-38bb-68f861596c00/original=true/576872.jpeg"
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/cef0de43-694a-4b02-38bb-68f861596c00/original=true/576872.jpeg",
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Civitai 조회 실패 — 수동확인",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/G0zeNA_style.safetensors": {
     "name": "G0zeNA | Shiiro's Styles",
@@ -2029,7 +2742,12 @@
       "background pony",
       "shiiro",
       "manga artist"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "Civitai 상업권 없음",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/[Style filter] Xu Er thick paint composition light texture enhancement Illustrious.safetensors": {
     "name": "[Style filter] Xu Er thick paint composition light texture enhancement",
@@ -2048,7 +2766,12 @@
       "game character",
       "girls",
       "realistic"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "Civitai 상업권 없음",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/MythicCraft_IL_(semi-real).safetensors": {
     "name": "MythicCraft",
@@ -2079,7 +2802,15 @@
       "backgrounds",
       "abstract painting",
       "manga artist"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "저작권 캐릭터 의심(검수)",
+      "flags": [
+        "ip"
+      ],
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/ponyv3_ill01_2_adamW-000017.safetensors": {
     "name": "Pony: People's Works v1-v6",
@@ -2091,7 +2822,12 @@
     "tags": [
       "style",
       "anime"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "checkpoints/riMixIllustriousAnima_riMix.safetensors": {
     "name": "Ri-mix - [Illustrious + Anima]",
@@ -2105,7 +2841,12 @@
       "neg: lowres, worst quality, low quality, bad anatomy, bad hands",
       "style",
       "illustrtion"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/748cmSDXL.safetensors": {
     "name": "748cm | Style for Illustrious/NoobAI 0.75",
@@ -2121,7 +2862,12 @@
       "woman",
       "cute",
       "girls"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "Civitai 상업권 없음",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/Eye_Enhancer.safetensors": {
     "name": "Eye Enhancer",
@@ -2138,7 +2884,15 @@
       "eye",
       "enhancer",
       "concept"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "Civitai 상업권 없음",
+      "flags": [
+        "nsfw"
+      ],
+      "allow_commercial_use": "N"
+    }
   },
   "loras/flatline_v2_-_Illus_x_Niji.safetensors": {
     "name": "Flatline - Anima/Illus x Niji [BETA]",
@@ -2152,7 +2906,12 @@
       "style",
       "artstyle",
       "flatline"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/748cm_illu.safetensors": {
     "name": "748cm | Shiiro's Styles | Niji",
@@ -2192,7 +2951,12 @@
       "girls",
       "realistic",
       "art style"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "Civitai 상업권 없음",
+      "allow_commercial_use": "N"
+    }
   },
   "checkpoints/celestrealAnimeSemi_v20.safetensors": {
     "name": "CelestReal - Anime / semi-reality fusion",
@@ -2209,7 +2973,12 @@
       "semi realistic",
       "semi-real",
       "dramatic lighting"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/SDXL_Hanbok_LoRA_beta7.safetensors": {
     "name": "Hanbok_Woman_XL Korean traditional clothes",
@@ -2226,7 +2995,12 @@
       "clothing",
       "girls",
       "realistic"
-    ]
+    ],
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Rent 미허가(제3자 유료호스팅 불가)",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/Hanbok-V2.safetensors": {
     "name": "Hanbok",
@@ -2240,7 +3014,12 @@
       "clothing",
       "korean",
       "korean clothes"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "checkpoints/oneObsession_15Noobai.safetensors": {
     "name": "One obsession",
@@ -2258,7 +3037,12 @@
       "obsession",
       "my style",
       "one obsession"
-    ]
+    ],
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Rent 미허가(제3자 유료호스팅 불가)",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/MGE_V6.1_IL_Final_R1.safetensors": {
     "name": "MGE Monster Girls",
@@ -2276,7 +3060,12 @@
       "monster girl encyclopedia",
       "mge",
       "aio"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "Civitai 상업권 없음",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/lightingSlider.safetensors": {
     "name": "Lighting / darkness slider",
@@ -2294,7 +3083,12 @@
       "brightness",
       "tool",
       "slider"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/NOOB_vp1_detailer_by_volnovik_v1.safetensors": {
     "name": "NoobAI-XL Detailer",
@@ -2307,7 +3101,12 @@
       "concept",
       "detailer",
       "noobai-xl"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/ppw_v8_Illuv2stable_128.safetensors": {
     "name": "People's Works: SDXL",
@@ -2319,7 +3118,12 @@
     "tags": [
       "anime",
       "style"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "checkpoints/wildcardxXLFusion_fusionOG.safetensors": {
     "name": "WildCardX-XL-Fusion",
@@ -2411,7 +3215,12 @@
       "illuminati",
       "quality up",
       "xlgirls"
-    ]
+    ],
+    "risk": {
+      "level": "HIGH",
+      "reason": "Civitai 상업권 없음",
+      "allow_commercial_use": "N"
+    }
   },
   "checkpoints/revAnimated_v11-inpainting.safetensors": {
     "name": "ReV Animated",
@@ -2427,7 +3236,12 @@
       "base model",
       "fantasy",
       "cartoon"
-    ]
+    ],
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Rent 미허가(제3자 유료호스팅 불가)",
+      "allow_commercial_use": "N"
+    }
   },
   "checkpoints/revAnimated_v122EOL.safetensors": {
     "name": "ReV Animated",
@@ -2443,7 +3257,12 @@
       "base model",
       "fantasy",
       "cartoon"
-    ]
+    ],
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Rent 미허가(제3자 유료호스팅 불가)",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/ILwatercolor.safetensors": {
     "name": "WatercolorStyle",
@@ -2459,7 +3278,12 @@
       "style",
       "pony,",
       "watercolor"
-    ]
+    ],
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Rent 미허가(제3자 유료호스팅 불가)",
+      "allow_commercial_use": "N"
+    }
   },
   "loras/RetroNijiIL.safetensors": {
     "name": "[Illustrious XL] Niji | Retro Anime Style LoRA",
@@ -2486,7 +3310,12 @@
       "retro",
       "woman",
       "style"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "loras/Devilight.safetensors": {
     "name": "Devilight 💡 - Lore Taker Custom Style #06",
@@ -2499,7 +3328,12 @@
       "Devilight",
       "style",
       "anime"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    }
   },
   "checkpoints/hiddenCanvas_v10.safetensors": {
     "name": "Hidden Canvas",
@@ -2516,6 +3350,14 @@
       "hidden-depths",
       "style",
       "conceptual-art"
-    ]
+    ],
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Rent 미허가(제3자 유료호스팅 불가)",
+      "flags": [
+        "nsfw"
+      ],
+      "allow_commercial_use": "N"
+    }
   }
 }

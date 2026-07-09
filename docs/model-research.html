@@ -1,0 +1,1022 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>모델 라이선스 감사</title><style>
+:root{--hi:#dc2626;--md:#d97706;--ok:#16a34a}
+*{box-sizing:border-box}body{font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;margin:0;padding:24px;color:#111;background:#fafafa}
+h1{font-size:18px;margin:0 0 4px}.sub{color:#666;font-size:12px;margin-bottom:16px}
+nav.top{display:flex;gap:8px;margin-bottom:16px;border-bottom:1px solid #e5e5e5}
+nav.top button{border:0;background:none;padding:10px 14px;cursor:pointer;font-size:14px;font-weight:600;color:#888;border-bottom:2px solid transparent;margin-bottom:-1px}
+nav.top button.active{color:#111;border-bottom-color:#111}
+.cards{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.card{border:1px solid #e5e5e5;border-radius:10px;padding:10px 14px;background:#fff;min-width:120px}
+.card .n{font-size:22px;font-weight:700}.card.hi .n{color:var(--hi)}.card.md .n{color:var(--md)}.card.ok .n{color:var(--ok)}
+.toolbar{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+button.filter{border:1px solid #ddd;background:#fff;border-radius:999px;padding:6px 12px;cursor:pointer;font-size:12px}
+button.filter.active{background:#111;color:#fff;border-color:#111}
+input#q{flex:1;min-width:200px;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-size:13px}
+table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #e5e5e5;border-radius:10px;overflow:hidden}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid #f0f0f0;vertical-align:top}
+th{background:#f7f7f7;position:sticky;top:0;font-size:11px;color:#555;text-transform:uppercase;letter-spacing:.03em}
+tr[data-risk=HIGH]{background:#fef2f2}tr[data-risk=MEDIUM]{background:#fffbeb}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
+.b{font-weight:700;font-size:11px;padding:2px 7px;border-radius:6px;color:#fff}
+.b.HIGH{background:var(--hi)}.b.MEDIUM{background:var(--md)}.b.OK{background:var(--ok)}
+.c{text-align:center;font-weight:700}.c.y{color:var(--ok)}.c.n{color:var(--hi)}
+.f{display:inline-block;font-size:10px;padding:1px 5px;border-radius:5px;margin:1px;color:#fff}
+.f.ip{background:#7c3aed}.f.person{background:#db2777}.f.nsfw{background:#525252}
+.note{margin-top:16px;font-size:11px;color:#777}
+.g-item{background:#fff;border:1px solid #e5e5e5;border-left-width:4px;border-radius:8px;padding:12px 14px;margin-bottom:10px}
+.g-item:has(.b.HIGH){border-left-color:var(--hi)}.g-item:has(.b.MEDIUM){border-left-color:var(--md)}.g-item:has(.b.OK){border-left-color:var(--ok)}
+.g-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}.g-name{font-weight:700;font-size:14px}.g-cnt{margin-left:auto;color:#888;font-size:12px}
+.g-desc{font-size:13px;color:#333}.g-desc code,.g-term code{background:#f1f1f1;padding:1px 5px;border-radius:4px;font-size:12px}
+.g-sec{font-size:15px;font-weight:700;margin:22px 0 10px}
+.g-term{background:#fff;border:1px solid #e5e5e5;border-radius:8px;padding:12px 14px;margin-bottom:10px}
+.g-term ul{margin:6px 0 0;padding-left:18px}.g-term li{margin:3px 0}
+/* charts */
+.chart-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.cc{background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:16px}
+.cc.wide{grid-column:1 / -1}
+.cc h3{margin:0 0 12px;font-size:14px}
+.donut{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.donut svg{width:168px;height:168px;flex:none}.dc{font-size:26px;font-weight:800;fill:#111}
+.legend{display:flex;flex-direction:column;gap:6px}
+.lg{display:flex;align-items:center;gap:7px;font-size:13px}.lg b{margin-left:2px}.lg .pct{color:#888;margin-left:6px;font-size:12px}
+.dot{width:11px;height:11px;border-radius:3px;display:inline-block}
+.legend-row{display:flex;gap:16px;margin-top:10px}
+.bars{display:flex;flex-direction:column;gap:8px}
+.row{display:flex;align-items:center;gap:10px}
+.rl{width:190px;flex:none;font-size:12px;display:flex;justify-content:space-between;gap:8px;padding-right:4px}
+.rl .rt{color:#888;font-variant-numeric:tabular-nums}
+.track{height:20px;border-radius:6px;overflow:hidden;display:flex;background:#eceff1;min-width:2px}
+.track.full{background:#eceff1;width:100% !important}
+.seg{height:100%;display:block}
+@media(max-width:720px){.chart-grid{grid-template-columns:1fr}.rl{width:130px}}
+</style></head><body>
+<h1>전문 이미지 생성 모델 라이선스 감사</h1>
+<div class="sub">catalog: docs/model-catalog.json · 총 146개 항목 · 생성일 2026-07-09 · Civitai API(업로더 설정값) + 베이스 라이선스 + 이름 휴리스틱. <b>실무 신호이며 법적 최종판단 아님.</b></div>
+
+<nav class="top">
+  <button data-v="table" class="active">감사 결과</button>
+  <button data-v="charts">인포그래픽</button>
+  <button data-v="guide">사유 설명</button>
+</nav>
+
+<section id="view-table">
+  <div class="cards">
+  <div class="card hi"><div class="n">41</div>HIGH · 제공 부적합</div>
+  <div class="card md"><div class="n">32</div>MEDIUM · 확인/조건부</div>
+  <div class="card ok"><div class="n">73</div>OK · 허용 후보</div>
+  </div>
+  <div class="toolbar">
+  <button class="filter active" data-f="ALL">전체</button>
+  <button class="filter" data-f="HIGH">HIGH</button><button class="filter" data-f="MEDIUM">MEDIUM</button><button class="filter" data-f="OK">OK</button>
+  <input id="q" placeholder="파일명·모델명·베이스·사유 검색…">
+  </div>
+  <table><thead><tr><th>위험도</th><th>종류</th><th>파일</th><th>모델명</th><th>베이스</th><th>allowCommercialUse</th><th>Rent</th><th>플래그</th><th>사유</th><th>링크</th></tr></thead>
+  <tbody><tr data-risk="HIGH" data-text="checkpoints/chilloutmix_niprunedfp32fix.safetensors chilloutmix sd 1.5 실인물 유사성 의심(검수); civitai 상업권 없음">
+<td><span class="b HIGH">HIGH</span></td><td>checkpoints</td><td class="mono">chilloutmix_NiPrunedFp32Fix.safetensors</td>
+<td>ChilloutMix</td><td>SD 1.5</td><td class="mono"></td>
+<td class="c n">N</td>
+<td class="flags"><span class="f person">실인물</span><span class="f nsfw">NSFW</span></td>
+<td>실인물 유사성 의심(검수); Civitai 상업권 없음</td><td><a href="https://civitai.red/models/6424/chilloutmix?modelVersionId=11745" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="checkpoints/hardcoreasiancosplay_ilv11.safetensors hardcore asian cosplay porn illustrious 실인물 유사성 의심(검수)">
+<td><span class="b HIGH">HIGH</span></td><td>checkpoints</td><td class="mono">hardcoreAsianCosplay_ilV11.safetensors</td>
+<td>Hardcore Asian Cosplay Porn</td><td>Illustrious</td><td class="mono">Image,RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"><span class="f person">실인물</span><span class="f nsfw">NSFW</span></td>
+<td>실인물 유사성 의심(검수)</td><td><a href="https://civitai.red/models/138630/hardcore-asian-cosplay-porn" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="checkpoints/kirazurianima_v30animabase1.safetensors kirazuri (anima) anima civitai 상업권 없음">
+<td><span class="b HIGH">HIGH</span></td><td>checkpoints</td><td class="mono">kirazuriAnima_v30AnimaBase1.safetensors</td>
+<td>Kirazuri (Anima)</td><td>Anima</td><td class="mono">RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Civitai 상업권 없음</td><td><a href="https://civitai.com/models/2495369/kirazuri-anima?modelVersionId=3020412" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="checkpoints/majicflus_v10.safetensors majicflus beauty 麦橘超美 flux.1 d 상업금지(flux dev 비상업 라이선스)">
+<td><span class="b HIGH">HIGH</span></td><td>checkpoints</td><td class="mono">majicflus_v10.safetensors</td>
+<td>MajicFlus beauty 麦橘超美</td><td>Flux.1 D</td><td class="mono">Image,RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>상업금지(FLUX dev 비상업 라이선스)</td><td><a href="https://civitai.red/models/1111989/majicflus-beauty?modelVersionId=1249505" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="checkpoints/picxreal_10.safetensors picx_real sd 1.5 civitai 상업권 없음">
+<td><span class="b HIGH">HIGH</span></td><td>checkpoints</td><td class="mono">picxReal_10.safetensors</td>
+<td>PicX_real</td><td>SD 1.5</td><td class="mono">RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Civitai 상업권 없음</td><td><a href="https://civitai.red/models/241415/picxreal?modelVersionId=272376" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="checkpoints/piemodels_nutella.safetensors pie - models 🥧 illustrious civitai 상업권 없음">
+<td><span class="b HIGH">HIGH</span></td><td>checkpoints</td><td class="mono">pieModels_nutella.safetensors</td>
+<td>Pie - Models 🥧</td><td>Illustrious</td><td class="mono">RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Civitai 상업권 없음</td><td><a href="https://civitai.red/models/1593793/pie-models?modelVersionId=3009657" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="checkpoints/prefectillustriousxl_v8.safetensors prefect illustrious xl illustrious civitai 상업권 없음">
+<td><span class="b HIGH">HIGH</span></td><td>checkpoints</td><td class="mono">prefectIllustriousXL_v8.safetensors</td>
+<td>Prefect illustrious XL</td><td>Illustrious</td><td class="mono">RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"><span class="f nsfw">NSFW</span></td>
+<td>Civitai 상업권 없음</td><td><a href="https://civitai.red/models/1224788/prefect-illustrious-xl?modelVersionId=2864868" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="checkpoints/redlilyillu_v10.safetensors red lily | illu illustrious civitai 상업권 없음">
+<td><span class="b HIGH">HIGH</span></td><td>checkpoints</td><td class="mono">redLilyIllu_v10.safetensors</td>
+<td>Red Lily | Illu</td><td>Illustrious</td><td class="mono">RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Civitai 상업권 없음</td><td><a href="https://civitai.red/models/2070771/red-lily-or-illu?modelVersionId=2343145" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="checkpoints/wildcardxxlfusion_fusionog.safetensors wildcardx-xl-fusion sdxl 1.0 civitai 상업권 없음">
+<td><span class="b HIGH">HIGH</span></td><td>checkpoints</td><td class="mono">wildcardxXLFusion_fusionOG.safetensors</td>
+<td>WildCardX-XL-Fusion</td><td>SDXL 1.0</td><td class="mono">RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Civitai 상업권 없음</td><td><a href="https://civitai.red/models/267728/wildcardx-xl-fusion?modelVersionId=345685" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="loras/[style filter] xu er thick paint composition light texture enhancement illustrious.safetensors [style filter] xu er thick paint composition light texture enhancement illustrious civitai 상업권 없음">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">[Style filter] Xu Er thick paint composition light texture enhancement Illustrious.safetensors</td>
+<td>[Style filter] Xu Er thick paint composition light texture enhancement</td><td>Illustrious</td><td class="mono">RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Civitai 상업권 없음</td><td><a href="https://civitai.red/models/768917/style-filter-xu-er-thick-paint-composition-light-texture-enhancement?modelVersionId=1278054" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="loras/748cm_illu.safetensors 748cm | shiiro's styles | niji illustrious civitai 상업권 없음">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">748cm_illu.safetensors</td>
+<td>748cm | Shiiro's Styles | Niji</td><td>Illustrious</td><td class="mono">RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Civitai 상업권 없음</td><td><a href="https://civitai.red/models/1221007/748cm-shiiro-s-styles-niji?modelVersionId=1375651" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="loras/748cmsdxl.safetensors 748cm | style for illustrious/noobai 0.75 illustrious civitai 상업권 없음">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">748cmSDXL.safetensors</td>
+<td>748cm | Style for Illustrious/NoobAI 0.75</td><td>Illustrious</td><td class="mono">RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Civitai 상업권 없음</td><td><a href="https://civitai.red/models/943607/748cm-style-for-illustrious-noobai-0-75?modelVersionId=1056404" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="loras/alastor_(hazbin_hotel).safetensors alastor | charlie (hazbin hotel) sd 1.5 저작권 캐릭터 의심(검수)">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">Alastor_(hazbin_hotel).safetensors</td>
+<td>Alastor | Charlie (hazbin hotel)</td><td>SD 1.5</td><td class="mono">URL없음</td>
+<td class="c n">N</td>
+<td class="flags"><span class="f ip">IP</span></td>
+<td>저작권 캐릭터 의심(검수)</td><td></td></tr>
+<tr data-risk="HIGH" data-text="loras/amateur_style_v1_pony.safetensors amateur style - slider pony civitai 상업권 없음">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">amateur_style_v1_pony.safetensors</td>
+<td>Amateur style - slider</td><td>Pony</td><td class="mono">RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Civitai 상업권 없음</td><td><a href="https://civitai.red/models/1410317/amateur-style-slider?modelVersionId=1594293" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="loras/asian cute face.safetensors asian cute face sd 1.5 실인물 유사성 의심(검수)">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">Asian Cute Face.safetensors</td>
+<td>Asian Cute Face</td><td>SD 1.5</td><td class="mono">Image,RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"><span class="f person">실인물</span></td>
+<td>실인물 유사성 의심(검수)</td><td><a href="https://civitai.red/models/26914/asian-cute-face?modelVersionId=32215" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="loras/ayori_v1_step3400.safetensors [anima &amp; sdxl] ayori art style anima civitai 상업권 없음">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">ayori_v1_step3400.safetensors</td>
+<td>[Anima &amp; SDXL] Ayori Art Style</td><td>Anima</td><td class="mono">RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Civitai 상업권 없음</td><td><a href="https://civitai.com/models/2033745/anima-and-sdxl-ayori-art-style" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="loras/beautiful_girls_v4.safetensors beautiful girls pony 실인물 유사성 의심(검수)">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">Beautiful_Girls_V4.safetensors</td>
+<td>Beautiful Girls</td><td>Pony</td><td class="mono">Image,RentCivit,Rent,Sell</td>
+<td class="c y">Y</td>
+<td class="flags"><span class="f person">실인물</span><span class="f nsfw">NSFW</span></td>
+<td>실인물 유사성 의심(검수)</td><td><a href="https://civitai.red/models/1220572/beautiful-girls?modelVersionId=1516020" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="loras/censored_for_betas.safetensors censored for betas (illustrious lora) illustrious civitai 상업권 없음">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">Censored_for_Betas.safetensors</td>
+<td>Censored for Betas (Illustrious LoRa)</td><td>Illustrious</td><td class="mono">RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"><span class="f nsfw">NSFW</span></td>
+<td>Civitai 상업권 없음</td><td><a href="https://civitai.red/models/1346103/censored-for-betas-illustrious-lora" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="loras/cinematic photography detailed illu xl v5.safetensors realistic skin texture style (detailed skin) xl + sd1.5 + f1d + pony + illu + zit + zib illustrious civitai 상업권 없음">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">cinematic photography detailed illu xl v5.safetensors</td>
+<td>Realistic Skin Texture style (Detailed Skin) XL + SD1.5 + F1D + Pony + Illu + ZIT + ZIB</td><td>Illustrious</td><td class="mono">RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Civitai 상업권 없음</td><td><a href="https://civitai.red/models/580857/realistic-skin-texture-style-detailed-skin-xl-sd15-f1d-pony-illu-zit-zib?modelVersionId=1790626" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="loras/detailed_pussy-10.safetensors detailed pussy [pony] pony civitai 상업권 없음">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">detailed_pussy-10.safetensors</td>
+<td>Detailed Pussy [PONY]</td><td>Pony</td><td class="mono">RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"><span class="f nsfw">NSFW</span></td>
+<td>Civitai 상업권 없음</td><td><a href="https://civitai.red/models/821523/detailed-pussy-pony?modelVersionId=918672" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="loras/dr34ml4y_ltxxx_v2.safetensors dr34ml4y - all-in-one nsfw (wan/ltx2) ltxv 2.3 civitai 상업권 없음">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">DR34ML4Y_LTXXX_V2.safetensors</td>
+<td>DR34ML4Y - All-In-One NSFW (WAN/LTX2)</td><td>LTXV 2.3</td><td class="mono">RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"><span class="f nsfw">NSFW</span></td>
+<td>Civitai 상업권 없음</td><td><a href="https://civitai.red/models/1811313/dr34ml4y-all-in-one-nsfw-wanltx2?modelVersionId=2950842" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="loras/elle_based_on_rick__morty_anime-000009.safetensors elle (based on rick &amp; morty anime) - illustrious illustrious 저작권 캐릭터 의심(검수)">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">Elle_based_on_Rick__Morty_Anime-000009.safetensors</td>
+<td>Elle (based on Rick &amp; Morty Anime) - Illustrious</td><td>Illustrious</td><td class="mono">RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"><span class="f ip">IP</span></td>
+<td>저작권 캐릭터 의심(검수)</td><td><a href="https://civitai.com/models/2032463/elle-based-on-rick-and-morty-anime-illustrious?modelVersionId=2300249" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="loras/eye_enhancer.safetensors eye enhancer illustrious civitai 상업권 없음">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">Eye_Enhancer.safetensors</td>
+<td>Eye Enhancer</td><td>Illustrious</td><td class="mono">RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"><span class="f nsfw">NSFW</span></td>
+<td>Civitai 상업권 없음</td><td><a href="https://civitai.red/models/1731594/eye-enhancer?modelVersionId=1959770" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="loras/flux dildo riding.safetensors dildo riding flux flux.1 d 상업금지(flux dev 비상업 라이선스)">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">flux dildo riding.safetensors</td>
+<td>dildo riding flux</td><td>Flux.1 D</td><td class="mono">Image,RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>상업금지(FLUX dev 비상업 라이선스)</td><td><a href="https://civitai.red/models/1048282/dildo-riding-flux?modelVersionId=1176213" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="loras/g0th1c2xlp.safetensors vixon's anima/pony styles - gothic neon pony civitai 상업권 없음">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">g0th1c2XLP.safetensors</td>
+<td>Vixon's Anima/Pony Styles - Gothic Neon</td><td>Pony</td><td class="mono">RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Civitai 상업권 없음</td><td><a href="https://civitai.red/models/888231/vixons-animapony-styles-gothic-neon?modelVersionId=1029540" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="loras/g0zena_style.safetensors g0zena | shiiro's styles illustrious civitai 상업권 없음">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">G0zeNA_style.safetensors</td>
+<td>G0zeNA | Shiiro's Styles</td><td>Illustrious</td><td class="mono">RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Civitai 상업권 없음</td><td><a href="https://civitai.red/models/1250679/g0zena-shiiro-s-styles?modelVersionId=1409865" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="loras/genesis_mk0.4.safetensors genesis illustrious civitai 상업권 없음">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">GENESIS_MK0.4.safetensors</td>
+<td>GENESIS</td><td>Illustrious</td><td class="mono">RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Civitai 상업권 없음</td><td><a href="https://civitai.red/models/846953/genesis?modelVersionId=1219983" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="loras/hand pony style v1.safetensors hands xl + sd 1.5 + f1d + pony + illustrious + zit + zib pony civitai 상업권 없음">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">Hand pony style v1.safetensors</td>
+<td>Hands XL + SD 1.5 + F1D + Pony + Illustrious + zit + ZIB</td><td>Pony</td><td class="mono">RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Civitai 상업권 없음</td><td><a href="https://civitai.red/models/200255/hands-xl-sd-15-f1d-pony-illustrious-zit-zib?modelVersionId=1356581" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="loras/illustriousxlv01_stabilizer_v1.121.safetensors stabilizer il/nai/ck illustrious civitai 상업권 없음">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">illustriousXLv01_stabilizer_v1.121.safetensors</td>
+<td>Stabilizer IL/NAI/CK</td><td>Illustrious</td><td class="mono">RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Civitai 상업권 없음</td><td><a href="https://civitai.red/models/971952/stabilizer-ilnaick?modelVersionId=1674551" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="loras/illustriousxlv01_stabilizer_v1.198.safetensors stabilizer il/nai/ck illustrious civitai 상업권 없음">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">illustriousXLv01_stabilizer_v1.198.safetensors</td>
+<td>Stabilizer IL/NAI/CK</td><td>Illustrious</td><td class="mono">RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Civitai 상업권 없음</td><td><a href="https://civitai.red/models/971952/stabilizer-ilnaick?modelVersionId=2055853" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="loras/ilxl_realism_slider_v.1.safetensors illustrious realism slider illustrious civitai 상업권 없음">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">ILXL_Realism_Slider_V.1.safetensors</td>
+<td>Illustrious Realism Slider</td><td>Illustrious</td><td class="mono">RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Civitai 상업권 없음</td><td><a href="https://civitai.red/models/1486904/illustrious-realism-slider?modelVersionId=1681903" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="loras/japanesedolllikeness_v15.safetensors japanesedolllikeness (v1.5) sd 1.5 실인물 유사성 의심(검수)">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">JapaneseDollLikeness_v15.safetensors</td>
+<td>JapaneseDollLikeness (v1.5)</td><td>SD 1.5</td><td class="mono">Image</td>
+<td class="c n">N</td>
+<td class="flags"><span class="f person">실인물</span><span class="f nsfw">NSFW</span></td>
+<td>실인물 유사성 의심(검수)</td><td><a href="https://civitai.red/models/28811/japanesedolllikeness-v15?modelVersionId=34562" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="loras/lut_slider_xxxl_v1.safetensors lut color grading - slider pony civitai 상업권 없음">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">LUT_slider_xxXL_V1.safetensors</td>
+<td>LUT Color Grading - Slider</td><td>Pony</td><td class="mono">RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Civitai 상업권 없음</td><td><a href="https://civitai.red/models/1638441/lut-color-grading-slider?modelVersionId=1854599" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="loras/ma1ma1helmes_b-000014.safetensors ma1ma1helmes | shiiro's styles | niji illustrious civitai 상업권 없음">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">ma1ma1helmes_b-000014.safetensors</td>
+<td>ma1ma1helmes | Shiiro's Styles | Niji</td><td>Illustrious</td><td class="mono">RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Civitai 상업권 없음</td><td><a href="https://civitai.red/models/1204563/ma1ma1helmes-or-shiiros-styles-or-niji?modelVersionId=1447126" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="loras/majicbeauty1.safetensors majicflus beauty 麦橘超美 flux.1 d 상업금지(flux dev 비상업 라이선스); 실인물 유사성 의심(검수)">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">majicbeauty1.safetensors</td>
+<td>MajicFlus beauty 麦橘超美</td><td>Flux.1 D</td><td class="mono">Image,RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"><span class="f person">실인물</span></td>
+<td>상업금지(FLUX dev 비상업 라이선스); 실인물 유사성 의심(검수)</td><td><a href="https://civitai.red/models/1111989/majicflus-beauty?modelVersionId=1249505" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="loras/mge_v6.1_il_final_r1.safetensors mge monster girls illustrious civitai 상업권 없음">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">MGE_V6.1_IL_Final_R1.safetensors</td>
+<td>MGE Monster Girls</td><td>Illustrious</td><td class="mono">RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Civitai 상업권 없음</td><td><a href="https://civitai.red/models/556479/mge-monster-girls?modelVersionId=1888209" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="loras/mythiccraft_il_(semi-real).safetensors mythiccraft illustrious 저작권 캐릭터 의심(검수)">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">MythicCraft_IL_(semi-real).safetensors</td>
+<td>MythicCraft</td><td>Illustrious</td><td class="mono">Image,RentCivit,Rent,Sell</td>
+<td class="c y">Y</td>
+<td class="flags"><span class="f ip">IP</span></td>
+<td>저작권 캐릭터 의심(검수)</td><td><a href="https://civitai.red/models/1840501/mythiccraft?modelVersionId=2132517" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="loras/nobara - illu.safetensors nobara kugisaki - jujutsu kaisen 1.5/pony/illustrious illustrious 저작권 캐릭터 의심(검수)">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">Nobara - Illu.safetensors</td>
+<td>Nobara Kugisaki - Jujutsu Kaisen 1.5/Pony/Illustrious</td><td>Illustrious</td><td class="mono">Image,RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"><span class="f ip">IP</span></td>
+<td>저작권 캐릭터 의심(검수)</td><td><a href="https://civitai.red/models/305366/nobara-kugisaki-jujutsu-kaisen-15ponyillustrious?modelVersionId=1327745" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="loras/pb0y.safetensors bl-manhwa styles pony civitai 상업권 없음">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">Pb0y.safetensors</td>
+<td>BL-Manhwa Styles</td><td>Pony</td><td class="mono">RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Civitai 상업권 없음</td><td><a href="https://civitai.red/models/764992/bl-manhwa-styles" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="loras/s4bit4mago.safetensors sabitamago | style lora illustrious civitai 상업권 없음">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">S4bit4mago.safetensors</td>
+<td>Sabitamago | Style LoRa</td><td>Illustrious</td><td class="mono">RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Civitai 상업권 없음</td><td><a href="https://civitai.red/models/1140728/sabitamago-or-style-lora?modelVersionId=1282885" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="HIGH" data-text="loras/skzw0rld-ixl.safetensors skzw0rld illustrious civitai 상업권 없음">
+<td><span class="b HIGH">HIGH</span></td><td>loras</td><td class="mono">skzW0rld-IXL.safetensors</td>
+<td>skzW0rld</td><td>Illustrious</td><td class="mono">RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Civitai 상업권 없음</td><td><a href="https://civitai.red/models/1524256/skzw0rld?modelVersionId=1729406" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="MEDIUM" data-text="checkpoints/anima_basev10.safetensors anima anima rent 미허가(제3자 유료호스팅 불가)">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>checkpoints</td><td class="mono">anima_baseV10.safetensors</td>
+<td>Anima</td><td>Anima</td><td class="mono">Image,RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Rent 미허가(제3자 유료호스팅 불가)</td><td><a href="https://civitai.com/models/2458426/anima?modelVersionId=2945208" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="MEDIUM" data-text="checkpoints/hiddencanvas_v10.safetensors hidden canvas illustrious rent 미허가(제3자 유료호스팅 불가)">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>checkpoints</td><td class="mono">hiddenCanvas_v10.safetensors</td>
+<td>Hidden Canvas</td><td>Illustrious</td><td class="mono">Image,RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"><span class="f nsfw">NSFW</span></td>
+<td>Rent 미허가(제3자 유료호스팅 불가)</td><td><a href="https://civitai.red/models/1716457/hidden-canvas?modelVersionId=1942411" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="MEDIUM" data-text="checkpoints/janima_v10.safetensors ✨ janima ✨ anima rent 미허가(제3자 유료호스팅 불가)">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>checkpoints</td><td class="mono">JANIMA_v10.safetensors</td>
+<td>✨ JANIMA ✨</td><td>Anima</td><td class="mono">RentCivit,Image</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Rent 미허가(제3자 유료호스팅 불가)</td><td><a href="https://civitai.red/models/2642932/janima?modelVersionId=2967640" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="MEDIUM" data-text="checkpoints/ltx2310eros_v1.safetensors ltx2.3 10eros ltxv 2.3 rent 미허가(제3자 유료호스팅 불가); 확인필요(ltx-video 라이선스)">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>checkpoints</td><td class="mono">ltx2310eros_v1.safetensors</td>
+<td>LTX2.3 10Eros</td><td>LTXV 2.3</td><td class="mono">Image</td>
+<td class="c n">N</td>
+<td class="flags"><span class="f nsfw">NSFW</span></td>
+<td>Rent 미허가(제3자 유료호스팅 불가); 확인필요(LTX-Video 라이선스)</td><td><a href="https://civitai.red/models/2447875/ltx23-10eros?modelVersionId=2892069" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="MEDIUM" data-text="checkpoints/oneobsession_15noobai.safetensors one obsession noobai rent 미허가(제3자 유료호스팅 불가)">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>checkpoints</td><td class="mono">oneObsession_15Noobai.safetensors</td>
+<td>One obsession</td><td>NoobAI</td><td class="mono">RentCivit,Image</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Rent 미허가(제3자 유료호스팅 불가)</td><td><a href="https://civitai.red/models/1318945/one-obsession?modelVersionId=1972020" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="MEDIUM" data-text="checkpoints/oneobsession_v22.safetensors one obsession illustrious rent 미허가(제3자 유료호스팅 불가)">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>checkpoints</td><td class="mono">oneObsession_v22.safetensors</td>
+<td>One obsession</td><td>Illustrious</td><td class="mono">RentCivit,Image</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Rent 미허가(제3자 유료호스팅 불가)</td><td><a href="https://civitai.red/models/1318945/one-obsession?modelVersionId=3016651" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="MEDIUM" data-text="checkpoints/ponydiffusionv6xl_v6startwiththisone.safetensors pony diffusion v6 xl pony rent 미허가(제3자 유료호스팅 불가)">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>checkpoints</td><td class="mono">ponyDiffusionV6XL_v6StartWithThisOne.safetensors</td>
+<td>Pony Diffusion V6 XL</td><td>Pony</td><td class="mono">Image,RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Rent 미허가(제3자 유료호스팅 불가)</td><td><a href="https://civitai.com/models/257749/pony-diffusion-v6-xl?modelVersionId=290640" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="MEDIUM" data-text="checkpoints/revanimated_v11-inpainting.safetensors rev animated sd 1.5 rent 미허가(제3자 유료호스팅 불가)">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>checkpoints</td><td class="mono">revAnimated_v11-inpainting.safetensors</td>
+<td>ReV Animated</td><td>SD 1.5</td><td class="mono">Image,RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Rent 미허가(제3자 유료호스팅 불가)</td><td><a href="https://civitai.red/models/7371/rev-animated?modelVersionId=22258" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="MEDIUM" data-text="checkpoints/revanimated_v122eol.safetensors rev animated sd 1.5 rent 미허가(제3자 유료호스팅 불가)">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>checkpoints</td><td class="mono">revAnimated_v122EOL.safetensors</td>
+<td>ReV Animated</td><td>SD 1.5</td><td class="mono">Image,RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Rent 미허가(제3자 유료호스팅 불가)</td><td><a href="https://civitai.red/models/7371/rev-animated?modelVersionId=46846" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="MEDIUM" data-text="checkpoints/waianima_v10base10.safetensors wai-anima anima rent 미허가(제3자 유료호스팅 불가)">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>checkpoints</td><td class="mono">waiANIMA_v10Base10.safetensors</td>
+<td>WAI-ANIMA</td><td>Anima</td><td class="mono">Image,RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Rent 미허가(제3자 유료호스팅 불가)</td><td><a href="https://civitai.com/models/2544636/wai-anima?modelVersionId=2983680" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="MEDIUM" data-text="checkpoints/waiillustrioussdxl_v140.safetensors wai-illustrious-sdxl illustrious rent 미허가(제3자 유료호스팅 불가)">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>checkpoints</td><td class="mono">waiIllustriousSDXL_v140.safetensors</td>
+<td>WAI-illustrious-SDXL</td><td>Illustrious</td><td class="mono">Image,RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"><span class="f nsfw">NSFW</span></td>
+<td>Rent 미허가(제3자 유료호스팅 불가)</td><td><a href="https://civitai.red/models/827184/wai-illustrious-sdxl?modelVersionId=1761560" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="MEDIUM" data-text="checkpoints/waiillustrioussdxl_v160.safetensors wai-illustrious-sdxl illustrious rent 미허가(제3자 유료호스팅 불가)">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>checkpoints</td><td class="mono">waiIllustriousSDXL_v160.safetensors</td>
+<td>WAI-illustrious-SDXL</td><td>Illustrious</td><td class="mono">Image,RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"><span class="f nsfw">NSFW</span></td>
+<td>Rent 미허가(제3자 유료호스팅 불가)</td><td><a href="https://civitai.red/models/827184/wai-illustrious-sdxl?modelVersionId=2514310" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="MEDIUM" data-text="checkpoints/waiillustrioussdxl_v170.safetensors wai-illustrious-sdxl illustrious rent 미허가(제3자 유료호스팅 불가)">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>checkpoints</td><td class="mono">waiIllustriousSDXL_v170.safetensors</td>
+<td>WAI-illustrious-SDXL</td><td>Illustrious</td><td class="mono">Image,RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"><span class="f nsfw">NSFW</span></td>
+<td>Rent 미허가(제3자 유료호스팅 불가)</td><td><a href="https://civitai.red/models/827184/wai-illustrious-sdxl?modelVersionId=2883731" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="MEDIUM" data-text="embeddings/lazyneg.safetensors ✨ lazy embeddings for all illustrious noobai pony sdxl models lazypositive lazynegative (positive and negative plus more!) illustrious rent 미허가(제3자 유료호스팅 불가)">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>embeddings</td><td class="mono">lazyneg.safetensors</td>
+<td>✨ Lazy Embeddings for ALL illustrious NoobAI Pony SDXL models LazyPositive LazyNegative (Positive and Negative plus more!)</td><td>Illustrious</td><td class="mono">Image,RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Rent 미허가(제3자 유료호스팅 불가)</td><td><a href="https://civitai.red/models/1302719/lazy-embeddings-for-all-illustrious-noobai-pony-sdxl-models-lazypositive-lazynegative-positive-and-negative-plus-more?modelVersionId=1860747" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="MEDIUM" data-text="embeddings/lazypos.safetensors ✨ lazy embeddings for all illustrious noobai pony sdxl models lazypositive lazynegative (positive and negative plus more!) illustrious rent 미허가(제3자 유료호스팅 불가)">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>embeddings</td><td class="mono">lazypos.safetensors</td>
+<td>✨ Lazy Embeddings for ALL illustrious NoobAI Pony SDXL models LazyPositive LazyNegative (Positive and Negative plus more!)</td><td>Illustrious</td><td class="mono">Image,RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Rent 미허가(제3자 유료호스팅 불가)</td><td><a href="https://civitai.red/models/1302719/lazy-embeddings-for-all-illustrious-noobai-pony-sdxl-models-lazypositive-lazynegative-positive-and-negative-plus-more?modelVersionId=1833157" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="MEDIUM" data-text="embeddings/zpdxlxxx.pt pony pdxl negative embeddings pony civitai 조회 실패 — 수동확인">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>embeddings</td><td class="mono">zPDXLxxx.pt</td>
+<td>Pony PDXL Negative Embeddings</td><td>Pony</td><td class="mono">URL없음</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Civitai 조회 실패 — 수동확인</td><td></td></tr>
+<tr data-risk="MEDIUM" data-text="loras/afae-000010.safetensors handsome boy.1 pony civitai 조회 실패 — 수동확인">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>loras</td><td class="mono">AFAE-000010.safetensors</td>
+<td>Handsome Boy.1</td><td>Pony</td><td class="mono">URL없음</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Civitai 조회 실패 — 수동확인</td><td></td></tr>
+<tr data-risk="MEDIUM" data-text="loras/anima-highres-aesthetic-boost.safetensors anima highres/aesthetic boost anima rent 미허가(제3자 유료호스팅 불가)">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>loras</td><td class="mono">anima-highres-aesthetic-boost.safetensors</td>
+<td>Anima Highres/Aesthetic Boost</td><td>Anima</td><td class="mono">Image,RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Rent 미허가(제3자 유료호스팅 불가)</td><td><a href="https://civitai.com/models/2540444/anima-highresaesthetic-boost" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="MEDIUM" data-text="loras/arweverse_-_oc-000007.safetensors arweverse - [oc] illustrious rent 미허가(제3자 유료호스팅 불가)">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>loras</td><td class="mono">Arweverse_-_OC-000007.safetensors</td>
+<td>Arweverse - [OC]</td><td>Illustrious</td><td class="mono">Sell</td>
+<td class="c n">N</td>
+<td class="flags"><span class="f nsfw">NSFW</span></td>
+<td>Rent 미허가(제3자 유료호스팅 불가)</td><td><a href="https://civitai.red/models/1492410/arweverse-oc?modelVersionId=1688253" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="MEDIUM" data-text="loras/dark_bara-10.safetensors muscular male / bara mix styles illustrious rent 미허가(제3자 유료호스팅 불가)">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>loras</td><td class="mono">Dark_Bara-10.safetensors</td>
+<td>Muscular Male / Bara Mix Styles</td><td>Illustrious</td><td class="mono">Sell</td>
+<td class="c n">N</td>
+<td class="flags"><span class="f nsfw">NSFW</span></td>
+<td>Rent 미허가(제3자 유료호스팅 불가)</td><td><a href="https://civitai.red/models/1448487/muscular-male-bara-mix-styles?modelVersionId=2198544" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="MEDIUM" data-text="loras/dasiwa_ltx23_nsfw_bodyphysics_fluid_motion_enhancer_v01.safetensors nsfw body physics fluid motion enhancer | lora | ltx2.3 ltxv 2.3 rent 미허가(제3자 유료호스팅 불가); 확인필요(ltx-video 라이선스)">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>loras</td><td class="mono">DaSiWa_LTX23_NSFW_Bodyphysics_Fluid_Motion_Enhancer_v01.safetensors</td>
+<td>NSFW Body Physics Fluid Motion Enhancer | Lora | LTX2.3</td><td>LTXV 2.3</td><td class="mono">Image,RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"><span class="f nsfw">NSFW</span></td>
+<td>Rent 미허가(제3자 유료호스팅 불가); 확인필요(LTX-Video 라이선스)</td><td><a href="https://civitai.red/models/2668916/nsfw-body-physics-fluid-motion-enhancer-or-lora-or-ltx23?modelVersionId=2996907" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="MEDIUM" data-text="loras/detailer_noobai_incrs_v1.safetensors detailer | tool / concept lora illustriousxl illustrious civitai 조회 실패 — 수동확인">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>loras</td><td class="mono">Detailer_NoobAI_Incrs_v1.safetensors</td>
+<td>Detailer | Tool / Concept LoRA IllustriousXL</td><td>Illustrious</td><td class="mono">URL없음</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Civitai 조회 실패 — 수동확인</td><td></td></tr>
+<tr data-risk="MEDIUM" data-text="loras/detailerilv2-000008.safetensors detailer il illustrious rent 미허가(제3자 유료호스팅 불가)">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>loras</td><td class="mono">DetailerILv2-000008.safetensors</td>
+<td>Detailer IL</td><td>Illustrious</td><td class="mono">Image,RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Rent 미허가(제3자 유료호스팅 불가)</td><td><a href="https://civitai.red/models/1231943/detailer-il?modelVersionId=1736373" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="MEDIUM" data-text="loras/ilwatercolor.safetensors watercolorstyle illustrious rent 미허가(제3자 유료호스팅 불가)">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>loras</td><td class="mono">ILwatercolor.safetensors</td>
+<td>WatercolorStyle</td><td>Illustrious</td><td class="mono">Image,RentCivit</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Rent 미허가(제3자 유료호스팅 불가)</td><td><a href="https://civitai.red/models/963176/watercolorstyle?modelVersionId=1150702" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="MEDIUM" data-text="loras/ily-scat-smear.safetensors ily-scat-smear illustrious civitai 조회 실패 — 수동확인">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>loras</td><td class="mono">ily-scat-smear.safetensors</td>
+<td>ily-scat-smear</td><td>Illustrious</td><td class="mono">URL없음</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Civitai 조회 실패 — 수동확인</td><td></td></tr>
+<tr data-risk="MEDIUM" data-text="loras/p0nyd1sney1ncasev1x0n2-v2.safetensors incase + vixon's gothic neon + disney style [anima | il] illustrious civitai 조회 실패 — 수동확인">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>loras</td><td class="mono">p0nyd1sney1ncasev1x0n2-v2.safetensors</td>
+<td>Incase + Vixon's Gothic Neon + Disney Style [Anima | IL]</td><td>Illustrious</td><td class="mono">URL없음</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Civitai 조회 실패 — 수동확인</td><td></td></tr>
+<tr data-risk="MEDIUM" data-text="loras/sdxl_hanbok_lora_beta7.safetensors hanbok_woman_xl korean traditional clothes sdxl 1.0 rent 미허가(제3자 유료호스팅 불가)">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>loras</td><td class="mono">SDXL_Hanbok_LoRA_beta7.safetensors</td>
+<td>Hanbok_Woman_XL Korean traditional clothes</td><td>SDXL 1.0</td><td class="mono">Image</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Rent 미허가(제3자 유료호스팅 불가)</td><td><a href="https://civitai.red/models/185244/hanbok-woman-xl-korean-traditional-clothes?modelVersionId=263344" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="MEDIUM" data-text="loras/smooth_booster_v3.safetensors smooth detailer booster (noobai/illustrious/pony) illustrious rent 미허가(제3자 유료호스팅 불가)">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>loras</td><td class="mono">Smooth_Booster_v3.safetensors</td>
+<td>Smooth Detailer Booster (NoobAI/Illustrious/Pony)</td><td>Illustrious</td><td class="mono">RentCivit,Image</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Rent 미허가(제3자 유료호스팅 불가)</td><td><a href="https://civitai.red/models/1145743/smooth-detailer-booster-noobaiillustriouspony?modelVersionId=1784760" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="MEDIUM" data-text="loras/smooth_booster_v5.safetensors smooth detailer booster (noobai/illustrious/pony) illustrious rent 미허가(제3자 유료호스팅 불가)">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>loras</td><td class="mono">Smooth_Booster_v5.safetensors</td>
+<td>Smooth Detailer Booster (NoobAI/Illustrious/Pony)</td><td>Illustrious</td><td class="mono">RentCivit,Image</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Rent 미허가(제3자 유료호스팅 불가)</td><td><a href="https://civitai.red/models/1145743/smooth-detailer-booster-noobaiillustriouspony?modelVersionId=2746768" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="MEDIUM" data-text="loras/vcalicia-anima-nvwls-v1.safetensors alicia melchiott/アリシア・メルキオット (valkyria chronicles) sdxl lora [pony diffusion] pony civitai 조회 실패 — 수동확인">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>loras</td><td class="mono">vcalicia-anima-nvwls-v1.safetensors</td>
+<td>Alicia Melchiott/アリシア・メルキオット (Valkyria Chronicles) SDXL LoRA [Pony Diffusion]</td><td>Pony</td><td class="mono">URL없음</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Civitai 조회 실패 — 수동확인</td><td></td></tr>
+<tr data-risk="MEDIUM" data-text="loras/wet_hair_-_wet_hair_look_-_dripping-000006.safetensors wet hair - wet hair look - dripping illustrious rent 미허가(제3자 유료호스팅 불가)">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>loras</td><td class="mono">Wet_Hair_-_Wet_Hair_Look_-_Dripping-000006.safetensors</td>
+<td>Wet Hair - Wet Hair Look - Dripping</td><td>Illustrious</td><td class="mono">Sell</td>
+<td class="c n">N</td>
+<td class="flags"><span class="f nsfw">NSFW</span></td>
+<td>Rent 미허가(제3자 유료호스팅 불가)</td><td><a href="https://civitai.red/models/1919989/wet-hair-wet-hair-look-dripping?modelVersionId=2173122" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="MEDIUM" data-text="vae/vaeklf8anime2_klf8anime2vae.safetensors vae-kl-f8-anime2 sd 1.5 civitai 조회 실패 — 수동확인">
+<td><span class="b MEDIUM">MEDIUM</span></td><td>vae</td><td class="mono">vaeKlF8Anime2_klF8Anime2VAE.safetensors</td>
+<td>VAE-kl-f8-anime2</td><td>SD 1.5</td><td class="mono">URL없음</td>
+<td class="c n">N</td>
+<td class="flags"></td>
+<td>Civitai 조회 실패 — 수동확인</td><td></td></tr>
+<tr data-risk="OK" data-text="checkpoints/amixillustrious_amix.safetensors a-mix [illustrious] illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>checkpoints</td><td class="mono">aMixIllustrious_aMix.safetensors</td>
+<td>A-mix [Illustrious]</td><td>Illustrious</td><td class="mono">RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/1692152/a-mix-illustrious?modelVersionId=1915059" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="checkpoints/celestrealanimesemi_v20.safetensors celestreal - anime / semi-reality fusion illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>checkpoints</td><td class="mono">celestrealAnimeSemi_v20.safetensors</td>
+<td>CelestReal - Anime / semi-reality fusion</td><td>Illustrious</td><td class="mono">RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/1862393/celestreal-anime-semi-reality-fusion?modelVersionId=2170227" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="checkpoints/dessertmodels_icecream.safetensors dessert - models 🍰 illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>checkpoints</td><td class="mono">dessertModels_iceCream.safetensors</td>
+<td>Dessert - Models 🍰</td><td>Illustrious</td><td class="mono">Image,RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/1884582/dessert-models?modelVersionId=3009873" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="checkpoints/epicrealism_naturalsinrc1vae.safetensors epicrealism sd 1.5 rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>checkpoints</td><td class="mono">epicrealism_naturalSinRC1VAE.safetensors</td>
+<td>epiCRealism</td><td>SD 1.5</td><td class="mono">Image,RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/25694/epicrealism?modelVersionId=143906" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="checkpoints/goldenhour_v10.safetensors golden hour illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>checkpoints</td><td class="mono">goldenHour_v10.safetensors</td>
+<td>Golden Hour</td><td>Illustrious</td><td class="mono">Image,RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/2433139/golden-hour?modelVersionId=2735786" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="checkpoints/hassakuxlillustrious_v22.safetensors hassaku xl (illustrious) illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>checkpoints</td><td class="mono">hassakuXLIllustrious_v22.safetensors</td>
+<td>Hassaku XL (Illustrious)</td><td>Illustrious</td><td class="mono">RentCivit,Rent,Image</td>
+<td class="c y">Y</td>
+<td class="flags"><span class="f nsfw">NSFW</span></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/140272/hassaku-xl-illustrious?modelVersionId=1697082" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="checkpoints/illustrij_v19.safetensors illustrij illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>checkpoints</td><td class="mono">illustrij_v19.safetensors</td>
+<td>Illustrij</td><td>Illustrious</td><td class="mono">RentCivit,Rent,Sell,Image</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.com/models/1025051/illustrij?modelVersionId=2427287" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="checkpoints/illustriousxl_v01.safetensors illustrious-xl illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>checkpoints</td><td class="mono">illustriousXL_v01.safetensors</td>
+<td>Illustrious-XL</td><td>Illustrious</td><td class="mono">RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.com/models/795765/illustrious-xl?modelVersionId=889818" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="checkpoints/illustvector25dil_v10.safetensors illust-vector-2.5d_il illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>checkpoints</td><td class="mono">illustVector25DIL_v10.safetensors</td>
+<td>illust-Vector-2.5D_IL</td><td>Illustrious</td><td class="mono">Image,RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.com/models/2066425/illust-vector-25dil" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="checkpoints/majicmixrealistic_v7.safetensors majicmix realistic 麦橘写实 sd 1.5 rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>checkpoints</td><td class="mono">majicmixRealistic_v7.safetensors</td>
+<td>majicMIX realistic 麦橘写实</td><td>SD 1.5</td><td class="mono">Image,RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/43331/majicmix-realistic" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="checkpoints/nova3dcgxl_ilv90.safetensors nova 3dcg xl illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>checkpoints</td><td class="mono">nova3DCGXL_ilV90.safetensors</td>
+<td>Nova 3DCG XL</td><td>Illustrious</td><td class="mono">Image,RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/715287/nova-3dcg-xl?modelVersionId=2744564" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="checkpoints/novaorangexl_v130.safetensors nova orange xl illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>checkpoints</td><td class="mono">novaOrangeXL_v130.safetensors</td>
+<td>Nova Orange XL</td><td>Illustrious</td><td class="mono">Image,RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.com/models/967405/nova-orange-xl?modelVersionId=2424898" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="checkpoints/quiets25dillusmerge_v10.safetensors quiet's 2.5d illus_merge illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>checkpoints</td><td class="mono">quiets25DIllusMerge_v10.safetensors</td>
+<td>Quiet's 2.5D Illus_Merge</td><td>Illustrious</td><td class="mono">Image,RentCivit,Rent,Sell</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.com/models/2657073/quiets-25d-illusmerge" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="checkpoints/rimixillustriousanima_rimix.safetensors ri-mix - [illustrious + anima] illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>checkpoints</td><td class="mono">riMixIllustriousAnima_riMix.safetensors</td>
+<td>Ri-mix - [Illustrious + Anima]</td><td>Illustrious</td><td class="mono">RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/996495/ri-mix-illustrious-anima?modelVersionId=1916444" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="checkpoints/rimixillustriousanima_rimixanima.safetensors ri-mix - [illustrious + anima] anima rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>checkpoints</td><td class="mono">riMixIllustriousAnima_riMixAnima.safetensors</td>
+<td>Ri-mix - [Illustrious + Anima]</td><td>Anima</td><td class="mono">RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/996495/ri-mix-illustrious-anima?modelVersionId=3020951" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="checkpoints/rimixillustriousanima_rimixv2.safetensors ri-mix - [illustrious + anima] illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>checkpoints</td><td class="mono">riMixIllustriousAnima_riMixV2.safetensors</td>
+<td>Ri-mix - [Illustrious + Anima]</td><td>Illustrious</td><td class="mono">RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/996495/ri-mix-illustrious-anima?modelVersionId=2811854" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="checkpoints/tpgsunmmerdreamv4_v4.safetensors tpg_sunmmerdream_v4 illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>checkpoints</td><td class="mono">tpgSunmmerdreamV4_v4.safetensors</td>
+<td>TPG_SunmmerDream_V4</td><td>Illustrious</td><td class="mono">Image,RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"><span class="f nsfw">NSFW</span></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/2690504/tpgsunmmerdreamv4" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="checkpoints/ultra_v14.safetensors ultra pony rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>checkpoints</td><td class="mono">ultra_v14.safetensors</td>
+<td>ULTRA</td><td>Pony</td><td class="mono">RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.com/models/228525/ultra" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="checkpoints/wairealism_v10.safetensors wai-realism-illustrious illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>checkpoints</td><td class="mono">waiREALISM_v10.safetensors</td>
+<td>WAI-REALISM-Illustrious</td><td>Illustrious</td><td class="mono">Image,RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/2233797/wai-realism-illustrious?modelVersionId=2514670" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="embeddings/easynegative.safetensors easynegative sd 1.5 rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>embeddings</td><td class="mono">easynegative.safetensors</td>
+<td>EasyNegative</td><td>SD 1.5</td><td class="mono">Image,RentCivit,Rent,Sell</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/7808/easynegative?modelVersionId=9208" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/1990s shoujomanga anime style [xllora].safetensors 1990s shoujomanga anime style [xllora] sdxl 1.0 rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">1990s ShoujoManga Anime Style [XLlora].safetensors</td>
+<td>1990s ShoujoManga Anime Style [XLlora]</td><td>SDXL 1.0</td><td class="mono">Image,RentCivit,Rent,Sell</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/130045/1990s-shoujomanga-anime-style-xllora?modelVersionId=142602" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/5byue5dnijistylee291.cnux.safetensors niji-male-style① illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">5byue5dnijistyleE291.cNux.safetensors</td>
+<td>Niji-male-style①</td><td>Illustrious</td><td class="mono">Image,RentCivit,Rent,Sell</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/1028032/niji-male-style?modelVersionId=1152969" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/96yottea-wai.safetensors 96yottea style | illustrious illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">96YOTTEA-WAI.safetensors</td>
+<td>96YOTTEA style | Illustrious</td><td>Illustrious</td><td class="mono">RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/966483/96yottea-style-or-illustrious?modelVersionId=1082928" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/analobjill_r1.safetensors anal object insertion (illustrious) illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">analobjill_r1.safetensors</td>
+<td>Anal Object Insertion (Illustrious)</td><td>Illustrious</td><td class="mono">Image,RentCivit,Rent,Sell</td>
+<td class="c y">Y</td>
+<td class="flags"><span class="f nsfw">NSFW</span></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/1537041/anal-object-insertion-illustrious" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/anima_in_real_epoch_10.safetensors anime in real anima rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">Anima_in_real_epoch_10.safetensors</td>
+<td>Anime in real</td><td>Anima</td><td class="mono">Rent,RentCivit</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.com/models/1979448/anime-in-real?modelVersionId=3019001" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/anima_niji_sweet_spot_v4.safetensors niji sweet spot anima rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">ANIMA_Niji_Sweet_Spot_v4.safetensors</td>
+<td>Niji Sweet Spot</td><td>Anima</td><td class="mono">Image,RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.com/models/2554999/niji-sweet-spot?modelVersionId=3040615" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/anima-base-1-masterpiece-v51.safetensors aesthetic quality modifiers - masterpiece anima rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">anima-base-1-masterpiece-v51.safetensors</td>
+<td>Aesthetic Quality Modifiers - Masterpiece</td><td>Anima</td><td class="mono">Image,RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/929497/aesthetic-quality-modifiers-masterpiece?modelVersionId=2961717" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/anima-turbo-lora-v0.2.safetensors anima turbo lora anima rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">anima-turbo-lora-v0.2.safetensors</td>
+<td>Anima Turbo LoRA</td><td>Anima</td><td class="mono">Image,RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/2560840/anima-turbo-lora?modelVersionId=2979642" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/animanss4re.safetensors niji sweet spot anima rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">AnimaNSS4RE.safetensors</td>
+<td>Niji Sweet Spot</td><td>Anima</td><td class="mono">Image,RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/2554999/niji-sweet-spot?modelVersionId=2964538" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/antherimoc-000004.safetensors antherimoc pony rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">AntherimOC-000004.safetensors</td>
+<td>AntherimOC</td><td>Pony</td><td class="mono">RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"><span class="f nsfw">NSFW</span></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/1236736/antherimoc?modelVersionId=1393767" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/atreidsv2style.safetensors arsnitida style | illustrious illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">atreidsv2style.safetensors</td>
+<td>Arsnitida Style | Illustrious</td><td>Illustrious</td><td class="mono">Image,RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.com/models/1576220/arsnitida-style-or-illustrious?modelVersionId=2365679" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/bunnyslop_anima.safetensors bunnyslop ai style [il/anima] anima rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">BunnySlop_Anima.safetensors</td>
+<td>BunnySlop AI Style [IL/Anima]</td><td>Anima</td><td class="mono">RentCivit,Rent,Image</td>
+<td class="c y">Y</td>
+<td class="flags"><span class="f nsfw">NSFW</span></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/2613391/bunnyslop-ai-style-ilanima?modelVersionId=2978487" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/demonerithillustrious.safetensors demonerith style illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">DemonerithIllustrious.safetensors</td>
+<td>Demonerith Style</td><td>Illustrious</td><td class="mono">Image,RentCivit,Rent,Sell</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/2098183/demonerith-style?modelVersionId=2373899" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/detailedeyes_v3.safetensors detailedeyes_xl sdxl 1.0 rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">DetailedEyes_V3.safetensors</td>
+<td>DetailedEyes_XL</td><td>SDXL 1.0</td><td class="mono">RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/120723/detailedeyesxl?modelVersionId=145907" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/devilight.safetensors devilight 💡 - lore taker custom style #06 pony rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">Devilight.safetensors</td>
+<td>Devilight 💡 - Lore Taker Custom Style #06</td><td>Pony</td><td class="mono">Image,RentCivit,Rent,Sell</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/849402/devilight-lore-taker-custom-style-06?modelVersionId=957911" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/ep5.safetensors exotic dildos! pony rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">ep5.safetensors</td>
+<td>Exotic Dildos!</td><td>Pony</td><td class="mono">RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"><span class="f nsfw">NSFW</span></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/494169/exotic-dildos?modelVersionId=994863" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/expressive_h-000001.safetensors expressiveh (hentai lora style) エロアニメ pony rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">Expressive_H-000001.safetensors</td>
+<td>ExpressiveH (Hentai LoRa Style) エロアニメ</td><td>Pony</td><td class="mono">Rent,RentCivit,Image</td>
+<td class="c y">Y</td>
+<td class="flags"><span class="f nsfw">NSFW</span></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/341353/expressiveh-hentai-lora-style?modelVersionId=382152" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/flatline_v2_-_illus_x_niji.safetensors flatline - anima/illus x niji [beta] illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">flatline_v2_-_Illus_x_Niji.safetensors</td>
+<td>Flatline - Anima/Illus x Niji [BETA]</td><td>Illustrious</td><td class="mono">Image,RentCivit,Rent,Sell</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/1233370/flatline-anima-illus-x-niji-beta?modelVersionId=1805073" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/futurabbitstyle_animav1.5-000016.safetensors futurabbitstyle_anima anima rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">Futurabbitstyle_animaV1.5-000016.safetensors</td>
+<td>Futurabbitstyle_anima</td><td>Anima</td><td class="mono">Image,RentCivit,Rent,Sell</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.com/models/2674611/futurabbitstyleanima?modelVersionId=3003138" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/hanbok-v2.safetensors hanbok sd 1.5 rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">Hanbok-V2.safetensors</td>
+<td>Hanbok</td><td>SD 1.5</td><td class="mono">Image,RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/223206/hanbok?modelVersionId=365088" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/handpatchunet4merge.safetensors handpatch (unet-only) illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">handPatchUnet4Merge.safetensors</td>
+<td>HandPatch (Unet-Only)</td><td>Illustrious</td><td class="mono">RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/1206045/handpatch-unet-only?modelVersionId=1358586" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/hansame-000019.safetensors flower boy style illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">hansame-000019.safetensors</td>
+<td>Flower Boy Style</td><td>Illustrious</td><td class="mono">Image,RentCivit,Rent,Sell</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/991144/flower-boy-style?modelVersionId=1110407" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/hassakuxlillustrious_v22.safetensors hassaku xl (illustrious) illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">hassakuXLIllustrious_v22.safetensors</td>
+<td>Hassaku XL (Illustrious)</td><td>Illustrious</td><td class="mono">RentCivit,Rent,Image</td>
+<td class="c y">Y</td>
+<td class="flags"><span class="f nsfw">NSFW</span></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/140272/hassaku-xl-illustrious?modelVersionId=1697082" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/incase_style_v3-1_ponyxl_ilff.safetensors incase style [ponyxl] pony rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">incase_style_v3-1_ponyxl_ilff.safetensors</td>
+<td>Incase Style [PonyXL]</td><td>Pony</td><td class="mono">Image,RentCivit,Rent,Sell</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/300005/incase-style-ponyxl?modelVersionId=436219" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/knva retro illustration.safetensors retro anime illustration illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">knva retro illustration.safetensors</td>
+<td>Retro Anime Illustration</td><td>Illustrious</td><td class="mono">RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/1227514/retro-anime-illustration?modelVersionId=1383087" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/lightingslider.safetensors lighting / darkness slider illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">lightingSlider.safetensors</td>
+<td>Lighting / darkness slider</td><td>Illustrious</td><td class="mono">Image,RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/1280702/lighting-darkness-slider?modelVersionId=1444863" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/mai_bj_clothing_12.safetensors clothing: sexy office lady 3 illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">mai_bj_clothing_12.safetensors</td>
+<td>Clothing: Sexy office lady 3</td><td>Illustrious</td><td class="mono">Sell,Image,RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"><span class="f nsfw">NSFW</span></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/1722449/clothing-sexy-office-lady-3?modelVersionId=1949236" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/more_details.safetensors add more details - detail enhancer / tweaker (细节调整) lora sd 1.5 rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">more_details.safetensors</td>
+<td>Add More Details - Detail Enhancer / Tweaker (细节调整) LoRA</td><td>SD 1.5</td><td class="mono">Image,RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/82098/add-more-details-detail-enhancer-tweaker-lora?modelVersionId=87153" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/moriimee_gothic_niji_style_illustrious_r1.safetensors moriimee gothic niji | lora style illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">MoriiMee_Gothic_Niji_Style_Illustrious_r1.safetensors</td>
+<td>MoriiMee Gothic Niji | LoRA Style</td><td>Illustrious</td><td class="mono">RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"><span class="f nsfw">NSFW</span></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/915918/moriimee-gothic-niji-or-lora-style?modelVersionId=1244133" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/museindark_il-nai-tweak-3.0.safetensors [styles] muses in dark | semi-real style - illustrious/ponyxl - illustrious|nai illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">MuseInDark_IL-NAI-Tweak-3.0.safetensors</td>
+<td>[Styles] Muses in Dark | Semi-real Style - Illustrious/PonyXL - Illustrious|NAI</td><td>Illustrious</td><td class="mono">RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/1300603/styles-muses-in-dark-or-semi-real-style-illustriousponyxl-illustriousornai?modelVersionId=2182811" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/mythp0rtr4itstyle.safetensors velvet's mythic fantasy styles | flux + pony + illustrious + zit + anima pony rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">MythP0rtr4itStyle.safetensors</td>
+<td>Velvet's Mythic Fantasy Styles | Flux + Pony + illustrious + ZiT + Anima</td><td>Pony</td><td class="mono">RentCivit,Image,Rent,Sell</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/599757/velvets-mythic-fantasy-styles-or-flux-pony-illustrious-zit-anima?modelVersionId=704723" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/niji_oil_painting_drawing-anime.safetensors niji oil painting drawing pony rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">Niji_oil_painting_drawing-anime.safetensors</td>
+<td>Niji oil painting drawing</td><td>Pony</td><td class="mono">RentCivit,Rent,Image</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.com/models/1188058/niji-oil-painting-drawing?modelVersionId=1617780" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/niji_semi_realism_f_n_r_epoch_10.safetensors niji semi realism illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">Niji_Semi_realism_F_N_R_epoch_10.safetensors</td>
+<td>Niji semi realism</td><td>Illustrious</td><td class="mono">RentCivit,Rent,Image</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/534506/niji-semi-realism?modelVersionId=2854725" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/nnestyle.safetensors nene mix style | illustrious illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">nnestyle.safetensors</td>
+<td>Nene Mix style | Illustrious</td><td>Illustrious</td><td class="mono">Image,RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/2098306/nene-mix-style-or-illustrious?modelVersionId=2374037" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/noob_vp1_detailer_by_volnovik_v1.safetensors noobai-xl detailer noobai rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">NOOB_vp1_detailer_by_volnovik_v1.safetensors</td>
+<td>NoobAI-XL Detailer</td><td>NoobAI</td><td class="mono">Image,RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/987736/noobai-xl-detailer?modelVersionId=1209350" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/nurse_v11-05.safetensors nurse_uniform sd 1.5 rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">nurse_v11-05.safetensors</td>
+<td>nurse_uniform</td><td>SD 1.5</td><td class="mono">Image,RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/38953/nurseuniform?modelVersionId=44872" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/people'sworks_v10_illusv1.0.safetensors people's works: sdxl illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">People'sWorks_v10_Illusv1.0.safetensors</td>
+<td>People's Works: SDXL</td><td>Illustrious</td><td class="mono">Image,RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/1400090/peoples-works-sdxl?modelVersionId=2975889" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/people'sworks_v9_illusv1.0_128dim.safetensors people's works: sdxl illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">People'sWorks_v9_Illusv1.0_128dim.safetensors</td>
+<td>People's Works: SDXL</td><td>Illustrious</td><td class="mono">Image,RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/1400090/peoples-works-sdxl?modelVersionId=2524593" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/ponyv3_ill01_2_adamw-000017.safetensors pony: people's works v1-v6 illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">ponyv3_ill01_2_adamW-000017.safetensors</td>
+<td>Pony: People's Works v1-v6</td><td>Illustrious</td><td class="mono">Image,RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/856285/pony-people-s-works-v1-v6?modelVersionId=1020899" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/ponyv4_noob1_2_adamw-000017.safetensors pony: people's works v1-v6 noobai rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">ponyv4_noob1_2_adamW-000017.safetensors</td>
+<td>Pony: People's Works v1-v6</td><td>NoobAI</td><td class="mono">Image,RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/856285/pony-peoples-works-v1-v6?modelVersionId=1036362" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/ppw_v8_illuv2stable_128.safetensors people's works: sdxl illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">ppw_v8_Illuv2stable_128.safetensors</td>
+<td>People's Works: SDXL</td><td>Illustrious</td><td class="mono">Image,RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/1400090/people-s-works-sdxl?modelVersionId=2034730" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/real_pussy_illustrious.safetensors realistic pussy detailer (experimental) illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">Real_Pussy_Illustrious.safetensors</td>
+<td>Realistic Pussy Detailer (experimental)</td><td>Illustrious</td><td class="mono">RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"><span class="f nsfw">NSFW</span></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/2001172/realistic-pussy-detailer-experimental?modelVersionId=2265171" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/realistic filter [il].safetensors realistic filter [il] illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">realistic filter [IL].safetensors</td>
+<td>Realistic filter [IL]</td><td>Illustrious</td><td class="mono">RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/1003513/realistic-filter-il?modelVersionId=1124771" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/remacri_original.safetensors remacri upscaler rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">remacri_original.safetensors</td>
+<td>Remacri</td><td>Upscaler</td><td class="mono">RentCivit,Rent,Image,Sell</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/147759/remacri?modelVersionId=164821" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/retronijiil.safetensors [illustrious xl] niji | retro anime style lora illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">RetroNijiIL.safetensors</td>
+<td>[Illustrious XL] Niji | Retro Anime Style LoRA</td><td>Illustrious</td><td class="mono">RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/1575260/illustrious-xl-niji-retro-anime-style-lora?modelVersionId=1782598" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/rimixao5050.safetensors ri-mix - style lora [ illustrious + anima] anima rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">rimixao5050.safetensors</td>
+<td>Ri-mix - Style LORA [ Illustrious + Anima]</td><td>Anima</td><td class="mono">RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/996220/ri-mix-style-lora-illustrious-anima?modelVersionId=3011920" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/silvana-style-ab10-01.safetensors silvana style lora | anima anima rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">silvana-style-AB10-01.safetensors</td>
+<td>Silvana Style Lora | Anima</td><td>Anima</td><td class="mono">Image,RentCivit,Rent,Sell</td>
+<td class="c y">Y</td>
+<td class="flags"><span class="f nsfw">NSFW</span></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/2627091/silvana-style-lora-or-anima?modelVersionId=2950020" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/spo_sdxl_10ep_4k-data_lora_webui.safetensors spo-sdxl_4k-p_10ep_lora_webui sdxl 1.0 rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">spo_sdxl_10ep_4k-data_lora_webui.safetensors</td>
+<td>SPO-SDXL_4k-p_10ep_LoRA_webui</td><td>SDXL 1.0</td><td class="mono">Image,RentCivit,Rent,Sell</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/510261/spo-sdxl4k-p10eplorawebui?modelVersionId=567119" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/usnr style_xl_lokr.safetensors 薄塗り / usnr style illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">USNR STYLE_XL_lokr.safetensors</td>
+<td>薄塗り / USNR STYLE</td><td>Illustrious</td><td class="mono">RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/176554/usnr-style?modelVersionId=959419" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/usnr_style_ill_v1_lokr3-000024.safetensors 薄塗り / usnr style illustrious rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">USNR_STYLE_ILL_V1_lokr3-000024.safetensors</td>
+<td>薄塗り / USNR STYLE</td><td>Illustrious</td><td class="mono">RentCivit,Rent</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/176554/usnr-style?modelVersionId=1552087" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="loras/zodaplus.safetensors zodaplus 🍾 – detailer anima rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>loras</td><td class="mono">ZodaPlus.safetensors</td>
+<td>ZodaPlus 🍾 – Detailer</td><td>Anima</td><td class="mono">Image,RentCivit,Rent,Sell</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/2632704/zodaplus-detailer?modelVersionId=2955921" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="upscale_models/remacri_original.safetensors remacri upscaler rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>upscale_models</td><td class="mono">remacri_original.safetensors</td>
+<td>Remacri</td><td>Upscaler</td><td class="mono">RentCivit,Rent,Image,Sell</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/147759/remacri?modelVersionId=164821" target="_blank" rel="noreferrer">link</a></td></tr>
+<tr data-risk="OK" data-text="vae/sdxlvae_sdxlvae.safetensors sdxl vae sdxl 1.0 rent 허용 + 특이사항 없음">
+<td><span class="b OK">OK</span></td><td>vae</td><td class="mono">sdxlVAE_sdxlVAE.safetensors</td>
+<td>SDXL VAE</td><td>SDXL 1.0</td><td class="mono">Image,RentCivit,Rent,Sell</td>
+<td class="c y">Y</td>
+<td class="flags"></td>
+<td>Rent 허용 + 특이사항 없음</td><td><a href="https://civitai.red/models/296576/sdxl-vae?modelVersionId=333245" target="_blank" rel="noreferrer">link</a></td></tr></tbody></table>
+  <div class="note">Rent=Y: 제3자 유료 생성 서비스 호스팅 허용 · Rent=N: 미허가 · IP/실인물 플래그는 휴리스틱이라 사람 검수 필요.</div>
+</section>
+
+<section id="view-charts" hidden>
+<div class="chart-grid">
+  <div class="cc"><h3>전체 위험도</h3><div class="donut"><svg viewBox="0 0 168 168"><circle cx="84" cy="84" r="71.00" fill="none" stroke="#ff1e56" stroke-width="26" stroke-dasharray="125.28 320.83" stroke-dashoffset="0.00" transform="rotate(-90 84 84)"/><circle cx="84" cy="84" r="71.00" fill="none" stroke="#ffab00" stroke-width="26" stroke-dasharray="97.78 348.33" stroke-dashoffset="-125.28" transform="rotate(-90 84 84)"/><circle cx="84" cy="84" r="71.00" fill="none" stroke="#00d26a" stroke-width="26" stroke-dasharray="223.05 223.05" stroke-dashoffset="-223.05" transform="rotate(-90 84 84)"/><text x="84" y="84" text-anchor="middle" dominant-baseline="central" class="dc">146</text></svg><div class="legend"><div class="lg"><span class="dot" style="background:#ff1e56"></span>HIGH <b>41</b><span class="pct">28%</span></div><div class="lg"><span class="dot" style="background:#ffab00"></span>MEDIUM <b>32</b><span class="pct">22%</span></div><div class="lg"><span class="dot" style="background:#00d26a"></span>OK <b>73</b><span class="pct">50%</span></div></div></div></div>
+  <div class="cc"><h3>Rent(제3자 유료 호스팅) 허용</h3><div class="donut"><svg viewBox="0 0 168 168"><circle cx="84" cy="84" r="71.00" fill="none" stroke="#00d26a" stroke-width="26" stroke-dasharray="247.50 198.61" stroke-dashoffset="0.00" transform="rotate(-90 84 84)"/><circle cx="84" cy="84" r="71.00" fill="none" stroke="#ff1e56" stroke-width="26" stroke-dasharray="198.61 247.50" stroke-dashoffset="-247.50" transform="rotate(-90 84 84)"/><text x="84" y="84" text-anchor="middle" dominant-baseline="central" class="dc">146</text></svg><div class="legend"><div class="lg"><span class="dot" style="background:#00d26a"></span>허용(Y) <b>81</b><span class="pct">55%</span></div><div class="lg"><span class="dot" style="background:#ff1e56"></span>미허가(N) <b>65</b><span class="pct">45%</span></div></div></div></div>
+  <div class="cc wide"><h3>종류별 위험도 분포</h3><div class="bars"><div class="row"><div class="rl">loras<span class="rt">98</span></div><div class="track" style="width:100.0%"><span class="seg" style="width:32.6530612244898%;background-color:#ff1e56" title="HIGH 32"></span><span class="seg" style="width:15.306122448979592%;background-color:#ffab00" title="MEDIUM 15"></span><span class="seg" style="width:52.04081632653062%;background-color:#00d26a" title="OK 51"></span></div></div><div class="row"><div class="rl">checkpoints<span class="rt">41</span></div><div class="track" style="width:41.8%"><span class="seg" style="width:21.951219512195124%;background-color:#ff1e56" title="HIGH 9"></span><span class="seg" style="width:31.70731707317073%;background-color:#ffab00" title="MEDIUM 13"></span><span class="seg" style="width:46.34146341463415%;background-color:#00d26a" title="OK 19"></span></div></div><div class="row"><div class="rl">embeddings<span class="rt">4</span></div><div class="track" style="width:4.1%"><span class="seg" style="width:75%;background-color:#ffab00" title="MEDIUM 3"></span><span class="seg" style="width:25%;background-color:#00d26a" title="OK 1"></span></div></div><div class="row"><div class="rl">vae<span class="rt">2</span></div><div class="track" style="width:2.0%"><span class="seg" style="width:50%;background-color:#ffab00" title="MEDIUM 1"></span><span class="seg" style="width:50%;background-color:#00d26a" title="OK 1"></span></div></div><div class="row"><div class="rl">upscale_models<span class="rt">1</span></div><div class="track" style="width:1.0%"><span class="seg" style="width:100%;background-color:#00d26a" title="OK 1"></span></div></div></div><div class="legend-row"><span class="lg"><span class="dot" style="background:#ff1e56"></span>HIGH</span><span class="lg"><span class="dot" style="background:#ffab00"></span>MEDIUM</span><span class="lg"><span class="dot" style="background:#00d26a"></span>OK</span></div></div>
+  <div class="cc wide"><h3>베이스 모델별 위험도 (많은 순)</h3><div class="bars"><div class="row"><div class="rl">Illustrious<span class="rt">79</span></div><div class="track" style="width:100.0%"><span class="seg" style="width:27.848101265822784%;background-color:#ff1e56" title="HIGH 22"></span><span class="seg" style="width:21.518987341772153%;background-color:#ffab00" title="MEDIUM 17"></span><span class="seg" style="width:50.63291139240506%;background-color:#00d26a" title="OK 40"></span></div></div><div class="row"><div class="rl">Pony<span class="rt">19</span></div><div class="track" style="width:24.1%"><span class="seg" style="width:36.84210526315789%;background-color:#ff1e56" title="HIGH 7"></span><span class="seg" style="width:21.052631578947366%;background-color:#ffab00" title="MEDIUM 4"></span><span class="seg" style="width:42.10526315789473%;background-color:#00d26a" title="OK 8"></span></div></div><div class="row"><div class="rl">Anima<span class="rt">17</span></div><div class="track" style="width:21.5%"><span class="seg" style="width:11.76470588235294%;background-color:#ff1e56" title="HIGH 2"></span><span class="seg" style="width:23.52941176470588%;background-color:#ffab00" title="MEDIUM 4"></span><span class="seg" style="width:64.70588235294117%;background-color:#00d26a" title="OK 11"></span></div></div><div class="row"><div class="rl">SD 1.5<span class="rt">14</span></div><div class="track" style="width:17.7%"><span class="seg" style="width:35.714285714285715%;background-color:#ff1e56" title="HIGH 5"></span><span class="seg" style="width:21.428571428571427%;background-color:#ffab00" title="MEDIUM 3"></span><span class="seg" style="width:42.857142857142854%;background-color:#00d26a" title="OK 6"></span></div></div><div class="row"><div class="rl">SDXL 1.0<span class="rt">6</span></div><div class="track" style="width:7.6%"><span class="seg" style="width:16.666666666666664%;background-color:#ff1e56" title="HIGH 1"></span><span class="seg" style="width:16.666666666666664%;background-color:#ffab00" title="MEDIUM 1"></span><span class="seg" style="width:66.66666666666666%;background-color:#00d26a" title="OK 4"></span></div></div><div class="row"><div class="rl">Flux.1 D<span class="rt">3</span></div><div class="track" style="width:3.8%"><span class="seg" style="width:100%;background-color:#ff1e56" title="HIGH 3"></span></div></div><div class="row"><div class="rl">LTXV 2.3<span class="rt">3</span></div><div class="track" style="width:3.8%"><span class="seg" style="width:33.33333333333333%;background-color:#ff1e56" title="HIGH 1"></span><span class="seg" style="width:66.66666666666666%;background-color:#ffab00" title="MEDIUM 2"></span></div></div><div class="row"><div class="rl">NoobAI<span class="rt">3</span></div><div class="track" style="width:3.8%"><span class="seg" style="width:33.33333333333333%;background-color:#ffab00" title="MEDIUM 1"></span><span class="seg" style="width:66.66666666666666%;background-color:#00d26a" title="OK 2"></span></div></div><div class="row"><div class="rl">Upscaler<span class="rt">2</span></div><div class="track" style="width:2.5%"><span class="seg" style="width:100%;background-color:#00d26a" title="OK 2"></span></div></div></div></div>
+  <div class="cc wide"><h3>사유별 건수</h3><div class="bars"><div class="row"><div class="rl">상업금지(FLUX dev 비상업 라이선스)<span class="rt">3</span></div><div class="track full"><span class="seg" style="width:4.1%;background-color:#ff1e56"></span></div></div><div class="row"><div class="rl">Civitai 상업권 없음<span class="rt">30</span></div><div class="track full"><span class="seg" style="width:41.1%;background-color:#ff1e56"></span></div></div><div class="row"><div class="rl">저작권 캐릭터 의심(검수)<span class="rt">4</span></div><div class="track full"><span class="seg" style="width:5.5%;background-color:#ff1e56"></span></div></div><div class="row"><div class="rl">실인물<span class="rt">6</span></div><div class="track full"><span class="seg" style="width:8.2%;background-color:#ff1e56"></span></div></div><div class="row"><div class="rl">Rent 미허가(제3자 유료호스팅 불가)<span class="rt">25</span></div><div class="track full"><span class="seg" style="width:34.2%;background-color:#ffab00"></span></div></div><div class="row"><div class="rl">확인필요(LTX-Video 라이선스)<span class="rt">2</span></div><div class="track full"><span class="seg" style="width:2.7%;background-color:#ffab00"></span></div></div><div class="row"><div class="rl">Civitai 조회 실패 — 수동확인<span class="rt">7</span></div><div class="track full"><span class="seg" style="width:9.6%;background-color:#ffab00"></span></div></div><div class="row"><div class="rl">Rent 허용 + 특이사항 없음<span class="rt">73</span></div><div class="track full"><span class="seg" style="width:100.0%;background-color:#00d26a"></span></div></div></div></div>
+  <div class="cc"><h3>콘텐츠·IP 플래그</h3><div class="bars"><div class="row"><div class="rl">IP 캐릭터 의심<span class="rt">4</span></div><div class="track full"><span class="seg" style="width:13.3%;background-color:#a020f0"></span></div></div><div class="row"><div class="rl">실인물 유사성 의심<span class="rt">6</span></div><div class="track full"><span class="seg" style="width:20.0%;background-color:#ff1493"></span></div></div><div class="row"><div class="rl">NSFW<span class="rt">30</span></div><div class="track full"><span class="seg" style="width:100.0%;background-color:#00bcd4"></span></div></div></div></div>
+</div></section>
+
+<section id="view-guide" hidden>
+  <div class="g-sec">위험도 등급</div>
+  <div class="g-term"><b><span class="b HIGH">HIGH</span> 제공 부적합</b> — 아래 사유 중 하나라도 해당하면 HIGH.</div>
+  <div class="g-term"><b><span class="b MEDIUM">MEDIUM</span> 확인·조건부</b> — Rent 없음/베이스 확인 필요/조회 실패. 개별 확인 후 조건부.</div>
+  <div class="g-term"><b><span class="b OK">OK</span> 허용 후보</b> — Rent 허용 + IP·실인물·베이스 이슈 없음(NSFW·법무 별개).</div>
+  <div class="g-sec">사유별 상세 설명</div>
+  <div class="g-item">
+  <div class="g-head"><span class="b HIGH">HIGH</span><span class="g-name">상업금지(FLUX dev 비상업 라이선스)</span><span class="g-cnt">3건</span></div>
+  <div class="g-desc">베이스 모델이 <b>FLUX.1 [dev]</b>. Black Forest Labs의 FLUX.1 [dev]는 <b>비상업(non-commercial) 전용</b> 라이선스입니다. 이 위에서 만든 체크포인트/LoRA도 베이스 라이선스를 상속하므로, 상업 서비스로 제공하려면 BFL의 <b>별도 상용 라이선스</b>가 필요합니다.</div></div>
+<div class="g-item">
+  <div class="g-head"><span class="b HIGH">HIGH</span><span class="g-name">Civitai 상업권 없음</span><span class="g-cnt">30건</span></div>
+  <div class="g-desc">Civitai의 <code>allowCommercialUse</code>가 비었거나 <code>RentCivit</code>만 있음. 크리에이터가 상업적 사용/제3자 서비스 구동 권한을 부여하지 않았습니다.</div></div>
+<div class="g-item">
+  <div class="g-head"><span class="b HIGH">HIGH</span><span class="g-name">저작권 캐릭터 의심(검수)</span><span class="g-cnt">4건</span></div>
+  <div class="g-desc">이름/괄호 패턴으로 <b>특정 IP 캐릭터 재현</b> LoRA로 추정. 모델 라이선스와 <b>무관하게</b> 저작권·상표 침해 위험. 휴리스틱이라 오탐 가능 → 사람 확인.</div></div>
+<div class="g-item">
+  <div class="g-head"><span class="b HIGH">HIGH</span><span class="g-name">실인물</span><span class="g-cnt">6건</span></div>
+  <div class="g-desc">실제 인물 초상 재현(POI) 또는 유사성 의심. <b>퍼블리시티권·초상권·개인정보</b> 문제.</div></div>
+<div class="g-item">
+  <div class="g-head"><span class="b MEDIUM">MEDIUM</span><span class="g-name">Rent 미허가(제3자 유료호스팅 불가)</span><span class="g-cnt">25건</span></div>
+  <div class="g-desc"><code>Image</code>/<code>Sell</code>은 있으나 <code>Rent</code> 없음. 우리 서비스는 유료 제3자 생성 서비스라 <code>Rent</code>가 필요. <code>RentCivit</code>는 Civitai 자체 생성기 전용.</div></div>
+<div class="g-item">
+  <div class="g-head"><span class="b MEDIUM">MEDIUM</span><span class="g-name">확인필요(LTX-Video 라이선스)</span><span class="g-cnt">2건</span></div>
+  <div class="g-desc">베이스가 <b>LTXV 2.3</b>. LTX-Video 라이선스(상업 범위) 별도 확인 필요.</div></div>
+<div class="g-item">
+  <div class="g-head"><span class="b MEDIUM">MEDIUM</span><span class="g-name">Civitai 조회 실패 — 수동확인</span><span class="g-cnt">7건</span></div>
+  <div class="g-desc">모델 삭제/비공개/URL 문제로 API 조회 불가. 확인 전까지 제공 보류.</div></div>
+<div class="g-item">
+  <div class="g-head"><span class="b OK">OK</span><span class="g-name">Rent 허용 + 특이사항 없음</span><span class="g-cnt">73건</span></div>
+  <div class="g-desc">크리에이터가 <code>Rent</code>를 허용, IP·실인물·베이스 이슈 없음. 제공 후보(NSFW·최종 법무 별개).</div></div>
+  <div class="g-sec">용어: <code>allowCommercialUse</code> 값</div>
+  <div class="g-term"><ul>
+    <li><b>None / 빈값</b> — 상업적 사용 불가.</li>
+    <li><b>Image</b> — 생성 <b>이미지</b>의 상업적 사용/판매 가능.</li>
+    <li><b>RentCivit</b> — <b>Civitai 자체 생성기</b>에서만 구동 허용(우리 서비스 해당 없음).</li>
+    <li><b>Rent</b> — <b>돈 받는 (제3자) 생성 서비스</b> 구동 허용 ← <b>우리에게 필요.</b></li>
+    <li><b>Sell</b> — 모델/머지 자체 판매 허용.</li>
+  </ul></div>
+  <div class="g-sec">베이스 모델 라이선스 계층</div>
+  <div class="g-term">체크포인트·LoRA는 <b>베이스 라이선스를 상속</b>. Civitai가 상업 허용해도 베이스가 금지면 금지.
+    <ul><li><b>FLUX.1 [dev]</b> — 비상업(상용 계약 필요) <span class="b HIGH">HIGH</span></li>
+    <li><b>LTXV 2.3</b> — 라이선스 별도 확인 <span class="b MEDIUM">MEDIUM</span></li>
+    <li><b>Illustrious / NoobAI</b> — Fair AI Public License 계열(상업 조건 확인).</li>
+    <li><b>Pony</b> — 자체 라이선스(대체로 허용). <b>SDXL/SD1.5</b> — OpenRAIL 계열(학습데이터 이슈는 별개).</li></ul></div>
+  <div class="g-sec">휴리스틱 한계 · 면책</div>
+  <div class="g-term">IP·실인물 플래그는 파일명 기반 추정이라 오탐/누락 가능("검수" 표기) → 사람 확인 필수. 본 리포트는 실무 신호이며 <b>법적 최종 판단이 아닙니다.</b></div>
+</section>
+
+<script>
+const q=document.getElementById('q');let cur='ALL';
+function apply(){const t=q.value.trim().toLowerCase();document.querySelectorAll('#view-table tbody tr').forEach(tr=>{
+ const okR=cur==='ALL'||tr.dataset.risk===cur;const okT=!t||tr.dataset.text.includes(t);tr.style.display=(okR&&okT)?'':'none';});}
+document.querySelectorAll('button.filter').forEach(b=>b.onclick=()=>{document.querySelectorAll('button.filter').forEach(x=>x.classList.remove('active'));b.classList.add('active');cur=b.dataset.f;apply();});
+q.oninput=apply;
+const views=['table','charts','guide'];
+document.querySelectorAll('nav.top button').forEach(b=>b.onclick=()=>{
+ document.querySelectorAll('nav.top button').forEach(x=>x.classList.remove('active'));b.classList.add('active');
+ views.forEach(v=>document.getElementById('view-'+v).hidden=b.dataset.v!==v);});
+</script></body></html>

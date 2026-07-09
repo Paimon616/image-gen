@@ -22,6 +22,15 @@ const ALLOWED_MODEL_FOLDERS = new Set([
   "controlnet",
 ]);
 
+type ModelRiskLevel = "HIGH" | "MEDIUM" | "OK";
+
+interface ModelRisk {
+  level: ModelRiskLevel;
+  reason?: string;
+  flags?: string[];
+  allow_commercial_use?: string;
+}
+
 interface LocalModelMetadata {
   name: string;
   version?: string;
@@ -30,6 +39,7 @@ interface LocalModelMetadata {
   civitai_url?: string | null;
   source_url?: string | null;
   tags?: string[];
+  risk?: ModelRisk | null;
 }
 
 type CatalogImportMode = "merge" | "replace";
@@ -96,6 +106,30 @@ function normalizeMetadata(value: unknown): LocalModelMetadata | null {
     tags: Array.isArray(value.tags)
       ? value.tags.filter((tag): tag is string => typeof tag === "string")
       : [],
+    risk: normalizeRisk(value.risk),
+  };
+}
+
+function normalizeRisk(value: unknown): ModelRisk | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const level = value.level;
+  if (level !== "HIGH" && level !== "MEDIUM" && level !== "OK") {
+    return null;
+  }
+
+  return {
+    level,
+    reason: typeof value.reason === "string" ? value.reason : undefined,
+    flags: Array.isArray(value.flags)
+      ? value.flags.filter((flag): flag is string => typeof flag === "string")
+      : undefined,
+    allow_commercial_use:
+      typeof value.allow_commercial_use === "string"
+        ? value.allow_commercial_use
+        : undefined,
   };
 }
 
@@ -206,6 +240,7 @@ function buildModelAssets(
       civitai_url: metadata?.civitai_url ?? null,
       source_url: metadata?.source_url ?? metadata?.civitai_url ?? null,
       tags: metadata?.tags ?? [],
+      risk: metadata?.risk ?? null,
     };
   });
 }
@@ -348,6 +383,7 @@ export async function PATCH(req: NextRequest) {
     civitai_url: body.metadata.civitai_url ?? null,
     source_url: body.metadata.source_url ?? body.metadata.civitai_url ?? null,
     tags: body.metadata.tags ?? [],
+    risk: normalizeRisk(body.metadata.risk) ?? catalog[body.key]?.risk ?? null,
   };
   await writeCatalog(catalog);
 

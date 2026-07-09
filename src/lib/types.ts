@@ -262,6 +262,10 @@ export function randomGenerationSeed() {
 }
 
 export function normalizeGenerationSeed(value: unknown) {
+  if (value === null || value === undefined || value === "") {
+    return randomGenerationSeed();
+  }
+
   const numericValue = Number(value);
 
   if (!Number.isFinite(numericValue) || numericValue < 0) {
