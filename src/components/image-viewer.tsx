@@ -12,8 +12,16 @@ import {
   Trash2,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { getModelConfig } from "@/lib/types";
 
@@ -68,21 +76,33 @@ export function ImageViewer() {
     imageId: string | null;
     original: boolean;
   }>({ imageId: null, original: false });
+  const [downloadPrompt, setDownloadPrompt] = useState<{
+    kind: "image" | "metadata";
+    filename: string;
+  } | null>(null);
 
   if (!selectedImage) return null;
 
-  const handleDownload = () => {
+  const openDownloadPrompt = (kind: "image" | "metadata") => {
+    const filename =
+      kind === "image"
+        ? selectedImage.filename || "image.png"
+        : metadataDownloadFilename(selectedImage.filename);
+    setDownloadPrompt({ kind, filename });
+  };
+
+  const downloadImage = (filename: string) => {
     const a = document.createElement("a");
     a.href = selectedImage.url;
-    a.download = selectedImage.filename;
+    a.download = filename;
     a.click();
   };
 
-  const handleMetadataDownload = () => {
+  const downloadMetadata = (filename: string) => {
     if (selectedImage.filename) {
       const a = document.createElement("a");
       a.href = `/api/images/${selectedImage.filename}/metadata`;
-      a.download = metadataDownloadFilename(selectedImage.filename);
+      a.download = filename;
       a.click();
       return;
     }
@@ -102,11 +122,25 @@ export function ImageViewer() {
     const a = document.createElement("a");
 
     a.href = url;
-    a.download = metadataDownloadFilename(selectedImage.filename);
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     a.remove();
     window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  };
+
+  const confirmDownload = () => {
+    if (!downloadPrompt) return;
+
+    const filename = downloadPrompt.filename.trim();
+    if (!filename) return;
+
+    if (downloadPrompt.kind === "image") {
+      downloadImage(filename);
+    } else {
+      downloadMetadata(filename);
+    }
+    setDownloadPrompt(null);
   };
 
   const handleDelete = async () => {
@@ -172,6 +206,7 @@ export function ImageViewer() {
   };
 
   return (
+    <>
     <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
       <DialogContent className="!block h-[94vh] max-h-[94vh] w-[96vw] max-w-[96vw] overflow-hidden border border-border bg-card p-0 shadow-xl sm:max-w-[96vw]">
         <DialogTitle className="sr-only">Image Details</DialogTitle>
@@ -252,14 +287,18 @@ export function ImageViewer() {
                 <RotateCcw className="h-4 w-4" />
                 Reuse
               </Button>
-              <Button size="sm" variant="outline" onClick={handleDownload}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => openDownloadPrompt("image")}
+              >
                 <Download className="h-4 w-4" />
                 Download
               </Button>
               <Button
                 size="sm"
                 variant="outline"
-                onClick={handleMetadataDownload}
+                onClick={() => openDownloadPrompt("metadata")}
               >
                 <FileJson className="h-4 w-4" />
                 Metadata
@@ -363,5 +402,62 @@ export function ImageViewer() {
         </div>
       </DialogContent>
     </Dialog>
+
+    <Dialog
+      open={!!downloadPrompt}
+      onOpenChange={(open) => {
+        if (!open) setDownloadPrompt(null);
+      }}
+    >
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>
+            {downloadPrompt?.kind === "metadata"
+              ? "메타데이터 다운로드"
+              : "이미지 다운로드"}
+          </DialogTitle>
+          <DialogDescription>
+            저장할 파일명을 입력하세요.
+          </DialogDescription>
+        </DialogHeader>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            confirmDownload();
+          }}
+        >
+          <Input
+            autoFocus
+            value={downloadPrompt?.filename ?? ""}
+            onChange={(event) =>
+              setDownloadPrompt((current) =>
+                current ? { ...current, filename: event.target.value } : current
+              )
+            }
+            onFocus={(event) => {
+              const dotIndex = event.target.value.lastIndexOf(".");
+              event.target.setSelectionRange(
+                0,
+                dotIndex > 0 ? dotIndex : event.target.value.length
+              );
+            }}
+          />
+          <DialogFooter className="mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDownloadPrompt(null)}
+            >
+              취소
+            </Button>
+            <Button type="submit" disabled={!downloadPrompt?.filename.trim()}>
+              <Download className="h-4 w-4" />
+              다운로드
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

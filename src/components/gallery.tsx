@@ -67,6 +67,7 @@ const GalleryCard = memo(function GalleryCard({
   onDelete,
   onCancelGeneration,
 }: GalleryCardProps) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const generation = img.generation;
   const hasImage = Boolean(img.url);
   const displayUrl =
@@ -235,13 +236,43 @@ const GalleryCard = memo(function GalleryCard({
             size="icon-sm"
             variant="destructive"
             className="pointer-events-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            onClick={() => onDelete(img)}
+            onClick={() => setConfirmingDelete((current) => !current)}
             disabled={isPending}
             aria-label="Delete image"
           >
             <Trash2 />
           </Button>
         </div>
+        {confirmingDelete && (
+          <div className="pointer-events-auto absolute right-2 top-11 z-20 w-44 rounded-md border border-border bg-popover p-2.5 shadow-xl">
+            <p className="text-[11px] font-medium leading-4 text-popover-foreground">
+              이미지를 삭제할까요?
+            </p>
+            <div className="mt-2 flex gap-1.5">
+              <Button
+                type="button"
+                size="sm"
+                variant="destructive"
+                className="h-7 flex-1 text-[11px]"
+                onClick={() => {
+                  setConfirmingDelete(false);
+                  onDelete(img);
+                }}
+              >
+                삭제
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 flex-1 text-[11px]"
+                onClick={() => setConfirmingDelete(false)}
+              >
+                취소
+              </Button>
+            </div>
+          </div>
+        )}
         <div className="absolute bottom-2 left-2 right-2">
           <p className="truncate text-xs text-white">
             {img.params?.prompt || "No prompt"}
