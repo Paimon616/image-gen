@@ -10,6 +10,7 @@ interface ImageUploadProps {
   value: string | null;
   onChange: (url: string | null) => void;
   onPreview?: () => void;
+  previewClassName?: string;
 }
 
 export function ImageUpload({
@@ -18,6 +19,7 @@ export function ImageUpload({
   value,
   onChange,
   onPreview,
+  previewClassName = "h-40 w-full object-cover",
 }: ImageUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -91,7 +93,7 @@ export function ImageUpload({
           <img
             src={value}
             alt={label}
-            className="w-full h-40 object-cover"
+            className={previewClassName}
           />
           <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
             <Button

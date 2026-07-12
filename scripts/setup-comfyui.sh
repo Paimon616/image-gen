@@ -62,9 +62,11 @@ Next steps:
      $COMFYUI_DIR/models/vae
      $COMFYUI_DIR/models/upscale_models
      $COMFYUI_DIR/models/controlnet
-  2. Start ComfyUI:
+  2. Optional image-to-prompt nodes:
+     npm run setup:itp-nodes
+  3. Start ComfyUI:
      npm run comfyui
-  3. Start this app in another terminal:
+  4. Start this app in another terminal:
      npm run dev
 
 Model weights such as .safetensors are intentionally not committed.
