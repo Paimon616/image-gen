@@ -77,6 +77,13 @@ export function GenerationParams() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (!params.vae_name || localModels.vaes.length === 0) return;
+    if (localModels.vaes.includes(params.vae_name)) return;
+
+    setParams({ vae_name: "" });
+  }, [localModels.vaes, params.vae_name, setParams]);
+
   const controlnets = params.controlnets ?? [];
   const selectedSamplerValue = `${params.sampler_name}:${params.scheduler}`;
   const selectedPreset = IMAGE_SIZES.find(

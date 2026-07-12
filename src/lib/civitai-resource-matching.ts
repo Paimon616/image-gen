@@ -1,4 +1,4 @@
-﻿import type {
+import type {
   CivitaiImportResult,
   GenerationParams,
   ImportedCivitaiResource,
@@ -236,11 +236,11 @@ export function reconcileImportedParams(
   if (importedCheckpoint && !matchedCheckpoint) {
     matched.model_name = "";
   }
-  if (importedVae && !matched.vae_name) {
-    matched.vae_name = currentParams.vae_name;
+  if ((importedGenerationMetadata || importedVae) && !matched.vae_name) {
+    matched.vae_name = "";
   }
-  if (importedUpscaler && !matched.upscale_model_name) {
-    matched.upscale_model_name = currentParams.upscale_model_name;
+  if ((importedGenerationMetadata || importedUpscaler) && !matched.upscale_model_name) {
+    matched.upscale_model_name = "";
   }
   if (
     importedGenerationMetadata ||

@@ -40,6 +40,10 @@ interface ComfyHistoryOutput {
   videos?: ComfyMediaRef[];
   audio?: ComfyMediaRef[];
   audios?: ComfyMediaRef[];
+  text?: string[] | string;
+  string?: string[] | string;
+  strings?: string[] | string;
+  result?: string[] | string;
 }
 
 interface ComfyHistoryStatus {
@@ -56,6 +60,12 @@ interface ComfyHistoryItem {
 interface ComfyQueue {
   queue_running?: unknown[];
   queue_pending?: unknown[];
+}
+
+interface ComfyObjectInfo {
+  input?: {
+    required?: Record<string, unknown>;
+  };
 }
 
 export interface ComfyGeneratedImage {
@@ -144,7 +154,7 @@ function extensionForContentType(contentType: string | null) {
   return "jpg";
 }
 
-async function uploadImageToComfyUI(imageUrl: string) {
+export async function uploadImageToComfyUI(imageUrl: string) {
   const imageRes = await fetch(imageUrl);
 
   if (!imageRes.ok) {
@@ -464,9 +474,11 @@ async function buildDefaultWorkflow(params: GenerationParams) {
     );
   }
 
-  if (checkpointCapabilities?.vae === false && !params.vae_name.trim()) {
+  const vaeName = await resolveAvailableVaeName(params.vae_name);
+
+  if (checkpointCapabilities?.vae === false && !vaeName) {
     throw new Error(
-      `${checkpoint} does not include a bundled VAE. Select a VAE before generating.`
+      `${checkpoint} does not include a bundled VAE. Select an installed VAE before generating.`
     );
   }
 
@@ -513,11 +525,11 @@ async function buildDefaultWorkflow(params: GenerationParams) {
     clipRef = ["20", 0];
   }
 
-  if (params.vae_name.trim()) {
+  if (vaeName) {
     workflow["21"] = {
       class_type: "VAELoader",
       inputs: {
-        vae_name: params.vae_name.trim(),
+        vae_name: vaeName,
       },
     };
     vaeRef = ["21", 0];
@@ -718,6 +730,35 @@ async function getHistory(promptId: string) {
 async function getQueue() {
   const res = await comfyFetch("/queue");
   return (await res.json()) as ComfyQueue;
+}
+
+async function getComfyObjectInputOptions(classType: string, inputName: string) {
+  const res = await comfyFetch(
+    "/object_info/" + encodeURIComponent(classType)
+  );
+  const data = (await res.json()) as Record<string, ComfyObjectInfo>;
+  const input = data[classType]?.input?.required?.[inputName];
+
+  if (!Array.isArray(input) || !Array.isArray(input[0])) {
+    return [];
+  }
+
+  return input[0].filter((item): item is string => typeof item === "string");
+}
+
+async function resolveAvailableVaeName(vaeName: string) {
+  const trimmed = vaeName.trim();
+
+  if (!trimmed) {
+    return "";
+  }
+
+  try {
+    const vaeNames = await getComfyObjectInputOptions("VAELoader", "vae_name");
+    return vaeNames.includes(trimmed) ? trimmed : "";
+  } catch {
+    return trimmed;
+  }
 }
 
 function promptIdFromQueueItem(item: unknown) {
@@ -1137,12 +1178,256 @@ async function loadAudioWorkflow(params: VideoGenerationParams) {
   return loadWorkflowFromEnv("COMFYUI_AUDIO_WORKFLOW_PATH", params);
 }
 
+export type InterrogateMode = "auto" | "wd14" | "florence";
+
+interface InterrogateWorkflowParams {
+  imageUrl: string;
+  baseModel?: string;
+  mode?: InterrogateMode;
+}
+
+const DANBOORU_BASE_MODEL_PATTERN = /illustrious|pony|noob|anima/i;
+
+function resolveInterrogateMode(mode: InterrogateMode, baseModel: string) {
+  if (mode !== "auto") {
+    return mode;
+  }
+
+  if (DANBOORU_BASE_MODEL_PATTERN.test(baseModel)) {
+    return "wd14";
+  }
+
+  return process.env.COMFYUI_ITP_FLORENCE_WORKFLOW_PATH?.trim()
+    ? "florence"
+    : "wd14";
+}
+
+function replaceInterrogateWorkflowPlaceholders(
+  value: unknown,
+  replacements: Record<string, string>
+): unknown {
+  if (typeof value === "string") {
+    const exactPlaceholder = value.match(/^{{([a-zA-Z0-9_]+)}}$/);
+
+    if (exactPlaceholder) {
+      return replacements[exactPlaceholder[1]] ?? "";
+    }
+
+    return value.replace(/{{([a-zA-Z0-9_]+)}}/g, (_, key: string) =>
+      replacements[key] ?? ""
+    );
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) =>
+      replaceInterrogateWorkflowPlaceholders(item, replacements)
+    );
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [
+        key,
+        replaceInterrogateWorkflowPlaceholders(item, replacements),
+      ])
+    );
+  }
+
+  return value;
+}
+
+async function loadInterrogateWorkflowFromEnv(
+  envName: "COMFYUI_ITP_WD14_WORKFLOW_PATH" | "COMFYUI_ITP_FLORENCE_WORKFLOW_PATH",
+  image: string
+) {
+  const workflowPath = process.env[envName]?.trim();
+
+  if (!workflowPath) {
+    return null;
+  }
+
+  const absolutePath = isAbsolute(workflowPath)
+    ? workflowPath
+    : join(/*turbopackIgnore: true*/ process.cwd(), workflowPath);
+  const rawWorkflow = JSON.parse(await readFile(absolutePath, "utf-8")) as unknown;
+  const workflow =
+    rawWorkflow && typeof rawWorkflow === "object" && "prompt" in rawWorkflow
+      ? (rawWorkflow as { prompt: unknown }).prompt
+      : rawWorkflow;
+
+  if (!workflow || typeof workflow !== "object" || Array.isArray(workflow)) {
+    throw new Error(
+      envName + " must point to a ComfyUI API workflow JSON object."
+    );
+  }
+
+  return replaceInterrogateWorkflowPlaceholders(workflow, {
+    image,
+    input_image: image,
+  }) as Record<string, unknown>;
+}
+
+async function buildWd14InterrogateWorkflow(image: string) {
+  const configuredWorkflow = await loadInterrogateWorkflowFromEnv(
+    "COMFYUI_ITP_WD14_WORKFLOW_PATH",
+    image
+  );
+
+  if (configuredWorkflow) {
+    return configuredWorkflow;
+  }
+
+  return {
+    "1": {
+      class_type: "LoadImage",
+      inputs: {
+        image,
+      },
+    },
+    "2": {
+      class_type: "WD14Tagger|pysssss",
+      inputs: {
+        image: ["1", 0],
+        model: process.env.COMFYUI_ITP_WD14_MODEL ?? "wd-swinv2-tagger-v3",
+        threshold: Number(process.env.COMFYUI_ITP_WD14_THRESHOLD ?? 0.35),
+        character_threshold: Number(
+          process.env.COMFYUI_ITP_WD14_CHARACTER_THRESHOLD ?? 0.85
+        ),
+        exclude_tags: process.env.COMFYUI_ITP_WD14_EXCLUDE_TAGS ?? "",
+        replace_underscore: true,
+        trailing_comma: false,
+      },
+    },
+    "3": {
+      class_type: "ShowText|pysssss",
+      inputs: {
+        text: ["2", 0],
+      },
+    },
+  } satisfies Record<string, unknown>;
+}
+
+async function buildInterrogateWorkflow({
+  imageUrl,
+  baseModel = "",
+  mode = "auto",
+}: InterrogateWorkflowParams) {
+  const image = await resolveControlNetImage(imageUrl);
+  const resolvedMode = resolveInterrogateMode(mode, baseModel);
+
+  if (resolvedMode === "florence") {
+    const workflow = await loadInterrogateWorkflowFromEnv(
+      "COMFYUI_ITP_FLORENCE_WORKFLOW_PATH",
+      image
+    );
+
+    if (!workflow) {
+      throw new Error(
+        "Florence mode requires COMFYUI_ITP_FLORENCE_WORKFLOW_PATH to point to a ComfyUI API workflow JSON file."
+      );
+    }
+
+    return { workflow, mode: resolvedMode };
+  }
+
+  return {
+    workflow: await buildWd14InterrogateWorkflow(image),
+    mode: resolvedMode,
+  };
+}
+
 export async function generateWithComfyUI(params: GenerationParams) {
   const queued = await queueComfyPrompt(params);
   const imageRefs = await waitForComfyImageRefs(queued.prompt_id);
 
   return fetchComfyImages(imageRefs);
 }
+function normalizeHistoryText(value: string[] | string | undefined) {
+  if (Array.isArray(value)) {
+    return value.filter(Boolean);
+  }
+
+  return value ? [value] : [];
+}
+
+function textFromHistory(history: ComfyHistoryItem | undefined) {
+  return Object.values(history?.outputs ?? {})
+    .flatMap((output) => [
+      ...normalizeHistoryText(output.text),
+      ...normalizeHistoryText(output.string),
+      ...normalizeHistoryText(output.strings),
+      ...normalizeHistoryText(output.result),
+    ])
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .join("\n")
+    .trim();
+}
+
+export async function waitForComfyText(
+  promptId: string,
+  options: {
+    idleTimeoutMs?: number;
+    getLastActivityAt?: () => number;
+    signal?: AbortSignal;
+  } = {}
+) {
+  const idleTimeoutMs = options.idleTimeoutMs ?? COMFYUI_TIMEOUT_MS;
+  let lastActivityAt = Date.now();
+
+  while (!options.signal?.aborted) {
+    const history = await getHistory(promptId);
+    const promptHistory = history[promptId];
+    const text = textFromHistory(promptHistory);
+
+    if (text) {
+      return text;
+    }
+
+    const historyError = errorFromHistory(promptHistory);
+    if (historyError) {
+      throw new Error(historyError);
+    }
+
+    const externalActivityAt = options.getLastActivityAt?.() ?? 0;
+
+    if (externalActivityAt > lastActivityAt) {
+      lastActivityAt = externalActivityAt;
+    }
+
+    try {
+      if (await isPromptActive(promptId)) {
+        lastActivityAt = Date.now();
+      }
+    } catch {
+      // If the queue endpoint is temporarily unavailable, fall back to idle timeout.
+    }
+
+    if (Date.now() - lastActivityAt >= idleTimeoutMs) {
+      throw new Error("ComfyUI image-to-prompt timed out");
+    }
+
+    await wait(1000, options.signal);
+  }
+
+  throw new Error("ComfyUI image-to-prompt canceled");
+}
+
+export async function interrogateImageWithComfyUI(
+  params: InterrogateWorkflowParams,
+  clientId = crypto.randomUUID()
+) {
+  const { workflow, mode } = await buildInterrogateWorkflow(params);
+  const queued = await queueComfyWorkflow(workflow, clientId);
+  const text = await waitForComfyText(queued.prompt_id);
+
+  return {
+    prompt: text,
+    mode,
+    prompt_id: queued.prompt_id,
+  };
+}
+
 
 export async function queueComfyVideoPrompt(
   params: VideoGenerationParams,

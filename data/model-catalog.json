@@ -5,18 +5,16 @@
     "base_model": "Illustrious",
     "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/be363071-0c5f-4235-88b5-47e27740e298/original=true/82973996.jpeg",
     "civitai_url": "https://civitai.red/models/1692152/a-mix-illustrious?modelVersionId=1915059",
+    "source_url": "https://civitai.red/models/1692152/a-mix-illustrious?modelVersionId=1915059",
     "tags": [
+      "POS: masterwork, masterpiece, best quality, detailed, depth of field, high detail, best quality, very aesthetic, 8k",
+      "NEG: lowres, worst quality, low quality, bad anatomy, bad hands, jpeg artifacts",
       "hentai",
       "illustrtion",
       "base model",
       "anime",
       "women"
-    ],
-    "risk": {
-      "level": "OK",
-      "reason": "Rent 허용 + 특이사항 없음",
-      "allow_commercial_use": "Y"
-    }
+    ]
   },
   "checkpoints/anima_baseV10.safetensors": {
     "name": "Anima",
@@ -856,19 +854,14 @@
     "version": "v1.1 - WAI",
     "base_model": "Illustrious",
     "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/178058a4-35b6-4869-a805-b27ab4289d4e/original=true/41204042.jpeg",
-    "civitai_url": "https://civitai.red/models/966483/96yottea-style-or-illustrious?modelVersionId=1082928",
-    "source_url": "https://civitai.red/models/966483/96yottea-style-or-illustrious?modelVersionId=1082928",
+    "civitai_url": "https://civitai.red/models/966483/96yottea-style-illustrious?modelVersionId=1082928",
+    "source_url": "https://civitai.red/models/966483/96yottea-style-illustrious?modelVersionId=1082928",
     "tags": [
       "style",
       "anime",
       "painting",
       "aesthetic"
-    ],
-    "risk": {
-      "level": "OK",
-      "reason": "Rent 허용 + 특이사항 없음",
-      "allow_commercial_use": "Y"
-    }
+    ]
   },
   "loras/AFAE-000010.safetensors": {
     "name": "Handsome Boy.1",
@@ -1566,6 +1559,7 @@
     "civitai_url": "https://civitai.red/models/341353/expressiveh-hentai-lora-style?modelVersionId=382152",
     "source_url": "https://civitai.red/models/341353/expressiveh-hentai-lora-style?modelVersionId=382152",
     "tags": [
+      "Expressiveh",
       "sexy",
       "anime",
       "game character",
@@ -1576,15 +1570,7 @@
       "lora",
       "style",
       "video game"
-    ],
-    "risk": {
-      "level": "OK",
-      "reason": "Rent 허용 + 특이사항 없음",
-      "flags": [
-        "nsfw"
-      ],
-      "allow_commercial_use": "Y"
-    }
+    ]
   },
   "loras/flux dildo riding.safetensors": {
     "name": "dildo riding flux",
@@ -1631,7 +1617,8 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
-    }
+    },
+    "source_url": "https://civitai.red/models/2674611/futurabbitstyle-anima?modelVersionId=3003138"
   },
   "loras/g0th1c2XLP.safetensors": {
     "name": "Vixon's Anima/Pony Styles - Gothic Neon",
@@ -3369,6 +3356,370 @@
     "source_url": "https://civitai.red/models/1784638/reil?modelVersionId=2053862",
     "tags": [
       "base model"
+    ]
+  },
+  "loras/Pvnk_styl2.safetensors": {
+    "name": "Pvnk | Shiiro's Styles",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/c173eb36-3672-411b-9e7a-a59d7e1174c5/original=true/111248111.jpeg",
+    "civitai_url": "https://civitai.red/models/2150448/pvnk-shiiro-s-styles?modelVersionId=2432252",
+    "source_url": "https://civitai.red/models/2150448/pvnk-shiiro-s-styles?modelVersionId=2432252",
+    "tags": [
+      "pvnk1_illu,text,watercolor \\(medium\\),chalk outline",
+      "anime",
+      "photorealistic",
+      "art",
+      "manga",
+      "flowers",
+      "style",
+      "paint",
+      "art style",
+      "woman",
+      "artist",
+      "artstyle",
+      "cartoon",
+      "game character",
+      "girls",
+      "male",
+      "man",
+      "realistic",
+      "detail",
+      "nsfw",
+      "lora",
+      "shapes",
+      "color",
+      "geometry",
+      "background plate",
+      "backgrounds",
+      "styles",
+      "abstract painting",
+      "background pony",
+      "shiiro",
+      "manga artist"
+    ]
+  },
+  "loras/rimixxO2.safetensors": {
+    "name": "Ri-mix - Style LORA [ Illustrious + Anima]",
+    "version": "Ri-mix Ω v2 (Illustrious)",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/d33b7fda-e5ff-4235-9c4d-a06865bb4571/original=true/125682754.jpeg",
+    "civitai_url": "https://civitai.red/models/996220/ri-mix-style-lora-illustrious-anima?modelVersionId=2811751",
+    "source_url": "https://civitai.red/models/996220/ri-mix-style-lora-illustrious-anima?modelVersionId=2811751",
+    "tags": [
+      "style",
+      "illustration",
+      "anima",
+      "pony",
+      "illustrious",
+      "flux"
+    ]
+  },
+  "loras/Smooth_Booster_v4.safetensors": {
+    "name": "Smooth Detailer Booster (NoobAI/Illustrious/Pony)",
+    "version": "Smooth Booster v4",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/3b2f9a8f-95ea-4226-b907-37dfc057a6d6/original=true/99187879.jpeg",
+    "civitai_url": "https://civitai.red/models/1145743/smooth-detailer-booster-noobai-illustrious-pony?modelVersionId=2196453",
+    "source_url": "https://civitai.red/models/1145743/smooth-detailer-booster-noobai-illustrious-pony?modelVersionId=2196453",
+    "tags": [
+      "art style",
+      "tool",
+      "enhancer",
+      "detailer",
+      "quality",
+      "details",
+      "more details",
+      "detailed art",
+      "detail enhancer",
+      "quality enhancer"
+    ]
+  },
+  "loras/PetraStyle.safetensors": {
+    "name": "Petravoice",
+    "version": "v1.0",
+    "base_model": "Pony",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/77ce5d04-9fe6-4cd6-81db-bf5021a7f709/original=true/14261227.jpeg",
+    "civitai_url": "https://civitai.red/models/489100/petravoice?modelVersionId=543861",
+    "source_url": "https://civitai.red/models/489100/petravoice?modelVersionId=543861",
+    "tags": [
+      "1girl",
+      "close-up",
+      "solo",
+      "blurry",
+      "chromatic aberration",
+      "girls",
+      "woman",
+      "detailed",
+      "soft",
+      "portrait",
+      "anime",
+      "style"
+    ]
+  },
+  "loras/HerrscherAGGA2025_Alluring_Face-IL_V1.safetensors": {
+    "name": "Alluring Face | Lora Style",
+    "version": "2025 | IL V1",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/bea61086-587f-476d-a9b9-d400d656d821/original=true/58295563.jpeg",
+    "civitai_url": "https://civitai.red/models/242848/alluring-face-lora-style?modelVersionId=1424166",
+    "source_url": "https://civitai.red/models/242848/alluring-face-lora-style?modelVersionId=1424166",
+    "tags": [
+      "ALRGFC, alluring face",
+      "realistic",
+      "styles",
+      "woman",
+      "style lora",
+      "girls",
+      "female",
+      "style",
+      "anime",
+      "stylemix",
+      "lora",
+      "sexy"
+    ]
+  },
+  "loras/Semi-realism_illustrious.safetensors": {
+    "name": "Niji semi realism",
+    "version": "v3.5 - illustrious",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/8125d41b-c2fc-4141-8a43-a2b8f0c3058d/original=true/81189706.jpeg",
+    "civitai_url": "https://civitai.red/models/534506/niji-semi-realism?modelVersionId=1882710",
+    "source_url": "https://civitai.red/models/534506/niji-semi-realism?modelVersionId=1882710",
+    "tags": [
+      "Semi-realism",
+      "realistic",
+      "photorealistic",
+      "style",
+      "woman",
+      "girls",
+      "anime",
+      "lora"
+    ]
+  },
+  "loras/Fl1_illu.safetensors": {
+    "name": "Fl1 | Shiiro's Styles",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/488601cd-62b2-4d36-8027-8b93cec9bb45/original=true/110952203.jpeg",
+    "civitai_url": "https://civitai.red/models/2143926/fl1-shiiro-s-styles?modelVersionId=2424997",
+    "source_url": "https://civitai.red/models/2143926/fl1-shiiro-s-styles?modelVersionId=2424997",
+    "tags": [
+      "fly_illu,flat color, lineart, thick_outlines",
+      "background pony",
+      "game character",
+      "art",
+      "styles",
+      "style",
+      "detail",
+      "cartoon",
+      "artist",
+      "geometry",
+      "anime",
+      "realistic",
+      "manga",
+      "photorealistic",
+      "lora",
+      "flowers",
+      "backgrounds",
+      "art style",
+      "paint",
+      "male",
+      "color",
+      "background plate",
+      "shapes",
+      "man",
+      "girls",
+      "shiiro",
+      "woman",
+      "manga artist",
+      "abstract painting",
+      "nsfw",
+      "artstyle"
+    ]
+  },
+  "loras/rakugakingu.safetensors": {
+    "name": "rakugakingu",
+    "version": "[Illustrious] v1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/d28d8cb2-29e3-4e1b-8515-8de5bfc6de82/original=true/68873507.jpeg",
+    "civitai_url": "https://civitai.red/models/1449763/rakugakingu?modelVersionId=1639160",
+    "source_url": "https://civitai.red/models/1449763/rakugakingu?modelVersionId=1639160",
+    "tags": [
+      "rakugakingu",
+      "style"
+    ]
+  },
+  "loras/Vexilapse.safetensors": {
+    "name": "GENESIS",
+    "version": "v2.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/5605a92c-683f-463f-b932-357317e23e09/original=true/108379873.jpeg",
+    "civitai_url": "https://civitai.red/models/846953/genesis?modelVersionId=2364091",
+    "source_url": "https://civitai.red/models/846953/genesis?modelVersionId=2364091",
+    "tags": [
+      "anime",
+      "style",
+      "girls"
+    ]
+  },
+  "checkpoints/hassakuXLIllustrious_v13StyleA.safetensors": {
+    "name": "Hassaku XL (Illustrious)",
+    "version": "v1.3 - Style A",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/82ed7826-1664-4179-be5d-9e18b26d4eb5/original=true/49651091.jpeg",
+    "civitai_url": "https://civitai.red/models/140272/hassaku-xl-illustrious?modelVersionId=1240288",
+    "source_url": "https://civitai.red/models/140272/hassaku-xl-illustrious?modelVersionId=1240288",
+    "tags": [
+      "base model",
+      "anime",
+      "sfw",
+      "nsfw",
+      "woman",
+      "hentai",
+      "characters"
+    ]
+  },
+  "loras/gokurakugai-guy90-Illust-Lorav1.safetensors": {
+    "name": "Gokurakugai [Illustrious] Style Lora",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/5a2fff79-0c92-4c93-843c-1f75dafd4d88/original=true/77477965.jpeg",
+    "civitai_url": "https://civitai.red/models/1602392/gokurakugai-illustrious-style-lora?modelVersionId=1813355",
+    "source_url": "https://civitai.red/models/1602392/gokurakugai-illustrious-style-lora?modelVersionId=1813355",
+    "tags": [
+      "iagkog, monochrome, greyscale",
+      "manga",
+      "man",
+      "style",
+      "極楽街",
+      "anime",
+      "lora",
+      "noob",
+      "iagkog",
+      "noob ai",
+      "illustrious",
+      "gokurakugai",
+      "girls",
+      "male",
+      "woman",
+      "noobai",
+      "greyscale",
+      "monochrome"
+    ]
+  },
+  "loras/AIイラストおじさん illustrious V3-Exp.safetensors": {
+    "name": "AIイラストおじさん",
+    "version": "illustrious V3-Exp",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/1bb6acc8-0f37-4917-bea1-3272f29542de/original=true/116671373.jpeg",
+    "civitai_url": "https://civitai.red/models/481765/ai?modelVersionId=2575595",
+    "source_url": "https://civitai.red/models/481765/ai?modelVersionId=2575595",
+    "tags": [
+      "shiny skin",
+      "style",
+      "anime",
+      "sexy"
+    ]
+  },
+  "loras/Dot_anime-000018.safetensors": {
+    "name": "Dot Anime",
+    "version": "Dot anime",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/14d5cc96-24a8-4f5e-93ba-b8ce78b73925/original=true/88223089.jpeg",
+    "civitai_url": "https://civitai.red/models/1700215/dot-anime?modelVersionId=2008876",
+    "source_url": "https://civitai.red/models/1700215/dot-anime?modelVersionId=2008876",
+    "tags": [
+      "DOT-anm",
+      "style"
+    ]
+  },
+  "loras/clrcon.safetensors": {
+    "name": "Color Contrast",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/6d64ca6c-1861-4f07-bd1d-c537f2b209ff/original=true/88254036.jpeg",
+    "civitai_url": "https://civitai.red/models/1775798/color-contrast?modelVersionId=2009840",
+    "source_url": "https://civitai.red/models/1775798/color-contrast?modelVersionId=2009840",
+    "tags": [
+      "clrcon",
+      "clrcon_red",
+      "clrcon_green",
+      "clrcon_blue",
+      "clrcon_yellow",
+      "clrcon_orange",
+      "clrcon_purple",
+      "clrcon_pink",
+      "clrcon_bw",
+      "clrcon_soft",
+      "vivid",
+      "style",
+      "aesthetic",
+      "stylish",
+      "beautiful",
+      "neon",
+      "palette",
+      "bright",
+      "contrast",
+      "pastel",
+      "color"
+    ]
+  },
+  "loras/ANM.safetensors": {
+    "name": "ANM",
+    "version": "demo",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/09784085-49f0-418c-b77f-4bde804ce6b2/original=true/88939375.jpeg",
+    "civitai_url": "https://civitai.red/models/1786493/anm?modelVersionId=2021731",
+    "source_url": "https://civitai.red/models/1786493/anm?modelVersionId=2021731",
+    "tags": [
+      "style"
+    ]
+  },
+  "loras/Perfect_Pussy-000007.safetensors": {
+    "name": "Detailed Pussy",
+    "version": "Beta - v1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/8bebbd90-956a-4f7f-9b64-d2f278b5718b/original=true/116561806.jpeg",
+    "civitai_url": "https://civitai.red/models/1864062/detailed-pussy?modelVersionId=2572081",
+    "source_url": "https://civitai.red/models/1864062/detailed-pussy?modelVersionId=2572081",
+    "tags": [
+      "Detailed Pussy",
+      "pussy detailed",
+      "perfect pussy",
+      "style"
+    ]
+  },
+  "loras/add-detail-xl.safetensors": {
+    "name": "Detail Tweaker XL",
+    "version": "v1.0",
+    "base_model": "SDXL 1.0",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/217179cb-87a0-4e96-8d77-e410f757aba0/original=true/1917130.jpeg",
+    "civitai_url": "https://civitai.red/models/122359/detail-tweaker-xl?modelVersionId=135867",
+    "source_url": "https://civitai.red/models/122359/detail-tweaker-xl?modelVersionId=135867",
+    "tags": [
+      "detailed",
+      "enhancer",
+      "undetailed",
+      "detail",
+      "concept"
+    ]
+  },
+  "loras/PhoebeV1.safetensors": {
+    "name": "Phoebe | Wuthering Waves | WuWa",
+    "version": "Illustrious Version",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/ea19e64a-8846-43b7-a7af-55dcbb92bfe3/original=true/58720222.jpeg",
+    "civitai_url": "https://civitai.red/models/1270541/phoebe-wuthering-waves-wuwa?modelVersionId=1433244",
+    "source_url": "https://civitai.red/models/1270541/phoebe-wuthering-waves-wuwa?modelVersionId=1433244",
+    "tags": [
+      "phoebe, 1girl, long hair, blonde hair, ribbon, hair ornament, blue eyes, very long hair, hair ribbon, x hair ornament, gradient eyes, multicolored eyes, purple eyes",
+      "phoebe, 1girl, long hair, blonde hair, hat, white headwear, ribbon, hair ornament, dress, white dress, blue eyes, very long hair, gloves, black gloves, white pantyhose, pantyhose, hair ribbon, x hair ornament, white long sleeves, gradient eyes, multicolored eyes, purple eyes, leg tattoo, tacet mark \\(wuthering waves\\)",
+      "character",
+      "video game",
+      "game",
+      "wuthering waves",
+      "woman"
     ]
   }
 }
