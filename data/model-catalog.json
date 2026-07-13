@@ -3723,5 +3723,87 @@
       "lace",
       "clothing style"
     ]
+  },
+  "loras/by_flower_poya-pony-000017.safetensors": {
+    "name": "Flower_poya artstyle (Manwha Webcomic, etc) [Pony]",
+    "version": "v1.0",
+    "base_model": "Pony",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/f2dbfebf-5ffb-4a84-954a-d38b5422f286/original=true/130861502.jpeg",
+    "civitai_url": "https://civitai.red/models/2627065/flower-poya-artstyle-manwha-webcomic-etc-pony?modelVersionId=2949512",
+    "source_url": "https://civitai.red/models/2627065/flower-poya-artstyle-manwha-webcomic-etc-pony?modelVersionId=2949512",
+    "tags": [
+      "by flower_poya",
+      "Aria Valentine",
+      "Lloyd Cardence Valentine",
+      "anime",
+      "style",
+      "artstyle",
+      "girls",
+      "manwha"
+    ]
+  },
+  "checkpoints/autismmixSDXL_autismmixPony.safetensors": {
+    "name": "AutismMix SDXL",
+    "version": "AutismMix_pony",
+    "base_model": "Pony",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/5ca8ba25-d4b4-4ba2-b68d-c0257241b987/original=true/6339637.jpeg",
+    "civitai_url": "https://civitai.red/models/288584/autismmix-sdxl?modelVersionId=324619",
+    "source_url": "https://civitai.red/models/288584/autismmix-sdxl?modelVersionId=324619",
+    "tags": [
+      "anime",
+      "base model",
+      "model",
+      "sdxl anime",
+      "checkpoint xl",
+      "ponyxl"
+    ]
+  },
+  "loras/Niji Boi.safetensors": {
+    "name": "Niji Boi",
+    "version": "v1.0",
+    "base_model": "Pony",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/804eeb2d-ea6c-4d94-aa25-743c956e3412/original=true/106567430.jpeg",
+    "civitai_url": "https://civitai.red/models/2054573/niji-boi?modelVersionId=2325106",
+    "source_url": "https://civitai.red/models/2054573/niji-boi?modelVersionId=2325106",
+    "tags": [
+      "style"
+    ]
+  },
+  "loras/DreamcoreNeonILL.safetensors": {
+    "name": "Vixon's Illustrious Styles - Dreamcore Neon",
+    "version": "Illust",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/5278fe9d-4dee-4c63-836c-e5b9f841306f/original=true/76587763.jpeg",
+    "civitai_url": "https://civitai.red/models/1586129/vixon-s-illustrious-styles-dreamcore-neon?modelVersionId=1794902",
+    "source_url": "https://civitai.red/models/1586129/vixon-s-illustrious-styles-dreamcore-neon?modelVersionId=1794902",
+    "tags": [
+      "neon lights, dreamcore",
+      "style",
+      "dreamcore neon"
+    ]
+  },
+  "checkpoints/novaFurryXL_ilV140.safetensors": {
+    "name": "Nova Furry XL",
+    "version": "IL v14.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/7b2db21a-8c93-49fb-94cb-d91847963e68/original=true/113148532.jpeg",
+    "civitai_url": "https://civitai.red/models/503815/nova-furry-xl?modelVersionId=2484701",
+    "source_url": "https://civitai.red/models/503815/nova-furry-xl?modelVersionId=2484701",
+    "tags": [
+      "animals",
+      "3d",
+      "sexy",
+      "base model",
+      "yiff",
+      "feral",
+      "woman",
+      "anthro",
+      "furry",
+      "2d",
+      "2.5",
+      "xl",
+      "sdxl",
+      "furry style"
+    ]
   }
 }

@@ -3,12 +3,15 @@
 import { useEffect, useState } from "react";
 import {
   Copyright,
-  DollarSign,
   Download,
   ExternalLink,
   GitFork,
+  Globe,
+  Images,
   Loader2,
   Scale,
+  Server,
+  Tag,
 } from "lucide-react";
 import {
   RESOURCE_LABELS,
@@ -53,7 +56,8 @@ function canDownloadResource(resource: MissingResource, token: TokenState) {
 interface LicenseFlag {
   key: string;
   allowed: boolean;
-  Icon: typeof DollarSign;
+  primary?: boolean;
+  Icon: typeof Server;
   label: string;
 }
 
@@ -65,20 +69,61 @@ function licenseFlags(
   const flags: LicenseFlag[] = [];
 
   if (Array.isArray(license.allowCommercialUse)) {
-    const allowed = license.allowCommercialUse.some(
-      (value) => value && value.toLowerCase() !== "none"
+    const commercial = new Set(
+      license.allowCommercialUse.map((value) => value.toLowerCase())
     );
+
     flags.push({
-      key: "commercial",
-      allowed,
-      Icon: DollarSign,
-      label: allowed
+      key: "rent",
+      allowed: commercial.has("rent"),
+      primary: true,
+      Icon: Server,
+      label: commercial.has("rent")
         ? ko
-          ? "상업적 사용 가능"
-          : "Commercial use allowed"
+          ? "외부 생성 서비스에서 사용 가능 (내 사이트 제공 가능)"
+          : "Usable on 3rd-party generation services (can host on your site)"
         : ko
-          ? "상업적 사용 불가"
-          : "No commercial use",
+          ? "외부 생성 서비스에서 사용 불가 (내 사이트 제공 불가)"
+          : "Not allowed on 3rd-party generation services (cannot host on your site)",
+    });
+
+    flags.push({
+      key: "rent-civit",
+      allowed: commercial.has("rentcivit"),
+      Icon: Globe,
+      label: commercial.has("rentcivit")
+        ? ko
+          ? "Civitai 생성 서비스에서 사용 가능"
+          : "Usable on Civitai's generation service"
+        : ko
+          ? "Civitai 생성 서비스에서 사용 불가"
+          : "Not allowed on Civitai's generation service",
+    });
+
+    flags.push({
+      key: "image",
+      allowed: commercial.has("image"),
+      Icon: Images,
+      label: commercial.has("image")
+        ? ko
+          ? "생성한 이미지 판매 가능"
+          : "Selling generated images allowed"
+        : ko
+          ? "생성한 이미지 판매 불가"
+          : "Selling generated images not allowed",
+    });
+
+    flags.push({
+      key: "sell",
+      allowed: commercial.has("sell"),
+      Icon: Tag,
+      label: commercial.has("sell")
+        ? ko
+          ? "모델/머지 판매 가능"
+          : "Selling the model or merges allowed"
+        : ko
+          ? "모델/머지 판매 불가"
+          : "Selling the model or merges not allowed",
     });
   }
 
@@ -106,11 +151,11 @@ function licenseFlags(
       Icon: GitFork,
       label: allowed
         ? ko
-          ? "2차 창작 허용"
-          : "Derivatives allowed"
+          ? "2차 창작/머지 허용"
+          : "Derivatives / merges allowed"
         : ko
-          ? "2차 창작 불가"
-          : "No derivatives",
+          ? "2차 창작/머지 불가"
+          : "No derivatives / merges",
     });
   }
 
@@ -122,8 +167,8 @@ function licenseFlags(
       Icon: Scale,
       label: allowed
         ? ko
-          ? "다른 라이선스로 공유 가능"
-          : "Different license allowed"
+          ? "머지에 다른 라이선스 허용"
+          : "Different license on merges allowed"
         : ko
           ? "동일 라이선스 유지 필요"
           : "Same license required",
@@ -140,25 +185,48 @@ function LicenseBadges({
   license: CivitaiLicenseInfo;
   language: "ko" | "en";
 }) {
+  const ko = language === "ko";
   const flags = licenseFlags(license, language);
   if (flags.length === 0) return null;
 
   return (
     <div className="mt-1 flex flex-wrap items-center gap-1">
-      {flags.map((flag) => (
-        <span
-          key={flag.key}
-          title={flag.label}
-          aria-label={flag.label}
-          className={`inline-flex h-5 w-5 items-center justify-center rounded ${
-            flag.allowed
-              ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-              : "bg-destructive/15 text-destructive"
-          }`}
-        >
-          <flag.Icon className="h-3 w-3" />
-        </span>
-      ))}
+      {flags.map((flag) =>
+        flag.primary ? (
+          <span
+            key={flag.key}
+            title={flag.label}
+            aria-label={flag.label}
+            className={`inline-flex h-5 items-center gap-1 rounded px-1.5 text-[10px] font-semibold ${
+              flag.allowed
+                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                : "bg-destructive/15 text-destructive"
+            }`}
+          >
+            <flag.Icon className="h-3 w-3" />
+            {flag.allowed
+              ? ko
+                ? "사이트 제공 가능"
+                : "Hostable"
+              : ko
+                ? "사이트 제공 불가"
+                : "Not hostable"}
+          </span>
+        ) : (
+          <span
+            key={flag.key}
+            title={flag.label}
+            aria-label={flag.label}
+            className={`inline-flex h-5 w-5 items-center justify-center rounded ${
+              flag.allowed
+                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                : "bg-destructive/15 text-destructive"
+            }`}
+          >
+            <flag.Icon className="h-3 w-3" />
+          </span>
+        )
+      )}
     </div>
   );
 }
