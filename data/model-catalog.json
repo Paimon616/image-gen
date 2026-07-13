@@ -3594,5 +3594,105 @@
       "shiiro",
       "manga artist"
     ]
+  },
+  "checkpoints/chroma_v41LowStepRl.safetensors": {
+    "name": "Chroma",
+    "version": "v.41-low-step-rl",
+    "base_model": "Chroma",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/b82c6913-50fb-4910-b9b7-d06858b3ef94/original=true/86583867.jpeg",
+    "civitai_url": "https://civitai.red/models/1330309/chroma?modelVersionId=1979672",
+    "source_url": "https://civitai.red/models/1330309/chroma?modelVersionId=1979672",
+    "tags": [
+      "base model",
+      "chroma",
+      "base_model"
+    ]
+  },
+  "embeddings/7dirtywords.pt": {
+    "name": "7 Dirty Words negative prompt",
+    "version": "v1.0",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/b625ff7d-16a9-4cdd-19ab-527abbde0d00/original=true/184615.jpeg",
+    "civitai_url": "https://civitai.red/models/15287/7-dirty-words-negative-prompt?modelVersionId=18009",
+    "source_url": "https://civitai.red/models/15287/7-dirty-words-negative-prompt?modelVersionId=18009",
+    "tags": [
+      "7dirtywords",
+      "anime",
+      "concept",
+      "negative",
+      "negative embedding"
+    ]
+  },
+  "checkpoints/somboy_v25.safetensors": {
+    "name": "SomBoy",
+    "version": "v2.5",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/7d3e3272-d862-4811-aaa2-5f43cfa4bf77/original=true/3597212.jpeg",
+    "civitai_url": "https://civitai.red/models/199025/somboy?modelVersionId=223920",
+    "source_url": "https://civitai.red/models/199025/somboy?modelVersionId=223920",
+    "tags": [
+      "anime",
+      "female",
+      "base model",
+      "woman",
+      "girls",
+      "male",
+      "man",
+      "2.5d",
+      "boys"
+    ]
+  },
+  "loras/Rococo vest.safetensors": {
+    "name": "RococoSuits",
+    "version": "v1.0",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/b2a27d31-5b1c-40fd-bbf0-cf82e5a15e93/original=true/3958759.jpeg",
+    "civitai_url": "https://civitai.red/models/213669/rococosuits?modelVersionId=240669",
+    "source_url": "https://civitai.red/models/213669/rococosuits?modelVersionId=240669",
+    "tags": [
+      "clothing"
+    ]
+  },
+  "loras/WorldofCrochet.safetensors": {
+    "name": "World of Crochet",
+    "version": "v1.0",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/041dccf0-ba36-4ef4-800b-5ba50c210e08/original=true/2703704.jpeg",
+    "civitai_url": "https://civitai.red/models/153352/world-of-crochet?modelVersionId=171723",
+    "source_url": "https://civitai.red/models/153352/world-of-crochet?modelVersionId=171723",
+    "tags": [
+      "wocrochet",
+      "red",
+      "blue",
+      "green",
+      "yellow",
+      "purple",
+      "pink",
+      "brown",
+      "black",
+      "white",
+      "scifi",
+      "clothes",
+      "style",
+      "fantasy",
+      "knitting"
+    ]
+  },
+  "checkpoints/somman_v10.safetensors": {
+    "name": "Somman",
+    "version": "v1.0",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/55d0d6a1-2390-492f-b270-86f9460e85ec/original=true/2712133.jpeg",
+    "civitai_url": "https://civitai.red/models/153374/somman?modelVersionId=171746",
+    "source_url": "https://civitai.red/models/153374/somman?modelVersionId=171746",
+    "tags": [
+      "anime",
+      "female",
+      "base model",
+      "male",
+      "man",
+      "2.5d",
+      "boys"
+    ]
   }
 }
