@@ -156,6 +156,13 @@ export interface ImportedCivitaiResource {
   url: string;
 }
 
+export interface CivitaiLicenseInfo {
+  allowNoCredit?: boolean;
+  allowCommercialUse?: string[];
+  allowDerivatives?: boolean;
+  allowDifferentLicense?: boolean;
+}
+
 export interface CivitaiImportResult {
   imageId: number;
   imageUrl: string;

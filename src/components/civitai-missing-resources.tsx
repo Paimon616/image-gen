@@ -1,11 +1,20 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
-import { Download, ExternalLink, Loader2 } from "lucide-react";
+import {
+  Copyright,
+  DollarSign,
+  Download,
+  ExternalLink,
+  GitFork,
+  Loader2,
+  Scale,
+} from "lucide-react";
 import {
   RESOURCE_LABELS,
   type MissingResource,
 } from "@/lib/civitai-resource-matching";
+import type { CivitaiLicenseInfo } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 
 interface TokenState {
@@ -39,6 +48,119 @@ function missingResourceKey(resource: MissingResource, index: number) {
 
 function canDownloadResource(resource: MissingResource, token: TokenState) {
   return token.valid && Boolean(resource.url && resource.modelVersionId);
+}
+
+interface LicenseFlag {
+  key: string;
+  allowed: boolean;
+  Icon: typeof DollarSign;
+  label: string;
+}
+
+function licenseFlags(
+  license: CivitaiLicenseInfo,
+  language: "ko" | "en"
+): LicenseFlag[] {
+  const ko = language === "ko";
+  const flags: LicenseFlag[] = [];
+
+  if (Array.isArray(license.allowCommercialUse)) {
+    const allowed = license.allowCommercialUse.some(
+      (value) => value && value.toLowerCase() !== "none"
+    );
+    flags.push({
+      key: "commercial",
+      allowed,
+      Icon: DollarSign,
+      label: allowed
+        ? ko
+          ? "상업적 사용 가능"
+          : "Commercial use allowed"
+        : ko
+          ? "상업적 사용 불가"
+          : "No commercial use",
+    });
+  }
+
+  if (typeof license.allowNoCredit === "boolean") {
+    const allowed = license.allowNoCredit;
+    flags.push({
+      key: "credit",
+      allowed,
+      Icon: Copyright,
+      label: allowed
+        ? ko
+          ? "크레딧 표기 불필요"
+          : "Credit not required"
+        : ko
+          ? "크레딧 표기 필요"
+          : "Credit required",
+    });
+  }
+
+  if (typeof license.allowDerivatives === "boolean") {
+    const allowed = license.allowDerivatives;
+    flags.push({
+      key: "derivatives",
+      allowed,
+      Icon: GitFork,
+      label: allowed
+        ? ko
+          ? "2차 창작 허용"
+          : "Derivatives allowed"
+        : ko
+          ? "2차 창작 불가"
+          : "No derivatives",
+    });
+  }
+
+  if (typeof license.allowDifferentLicense === "boolean") {
+    const allowed = license.allowDifferentLicense;
+    flags.push({
+      key: "different-license",
+      allowed,
+      Icon: Scale,
+      label: allowed
+        ? ko
+          ? "다른 라이선스로 공유 가능"
+          : "Different license allowed"
+        : ko
+          ? "동일 라이선스 유지 필요"
+          : "Same license required",
+    });
+  }
+
+  return flags;
+}
+
+function LicenseBadges({
+  license,
+  language,
+}: {
+  license: CivitaiLicenseInfo;
+  language: "ko" | "en";
+}) {
+  const flags = licenseFlags(license, language);
+  if (flags.length === 0) return null;
+
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-1">
+      {flags.map((flag) => (
+        <span
+          key={flag.key}
+          title={flag.label}
+          aria-label={flag.label}
+          className={`inline-flex h-5 w-5 items-center justify-center rounded ${
+            flag.allowed
+              ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+              : "bg-destructive/15 text-destructive"
+          }`}
+        >
+          <flag.Icon className="h-3 w-3" />
+        </span>
+      ))}
+    </div>
+  );
 }
 
 function formatBytes(value: number) {
@@ -80,6 +202,7 @@ export function CivitaiMissingResources({
     {}
   );
   const [downloadStatus, setDownloadStatus] = useState("");
+  const [licenses, setLicenses] = useState<Record<number, CivitaiLicenseInfo>>({});
 
   useEffect(() => {
     if (resources.length === 0) return;
@@ -105,6 +228,39 @@ export function CivitaiMissingResources({
       canceled = true;
     };
   }, [resources.length]);
+
+  const modelIdsKey = resources
+    .map((resource) => resource.modelId)
+    .filter((modelId): modelId is number => typeof modelId === "number")
+    .join(",");
+
+  useEffect(() => {
+    if (!modelIdsKey) return;
+
+    let canceled = false;
+    const modelIds = modelIdsKey.split(",").map(Number);
+
+    fetch("/api/civitai/license", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ modelIds }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (canceled) return;
+        setLicenses(
+          (data.licenses ?? {}) as Record<number, CivitaiLicenseInfo>
+        );
+      })
+      .catch(() => {
+        if (canceled) return;
+        setLicenses({});
+      });
+
+    return () => {
+      canceled = true;
+    };
+  }, [modelIdsKey]);
 
   const updateProgress = (key: string, update: Partial<DownloadProgress>) => {
     setDownloadProgress((current) => ({
@@ -256,6 +412,10 @@ export function CivitaiMissingResources({
           const downloadable = canDownloadResource(resource, token);
           const progress = downloadProgress[key];
           const progressPercent = progress?.percent ?? 0;
+          const license =
+            typeof resource.modelId === "number"
+              ? licenses[resource.modelId]
+              : undefined;
 
           return (
             <div
@@ -307,6 +467,7 @@ export function CivitaiMissingResources({
                   )}
                 </span>
               </div>
+              {license && <LicenseBadges license={license} language={language} />}
               {progress && (
                 <div className="mt-1.5 grid gap-1">
                   <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
