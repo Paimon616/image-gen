@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import {
   DEFAULT_PARAMS,
-  type CivitaiImportResult,
   type CivitaiOrigin,
   type GeneratedImage,
   type GenerationParams,
@@ -14,8 +13,7 @@ interface AppState {
   images: GeneratedImage[];
   selectedImage: GeneratedImage | null;
   language: AppLanguage;
-  civitaiImport: CivitaiImportResult | null;
-  civitaiImportFingerprint: string | null;
+  civitaiReference: CivitaiOrigin | null;
 
   setParams: (update: Partial<GenerationParams>) => void;
   setStatus: (status: Partial<GenerationStatus>) => void;
@@ -27,13 +25,8 @@ interface AppState {
   loadParamsFromImage: (image: GeneratedImage) => void;
   resetParams: () => void;
   setLanguage: (language: AppLanguage) => void;
-  setCivitaiImport: (
-    result: CivitaiImportResult,
-    appliedParams: GenerationParams
-  ) => void;
-  refreshCivitaiSnapshot: () => void;
-  clearCivitaiImport: () => void;
-  resolveCivitaiOrigin: (params: GenerationParams) => CivitaiOrigin | undefined;
+  setCivitaiReference: (origin: CivitaiOrigin | null) => void;
+  clearCivitaiReference: () => void;
 }
 
 export type AppLanguage = "ko" | "en";
@@ -60,12 +53,6 @@ function persistLanguage(language: AppLanguage) {
 
 function sortImagesNewestFirst(images: GeneratedImage[]) {
   return [...images].sort((a, b) => b.timestamp - a.timestamp);
-}
-
-function importParamsFingerprint(params: GenerationParams) {
-  const { seed: _seed, ...rest } = params;
-  void _seed;
-  return JSON.stringify(rest);
 }
 
 function imageIdentityKeys(image: GeneratedImage) {
@@ -124,14 +111,13 @@ function mergeImages(
   return sortImagesNewestFirst(mergedImages);
 }
 
-export const useStore = create<AppState>((set, get) => ({
+export const useStore = create<AppState>((set) => ({
   params: DEFAULT_PARAMS,
   status: { state: "idle", progress: 0, message: "" },
   images: [],
   selectedImage: null,
   language: getInitialLanguage(),
-  civitaiImport: null,
-  civitaiImportFingerprint: null,
+  civitaiReference: null,
 
   setParams: (update) =>
     set((s) => ({ params: { ...s.params, ...update } })),
@@ -172,56 +158,18 @@ export const useStore = create<AppState>((set, get) => ({
   loadParamsFromImage: (image) =>
     set((state) =>
       image.params
-        ? {
-            params: { ...DEFAULT_PARAMS, ...image.params },
-            civitaiImport: null,
-            civitaiImportFingerprint: null,
-          }
+        ? { params: { ...DEFAULT_PARAMS, ...image.params } }
         : state
     ),
 
-  resetParams: () =>
-    set({
-      params: DEFAULT_PARAMS,
-      civitaiImport: null,
-      civitaiImportFingerprint: null,
-    }),
+  resetParams: () => set({ params: DEFAULT_PARAMS }),
 
   setLanguage: (language) => {
     persistLanguage(language);
     set({ language });
   },
 
-  setCivitaiImport: (result, appliedParams) =>
-    set({
-      civitaiImport: result,
-      civitaiImportFingerprint: importParamsFingerprint(appliedParams),
-    }),
+  setCivitaiReference: (origin) => set({ civitaiReference: origin }),
 
-  refreshCivitaiSnapshot: () =>
-    set((s) =>
-      s.civitaiImport
-        ? { civitaiImportFingerprint: importParamsFingerprint(s.params) }
-        : {}
-    ),
-
-  clearCivitaiImport: () =>
-    set({ civitaiImport: null, civitaiImportFingerprint: null }),
-
-  resolveCivitaiOrigin: (params) => {
-    const { civitaiImport, civitaiImportFingerprint } = get();
-
-    if (!civitaiImport || civitaiImportFingerprint == null) return undefined;
-    if (importParamsFingerprint(params) !== civitaiImportFingerprint) {
-      return undefined;
-    }
-    if (!civitaiImport.imageUrl) return undefined;
-
-    return {
-      imageId: civitaiImport.imageId,
-      imageUrl: civitaiImport.imageUrl,
-      pageUrl: civitaiImport.pageUrl,
-      username: civitaiImport.username,
-    };
-  },
+  clearCivitaiReference: () => set({ civitaiReference: null }),
 }));

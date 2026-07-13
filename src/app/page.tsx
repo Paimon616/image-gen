@@ -353,7 +353,7 @@ export default function Home() {
       jobParams.seed = randomGenerationSeed();
     }
     const id = crypto.randomUUID();
-    const civitaiOrigin = useStore.getState().resolveCivitaiOrigin(jobParams);
+    const civitaiOrigin = useStore.getState().civitaiReference ?? undefined;
 
     addImage({
       id,

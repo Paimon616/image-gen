@@ -3694,5 +3694,34 @@
       "2.5d",
       "boys"
     ]
+  },
+  "loras/IceAI.safetensors": {
+    "name": "DonM - IceAI [SD1.5]",
+    "version": "v1.1",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/8ec7c62a-7586-402d-b53c-f043d1db3fb6/original=true/1118991.jpeg",
+    "civitai_url": "https://civitai.red/models/86440/donm-iceai-sd1-5?modelVersionId=92198",
+    "source_url": "https://civitai.red/models/86440/donm-iceai-sd1-5?modelVersionId=92198",
+    "tags": [
+      "IceAI",
+      "style",
+      "ice",
+      "styles"
+    ]
+  },
+  "loras/WorldofLace.safetensors": {
+    "name": "World of Lace",
+    "version": "v0.5",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/154685c7-81da-4308-a2d7-c47291665016/original=true/2703327.jpeg",
+    "civitai_url": "https://civitai.red/models/153323/world-of-lace?modelVersionId=171698",
+    "source_url": "https://civitai.red/models/153323/world-of-lace?modelVersionId=171698",
+    "tags": [
+      "worldoflace",
+      "style",
+      "fantasy",
+      "lace",
+      "clothing style"
+    ]
   }
 }
