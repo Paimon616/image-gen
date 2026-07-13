@@ -85,6 +85,13 @@ export interface ControlNetConfig {
   end_percent: number;
 }
 
+export interface CivitaiOrigin {
+  imageId: number;
+  imageUrl: string;
+  pageUrl: string;
+  username?: string;
+}
+
 export interface GeneratedImage {
   id: string;
   url: string;
@@ -93,6 +100,7 @@ export interface GeneratedImage {
   timestamp: number;
   filename: string;
   generation?: ImageGenerationStatus;
+  civitaiOrigin?: CivitaiOrigin;
 }
 
 export interface ImageGenerationStatus {
@@ -154,6 +162,13 @@ export interface ImportedCivitaiResource {
   modelId?: number;
   modelVersionId?: number;
   url: string;
+}
+
+export interface CivitaiLicenseInfo {
+  allowNoCredit?: boolean;
+  allowCommercialUse?: string[];
+  allowDerivatives?: boolean;
+  allowDifferentLicense?: boolean;
 }
 
 export interface CivitaiImportResult {

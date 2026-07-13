@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { LinkIcon, Loader2 } from "lucide-react";
+import { ImageIcon, LinkIcon, Loader2, X } from "lucide-react";
 import { useStore } from "@/lib/store";
 import type { CivitaiImportResult } from "@/lib/types";
 import {
@@ -55,7 +55,14 @@ function importStatusText(
 }
 
 export function CivitaiImport() {
-  const { params, setParams, language } = useStore();
+  const {
+    params,
+    setParams,
+    language,
+    civitaiReference,
+    setCivitaiReference,
+    clearCivitaiReference,
+  } = useStore();
   const [url, setUrl] = useState("");
   const [status, setStatus] = useState("");
   const [missingResources, setMissingResources] = useState<MissingResource[]>([]);
@@ -93,6 +100,14 @@ export function CivitaiImport() {
       const appliedParams = { ...params, ...matched };
 
       setParams(matched);
+      if (imported.imageUrl) {
+        setCivitaiReference({
+          imageId: imported.imageId,
+          imageUrl: imported.imageUrl,
+          pageUrl: imported.pageUrl,
+          username: imported.username,
+        });
+      }
       setMissingResources(missing);
       void fetch("/api/scrap", {
         method: "POST",
@@ -122,53 +137,85 @@ export function CivitaiImport() {
 
   return (
     <section className="rounded-md border border-border bg-card/85 p-3 shadow-sm">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <div>
-          <Label className="text-xs text-muted-foreground">Import from Civitai</Label>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Paste an image URL to load prompt, sampler, seed, and resource links.
-          </p>
-        </div>
-        <a
-          href={CIVITAI_IMAGES_URL}
-          target="_blank"
-          rel="noreferrer"
-          aria-label="Open Civitai images"
-          title="Open Civitai images"
-          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-background text-primary shadow-sm transition-colors hover:border-primary/35 hover:bg-secondary"
-        >
-          <LinkIcon className="h-4 w-4" />
-        </a>
-      </div>
+      <div className="flex gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div>
+              <Label className="text-xs text-muted-foreground">Import from Civitai</Label>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Paste an image URL to load prompt, sampler, seed, and resource links.
+              </p>
+            </div>
+            <a
+              href={CIVITAI_IMAGES_URL}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Open Civitai images"
+              title="Open Civitai images"
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-background text-primary shadow-sm transition-colors hover:border-primary/35 hover:bg-secondary"
+            >
+              <LinkIcon className="h-4 w-4" />
+            </a>
+          </div>
 
-      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-        <Input
-          value={url}
-          onChange={(event) => setUrl(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              void importFromCivitai();
-            }
-          }}
-          placeholder="https://civitai.com/images/... or https://civitai.red/images/..."
-          className="h-9 text-xs"
-        />
-        <Button
-          type="button"
-          onClick={importFromCivitai}
-          disabled={!url.trim() || isImporting}
-          className="h-9"
-        >
-          {isImporting ? (
-            <span className="inline-flex items-center gap-2">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              Importing
-            </span>
+          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+            <Input
+              value={url}
+              onChange={(event) => setUrl(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void importFromCivitai();
+                }
+              }}
+              placeholder="https://civitai.com/images/... or https://civitai.red/images/..."
+              className="h-9 text-xs"
+            />
+            <Button
+              type="button"
+              onClick={importFromCivitai}
+              disabled={!url.trim() || isImporting}
+              className="h-9"
+            >
+              {isImporting ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Importing
+                </span>
+              ) : (
+                "Import"
+              )}
+            </Button>
+          </div>
+        </div>
+
+        <div className="w-24 shrink-0">
+          <div className="mb-1 text-xs text-muted-foreground">
+            {language === "ko" ? "레퍼런스" : "Reference"}
+          </div>
+          {civitaiReference ? (
+            <div className="group/ref relative aspect-square overflow-hidden rounded-md border border-border">
+              <img
+                src={civitaiReference.imageUrl}
+                alt={language === "ko" ? "레퍼런스 이미지" : "Reference image"}
+                className="h-full w-full object-cover"
+              />
+              <button
+                type="button"
+                onClick={clearCivitaiReference}
+                className="absolute right-1 top-1 inline-flex h-6 w-6 items-center justify-center rounded-md bg-black/60 text-white opacity-0 transition-opacity hover:bg-black/80 group-hover/ref:opacity-100"
+                aria-label={language === "ko" ? "레퍼런스 제거" : "Remove reference"}
+                title={language === "ko" ? "레퍼런스 제거" : "Remove reference"}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
           ) : (
-            "Import"
+            <div className="flex aspect-square items-center justify-center rounded-md border border-dashed border-border text-muted-foreground/50">
+              <ImageIcon className="h-6 w-6" />
+            </div>
           )}
-        </Button>
+        </div>
       </div>
 
       {status && <p className="mt-2 text-xs text-muted-foreground">{status}</p>}

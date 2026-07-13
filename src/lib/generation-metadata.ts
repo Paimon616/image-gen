@@ -423,6 +423,26 @@ function assetResourceMatchScore(asset: LocalModelAsset, resource: ImportedCivit
   return 0;
 }
 
+function resolveLocalVaeName(vaeName: string, assets: LocalModelAsset[]) {
+  const trimmed = vaeName.trim();
+  if (!trimmed) return "";
+  if (assets.some((asset) => asset.path === trimmed)) return trimmed;
+
+  const target = normalizeToken(trimmed);
+  if (!target) return "";
+  const match = assets.find((asset) => {
+    const path = normalizeToken(asset.path);
+    const name = normalizeToken(asset.name);
+    return (
+      path === target ||
+      name === target ||
+      path.includes(target) ||
+      name.includes(target)
+    );
+  });
+  return match?.path ?? "";
+}
+
 function findMatchingAsset(
   models: LocalModelsResponse,
   resource: ImportedCivitaiResource
@@ -494,6 +514,10 @@ export function reconcileMetadataResources(
       matchedUpscaler = true;
     }
   });
+
+  if (!matchedVae && typeof params.vae_name === "string") {
+    params.vae_name = resolveLocalVaeName(params.vae_name, models.vaeAssets ?? []);
+  }
 
   if (parsed.hasExplicitResources) {
     if (importedCheckpoint && !matchedCheckpoint) params.model_name = "";

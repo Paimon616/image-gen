@@ -14,7 +14,7 @@ import {
   normalizeGenerationSeed,
   normalizeImageDimension,
 } from "@/lib/types";
-import type { GenerationParams } from "@/lib/types";
+import type { CivitaiOrigin, GenerationParams } from "@/lib/types";
 import { imageUrl, OUTPUT_DIR, thumbnailUrl } from "@/lib/server-images";
 import { buildGenerationResources } from "@/lib/generation-resource-links";
 
@@ -40,10 +40,12 @@ async function saveBufferedImages({
   images,
   params,
   endpoint,
+  civitaiOrigin,
 }: {
   images: ComfyGeneratedImage[];
   params: GenerationParams;
   endpoint: string;
+  civitaiOrigin?: CivitaiOrigin;
 }) {
   await ensureOutputDir();
 
@@ -68,6 +70,7 @@ async function saveBufferedImages({
             timestamp,
             original_url: img.originalUrl,
             index: i,
+            civitai_origin: civitaiOrigin,
           },
           null,
           2
@@ -81,6 +84,7 @@ async function saveBufferedImages({
         filename,
         params,
         timestamp,
+        civitaiOrigin,
       };
     })
   );
@@ -120,7 +124,9 @@ function sse(event: string, data: unknown) {
 
 export async function POST(req: NextRequest) {
   const encoder = new TextEncoder();
-  const rawBody = (await req.json()) as GenerationParams;
+  const { civitaiOrigin, ...rawBody } = (await req.json()) as GenerationParams & {
+    civitaiOrigin?: CivitaiOrigin;
+  };
   const body: GenerationParams = {
     ...rawBody,
     width: normalizeImageDimension(rawBody.width),
@@ -216,6 +222,7 @@ export async function POST(req: NextRequest) {
           images,
           params: body,
           endpoint: modelConfig.id,
+          civitaiOrigin,
         });
 
         send("progress", { progress: 100, message: "Done" });

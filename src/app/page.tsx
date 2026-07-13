@@ -23,6 +23,7 @@ import { ImageViewer } from "@/components/image-viewer";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Slider } from "@/components/ui/slider";
 import type {
+  CivitaiOrigin,
   GeneratedImage,
   GenerationParams as GenerationParamsType,
 } from "@/lib/types";
@@ -80,6 +81,7 @@ function imageFileFromClipboard(event: ClipboardEvent) {
 interface GenerationQueueItem {
   id: string;
   params: GenerationParamsType;
+  civitaiOrigin?: CivitaiOrigin;
 }
 
 function cloneGenerationParams(params: GenerationParamsType) {
@@ -177,7 +179,7 @@ export default function Home() {
   ]);
 
   const runGenerationJob = useCallback(async (job: GenerationQueueItem) => {
-    const { id, params: jobParams } = job;
+    const { id, params: jobParams, civitaiOrigin } = job;
 
     const abortController = new AbortController();
     activePromptIdRef.current = "";
@@ -194,7 +196,7 @@ export default function Home() {
       const res = await fetch("/api/generate/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(jobParams),
+        body: JSON.stringify({ ...jobParams, civitaiOrigin }),
         signal: abortController.signal,
       });
 
@@ -351,6 +353,7 @@ export default function Home() {
       jobParams.seed = randomGenerationSeed();
     }
     const id = crypto.randomUUID();
+    const civitaiOrigin = useStore.getState().civitaiReference ?? undefined;
 
     addImage({
       id,
@@ -358,13 +361,14 @@ export default function Home() {
       filename: "",
       params: jobParams,
       timestamp: Date.now(),
+      civitaiOrigin,
       generation: {
         state: "queued",
         progress: 0,
         message: "Queued",
       },
     });
-    setGenerationQueue((queue) => [...queue, { id, params: jobParams }]);
+    setGenerationQueue((queue) => [...queue, { id, params: jobParams, civitaiOrigin }]);
     setStatus({ state: "idle", progress: 0, message: "" });
   }, [addImage, generationModeError, params, setStatus]);
 

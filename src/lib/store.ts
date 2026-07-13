@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import {
   DEFAULT_PARAMS,
+  type CivitaiOrigin,
   type GeneratedImage,
   type GenerationParams,
   type GenerationStatus,
@@ -12,6 +13,7 @@ interface AppState {
   images: GeneratedImage[];
   selectedImage: GeneratedImage | null;
   language: AppLanguage;
+  civitaiReference: CivitaiOrigin | null;
 
   setParams: (update: Partial<GenerationParams>) => void;
   setStatus: (status: Partial<GenerationStatus>) => void;
@@ -23,6 +25,8 @@ interface AppState {
   loadParamsFromImage: (image: GeneratedImage) => void;
   resetParams: () => void;
   setLanguage: (language: AppLanguage) => void;
+  setCivitaiReference: (origin: CivitaiOrigin | null) => void;
+  clearCivitaiReference: () => void;
 }
 
 export type AppLanguage = "ko" | "en";
@@ -113,6 +117,7 @@ export const useStore = create<AppState>((set) => ({
   images: [],
   selectedImage: null,
   language: getInitialLanguage(),
+  civitaiReference: null,
 
   setParams: (update) =>
     set((s) => ({ params: { ...s.params, ...update } })),
@@ -163,4 +168,8 @@ export const useStore = create<AppState>((set) => ({
     persistLanguage(language);
     set({ language });
   },
+
+  setCivitaiReference: (origin) => set({ civitaiReference: origin }),
+
+  clearCivitaiReference: () => set({ civitaiReference: null }),
 }));
