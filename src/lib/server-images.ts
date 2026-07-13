@@ -83,6 +83,7 @@ async function readImageMeta({
       filename,
       params: meta.params,
       timestamp: meta.timestamp ?? timestamp,
+      civitaiOrigin: meta.civitai_origin ?? undefined,
     };
   } catch {
     return {

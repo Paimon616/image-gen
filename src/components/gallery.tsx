@@ -12,6 +12,7 @@ import { useStore } from "@/lib/store";
 import type { GeneratedImage, HistoryEntry } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CivitaiOriginModal } from "@/components/civitai-origin-modal";
 import {
   AlertCircle,
   BookmarkPlus,
@@ -68,8 +69,11 @@ const GalleryCard = memo(function GalleryCard({
   onCancelGeneration,
 }: GalleryCardProps) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [originOpen, setOriginOpen] = useState(false);
+  const language = useStore((state) => state.language);
   const generation = img.generation;
   const hasImage = Boolean(img.url);
+  const civitaiOrigin = img.civitaiOrigin;
   const displayUrl =
     img.thumbnailUrl ||
     (img.filename ? `/api/images/thumb/${img.filename}` : img.url);
@@ -110,6 +114,7 @@ const GalleryCard = memo(function GalleryCard({
               : null;
 
   return (
+    <>
     <div className="group relative aspect-square overflow-hidden rounded-lg border border-border transition-colors [contain-intrinsic-size:320px] [content-visibility:auto] hover:border-primary/50">
       {hasImage ? (
         <button
@@ -180,6 +185,26 @@ const GalleryCard = memo(function GalleryCard({
           <Check className="h-3 w-3" />
           스크랩됨
         </Badge>
+      )}
+      {hasImage && civitaiOrigin && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            setOriginOpen(true);
+          }}
+          className="absolute bottom-2 left-2 z-20 h-14 w-14 overflow-hidden rounded-md border-2 border-white/80 shadow-md transition-transform hover:scale-105"
+          aria-label={language === "ko" ? "원본 Civitai 이미지 보기" : "View original Civitai image"}
+          title={language === "ko" ? "원본 Civitai 이미지" : "Original Civitai image"}
+        >
+          <img
+            src={civitaiOrigin.imageUrl}
+            alt=""
+            className="h-full w-full object-cover"
+            loading="lazy"
+            decoding="async"
+          />
+        </button>
       )}
       {hasImage && generation && generation.state !== "completed" && (
         <div className="absolute inset-x-2 bottom-2 z-10 rounded-md bg-black/70 px-2 py-1.5 text-white shadow-sm">
@@ -273,7 +298,7 @@ const GalleryCard = memo(function GalleryCard({
             </div>
           </div>
         )}
-        <div className="absolute bottom-2 left-2 right-2">
+        <div className={`absolute bottom-2 right-2 ${civitaiOrigin ? "left-[4.5rem]" : "left-2"}`}>
           <p className="truncate text-xs text-white">
             {img.params?.prompt || "No prompt"}
           </p>
@@ -281,6 +306,15 @@ const GalleryCard = memo(function GalleryCard({
       </div>
       )}
     </div>
+    {civitaiOrigin && (
+      <CivitaiOriginModal
+        origin={civitaiOrigin}
+        open={originOpen}
+        onOpenChange={setOriginOpen}
+        language={language}
+      />
+    )}
+    </>
   );
 });
 

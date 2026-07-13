@@ -55,7 +55,8 @@ function importStatusText(
 }
 
 export function CivitaiImport() {
-  const { params, setParams, language } = useStore();
+  const { params, setParams, language, setCivitaiImport, refreshCivitaiSnapshot } =
+    useStore();
   const [url, setUrl] = useState("");
   const [status, setStatus] = useState("");
   const [missingResources, setMissingResources] = useState<MissingResource[]>([]);
@@ -93,6 +94,7 @@ export function CivitaiImport() {
       const appliedParams = { ...params, ...matched };
 
       setParams(matched);
+      setCivitaiImport(imported, appliedParams);
       setMissingResources(missing);
       void fetch("/api/scrap", {
         method: "POST",
@@ -197,6 +199,7 @@ export function CivitaiImport() {
             });
           }
 
+          refreshCivitaiSnapshot();
           setMissingResources((current) =>
             current.filter(
               (item) =>

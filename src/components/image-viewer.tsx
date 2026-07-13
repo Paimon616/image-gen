@@ -7,11 +7,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  ExternalLink,
   FileJson,
   RotateCcw,
   Trash2,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
+import { CivitaiOriginModal } from "@/components/civitai-origin-modal";
 import {
   Dialog,
   DialogContent,
@@ -68,8 +70,15 @@ function metadataDownloadFilename(filename: string) {
 }
 
 export function ImageViewer() {
-  const { images, selectedImage, setSelectedImage, loadParamsFromImage, removeImage } =
-    useStore();
+  const {
+    images,
+    selectedImage,
+    setSelectedImage,
+    loadParamsFromImage,
+    removeImage,
+    language,
+  } = useStore();
+  const [originModalOpen, setOriginModalOpen] = useState(false);
   const [scrappingImageId, setScrappingImageId] = useState<string | null>(null);
   const [scrappedImageId, setScrappedImageId] = useState<string | null>(null);
   const [imageSizeMode, setImageSizeMode] = useState<{
@@ -184,6 +193,7 @@ export function ImageViewer() {
   };
 
   const params = selectedImage.params;
+  const civitaiOrigin = selectedImage.civitaiOrigin;
   const isScrapping = scrappingImageId === selectedImage.id;
   const isScrapped = scrappedImageId === selectedImage.id;
   const isOriginalSize =
@@ -372,6 +382,58 @@ export function ImageViewer() {
                   </div>
                 </section>
 
+                {civitaiOrigin && (
+                  <section className="rounded-lg border border-border bg-card p-3 shadow-sm">
+                    <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                      {language === "ko" ? "원본 Civitai 이미지" : "Original Civitai image"}
+                    </h3>
+                    <div className="mt-3 flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setOriginModalOpen(true)}
+                        className="h-24 w-24 shrink-0 overflow-hidden rounded-md border border-border transition-colors hover:border-primary/50"
+                        aria-label={
+                          language === "ko"
+                            ? "원본 Civitai 이미지 크게 보기"
+                            : "View original Civitai image"
+                        }
+                      >
+                        <img
+                          src={civitaiOrigin.imageUrl}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      </button>
+                      <div className="flex min-w-0 flex-col justify-center gap-1.5 text-xs">
+                        {civitaiOrigin.username && (
+                          <span className="truncate text-muted-foreground">
+                            {language === "ko" ? "작성자" : "By"}{" "}
+                            <span className="font-medium text-foreground">
+                              {civitaiOrigin.username}
+                            </span>
+                          </span>
+                        )}
+                        <span className="text-muted-foreground">
+                          {language === "ko"
+                            ? "이 이미지는 이 스크랩을 그대로 생성했습니다."
+                            : "Generated from this scrap unchanged."}
+                        </span>
+                        {civitaiOrigin.pageUrl && (
+                          <a
+                            href={civitaiOrigin.pageUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex w-fit items-center gap-1 font-medium text-primary hover:underline"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            {language === "ko" ? "Civitai에서 보기" : "View on Civitai"}
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </section>
+                )}
+
                 {params.loras?.length > 0 && (
                   <section className="rounded-lg border border-border bg-card p-3 shadow-sm">
                     <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
@@ -458,6 +520,13 @@ export function ImageViewer() {
         </form>
       </DialogContent>
     </Dialog>
+
+    <CivitaiOriginModal
+      origin={civitaiOrigin ?? null}
+      open={originModalOpen}
+      onOpenChange={setOriginModalOpen}
+      language={language}
+    />
     </>
   );
 }
