@@ -39,6 +39,25 @@ function modelIdFromUrl(rawUrl) {
   }
 }
 
+// Civitai returns allowCommercialUse inconsistently: a clean array, a single
+// enum string, or a Postgres brace literal like "{Image,RentCivit,Rent,Sell}".
+function splitCommercialEntry(entry) {
+  if (typeof entry !== "string") return [];
+  return entry
+    .trim()
+    .replace(/^\{/, "")
+    .replace(/\}$/, "")
+    .split(",")
+    .map((token) => token.trim().replace(/^["']|["']$/g, "").trim())
+    .filter(Boolean);
+}
+
+function parseAllowCommercialUse(value) {
+  if (Array.isArray(value)) return value.flatMap(splitCommercialEntry);
+  if (typeof value === "string") return splitCommercialEntry(value);
+  return undefined;
+}
+
 function parseLicense(model) {
   const license = {};
 
@@ -51,13 +70,9 @@ function parseLicense(model) {
   if (typeof model.allowDifferentLicense === "boolean") {
     license.allowDifferentLicense = model.allowDifferentLicense;
   }
-  if (Array.isArray(model.allowCommercialUse)) {
-    license.allowCommercialUse = model.allowCommercialUse
-      .filter((entry) => typeof entry === "string")
-      .map((entry) => entry.trim())
-      .filter(Boolean);
-  } else if (typeof model.allowCommercialUse === "string") {
-    license.allowCommercialUse = [model.allowCommercialUse.trim()].filter(Boolean);
+  const commercial = parseAllowCommercialUse(model.allowCommercialUse);
+  if (commercial) {
+    license.allowCommercialUse = commercial;
   }
 
   return Object.keys(license).length > 0 ? license : null;

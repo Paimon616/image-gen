@@ -3,6 +3,7 @@ import { basename, join, normalize } from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { COMFYUI_MODELS_DIR } from "@/lib/comfyui-model-files";
 import { normalizeCivitaiModelUrl, parseCivitaiUrlIds } from "@/lib/civitai-url";
+import { parseCivitaiLicense } from "@/lib/civitai-license";
 import type { CivitaiLicenseInfo, ImportedCivitaiResource } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -52,27 +53,7 @@ interface CivitaiModel {
 }
 
 function parseLicense(model: CivitaiModel): CivitaiLicenseInfo | undefined {
-  const license: CivitaiLicenseInfo = {};
-
-  if (typeof model.allowNoCredit === "boolean") {
-    license.allowNoCredit = model.allowNoCredit;
-  }
-  if (typeof model.allowDerivatives === "boolean") {
-    license.allowDerivatives = model.allowDerivatives;
-  }
-  if (typeof model.allowDifferentLicense === "boolean") {
-    license.allowDifferentLicense = model.allowDifferentLicense;
-  }
-  if (Array.isArray(model.allowCommercialUse)) {
-    license.allowCommercialUse = model.allowCommercialUse
-      .filter((entry): entry is string => typeof entry === "string")
-      .map((entry) => entry.trim())
-      .filter(Boolean);
-  } else if (typeof model.allowCommercialUse === "string") {
-    license.allowCommercialUse = [model.allowCommercialUse.trim()].filter(Boolean);
-  }
-
-  return Object.keys(license).length > 0 ? license : undefined;
+  return parseCivitaiLicense(model) ?? undefined;
 }
 
 function stringValue(value: unknown) {

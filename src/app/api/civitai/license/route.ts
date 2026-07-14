@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { CivitaiLicenseInfo } from "@/lib/types";
+import { parseCivitaiLicense } from "@/lib/civitai-license";
 
 export const dynamic = "force-dynamic";
 
@@ -23,27 +24,7 @@ function parseModelIds(value: unknown) {
 }
 
 function parseLicense(model: CivitaiModelLicense): CivitaiLicenseInfo {
-  const license: CivitaiLicenseInfo = {};
-
-  if (typeof model.allowNoCredit === "boolean") {
-    license.allowNoCredit = model.allowNoCredit;
-  }
-  if (typeof model.allowDerivatives === "boolean") {
-    license.allowDerivatives = model.allowDerivatives;
-  }
-  if (typeof model.allowDifferentLicense === "boolean") {
-    license.allowDifferentLicense = model.allowDifferentLicense;
-  }
-  if (Array.isArray(model.allowCommercialUse)) {
-    license.allowCommercialUse = model.allowCommercialUse
-      .filter((entry): entry is string => typeof entry === "string")
-      .map((entry) => entry.trim())
-      .filter(Boolean);
-  } else if (typeof model.allowCommercialUse === "string") {
-    license.allowCommercialUse = [model.allowCommercialUse.trim()].filter(Boolean);
-  }
-
-  return license;
+  return parseCivitaiLicense(model) ?? {};
 }
 
 async function fetchLicense(modelId: number, token?: string) {

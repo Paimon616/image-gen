@@ -9,6 +9,7 @@ import {
   isAnimaCheckpointName,
 } from "@/lib/comfyui-model-files";
 import type { CivitaiLicenseInfo } from "@/lib/types";
+import { parseAllowCommercialUse } from "@/lib/civitai-license";
 
 export const dynamic = "force-dynamic";
 
@@ -129,10 +130,9 @@ function normalizeLicense(value: unknown): CivitaiLicenseInfo | null {
   if (typeof value.allowDifferentLicense === "boolean") {
     license.allowDifferentLicense = value.allowDifferentLicense;
   }
-  if (Array.isArray(value.allowCommercialUse)) {
-    license.allowCommercialUse = value.allowCommercialUse.filter(
-      (entry): entry is string => typeof entry === "string"
-    );
+  const commercial = parseAllowCommercialUse(value.allowCommercialUse);
+  if (commercial) {
+    license.allowCommercialUse = commercial;
   }
 
   return Object.keys(license).length > 0 ? license : null;
