@@ -3898,5 +3898,24 @@
       "human",
       "hunk"
     ]
+  },
+  "loras/DetailedStyle(Illustrious).safetensors": {
+    "name": "Anime Male Styles",
+    "version": "Detailed (Illustrious)",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/ebee0faa-5d83-40a2-b6ac-a8e26f36637d/original=true/63743251.jpeg",
+    "civitai_url": "https://civitai.red/models/817340/anime-male-styles?modelVersionId=1537065",
+    "source_url": "https://civitai.red/models/817340/anime-male-styles?modelVersionId=1537065",
+    "tags": [
+      "anime",
+      "bara",
+      "style",
+      "male",
+      "man",
+      "men",
+      "muscle",
+      "xxx",
+      "male characters"
+    ]
   }
 }

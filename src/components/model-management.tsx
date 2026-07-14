@@ -33,6 +33,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { ModelMediaThumbnail } from "@/components/model-media-thumbnail";
 import { ModelRiskBadge, type ModelRisk } from "@/components/model-risk-badge";
+import { LicenseBadges } from "@/components/civitai-license-badges";
+import type { CivitaiLicenseInfo } from "@/lib/types";
 
 interface ModelAsset {
   path: string;
@@ -45,6 +47,7 @@ interface ModelAsset {
   source_url: string | null;
   tags: string[];
   risk?: ModelRisk | null;
+  license?: CivitaiLicenseInfo | null;
 }
 
 interface ModelsResponse {
@@ -66,6 +69,7 @@ interface EditableMetadata {
   source_url: string | null;
   tags: string[];
   risk?: ModelRisk | null;
+  license?: CivitaiLicenseInfo | null;
 }
 
 interface SourceInfo {
@@ -333,6 +337,10 @@ function ModelCard({
               </Badge>
             )}
           </div>
+
+          {asset.license && (
+            <LicenseBadges license={asset.license} language="ko" />
+          )}
         </div>
 
         <div className="mt-auto pt-3">
