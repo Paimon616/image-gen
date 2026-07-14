@@ -5480,5 +5480,37 @@
         "RentCivit"
       ]
     }
+  },
+  "checkpoints/unholyDesireMixSinister_v30.safetensors": {
+    "name": "Unholy Desire Mix - Sinister Aesthetic (Illustrious)",
+    "version": "v3.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/f0cc29e9-97ff-414d-9648-034325d1180a/original=true/63035505.jpeg",
+    "civitai_url": "https://civitai.red/models/1307857/unholy-desire-mix-sinister-aesthetic-illustrious?modelVersionId=1522490",
+    "source_url": "https://civitai.red/models/1307857/unholy-desire-mix-sinister-aesthetic-illustrious?modelVersionId=1522490",
+    "tags": [
+      "anime",
+      "porn",
+      "mix",
+      "base model",
+      "hentai",
+      "characters",
+      "nsfw",
+      "merge",
+      "unholy",
+      "sdxl",
+      "illustrious"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
   }
 }
