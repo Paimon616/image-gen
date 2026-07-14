@@ -36,11 +36,42 @@ interface LocalModelAsset {
   thumbnail_url: string | null;
 }
 
-function MetadataRow({ label, value }: { label: string; value: string | number }) {
+function MetadataRow({
+  label,
+  value,
+  applied,
+  onApply,
+  applyTitle,
+  appliedTitle,
+}: {
+  label: string;
+  value: string | number;
+  applied?: boolean;
+  onApply?: () => void;
+  applyTitle?: string;
+  appliedTitle?: string;
+}) {
   return (
     <div className="rounded-md border border-border bg-card px-3 py-2">
-      <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-        {label}
+      <div className="flex items-center justify-between gap-1">
+        <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+          {label}
+        </div>
+        {onApply && (
+          <button
+            type="button"
+            onClick={onApply}
+            title={applied ? appliedTitle : applyTitle}
+            aria-label={applied ? appliedTitle : applyTitle}
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            {applied ? (
+              <Check className="h-3 w-3 text-primary" />
+            ) : (
+              <Wand2 className="h-3 w-3" />
+            )}
+          </button>
+        )}
       </div>
       <div className="mt-1 truncate text-sm font-semibold text-foreground">
         {value}
@@ -546,14 +577,80 @@ export function ImageViewer() {
                     />
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2">
-                    <MetadataRow label="Size" value={`${params.width} x ${params.height}`} />
-                    <MetadataRow label="Steps" value={params.num_inference_steps} />
-                    <MetadataRow label="CFG" value={params.guidance_scale} />
-                    <MetadataRow label="Sampler" value={params.sampler_name} />
+                    <MetadataRow
+                      label="Size"
+                      value={`${params.width} x ${params.height}`}
+                      applied={appliedKey === "size"}
+                      applyTitle={ko ? "적용" : "Apply"}
+                      appliedTitle={ko ? "적용됨" : "Applied"}
+                      onApply={() =>
+                        applyPartial("size", {
+                          width: params.width,
+                          height: params.height,
+                        })
+                      }
+                    />
+                    <MetadataRow
+                      label="Steps"
+                      value={params.num_inference_steps}
+                      applied={appliedKey === "steps"}
+                      applyTitle={ko ? "적용" : "Apply"}
+                      appliedTitle={ko ? "적용됨" : "Applied"}
+                      onApply={() =>
+                        applyPartial("steps", {
+                          num_inference_steps: params.num_inference_steps,
+                        })
+                      }
+                    />
+                    <MetadataRow
+                      label="CFG"
+                      value={params.guidance_scale}
+                      applied={appliedKey === "cfg"}
+                      applyTitle={ko ? "적용" : "Apply"}
+                      appliedTitle={ko ? "적용됨" : "Applied"}
+                      onApply={() =>
+                        applyPartial("cfg", {
+                          guidance_scale: params.guidance_scale,
+                        })
+                      }
+                    />
+                    <MetadataRow
+                      label="Sampler"
+                      value={params.sampler_name}
+                      applied={appliedKey === "sampler"}
+                      applyTitle={ko ? "적용" : "Apply"}
+                      appliedTitle={ko ? "적용됨" : "Applied"}
+                      onApply={() =>
+                        applyPartial("sampler", {
+                          sampler_name: params.sampler_name,
+                          scheduler: params.scheduler,
+                        })
+                      }
+                    />
                     {params.seed != null && (
-                      <MetadataRow label="Seed" value={params.seed} />
+                      <MetadataRow
+                        label="Seed"
+                        value={params.seed}
+                        applied={appliedKey === "seed"}
+                        applyTitle={ko ? "적용" : "Apply"}
+                        appliedTitle={ko ? "적용됨" : "Applied"}
+                        onApply={() =>
+                          applyPartial("seed", { seed: params.seed })
+                        }
+                      />
                     )}
-                    <MetadataRow label="Mode" value={params.generation_mode} />
+                    <MetadataRow
+                      label="Mode"
+                      value={params.generation_mode}
+                      applied={appliedKey === "mode"}
+                      applyTitle={ko ? "적용" : "Apply"}
+                      appliedTitle={ko ? "적용됨" : "Applied"}
+                      onApply={() =>
+                        applyPartial("mode", {
+                          generation_mode: params.generation_mode,
+                        })
+                      }
+                    />
                   </div>
                 </section>
 
