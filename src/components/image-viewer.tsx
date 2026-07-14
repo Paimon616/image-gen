@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   BookmarkPlus,
   Check,
@@ -11,9 +11,11 @@ import {
   FileJson,
   RotateCcw,
   Trash2,
+  Wand2,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { CivitaiOriginModal } from "@/components/civitai-origin-modal";
+import { ModelMediaThumbnail } from "@/components/model-media-thumbnail";
 import {
   Dialog,
   DialogContent,
@@ -24,14 +26,52 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { getModelConfig } from "@/lib/types";
+import { getModelConfig, type GenerationParams } from "@/lib/types";
 
-function MetadataRow({ label, value }: { label: string; value: string | number }) {
+interface LocalModelAsset {
+  path: string;
+  name: string;
+  version: string;
+  base_model: string;
+  thumbnail_url: string | null;
+}
+
+function MetadataRow({
+  label,
+  value,
+  applied,
+  onApply,
+  applyTitle,
+  appliedTitle,
+}: {
+  label: string;
+  value: string | number;
+  applied?: boolean;
+  onApply?: () => void;
+  applyTitle?: string;
+  appliedTitle?: string;
+}) {
   return (
     <div className="rounded-md border border-border bg-card px-3 py-2">
-      <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-        {label}
+      <div className="flex items-center justify-between gap-1">
+        <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+          {label}
+        </div>
+        {onApply && (
+          <button
+            type="button"
+            onClick={onApply}
+            title={applied ? appliedTitle : applyTitle}
+            aria-label={applied ? appliedTitle : applyTitle}
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            {applied ? (
+              <Check className="h-3 w-3 text-primary" />
+            ) : (
+              <Wand2 className="h-3 w-3" />
+            )}
+          </button>
+        )}
       </div>
       <div className="mt-1 truncate text-sm font-semibold text-foreground">
         {value}
@@ -44,16 +84,21 @@ function TextSection({
   label,
   children,
   muted = false,
+  action,
 }: {
   label: string;
   children: React.ReactNode;
   muted?: boolean;
+  action?: React.ReactNode;
 }) {
   return (
     <section className="rounded-lg border border-border bg-card p-3 shadow-sm">
-      <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-        {label}
-      </h3>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+          {label}
+        </h3>
+        {action}
+      </div>
       <div
         className={`mt-2 whitespace-pre-wrap break-words text-sm leading-6 ${
           muted ? "text-muted-foreground" : "text-foreground"
@@ -62,6 +107,65 @@ function TextSection({
         {children}
       </div>
     </section>
+  );
+}
+
+function ApplyButton({
+  applied,
+  label,
+  appliedLabel,
+  onClick,
+}: {
+  applied: boolean;
+  label: string;
+  appliedLabel: string;
+  onClick: () => void;
+}) {
+  return (
+    <Button
+      type="button"
+      size="sm"
+      variant="ghost"
+      className="h-6 shrink-0 gap-1 px-2 text-xs"
+      onClick={onClick}
+    >
+      {applied ? (
+        <Check className="h-3.5 w-3.5 text-primary" />
+      ) : (
+        <Wand2 className="h-3.5 w-3.5" />
+      )}
+      {applied ? appliedLabel : label}
+    </Button>
+  );
+}
+
+function ModelRow({
+  asset,
+  name,
+  subtitle,
+  action,
+}: {
+  asset: LocalModelAsset | undefined;
+  name: string;
+  subtitle?: string;
+  action: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2">
+      <ModelMediaThumbnail
+        src={asset?.thumbnail_url}
+        alt={name}
+        fallback={name.slice(0, 2).toUpperCase() || "M"}
+        className="h-11 w-11 shrink-0"
+      />
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-medium text-foreground">{name}</div>
+        {subtitle && (
+          <div className="truncate text-xs text-muted-foreground">{subtitle}</div>
+        )}
+      </div>
+      {action}
+    </div>
   );
 }
 
@@ -75,10 +179,19 @@ export function ImageViewer() {
     selectedImage,
     setSelectedImage,
     loadParamsFromImage,
+    setParams,
     removeImage,
     language,
   } = useStore();
+  const ko = language === "ko";
   const [originModalOpen, setOriginModalOpen] = useState(false);
+  const [modelAssets, setModelAssets] = useState<{
+    checkpointAssets: LocalModelAsset[];
+    loraAssets: LocalModelAsset[];
+    embeddingAssets: LocalModelAsset[];
+  }>({ checkpointAssets: [], loraAssets: [], embeddingAssets: [] });
+  const [appliedKey, setAppliedKey] = useState<string | null>(null);
+  const appliedTimer = useRef<number | null>(null);
   const [scrappingImageId, setScrappingImageId] = useState<string | null>(null);
   const [scrappedImageId, setScrappedImageId] = useState<string | null>(null);
   const [imageSizeMode, setImageSizeMode] = useState<{
@@ -89,6 +202,30 @@ export function ImageViewer() {
     kind: "image" | "metadata";
     filename: string;
   } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/models", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) =>
+        setModelAssets({
+          checkpointAssets: data.checkpointAssets ?? [],
+          loraAssets: data.loraAssets ?? [],
+          embeddingAssets: data.embeddingAssets ?? [],
+        })
+      )
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => () => {
+    if (appliedTimer.current) window.clearTimeout(appliedTimer.current);
+  }, []);
+
+  const applyPartial = (key: string, update: Partial<GenerationParams>) => {
+    setParams(update);
+    if (appliedTimer.current) window.clearTimeout(appliedTimer.current);
+    setAppliedKey(key);
+    appliedTimer.current = window.setTimeout(() => setAppliedKey(null), 1500);
+  };
 
   if (!selectedImage) return null;
 
@@ -165,6 +302,28 @@ export function ImageViewer() {
     setSelectedImage(null);
   };
 
+  const applyLora = (lora: { path: string; scale: number }) => {
+    const current = useStore.getState().params;
+    const loras = current.loras.some((item) => item.path === lora.path)
+      ? current.loras.map((item) =>
+          item.path === lora.path ? { ...item, scale: lora.scale } : item
+        )
+      : [...current.loras, lora];
+    applyPartial(`lora-${lora.path}`, { loras });
+  };
+
+  const applyEmbedding = (embedding: { path: string; tokens: string }) => {
+    const current = useStore.getState().params;
+    const embeddings = current.embeddings.some(
+      (item) => item.path === embedding.path
+    )
+      ? current.embeddings.map((item) =>
+          item.path === embedding.path ? { ...item, tokens: embedding.tokens } : item
+        )
+      : [...current.embeddings, embedding];
+    applyPartial(`embedding-${embedding.path}`, { embeddings });
+  };
+
   const handleScrap = async () => {
     if (!selectedImage.params) return;
 
@@ -194,6 +353,28 @@ export function ImageViewer() {
 
   const params = selectedImage.params;
   const civitaiOrigin = selectedImage.civitaiOrigin;
+  const referenceImages = params
+    ? [
+        {
+          key: "source_image",
+          label: ko ? "소스 (이미지→이미지)" : "Source (image-to-image)",
+          url: params.source_image,
+        },
+        {
+          key: "pose_reference_image",
+          label: ko ? "포즈 레퍼런스" : "Pose reference",
+          url: params.pose_reference_image,
+        },
+        { key: "style_image", label: ko ? "스타일" : "Style", url: params.style_image },
+        {
+          key: "character_image",
+          label: ko ? "캐릭터" : "Character",
+          url: params.character_image,
+        },
+      ].filter((item) => item.url)
+    : [];
+  const findAsset = (assets: LocalModelAsset[], path: string) =>
+    assets.find((asset) => asset.path === path);
   const isScrapping = scrappingImageId === selectedImage.id;
   const isScrapped = scrappedImageId === selectedImage.id;
   const isOriginalSize =
@@ -334,50 +515,237 @@ export function ImageViewer() {
 
             {params && (
               <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-background/70 p-5">
-                <TextSection label="Prompt">{params.prompt || "No prompt"}</TextSection>
+                <TextSection
+                  label="Prompt"
+                  action={
+                    params.prompt ? (
+                      <ApplyButton
+                        applied={appliedKey === "prompt"}
+                        label={ko ? "적용" : "Apply"}
+                        appliedLabel={ko ? "적용됨" : "Applied"}
+                        onClick={() => applyPartial("prompt", { prompt: params.prompt })}
+                      />
+                    ) : undefined
+                  }
+                >
+                  {params.prompt || "No prompt"}
+                </TextSection>
 
                 {params.negative_prompt && (
-                  <TextSection label="Negative Prompt" muted>
+                  <TextSection
+                    label="Negative Prompt"
+                    muted
+                    action={
+                      <ApplyButton
+                        applied={appliedKey === "negative_prompt"}
+                        label={ko ? "적용" : "Apply"}
+                        appliedLabel={ko ? "적용됨" : "Applied"}
+                        onClick={() =>
+                          applyPartial("negative_prompt", {
+                            negative_prompt: params.negative_prompt,
+                          })
+                        }
+                      />
+                    }
+                  >
                     {params.negative_prompt}
                   </TextSection>
                 )}
 
                 <section className="rounded-lg border border-border bg-card p-3 shadow-sm">
-                  <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                    Generation
-                  </h3>
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <MetadataRow label="Size" value={`${params.width} x ${params.height}`} />
-                    <MetadataRow label="Steps" value={params.num_inference_steps} />
-                    <MetadataRow label="CFG" value={params.guidance_scale} />
-                    <MetadataRow label="Sampler" value={params.sampler_name} />
-                    {params.seed != null && (
-                      <MetadataRow label="Seed" value={params.seed} />
-                    )}
-                    <MetadataRow label="Mode" value={params.generation_mode} />
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                      {ko ? "생성 정보" : "Generation"}
+                    </h3>
+                    <ApplyButton
+                      applied={appliedKey === "generation"}
+                      label={ko ? "적용" : "Apply"}
+                      appliedLabel={ko ? "적용됨" : "Applied"}
+                      onClick={() =>
+                        applyPartial("generation", {
+                          width: params.width,
+                          height: params.height,
+                          num_inference_steps: params.num_inference_steps,
+                          guidance_scale: params.guidance_scale,
+                          sampler_name: params.sampler_name,
+                          scheduler: params.scheduler,
+                          clip_skip: params.clip_skip,
+                          seed: params.seed,
+                          generation_mode: params.generation_mode,
+                        })
+                      }
+                    />
                   </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <MetadataRow
+                      label="Size"
+                      value={`${params.width} x ${params.height}`}
+                      applied={appliedKey === "size"}
+                      applyTitle={ko ? "적용" : "Apply"}
+                      appliedTitle={ko ? "적용됨" : "Applied"}
+                      onApply={() =>
+                        applyPartial("size", {
+                          width: params.width,
+                          height: params.height,
+                        })
+                      }
+                    />
+                    <MetadataRow
+                      label="Steps"
+                      value={params.num_inference_steps}
+                      applied={appliedKey === "steps"}
+                      applyTitle={ko ? "적용" : "Apply"}
+                      appliedTitle={ko ? "적용됨" : "Applied"}
+                      onApply={() =>
+                        applyPartial("steps", {
+                          num_inference_steps: params.num_inference_steps,
+                        })
+                      }
+                    />
+                    <MetadataRow
+                      label="CFG"
+                      value={params.guidance_scale}
+                      applied={appliedKey === "cfg"}
+                      applyTitle={ko ? "적용" : "Apply"}
+                      appliedTitle={ko ? "적용됨" : "Applied"}
+                      onApply={() =>
+                        applyPartial("cfg", {
+                          guidance_scale: params.guidance_scale,
+                        })
+                      }
+                    />
+                    <MetadataRow
+                      label="Sampler"
+                      value={params.sampler_name}
+                      applied={appliedKey === "sampler"}
+                      applyTitle={ko ? "적용" : "Apply"}
+                      appliedTitle={ko ? "적용됨" : "Applied"}
+                      onApply={() =>
+                        applyPartial("sampler", {
+                          sampler_name: params.sampler_name,
+                          scheduler: params.scheduler,
+                        })
+                      }
+                    />
+                    {params.seed != null && (
+                      <MetadataRow
+                        label="Seed"
+                        value={params.seed}
+                        applied={appliedKey === "seed"}
+                        applyTitle={ko ? "적용" : "Apply"}
+                        appliedTitle={ko ? "적용됨" : "Applied"}
+                        onApply={() =>
+                          applyPartial("seed", { seed: params.seed })
+                        }
+                      />
+                    )}
+                    <MetadataRow
+                      label="Mode"
+                      value={params.generation_mode}
+                      applied={appliedKey === "mode"}
+                      applyTitle={ko ? "적용" : "Apply"}
+                      appliedTitle={ko ? "적용됨" : "Applied"}
+                      onApply={() =>
+                        applyPartial("mode", {
+                          generation_mode: params.generation_mode,
+                        })
+                      }
+                    />
+                  </div>
+                </section>
 
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {params.model && (
-                      <Badge
-                        variant="outline"
-                        className="rounded-md border-primary/25 bg-primary/10 text-primary"
-                      >
-                        {getModelConfig(params.model).name}
-                      </Badge>
-                    )}
+                <section className="rounded-lg border border-border bg-card p-3 shadow-sm">
+                  <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                    {ko ? "모델" : "Models"}
+                  </h3>
+                  <div className="mt-3 space-y-2">
                     {params.model_name && (
-                      <Badge variant="secondary" className="rounded-md">
-                        {params.model_name}
-                      </Badge>
+                      <ModelRow
+                        asset={findAsset(modelAssets.checkpointAssets, params.model_name)}
+                        name={
+                          findAsset(modelAssets.checkpointAssets, params.model_name)?.name ??
+                          params.model_name
+                        }
+                        subtitle={`${getModelConfig(params.model).name} · ${
+                          ko ? "체크포인트" : "Checkpoint"
+                        }`}
+                        action={
+                          <ApplyButton
+                            applied={appliedKey === "checkpoint"}
+                            label={ko ? "적용" : "Apply"}
+                            appliedLabel={ko ? "적용됨" : "Applied"}
+                            onClick={() =>
+                              applyPartial("checkpoint", {
+                                model: params.model,
+                                model_name: params.model_name,
+                              })
+                            }
+                          />
+                        }
+                      />
                     )}
+
+                    {params.loras?.map((lora, index) => (
+                      <ModelRow
+                        key={`lora-${lora.path}-${index}`}
+                        asset={findAsset(modelAssets.loraAssets, lora.path)}
+                        name={
+                          findAsset(modelAssets.loraAssets, lora.path)?.name ?? lora.path
+                        }
+                        subtitle={`LoRA · Weight ${lora.scale}`}
+                        action={
+                          <ApplyButton
+                            applied={appliedKey === `lora-${lora.path}`}
+                            label={ko ? "적용" : "Apply"}
+                            appliedLabel={ko ? "적용됨" : "Applied"}
+                            onClick={() => applyLora(lora)}
+                          />
+                        }
+                      />
+                    ))}
+
+                    {params.embeddings?.map((embedding, index) => (
+                      <ModelRow
+                        key={`embedding-${embedding.path}-${index}`}
+                        asset={findAsset(modelAssets.embeddingAssets, embedding.path)}
+                        name={
+                          findAsset(modelAssets.embeddingAssets, embedding.path)?.name ??
+                          embedding.path
+                        }
+                        subtitle={
+                          embedding.tokens
+                            ? `Embedding · ${embedding.tokens}`
+                            : "Embedding"
+                        }
+                        action={
+                          <ApplyButton
+                            applied={appliedKey === `embedding-${embedding.path}`}
+                            label={ko ? "적용" : "Apply"}
+                            appliedLabel={ko ? "적용됨" : "Applied"}
+                            onClick={() => applyEmbedding(embedding)}
+                          />
+                        }
+                      />
+                    ))}
+
                     {params.upscale_model_name && (
-                      <Badge
-                        variant="outline"
-                        className="rounded-md border-accent/35 bg-accent/10 text-accent-foreground"
-                      >
-                        Upscaler: {params.upscale_model_name}
-                      </Badge>
+                      <ModelRow
+                        asset={undefined}
+                        name={params.upscale_model_name}
+                        subtitle={ko ? "업스케일러" : "Upscaler"}
+                        action={
+                          <ApplyButton
+                            applied={appliedKey === "upscaler"}
+                            label={ko ? "적용" : "Apply"}
+                            appliedLabel={ko ? "적용됨" : "Applied"}
+                            onClick={() =>
+                              applyPartial("upscaler", {
+                                upscale_model_name: params.upscale_model_name,
+                              })
+                            }
+                          />
+                        }
+                      />
                     )}
                   </div>
                 </section>
@@ -434,27 +802,26 @@ export function ImageViewer() {
                   </section>
                 )}
 
-                {params.loras?.length > 0 && (
+                {referenceImages.length > 0 && (
                   <section className="rounded-lg border border-border bg-card p-3 shadow-sm">
                     <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                      LoRA
+                      {ko ? "레퍼런스 이미지" : "Reference Images"}
                     </h3>
-                    <div className="mt-2 space-y-2">
-                      {params.loras.map(
-                        (lora: { path: string; scale: number }, index: number) => (
-                          <div
-                            key={`${lora.path}-${index}`}
-                            className="rounded-md border border-border bg-background px-3 py-2"
-                          >
-                            <div className="truncate text-xs font-mono text-foreground">
-                              {lora.path}
-                            </div>
-                            <div className="mt-1 text-xs font-semibold text-muted-foreground">
-                              Weight {lora.scale}
-                            </div>
+                    <div className="mt-3 grid grid-cols-2 gap-3">
+                      {referenceImages.map((reference) => (
+                        <div key={reference.key} className="space-y-1.5">
+                          <div className="overflow-hidden rounded-md border border-border bg-background">
+                            <img
+                              src={reference.url as string}
+                              alt={reference.label}
+                              className="aspect-square w-full object-cover"
+                            />
                           </div>
-                        )
-                      )}
+                          <div className="truncate text-xs font-medium text-muted-foreground">
+                            {reference.label}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </section>
                 )}

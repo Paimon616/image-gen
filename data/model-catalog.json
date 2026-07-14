@@ -5,7 +5,6 @@
     "base_model": "Illustrious",
     "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/be363071-0c5f-4235-88b5-47e27740e298/original=true/82973996.jpeg",
     "civitai_url": "https://civitai.red/models/1692152/a-mix-illustrious?modelVersionId=1915059",
-    "source_url": "https://civitai.red/models/1692152/a-mix-illustrious?modelVersionId=1915059",
     "tags": [
       "POS: masterwork, masterpiece, best quality, detailed, depth of field, high detail, best quality, very aesthetic, 8k",
       "NEG: lowres, worst quality, low quality, bad anatomy, bad hands, jpeg artifacts",
@@ -14,7 +13,22 @@
       "base model",
       "anime",
       "women"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent"
+      ]
+    },
+    "source_url": "https://civitai.red/models/1692152/a-mix-illustrious?modelVersionId=1915059"
   },
   "checkpoints/anima_baseV10.safetensors": {
     "name": "Anima",
@@ -33,6 +47,15 @@
       "level": "MEDIUM",
       "reason": "Rent 미허가(제3자 유료호스팅 불가)",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit"
+      ]
     }
   },
   "checkpoints/chilloutmix_NiPrunedFp32Fix.safetensors": {
@@ -57,6 +80,12 @@
         "nsfw"
       ],
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": []
     }
   },
   "checkpoints/dessertModels_iceCream.safetensors": {
@@ -79,6 +108,16 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "checkpoints/epicrealism_naturalSinRC1VAE.safetensors": {
@@ -107,6 +146,16 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "checkpoints/goldenHour_v10.safetensors": {
@@ -129,6 +178,16 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "checkpoints/hardcoreAsianCosplay_ilV11.safetensors": {
@@ -157,6 +216,16 @@
         "nsfw"
       ],
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "checkpoints/hassakuXLIllustrious_v22.safetensors": {
@@ -182,6 +251,16 @@
         "nsfw"
       ],
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent",
+        "Image"
+      ]
     }
   },
   "checkpoints/illustrij_v19.safetensors": {
@@ -203,6 +282,17 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent",
+        "Sell",
+        "Image"
+      ]
     }
   },
   "checkpoints/illustriousXL_v01.safetensors": {
@@ -219,6 +309,15 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "checkpoints/illustVector25DIL_v10.safetensors": {
@@ -239,6 +338,16 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "checkpoints/JANIMA_v10.safetensors": {
@@ -255,6 +364,15 @@
       "level": "MEDIUM",
       "reason": "Rent 미허가(제3자 유료호스팅 불가)",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Image"
+      ]
     }
   },
   "checkpoints/kirazuriAnima_v30AnimaBase1.safetensors": {
@@ -277,6 +395,14 @@
       "level": "HIGH",
       "reason": "Civitai 상업권 없음",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
     }
   },
   "checkpoints/ltx2310eros_v1.safetensors": {
@@ -296,6 +422,14 @@
         "nsfw"
       ],
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image"
+      ]
     }
   },
   "checkpoints/majicflus_v10.safetensors": {
@@ -314,6 +448,16 @@
       "level": "HIGH",
       "reason": "상업금지(FLUX dev 비상업 라이선스)",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "checkpoints/majicmixRealistic_v7.safetensors": {
@@ -333,6 +477,16 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "checkpoints/nova3DCGXL_ilV90.safetensors": {
@@ -363,6 +517,16 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "checkpoints/novaOrangeXL_v130.safetensors": {
@@ -390,6 +554,16 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "checkpoints/oneObsession_v22.safetensors": {
@@ -413,6 +587,15 @@
       "level": "MEDIUM",
       "reason": "Rent 미허가(제3자 유료호스팅 불가)",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Image"
+      ]
     }
   },
   "checkpoints/picxReal_10.safetensors": {
@@ -434,6 +617,14 @@
       "level": "HIGH",
       "reason": "Civitai 상업권 없음",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
     }
   },
   "checkpoints/pieModels_nutella.safetensors": {
@@ -454,6 +645,14 @@
       "level": "HIGH",
       "reason": "Civitai 상업권 없음",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
     }
   },
   "checkpoints/ponyDiffusionV6XL_v6StartWithThisOne.safetensors": {
@@ -472,6 +671,15 @@
       "level": "MEDIUM",
       "reason": "Rent 미허가(제3자 유료호스팅 불가)",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit"
+      ]
     }
   },
   "checkpoints/prefectIllustriousXL_v8.safetensors": {
@@ -497,6 +705,14 @@
         "nsfw"
       ],
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
     }
   },
   "checkpoints/quiets25DIllusMerge_v10.safetensors": {
@@ -513,6 +729,17 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
     }
   },
   "checkpoints/redLilyIllu_v10.safetensors": {
@@ -557,6 +784,14 @@
       "level": "HIGH",
       "reason": "Civitai 상업권 없음",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
     }
   },
   "checkpoints/riMixIllustriousAnima_riMixAnima.safetensors": {
@@ -574,6 +809,15 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "checkpoints/riMixIllustriousAnima_riMixV2.safetensors": {
@@ -591,6 +835,15 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "checkpoints/tpgSunmmerdreamV4_v4.safetensors": {
@@ -610,6 +863,16 @@
         "nsfw"
       ],
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "checkpoints/ultra_v14.safetensors": {
@@ -630,6 +893,15 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "checkpoints/waiANIMA_v10Base10.safetensors": {
@@ -645,6 +917,15 @@
       "level": "MEDIUM",
       "reason": "Rent 미허가(제3자 유료호스팅 불가)",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit"
+      ]
     }
   },
   "checkpoints/waiIllustriousSDXL_v140.safetensors": {
@@ -664,6 +945,15 @@
         "nsfw"
       ],
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit"
+      ]
     }
   },
   "checkpoints/waiIllustriousSDXL_v160.safetensors": {
@@ -683,6 +973,15 @@
         "nsfw"
       ],
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit"
+      ]
     }
   },
   "checkpoints/waiIllustriousSDXL_v170.safetensors": {
@@ -702,6 +1001,15 @@
         "nsfw"
       ],
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit"
+      ]
     }
   },
   "checkpoints/waiREALISM_v10.safetensors": {
@@ -718,6 +1026,16 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "embeddings/easynegative.safetensors": {
@@ -740,6 +1058,17 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
     }
   },
   "embeddings/lazyneg.safetensors": {
@@ -768,6 +1097,15 @@
       "level": "MEDIUM",
       "reason": "Rent 미허가(제3자 유료호스팅 불가)",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": false,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit"
+      ]
     }
   },
   "embeddings/lazypos.safetensors": {
@@ -796,6 +1134,15 @@
       "level": "MEDIUM",
       "reason": "Rent 미허가(제3자 유료호스팅 불가)",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": false,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit"
+      ]
     }
   },
   "embeddings/zPDXLxxx.pt": {
@@ -828,6 +1175,17 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
     }
   },
   "loras/5byue5dnijistyleE291.cNux.safetensors": {
@@ -847,6 +1205,17 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
     }
   },
   "loras/96YOTTEA-WAI.safetensors": {
@@ -861,7 +1230,21 @@
       "anime",
       "painting",
       "aesthetic"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent"
+      ]
+    }
   },
   "loras/AFAE-000010.safetensors": {
     "name": "Handsome Boy.1",
@@ -918,6 +1301,14 @@
       "level": "HIGH",
       "reason": "Civitai 상업권 없음",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
     }
   },
   "loras/analobjill_r1.safetensors": {
@@ -940,6 +1331,17 @@
         "nsfw"
       ],
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
     }
   },
   "loras/Anima_in_real_epoch_10.safetensors": {
@@ -966,6 +1368,15 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "Rent",
+        "RentCivit"
+      ]
     }
   },
   "loras/ANIMA_Niji_Sweet_Spot_v4.safetensors": {
@@ -985,6 +1396,16 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/anima-base-1-masterpiece-v51.safetensors": {
@@ -1006,6 +1427,16 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/anima-highres-aesthetic-boost.safetensors": {
@@ -1023,6 +1454,15 @@
       "level": "MEDIUM",
       "reason": "Rent 미허가(제3자 유료호스팅 불가)",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit"
+      ]
     }
   },
   "loras/anima-turbo-lora-v0.2.safetensors": {
@@ -1042,6 +1482,16 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/AnimaNSS4RE.safetensors": {
@@ -1060,6 +1510,16 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/AntherimOC-000004.safetensors": {
@@ -1084,6 +1544,15 @@
         "nsfw"
       ],
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/Arweverse_-_OC-000007.safetensors": {
@@ -1102,6 +1571,14 @@
         "nsfw"
       ],
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Sell"
+      ]
     }
   },
   "loras/Asian Cute Face.safetensors": {
@@ -1126,6 +1603,16 @@
         "person"
       ],
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/atreidsv2style.safetensors": {
@@ -1146,6 +1633,16 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/ayori_v1_step3400.safetensors": {
@@ -1168,6 +1665,14 @@
       "level": "HIGH",
       "reason": "Civitai 상업권 없음",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
     }
   },
   "loras/Beautiful_Girls_V4.safetensors": {
@@ -1195,6 +1700,17 @@
         "nsfw"
       ],
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
     }
   },
   "loras/BunnySlop_Anima.safetensors": {
@@ -1216,6 +1732,16 @@
         "nsfw"
       ],
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent",
+        "Image"
+      ]
     }
   },
   "loras/Censored_for_Betas.safetensors": {
@@ -1240,6 +1766,14 @@
         "nsfw"
       ],
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
     }
   },
   "loras/cinematic photography detailed illu xl v5.safetensors": {
@@ -1340,6 +1874,14 @@
       "level": "HIGH",
       "reason": "Civitai 상업권 없음",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
     }
   },
   "loras/Dark_Bara-10.safetensors": {
@@ -1363,6 +1905,14 @@
         "nsfw"
       ],
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Sell"
+      ]
     }
   },
   "loras/DaSiWa_LTX23_NSFW_Bodyphysics_Fluid_Motion_Enhancer_v01.safetensors": {
@@ -1388,6 +1938,15 @@
         "nsfw"
       ],
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit"
+      ]
     }
   },
   "loras/DemonerithIllustrious.safetensors": {
@@ -1406,6 +1965,17 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
     }
   },
   "loras/detailed_pussy-10.safetensors": {
@@ -1432,6 +2002,14 @@
         "nsfw"
       ],
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
     }
   },
   "loras/DetailedEyes_V3.safetensors": {
@@ -1450,6 +2028,15 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/Detailer_NoobAI_Incrs_v1.safetensors": {
@@ -1479,6 +2066,15 @@
       "level": "MEDIUM",
       "reason": "Rent 미허가(제3자 유료호스팅 불가)",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": false,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit"
+      ]
     }
   },
   "loras/DR34ML4Y_LTXXX_V2.safetensors": {
@@ -1506,6 +2102,14 @@
         "nsfw"
       ],
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": false,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
     }
   },
   "loras/Elle_based_on_Rick__Morty_Anime-000009.safetensors": {
@@ -1528,6 +2132,15 @@
         "ip"
       ],
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/ep5.safetensors": {
@@ -1549,6 +2162,15 @@
         "nsfw"
       ],
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/Expressive_H-000001.safetensors": {
@@ -1570,7 +2192,25 @@
       "lora",
       "style",
       "video game"
-    ]
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "flags": [
+        "nsfw"
+      ],
+      "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Rent",
+        "RentCivit",
+        "Image"
+      ]
+    }
   },
   "loras/flux dildo riding.safetensors": {
     "name": "dildo riding flux",
@@ -1601,6 +2241,15 @@
       "level": "HIGH",
       "reason": "상업금지(FLUX dev 비상업 라이선스)",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit"
+      ]
     }
   },
   "loras/Futurabbitstyle_animaV1.5-000016.safetensors": {
@@ -1617,6 +2266,17 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
     },
     "source_url": "https://civitai.red/models/2674611/futurabbitstyle-anima?modelVersionId=3003138"
   },
@@ -1639,6 +2299,14 @@
       "level": "HIGH",
       "reason": "Civitai 상업권 없음",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": false,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
     }
   },
   "loras/GENESIS_MK0.4.safetensors": {
@@ -1657,6 +2325,14 @@
       "level": "HIGH",
       "reason": "Civitai 상업권 없음",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
     }
   },
   "loras/Hand pony style v1.safetensors": {
@@ -1707,6 +2383,14 @@
       "level": "HIGH",
       "reason": "Civitai 상업권 없음",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
     }
   },
   "loras/handPatchUnet4Merge.safetensors": {
@@ -1725,6 +2409,15 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/hansame-000019.safetensors": {
@@ -1741,6 +2434,17 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
     }
   },
   "loras/hassakuXLIllustrious_v22.safetensors": {
@@ -1766,6 +2470,16 @@
         "nsfw"
       ],
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent",
+        "Image"
+      ]
     }
   },
   "loras/illustriousXLv01_stabilizer_v1.121.safetensors": {
@@ -1782,6 +2496,14 @@
       "level": "HIGH",
       "reason": "Civitai 상업권 없음",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
     }
   },
   "loras/illustriousXLv01_stabilizer_v1.198.safetensors": {
@@ -1798,6 +2520,14 @@
       "level": "HIGH",
       "reason": "Civitai 상업권 없음",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
     }
   },
   "loras/ILXL_Realism_Slider_V.1.safetensors": {
@@ -1829,6 +2559,14 @@
       "level": "HIGH",
       "reason": "Civitai 상업권 없음",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
     }
   },
   "loras/ily-scat-smear.safetensors": {
@@ -1865,6 +2603,17 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
     }
   },
   "loras/JapaneseDollLikeness_v15.safetensors": {
@@ -1889,6 +2638,14 @@
         "nsfw"
       ],
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image"
+      ]
     }
   },
   "loras/knva retro illustration.safetensors": {
@@ -1911,6 +2668,15 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/LUT_slider_xxXL_V1.safetensors": {
@@ -1938,6 +2704,14 @@
       "level": "HIGH",
       "reason": "Civitai 상업권 없음",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
     }
   },
   "loras/ma1ma1helmes_b-000014.safetensors": {
@@ -1984,6 +2758,14 @@
       "level": "HIGH",
       "reason": "Civitai 상업권 없음",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
     }
   },
   "loras/mai_bj_clothing_12.safetensors": {
@@ -2003,6 +2785,17 @@
         "nsfw"
       ],
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Sell",
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/majicbeauty1.safetensors": {
@@ -2024,6 +2817,16 @@
         "person"
       ],
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/more_details.safetensors": {
@@ -2049,6 +2852,16 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/MoriiMee_Gothic_Niji_Style_Illustrious_r1.safetensors": {
@@ -2076,6 +2889,15 @@
         "nsfw"
       ],
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/MuseInDark_IL-NAI-Tweak-3.0.safetensors": {
@@ -2102,6 +2924,15 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/MythP0rtr4itStyle.safetensors": {
@@ -2129,6 +2960,17 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Image",
+        "Rent",
+        "Sell"
+      ]
     }
   },
   "loras/Niji_oil_painting_drawing-anime.safetensors": {
@@ -2156,6 +2998,16 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent",
+        "Image"
+      ]
     }
   },
   "loras/Niji_Semi_realism_F_N_R_epoch_10.safetensors": {
@@ -2178,6 +3030,16 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent",
+        "Image"
+      ]
     }
   },
   "loras/nnestyle.safetensors": {
@@ -2198,6 +3060,16 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/Nobara - Illu.safetensors": {
@@ -2220,6 +3092,16 @@
         "ip"
       ],
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/nurse_v11-05.safetensors": {
@@ -2240,6 +3122,16 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/p0nyd1sney1ncasev1x0n2-v2.safetensors": {
@@ -2269,6 +3161,14 @@
       "level": "HIGH",
       "reason": "Civitai 상업권 없음",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
     }
   },
   "loras/People'sWorks_v10_Illusv1.0.safetensors": {
@@ -2286,6 +3186,16 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/People'sWorks_v9_Illusv1.0_128dim.safetensors": {
@@ -2303,6 +3213,16 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/ponyv4_noob1_2_adamW-000017.safetensors": {
@@ -2320,6 +3240,16 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/Real_Pussy_Illustrious.safetensors": {
@@ -2341,6 +3271,15 @@
         "nsfw"
       ],
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/realistic filter [IL].safetensors": {
@@ -2361,6 +3300,15 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/remacri_original.safetensors": {
@@ -2377,6 +3325,17 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent",
+        "Image",
+        "Sell"
+      ]
     }
   },
   "loras/rimixao5050.safetensors": {
@@ -2398,6 +3357,15 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/S4bit4mago.safetensors": {
@@ -2448,6 +3416,14 @@
       "level": "HIGH",
       "reason": "Civitai 상업권 없음",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
     }
   },
   "loras/silvana-style-AB10-01.safetensors": {
@@ -2471,6 +3447,17 @@
         "nsfw"
       ],
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
     }
   },
   "loras/skzW0rld-IXL.safetensors": {
@@ -2489,6 +3476,14 @@
       "level": "HIGH",
       "reason": "Civitai 상업권 없음",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
     }
   },
   "loras/Smooth_Booster_v3.safetensors": {
@@ -2514,6 +3509,15 @@
       "level": "MEDIUM",
       "reason": "Rent 미허가(제3자 유료호스팅 불가)",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Image"
+      ]
     }
   },
   "loras/Smooth_Booster_v5.safetensors": {
@@ -2538,6 +3542,15 @@
       "level": "MEDIUM",
       "reason": "Rent 미허가(제3자 유료호스팅 불가)",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Image"
+      ]
     }
   },
   "loras/spo_sdxl_10ep_4k-data_lora_webui.safetensors": {
@@ -2554,6 +3567,17 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
     }
   },
   "loras/USNR STYLE_XL_lokr.safetensors": {
@@ -2571,6 +3595,15 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/USNR_STYLE_ILL_V1_lokr3-000024.safetensors": {
@@ -2590,6 +3623,15 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/vcalicia-anima-nvwls-v1.safetensors": {
@@ -2624,6 +3666,14 @@
         "nsfw"
       ],
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Sell"
+      ]
     }
   },
   "loras/ZodaPlus.safetensors": {
@@ -2640,6 +3690,17 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
     }
   },
   "upscale_models/remacri_original.safetensors": {
@@ -2655,6 +3716,17 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent",
+        "Image",
+        "Sell"
+      ]
     }
   },
   "vae/sdxlVAE_sdxlVAE.safetensors": {
@@ -2674,6 +3746,17 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
     }
   },
   "vae/vaeKlF8Anime2_klF8Anime2VAE.safetensors": {
@@ -2734,6 +3817,14 @@
       "level": "HIGH",
       "reason": "Civitai 상업권 없음",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
     }
   },
   "loras/[Style filter] Xu Er thick paint composition light texture enhancement Illustrious.safetensors": {
@@ -2758,6 +3849,14 @@
       "level": "HIGH",
       "reason": "Civitai 상업권 없음",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
     }
   },
   "loras/MythicCraft_IL_(semi-real).safetensors": {
@@ -2797,6 +3896,17 @@
         "ip"
       ],
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
     }
   },
   "loras/ponyv3_ill01_2_adamW-000017.safetensors": {
@@ -2814,6 +3924,16 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "checkpoints/riMixIllustriousAnima_riMix.safetensors": {
@@ -2833,6 +3953,15 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/748cmSDXL.safetensors": {
@@ -2854,6 +3983,14 @@
       "level": "HIGH",
       "reason": "Civitai 상업권 없음",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
     }
   },
   "loras/Eye_Enhancer.safetensors": {
@@ -2879,6 +4016,14 @@
         "nsfw"
       ],
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
     }
   },
   "loras/flatline_v2_-_Illus_x_Niji.safetensors": {
@@ -2898,6 +4043,17 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
     }
   },
   "loras/748cm_illu.safetensors": {
@@ -2943,6 +4099,14 @@
       "level": "HIGH",
       "reason": "Civitai 상업권 없음",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
     }
   },
   "checkpoints/celestrealAnimeSemi_v20.safetensors": {
@@ -2965,6 +4129,15 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/SDXL_Hanbok_LoRA_beta7.safetensors": {
@@ -2987,6 +4160,14 @@
       "level": "MEDIUM",
       "reason": "Rent 미허가(제3자 유료호스팅 불가)",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image"
+      ]
     }
   },
   "loras/Hanbok-V2.safetensors": {
@@ -3006,6 +4187,16 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "checkpoints/oneObsession_15Noobai.safetensors": {
@@ -3029,6 +4220,15 @@
       "level": "MEDIUM",
       "reason": "Rent 미허가(제3자 유료호스팅 불가)",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Image"
+      ]
     }
   },
   "loras/MGE_V6.1_IL_Final_R1.safetensors": {
@@ -3052,6 +4252,14 @@
       "level": "HIGH",
       "reason": "Civitai 상업권 없음",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
     }
   },
   "loras/lightingSlider.safetensors": {
@@ -3075,6 +4283,16 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/NOOB_vp1_detailer_by_volnovik_v1.safetensors": {
@@ -3093,6 +4311,16 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/ppw_v8_Illuv2stable_128.safetensors": {
@@ -3110,6 +4338,16 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "checkpoints/wildcardxXLFusion_fusionOG.safetensors": {
@@ -3207,6 +4445,14 @@
       "level": "HIGH",
       "reason": "Civitai 상업권 없음",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
     }
   },
   "checkpoints/revAnimated_v11-inpainting.safetensors": {
@@ -3228,6 +4474,15 @@
       "level": "MEDIUM",
       "reason": "Rent 미허가(제3자 유료호스팅 불가)",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit"
+      ]
     }
   },
   "checkpoints/revAnimated_v122EOL.safetensors": {
@@ -3249,6 +4504,15 @@
       "level": "MEDIUM",
       "reason": "Rent 미허가(제3자 유료호스팅 불가)",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit"
+      ]
     }
   },
   "loras/ILwatercolor.safetensors": {
@@ -3270,6 +4534,15 @@
       "level": "MEDIUM",
       "reason": "Rent 미허가(제3자 유료호스팅 불가)",
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": false,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit"
+      ]
     }
   },
   "loras/RetroNijiIL.safetensors": {
@@ -3302,6 +4575,15 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent"
+      ]
     }
   },
   "loras/Devilight.safetensors": {
@@ -3320,6 +4602,17 @@
       "level": "OK",
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
     }
   },
   "checkpoints/hiddenCanvas_v10.safetensors": {
@@ -3345,6 +4638,15 @@
         "nsfw"
       ],
       "allow_commercial_use": "N"
+    },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit"
+      ]
     }
   },
   "checkpoints/reil_SemirealV1.safetensors": {
@@ -3356,7 +4658,18 @@
     "source_url": "https://civitai.red/models/1784638/reil?modelVersionId=2053862",
     "tags": [
       "base model"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
   },
   "loras/Yoneyama_Mai_illu.safetensors": {
     "name": "Yoneyama Mai | Style LoRa",
@@ -3381,7 +4694,15 @@
       "styles",
       "clothings",
       "shiiro"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
+    }
   },
   "embeddings/SmoothNoob_Quality.safetensors": {
     "name": "Smooth Embeddings",
@@ -3398,7 +4719,17 @@
       "quality up",
       "positive embedding",
       "quality enhancer"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Image",
+        "Rent"
+      ]
+    }
   },
   "embeddings/SmoothNoob_Negative-neg.safetensors": {
     "name": "Smooth Embeddings",
@@ -3415,7 +4746,17 @@
       "quality up",
       "positive embedding",
       "quality enhancer"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Image",
+        "Rent"
+      ]
+    }
   },
   "checkpoints/illustAnime2DIL_v10.safetensors": {
     "name": "illust-Anime-2D_IL",
@@ -3426,7 +4767,17 @@
     "source_url": "https://civitai.red/models/1941015/illust-anime-2d-il?modelVersionId=2196830",
     "tags": [
       "base model"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
+    }
   },
   "loras/cryostyle.safetensors": {
     "name": "Cryosibilum Style | Illustrious",
@@ -3446,7 +4797,17 @@
       "illustration",
       "illustrious",
       "elvenworth"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
+    }
   },
   "loras/Rapscallion_Illustrious.safetensors": {
     "name": "Rapscallion style Illustrious, PDXL, ZIT",
@@ -3462,7 +4823,17 @@
       "woman",
       "jack cayless",
       "hypersexual"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "Rent",
+        "RentCivit",
+        "Image"
+      ]
+    }
   },
   "loras/[Artstyle] SomethingWeird_Geekpower [IL].safetensors": {
     "name": "[IL] Geekpower AI Styles",
@@ -3474,7 +4845,15 @@
     "tags": [
       "style",
       "styles"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
+    }
   },
   "checkpoints/plantMilkModelSuite_flax.safetensors": {
     "name": "Plant Milk 🌿 - Model Suite",
@@ -3490,7 +4869,16 @@
       "boys",
       "styled",
       "plant milk"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit"
+      ]
+    }
   },
   "loras/748cmv3_animav1-000060.safetensors": {
     "name": "748cm | Style",
@@ -3506,7 +4894,15 @@
       "cute",
       "girls",
       "women"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
+    }
   },
   "checkpoints/BSSANIRLANIMASemi_v10.safetensors": {
     "name": "[BSS] - ANI-RL (ANIMA Semi-Realistic model)",
@@ -3521,7 +4917,15 @@
       "base model",
       "semi-realistic",
       "2.5d"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
+    }
   },
   "loras/MoriiMee_AnimaV10_byKonan.safetensors": {
     "name": "MoriiMee - Gothic Niji Journey - Style Anima LORA",
@@ -3539,7 +4943,16 @@
       "goth",
       "niji journey",
       "moriimee"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit"
+      ]
+    }
   },
   "loras/Aura_Phantasy_illu.safetensors": {
     "name": "Aura Phantasy | Shiiro's Styles | Ai",
@@ -3580,7 +4993,15 @@
       "background pony",
       "shiiro",
       "manga artist"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
+    }
   },
   "checkpoints/chroma_v41LowStepRl.safetensors": {
     "name": "Chroma",
@@ -3593,7 +5014,18 @@
       "base model",
       "chroma",
       "base_model"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent",
+        "Image",
+        "Sell"
+      ]
+    }
   },
   "embeddings/7dirtywords.pt": {
     "name": "7 Dirty Words negative prompt",
@@ -3608,7 +5040,18 @@
       "concept",
       "negative",
       "negative embedding"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
   },
   "checkpoints/somboy_v25.safetensors": {
     "name": "SomBoy",
@@ -3627,7 +5070,13 @@
       "man",
       "2.5d",
       "boys"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": []
+    }
   },
   "loras/Rococo vest.safetensors": {
     "name": "RococoSuits",
@@ -3638,7 +5087,18 @@
     "source_url": "https://civitai.red/models/213669/rococosuits?modelVersionId=240669",
     "tags": [
       "clothing"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
   },
   "loras/WorldofCrochet.safetensors": {
     "name": "World of Crochet",
@@ -3663,7 +5123,16 @@
       "style",
       "fantasy",
       "knitting"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit"
+      ]
+    }
   },
   "checkpoints/somman_v10.safetensors": {
     "name": "Somman",
@@ -3680,7 +5149,13 @@
       "man",
       "2.5d",
       "boys"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": []
+    }
   },
   "loras/IceAI.safetensors": {
     "name": "DonM - IceAI [SD1.5]",
@@ -3694,7 +5169,17 @@
       "style",
       "ice",
       "styles"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
+    }
   },
   "loras/WorldofLace.safetensors": {
     "name": "World of Lace",
@@ -3709,7 +5194,16 @@
       "fantasy",
       "lace",
       "clothing style"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit"
+      ]
+    }
   },
   "loras/by_flower_poya-pony-000017.safetensors": {
     "name": "Flower_poya artstyle (Manwha Webcomic, etc) [Pony]",
@@ -3727,7 +5221,16 @@
       "artstyle",
       "girls",
       "manwha"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent"
+      ]
+    }
   },
   "checkpoints/autismmixSDXL_autismmixPony.safetensors": {
     "name": "AutismMix SDXL",
@@ -3743,7 +5246,16 @@
       "sdxl anime",
       "checkpoint xl",
       "ponyxl"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit"
+      ]
+    }
   },
   "loras/Niji Boi.safetensors": {
     "name": "Niji Boi",
@@ -3754,7 +5266,17 @@
     "source_url": "https://civitai.red/models/2054573/niji-boi?modelVersionId=2325106",
     "tags": [
       "style"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Image",
+        "Rent"
+      ]
+    }
   },
   "loras/DreamcoreNeonILL.safetensors": {
     "name": "Vixon's Illustrious Styles - Dreamcore Neon",
@@ -3767,7 +5289,15 @@
       "neon lights, dreamcore",
       "style",
       "dreamcore neon"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
+    }
   },
   "checkpoints/novaFurryXL_ilV140.safetensors": {
     "name": "Nova Furry XL",
@@ -3791,7 +5321,17 @@
       "xl",
       "sdxl",
       "furry style"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
+    }
   },
   "loras/Handsome_male_Rank64.safetensors": {
     "name": "Handsome SuperModel Male - Concept (ILXL)",
@@ -3822,7 +5362,18 @@
       "homoerotic model",
       "gay model",
       "handsome hunk"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
   },
   "loras/SoftNeoMaleNiji_120_IL.safetensors": {
     "name": "Neo Male Niji - Soft Style [IL]",
@@ -3857,7 +5408,18 @@
       "neo style",
       "male niji",
       "male niji style"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
   },
   "checkpoints/celestialBaraHugeHunk_v10ILCelestialBara.safetensors": {
     "name": "Celestial Bara - Huge Hunk [Illustrious]",
@@ -3884,7 +5446,77 @@
       "nsfw",
       "human",
       "hunk"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
+  },
+  "loras/DetailedStyle(Illustrious).safetensors": {
+    "name": "Anime Male Styles",
+    "version": "Detailed (Illustrious)",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/ebee0faa-5d83-40a2-b6ac-a8e26f36637d/original=true/63743251.jpeg",
+    "civitai_url": "https://civitai.red/models/817340/anime-male-styles?modelVersionId=1537065",
+    "source_url": "https://civitai.red/models/817340/anime-male-styles?modelVersionId=1537065",
+    "tags": [
+      "anime",
+      "bara",
+      "style",
+      "male",
+      "man",
+      "men",
+      "muscle",
+      "xxx",
+      "male characters"
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
+    }
+  },
+  "checkpoints/unholyDesireMixSinister_v30.safetensors": {
+    "name": "Unholy Desire Mix - Sinister Aesthetic (Illustrious)",
+    "version": "v3.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/f0cc29e9-97ff-414d-9648-034325d1180a/original=true/63035505.jpeg",
+    "civitai_url": "https://civitai.red/models/1307857/unholy-desire-mix-sinister-aesthetic-illustrious?modelVersionId=1522490",
+    "source_url": "https://civitai.red/models/1307857/unholy-desire-mix-sinister-aesthetic-illustrious?modelVersionId=1522490",
+    "tags": [
+      "anime",
+      "porn",
+      "mix",
+      "base model",
+      "hentai",
+      "characters",
+      "nsfw",
+      "merge",
+      "unholy",
+      "sdxl",
+      "illustrious"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
   },
   "loras/Pvnk_styl2.safetensors": {
     "name": "Pvnk | Shiiro's Styles",

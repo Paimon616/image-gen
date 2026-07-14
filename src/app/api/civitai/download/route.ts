@@ -3,7 +3,8 @@ import { basename, join, normalize } from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { COMFYUI_MODELS_DIR } from "@/lib/comfyui-model-files";
 import { normalizeCivitaiModelUrl, parseCivitaiUrlIds } from "@/lib/civitai-url";
-import type { ImportedCivitaiResource } from "@/lib/types";
+import { parseCivitaiLicense } from "@/lib/civitai-license";
+import type { CivitaiLicenseInfo, ImportedCivitaiResource } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -27,6 +28,7 @@ interface LocalModelMetadata {
   civitai_url?: string | null;
   source_url?: string | null;
   tags?: string[];
+  license?: CivitaiLicenseInfo;
 }
 
 interface CivitaiModelVersion {
@@ -44,6 +46,14 @@ interface CivitaiModel {
   name?: string;
   tags?: string[];
   modelVersions?: CivitaiModelVersion[];
+  allowNoCredit?: unknown;
+  allowCommercialUse?: unknown;
+  allowDerivatives?: unknown;
+  allowDifferentLicense?: unknown;
+}
+
+function parseLicense(model: CivitaiModel): CivitaiLicenseInfo | undefined {
+  return parseCivitaiLicense(model) ?? undefined;
 }
 
 function stringValue(value: unknown) {
@@ -202,6 +212,7 @@ async function fetchCivitaiMetadata(resource: ImportedCivitaiResource) {
     civitai_url: resource.url,
     source_url: resource.url,
     tags,
+    license: parseLicense(model),
   } satisfies LocalModelMetadata;
 }
 

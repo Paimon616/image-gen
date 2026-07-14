@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { CivitaiOriginModal } from "@/components/civitai-origin-modal";
 import {
   AlertCircle,
+  BookmarkCheck,
   BookmarkPlus,
   Check,
   Clock,
@@ -251,10 +252,17 @@ const GalleryCard = memo(function GalleryCard({
             variant="outline"
             className="pointer-events-auto bg-white/90 text-black hover:bg-white"
             onClick={() => onScrap(img)}
-            disabled={!img.params || !canUseCompletedImageActions || scrapping || scrapped}
-            aria-label="Scrap image"
+            disabled={!img.params || !canUseCompletedImageActions || scrapping}
+            aria-label={scrapped ? "Remove scrap" : "Scrap image"}
+            title={scrapped ? "스크랩 취소" : "스크랩"}
           >
-            {scrapped ? <Check /> : <BookmarkPlus />}
+            {scrapping ? (
+              <Loader2 className="animate-spin" />
+            ) : scrapped ? (
+              <BookmarkCheck />
+            ) : (
+              <BookmarkPlus />
+            )}
           </Button>
           <Button
             type="button"
@@ -336,7 +344,9 @@ export function Gallery({ onCancelGeneration, columns = 3 }: GalleryProps) {
   const loadParamsFromImage = useStore((state) => state.loadParamsFromImage);
   const removeImage = useStore((state) => state.removeImage);
   const [scrappingIds, setScrappingIds] = useState<Set<string>>(new Set());
-  const [scrappedKeys, setScrappedKeys] = useState<Set<string>>(new Set());
+  const [scrapIdByKey, setScrapIdByKey] = useState<Map<string, string>>(
+    new Map()
+  );
   const [nextCursor, setNextCursor] = useState<number | null>(null);
   const [totalImages, setTotalImages] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -346,13 +356,13 @@ export function Gallery({ onCancelGeneration, columns = 3 }: GalleryProps) {
     const ids = new Set<string>();
 
     visibleImages.forEach((img) => {
-      if (generatedImageKeys(img).some((key) => scrappedKeys.has(key))) {
+      if (generatedImageKeys(img).some((key) => scrapIdByKey.has(key))) {
         ids.add(img.id);
       }
     });
 
     return ids;
-  }, [visibleImages, scrappedKeys]);
+  }, [visibleImages, scrapIdByKey]);
   const hasMoreImages = nextCursor !== null;
 
   const loadImagePage = useCallback(
@@ -385,7 +395,15 @@ export function Gallery({ onCancelGeneration, columns = 3 }: GalleryProps) {
           ? (data.entries as HistoryEntry[])
           : [];
 
-        setScrappedKeys(new Set(entries.flatMap(generatedScrapKeys)));
+        setScrapIdByKey(
+          new Map(
+            entries.flatMap((entry) =>
+              generatedScrapKeys(entry).map(
+                (key) => [key, entry.id] as const
+              )
+            )
+          )
+        );
       })
       .catch(() => {});
   }, []);
@@ -408,44 +426,71 @@ export function Gallery({ onCancelGeneration, columns = 3 }: GalleryProps) {
     [loadParamsFromImage]
   );
 
-  const handleScrap = useCallback(async (img: GeneratedImage) => {
-    if (!img.params) return;
+  const handleScrap = useCallback(
+    async (img: GeneratedImage) => {
+      if (!img.params) return;
 
-    setScrappingIds((current) => new Set(current).add(img.id));
+      const keys = generatedImageKeys(img);
+      const existingId = keys
+        .map((key) => scrapIdByKey.get(key))
+        .find((value): value is string => Boolean(value));
 
-    try {
-      const response = await fetch("/api/scrap", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          generatedImage: img,
-          params: img.params,
-        }),
-      });
+      setScrappingIds((current) => new Set(current).add(img.id));
 
-      if (!response.ok) {
-        throw new Error("Failed to scrap generated image.");
+      try {
+        if (existingId) {
+          const response = await fetch("/api/scrap", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: existingId }),
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to remove scrap.");
+          }
+
+          setScrapIdByKey((current) => {
+            const next = new Map(current);
+            for (const [key, id] of current) {
+              if (id === existingId) next.delete(key);
+            }
+            return next;
+          });
+        } else {
+          const response = await fetch("/api/scrap", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              generatedImage: img,
+              params: img.params,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to scrap generated image.");
+          }
+
+          const data = (await response.json()) as { entry?: HistoryEntry };
+          const entryId = data.entry?.id;
+
+          if (entryId) {
+            setScrapIdByKey((current) => {
+              const next = new Map(current);
+              keys.forEach((key) => next.set(key, entryId));
+              return next;
+            });
+          }
+        }
+      } finally {
+        setScrappingIds((current) => {
+          const next = new Set(current);
+          next.delete(img.id);
+          return next;
+        });
       }
-
-      setScrappedKeys((current) => {
-        const next = new Set(current);
-        generatedImageKeys(img).forEach((key) => next.add(key));
-        return next;
-      });
-    } catch {
-      setScrappedKeys((current) => {
-        const next = new Set(current);
-        generatedImageKeys(img).forEach((key) => next.delete(key));
-        return next;
-      });
-    } finally {
-      setScrappingIds((current) => {
-        const next = new Set(current);
-        next.delete(img.id);
-        return next;
-      });
-    }
-  }, []);
+    },
+    [scrapIdByKey]
+  );
 
   const handleDelete = useCallback(
     async (img: GeneratedImage) => {

@@ -8,6 +8,8 @@ import {
   hasModelExtension,
   isAnimaCheckpointName,
 } from "@/lib/comfyui-model-files";
+import type { CivitaiLicenseInfo } from "@/lib/types";
+import { parseAllowCommercialUse } from "@/lib/civitai-license";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +42,7 @@ interface LocalModelMetadata {
   source_url?: string | null;
   tags?: string[];
   risk?: ModelRisk | null;
+  license?: CivitaiLicenseInfo | null;
 }
 
 type CatalogImportMode = "merge" | "replace";
@@ -107,7 +110,32 @@ function normalizeMetadata(value: unknown): LocalModelMetadata | null {
       ? value.tags.filter((tag): tag is string => typeof tag === "string")
       : [],
     risk: normalizeRisk(value.risk),
+    license: normalizeLicense(value.license),
   };
+}
+
+function normalizeLicense(value: unknown): CivitaiLicenseInfo | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const license: CivitaiLicenseInfo = {};
+
+  if (typeof value.allowNoCredit === "boolean") {
+    license.allowNoCredit = value.allowNoCredit;
+  }
+  if (typeof value.allowDerivatives === "boolean") {
+    license.allowDerivatives = value.allowDerivatives;
+  }
+  if (typeof value.allowDifferentLicense === "boolean") {
+    license.allowDifferentLicense = value.allowDifferentLicense;
+  }
+  const commercial = parseAllowCommercialUse(value.allowCommercialUse);
+  if (commercial) {
+    license.allowCommercialUse = commercial;
+  }
+
+  return Object.keys(license).length > 0 ? license : null;
 }
 
 function normalizeRisk(value: unknown): ModelRisk | null {
@@ -241,6 +269,7 @@ function buildModelAssets(
       source_url: metadata?.source_url ?? metadata?.civitai_url ?? null,
       tags: metadata?.tags ?? [],
       risk: metadata?.risk ?? null,
+      license: metadata?.license ?? null,
     };
   });
 }
@@ -384,6 +413,10 @@ export async function PATCH(req: NextRequest) {
     source_url: body.metadata.source_url ?? body.metadata.civitai_url ?? null,
     tags: body.metadata.tags ?? [],
     risk: normalizeRisk(body.metadata.risk) ?? catalog[body.key]?.risk ?? null,
+    license:
+      normalizeLicense(body.metadata.license) ??
+      catalog[body.key]?.license ??
+      null,
   };
   await writeCatalog(catalog);
 
