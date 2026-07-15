@@ -9,7 +9,7 @@ import { useStore, type AppLanguage } from "@/lib/store";
 const NAV_ITEMS = [
   { href: "/", labels: { ko: "이미지 생성", en: "Image Generation" }, icon: Images },
   { href: "/video", labels: { ko: "비디오 생성", en: "Video Generation" }, icon: Film },
-  { href: "/interrogate", labels: { ko: "ITP", en: "ITP" }, icon: Search },
+  { href: "/interrogate", labels: { ko: "프롬프트 추출", en: "Prompt Extraction" }, icon: Search },
   { href: "/models", labels: { ko: "모델", en: "Models" }, icon: Layers3 },
   { href: "/lora-training", labels: { ko: "LoRA 훈련", en: "LoRA Training" }, icon: BrainCircuit },
   { href: "/scrap", labels: { ko: "스크랩", en: "Scrap" }, icon: Bookmark },
