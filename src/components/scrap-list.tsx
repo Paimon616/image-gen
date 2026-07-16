@@ -20,7 +20,8 @@ import { useStore } from "@/lib/store";
 import type { HistoryEntry } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { CopyLinkButton } from "@/components/copy-link-button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
@@ -233,18 +234,26 @@ function EntryActions({
         </Button>
       )}
       {entry.pageUrl && (
-        <Button
-          type="button"
-          size="icon-sm"
-          variant="outline"
-          onClick={(event) => {
-            event.stopPropagation();
-            window.open(entry.pageUrl, "_blank", "noreferrer");
-          }}
-          aria-label="Open Civitai page"
-        >
-          <ExternalLink className="h-4 w-4" />
-        </Button>
+        <>
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="outline"
+            onClick={(event) => {
+              event.stopPropagation();
+              window.open(entry.pageUrl, "_blank", "noreferrer");
+            }}
+            aria-label="Open Civitai page"
+          >
+            <ExternalLink className="h-4 w-4" />
+          </Button>
+          <CopyLinkButton
+            url={entry.pageUrl}
+            iconClassName="h-4 w-4"
+            stopPropagation
+            className={buttonVariants({ variant: "outline", size: "icon-sm" })}
+          />
+        </>
       )}
       <Button
         type="button"

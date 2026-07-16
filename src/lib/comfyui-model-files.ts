@@ -9,6 +9,8 @@ export const COMFYUI_MODELS_DIR =
   join(Buffer.from("Q29tZnlVSQ==", "base64").toString("utf8"), "models");
 export const ANIMA_CLIP_NAME = "qwen_3_06b_base.safetensors";
 export const ANIMA_VAE_NAME = "qwen_image_vae.safetensors";
+export const KREA2_CLIP_NAME = "qwen3vl_4b_fp8_scaled.safetensors";
+export const KREA2_VAE_NAME = "qwen_image_vae.safetensors";
 
 export interface CheckpointCapabilities {
   clip: boolean;
@@ -34,6 +36,10 @@ export function isAnimaCheckpointName(modelName: string) {
   return /anima/i.test(modelName);
 }
 
+export function isKrea2CheckpointName(modelName: string) {
+  return /krea[-_ ]?2/i.test(modelName);
+}
+
 export async function modelFileExists(folder: string, modelName: string) {
   try {
     await access(safeModelPath(folder, modelName));
@@ -44,20 +50,29 @@ export async function modelFileExists(folder: string, modelName: string) {
 }
 
 export async function getMissingRequiredModelFiles(checkpointName: string) {
-  if (!isAnimaCheckpointName(checkpointName)) {
+  const clipName = isKrea2CheckpointName(checkpointName)
+    ? KREA2_CLIP_NAME
+    : isAnimaCheckpointName(checkpointName)
+      ? ANIMA_CLIP_NAME
+      : null;
+
+  if (!clipName) {
     return [];
   }
 
+  const vaeName = isKrea2CheckpointName(checkpointName)
+    ? KREA2_VAE_NAME
+    : ANIMA_VAE_NAME;
   const requiredFiles = [
     {
       folder: "text_encoders",
-      name: ANIMA_CLIP_NAME,
-      label: `ComfyUI/models/text_encoders/${ANIMA_CLIP_NAME}`,
+      name: clipName,
+      label: `ComfyUI/models/text_encoders/${clipName}`,
     },
     {
       folder: "vae",
-      name: ANIMA_VAE_NAME,
-      label: `ComfyUI/models/vae/${ANIMA_VAE_NAME}`,
+      name: vaeName,
+      label: `ComfyUI/models/vae/${vaeName}`,
     },
   ];
   const missing = await Promise.all(

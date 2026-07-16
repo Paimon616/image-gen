@@ -1,26 +1,25 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
-import { Download, ExternalLink, Loader2 } from "lucide-react";
+import { Download, DownloadCloud, ExternalLink, Loader2 } from "lucide-react";
 import {
   RESOURCE_LABELS,
   type MissingResource,
 } from "@/lib/civitai-resource-matching";
 import type { CivitaiLicenseInfo } from "@/lib/types";
 import { LicenseBadges } from "@/components/civitai-license-badges";
+import { CopyLinkButton } from "@/components/copy-link-button";
 import { Button } from "@/components/ui/button";
+import {
+  downloadResourceKey,
+  useDownloadStore,
+  type DownloadEntry,
+} from "@/lib/download-store";
 
 interface TokenState {
   configured: boolean;
   valid: boolean;
   checked: boolean;
-}
-
-interface DownloadProgress {
-  downloaded: number;
-  total: number | null;
-  percent: number | null;
-  message: string;
 }
 
 interface CivitaiMissingResourcesProps {
@@ -56,7 +55,7 @@ function formatBytes(value: number) {
   return `${size.toFixed(unit === 0 ? 0 : 1)} ${units[unit]}`;
 }
 
-function progressText(progress: DownloadProgress) {
+function progressText(progress: DownloadEntry) {
   if (progress.percent !== null) {
     return progress.total
       ? `${progress.percent}% · ${formatBytes(progress.downloaded)} / ${formatBytes(progress.total)}`
@@ -77,12 +76,10 @@ export function CivitaiMissingResources({
     valid: false,
     checked: false,
   });
-  const [downloadingKey, setDownloadingKey] = useState("");
-  const [downloadProgress, setDownloadProgress] = useState<Record<string, DownloadProgress>>(
-    {}
-  );
   const [downloadStatus, setDownloadStatus] = useState("");
   const [licenses, setLicenses] = useState<Record<number, CivitaiLicenseInfo>>({});
+  const downloads = useDownloadStore((state) => state.downloads);
+  const startDownload = useDownloadStore((state) => state.startDownload);
 
   useEffect(() => {
     if (resources.length === 0) return;
@@ -142,131 +139,32 @@ export function CivitaiMissingResources({
     };
   }, [modelIdsKey]);
 
-  const updateProgress = (key: string, update: Partial<DownloadProgress>) => {
-    setDownloadProgress((current) => ({
-      ...current,
-      [key]: {
-        downloaded: current[key]?.downloaded ?? 0,
-        total: current[key]?.total ?? null,
-        percent: current[key]?.percent ?? null,
-        message: current[key]?.message ?? "Downloading...",
-        ...update,
-      },
-    }));
-  };
-
-  const handleDownloadEvent = (
-    key: string,
-    resource: MissingResource,
-    event: Record<string, unknown>
-  ) => {
-    if (event.type === "status") {
-      updateProgress(key, { message: String(event.message ?? "Working...") });
-      return;
-    }
-
-    if (event.type === "progress") {
-      updateProgress(key, {
-        downloaded: Number(event.downloaded ?? 0),
-        total: typeof event.total === "number" ? Number(event.total) : null,
-        percent: typeof event.percent === "number" ? Number(event.percent) : null,
-        message: "Downloading...",
-      });
-      return;
-    }
-
-    if (event.type === "complete") {
-      const path =
-        typeof event.filename === "string"
-          ? event.filename
-          : typeof event.path === "string"
-            ? event.path
-            : "";
-
-      updateProgress(key, {
-        percent: 100,
-        message: language === "ko" ? "완료" : "Complete",
-      });
-      window.dispatchEvent(
-        new CustomEvent("local-models-changed", {
-          detail: { resource, path, metadata: event.metadata },
-        })
-      );
-      onDownloaded?.(resource, path);
-      setDownloadStatus(
-        language === "ko"
-          ? `다운로드 완료: ${path || resource.name}`
-          : `Downloaded: ${path || resource.name}`
-      );
-      return;
-    }
-
-    if (event.type === "error") {
-      throw new Error(String(event.error ?? "Failed to download Civitai resource"));
-    }
-  };
-
-  const downloadResource = async (resource: MissingResource, key: string) => {
-    if (downloadingKey) return;
-
-    setDownloadingKey(key);
+  const downloadResource = (resource: MissingResource) => {
     setDownloadStatus("");
-    updateProgress(key, {
-      downloaded: 0,
-      total: null,
-      percent: null,
-      message: "Starting download...",
-    });
-
-    try {
-      const response = await fetch("/api/civitai/download", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resource }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to download Civitai resource");
-      }
-
-      if (!response.body) {
-        throw new Error("Download progress stream did not start");
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          handleDownloadEvent(key, resource, JSON.parse(line) as Record<string, unknown>);
-        }
-      }
-
-      if (buffer.trim()) {
-        handleDownloadEvent(
-          key,
-          resource,
-          JSON.parse(buffer) as Record<string, unknown>
+    void startDownload(
+      downloadResourceKey(resource),
+      resource,
+      (downloadedResource, path) => {
+        onDownloaded?.(downloadedResource, path);
+        setDownloadStatus(
+          language === "ko"
+            ? `다운로드 완료: ${path || downloadedResource.name}`
+            : `Downloaded: ${path || downloadedResource.name}`
         );
       }
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to download Civitai resource";
-      updateProgress(key, { message });
-      setDownloadStatus(message);
-    } finally {
-      setDownloadingKey("");
-    }
+    );
+  };
+
+  const downloadableResources = resources.filter((resource) =>
+    canDownloadResource(resource, token)
+  );
+  const pendingDownloads = downloadableResources.filter((resource) => {
+    const entry = downloads[downloadResourceKey(resource)];
+    return entry?.status !== "downloading" && entry?.status !== "complete";
+  });
+
+  const downloadAll = () => {
+    pendingDownloads.forEach((resource) => downloadResource(resource));
   };
 
   if (resources.length === 0) return null;
@@ -277,21 +175,51 @@ export function CivitaiMissingResources({
         <div className="text-xs font-semibold text-destructive">
           {language === "ko" ? "누락된 로컬 리소스" : "Missing local resources"}
         </div>
-        {token.checked && token.configured && !token.valid && (
-          <div className="text-[11px] text-muted-foreground">
-            {language === "ko"
-              ? "Civitai 토큰을 확인할 수 없습니다."
-              : "Civitai token is not valid."}
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {token.checked && token.configured && !token.valid && (
+            <div className="text-[11px] text-muted-foreground">
+              {language === "ko"
+                ? "Civitai 토큰을 확인할 수 없습니다."
+                : "Civitai token is not valid."}
+            </div>
+          )}
+          {downloadableResources.length > 1 && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 gap-1 px-2 text-[11px]"
+              disabled={pendingDownloads.length === 0}
+              onClick={downloadAll}
+              title={
+                language === "ko"
+                  ? "누락된 리소스 모두 다운로드"
+                  : "Download all missing resources"
+              }
+            >
+              <DownloadCloud className="h-3.5 w-3.5" />
+              {language === "ko"
+                ? `모두 다운로드${
+                    pendingDownloads.length > 0
+                      ? ` (${pendingDownloads.length})`
+                      : ""
+                  }`
+                : `Download all${
+                    pendingDownloads.length > 0
+                      ? ` (${pendingDownloads.length})`
+                      : ""
+                  }`}
+            </Button>
+          )}
+        </div>
       </div>
       <div className="mt-2 space-y-1.5">
         {resources.map((resource, index) => {
           const key = missingResourceKey(resource, index);
-          const downloading = downloadingKey === key;
+          const entry = downloads[downloadResourceKey(resource)];
+          const downloading = entry?.status === "downloading";
           const downloadable = canDownloadResource(resource, token);
-          const progress = downloadProgress[key];
-          const progressPercent = progress?.percent ?? 0;
+          const progressPercent = entry?.percent ?? 0;
           const license =
             typeof resource.modelId === "number"
               ? licenses[resource.modelId]
@@ -312,16 +240,23 @@ export function CivitaiMissingResources({
                 </span>
                 <span className="flex shrink-0 items-center gap-1">
                   {resource.url ? (
-                    <a
-                      href={resource.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label={`Open ${resource.name} on Civitai`}
-                      title="Open Civitai page"
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition-colors hover:border-primary/35 hover:text-primary"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </a>
+                    <>
+                      <a
+                        href={resource.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label={`Open ${resource.name} on Civitai`}
+                        title="Open Civitai page"
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition-colors hover:border-primary/35 hover:text-primary"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                      <CopyLinkButton
+                        url={resource.url}
+                        language={language}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition-colors hover:border-primary/35 hover:text-primary"
+                      />
+                    </>
                   ) : (
                     <span className="text-muted-foreground">
                       {language === "ko" ? "Civitai 링크 없음" : "Not on Civitai"}
@@ -333,8 +268,8 @@ export function CivitaiMissingResources({
                       size="icon"
                       variant="outline"
                       className="h-7 w-7"
-                      disabled={Boolean(downloadingKey)}
-                      onClick={() => void downloadResource(resource, key)}
+                      disabled={downloading}
+                      onClick={() => downloadResource(resource)}
                       aria-label={`Download ${resource.name}`}
                       title="Download to ComfyUI models"
                     >
@@ -348,16 +283,22 @@ export function CivitaiMissingResources({
                 </span>
               </div>
               {license && <LicenseBadges license={license} language={language} />}
-              {progress && (
+              {entry && (
                 <div className="mt-1.5 grid gap-1">
                   <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
                     <div
-                      className="h-full bg-primary transition-all"
+                      className={`h-full transition-all ${
+                        entry.status === "error" ? "bg-destructive" : "bg-primary"
+                      }`}
                       style={{ width: `${progressPercent}%` }}
                     />
                   </div>
                   <div className="text-[11px] text-muted-foreground">
-                    {progressText(progress)}
+                    {entry.status === "complete"
+                      ? language === "ko"
+                        ? "완료"
+                        : "Complete"
+                      : progressText(entry)}
                   </div>
                 </div>
               )}

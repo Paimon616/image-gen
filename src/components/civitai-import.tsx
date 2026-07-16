@@ -10,6 +10,7 @@ import {
   type MissingResource,
 } from "@/lib/civitai-resource-matching";
 import { CivitaiMissingResources } from "@/components/civitai-missing-resources";
+import { CopyLinkButton } from "@/components/copy-link-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -62,18 +63,20 @@ export function CivitaiImport() {
     civitaiReference,
     setCivitaiReference,
     clearCivitaiReference,
+    civitaiImport,
+    setCivitaiImport,
+    updateCivitaiImportMissing,
   } = useStore();
-  const [url, setUrl] = useState("");
-  const [status, setStatus] = useState("");
-  const [missingResources, setMissingResources] = useState<MissingResource[]>([]);
+  const { url, status, missingResources } = civitaiImport;
+  const setUrl = (value: string) => setCivitaiImport({ url: value });
+  const setStatus = (value: string) => setCivitaiImport({ status: value });
   const [isImporting, setIsImporting] = useState(false);
 
   const importFromCivitai = async () => {
     if (!url.trim() || isImporting) return;
 
     setIsImporting(true);
-    setStatus("Fetching Civitai metadata...");
-    setMissingResources([]);
+    setCivitaiImport({ status: "Fetching Civitai metadata...", missingResources: [] });
 
     try {
       const [importResponse, modelsResponse] = await Promise.all([
@@ -108,7 +111,7 @@ export function CivitaiImport() {
           username: imported.username,
         });
       }
-      setMissingResources(missing);
+      setCivitaiImport({ missingResources: missing });
       void fetch("/api/scrap", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -146,16 +149,24 @@ export function CivitaiImport() {
                 Paste an image URL to load prompt, sampler, seed, and resource links.
               </p>
             </div>
-            <a
-              href={CIVITAI_IMAGES_URL}
-              target="_blank"
-              rel="noreferrer"
-              aria-label="Open Civitai images"
-              title="Open Civitai images"
-              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-background text-primary shadow-sm transition-colors hover:border-primary/35 hover:bg-secondary"
-            >
-              <LinkIcon className="h-4 w-4" />
-            </a>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <a
+                href={CIVITAI_IMAGES_URL}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Open Civitai images"
+                title="Open Civitai images"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-primary shadow-sm transition-colors hover:border-primary/35 hover:bg-secondary"
+              >
+                <LinkIcon className="h-4 w-4" />
+              </a>
+              <CopyLinkButton
+                url={CIVITAI_IMAGES_URL}
+                language={language}
+                iconClassName="h-4 w-4"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-primary shadow-sm transition-colors hover:border-primary/35 hover:bg-secondary"
+              />
+            </div>
           </div>
 
           <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
@@ -244,7 +255,7 @@ export function CivitaiImport() {
             });
           }
 
-          setMissingResources((current) =>
+          updateCivitaiImportMissing((current) =>
             current.filter(
               (item) =>
                 item.type !== resource.type ||

@@ -7,6 +7,7 @@ import {
   getMissingRequiredModelFiles,
   hasModelExtension,
   isAnimaCheckpointName,
+  isKrea2CheckpointName,
 } from "@/lib/comfyui-model-files";
 import type { CivitaiLicenseInfo } from "@/lib/types";
 import { parseAllowCommercialUse } from "@/lib/civitai-license";
@@ -246,7 +247,11 @@ function isVideoCheckpointAsset(
   capabilities: Awaited<ReturnType<typeof getCheckpointCapabilities>>,
   path: string
 ) {
-  return capabilities?.clip === false && !isAnimaCheckpointName(path);
+  return (
+    capabilities?.clip === false &&
+    !isAnimaCheckpointName(path) &&
+    !isKrea2CheckpointName(path)
+  );
 }
 
 function buildModelAssets(
@@ -332,9 +337,9 @@ async function listVideoModelAssets(catalog: Record<string, LocalModelMetadata>)
       })
     )
   ).filter((path): path is string => Boolean(path));
-  const diffusionModelFiles = await listModelFiles("diffusion_models").catch(
-    () => [] as string[]
-  );
+  const diffusionModelFiles = (
+    await listModelFiles("diffusion_models").catch(() => [] as string[])
+  ).filter((path) => !isKrea2CheckpointName(path));
 
   return [
     ...buildModelAssets("checkpoints", videoCheckpointFiles, catalog),
@@ -342,10 +347,30 @@ async function listVideoModelAssets(catalog: Record<string, LocalModelMetadata>)
   ].sort((a, b) => a.name.localeCompare(b.name));
 }
 
+// Krea 2 checkpoints are diffusion-only (loaded via UNETLoader) but generate
+// images, so they live in diffusion_models yet belong in the image model list.
+async function listKrea2ImageAssets(
+  catalog: Record<string, LocalModelMetadata>
+) {
+  const diffusionModelFiles = (
+    await listModelFiles("diffusion_models").catch(() => [] as string[])
+  ).filter((path) => isKrea2CheckpointName(path));
+
+  const assets = buildModelAssets("diffusion_models", diffusionModelFiles, catalog);
+
+  return Promise.all(
+    assets.map(async (asset) => ({
+      ...asset,
+      missing_required_files: await getMissingRequiredModelFiles(asset.path),
+    }))
+  );
+}
+
 export async function GET() {
   const catalog = await readCatalog();
   const [
-    checkpointAssets,
+    checkpointFolderAssets,
+    krea2ImageAssets,
     loraAssets,
     embeddingAssets,
     vaeAssets,
@@ -354,6 +379,7 @@ export async function GET() {
     videoModelAssets,
   ] = await Promise.all([
     listModelAssets("checkpoints", catalog),
+    listKrea2ImageAssets(catalog),
     listModelAssets("loras", catalog),
     listModelAssets("embeddings", catalog),
     listModelAssets("vae", catalog),
@@ -361,6 +387,9 @@ export async function GET() {
     listModelAssets("controlnet", catalog),
     listVideoModelAssets(catalog),
   ]);
+  const checkpointAssets = [...checkpointFolderAssets, ...krea2ImageAssets].sort(
+    (a, b) => a.name.localeCompare(b.name)
+  );
   const animaMissingRequiredFiles = await getMissingRequiredModelFiles("anima");
 
   return NextResponse.json(

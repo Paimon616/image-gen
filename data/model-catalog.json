@@ -6,8 +6,6 @@
     "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/be363071-0c5f-4235-88b5-47e27740e298/original=true/82973996.jpeg",
     "civitai_url": "https://civitai.red/models/1692152/a-mix-illustrious?modelVersionId=1915059",
     "tags": [
-      "POS: masterwork, masterpiece, best quality, detailed, depth of field, high detail, best quality, very aesthetic, 8k",
-      "NEG: lowres, worst quality, low quality, bad anatomy, bad hands, jpeg artifacts",
       "hentai",
       "illustrtion",
       "base model",
@@ -27,8 +25,7 @@
         "RentCivit",
         "Rent"
       ]
-    },
-    "source_url": "https://civitai.red/models/1692152/a-mix-illustrious?modelVersionId=1915059"
+    }
   },
   "checkpoints/anima_baseV10.safetensors": {
     "name": "Anima",
@@ -1223,8 +1220,8 @@
     "version": "v1.1 - WAI",
     "base_model": "Illustrious",
     "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/178058a4-35b6-4869-a805-b27ab4289d4e/original=true/41204042.jpeg",
-    "civitai_url": "https://civitai.red/models/966483/96yottea-style-illustrious?modelVersionId=1082928",
-    "source_url": "https://civitai.red/models/966483/96yottea-style-illustrious?modelVersionId=1082928",
+    "civitai_url": "https://civitai.red/models/966483/96yottea-style-or-illustrious?modelVersionId=1082928",
+    "source_url": "https://civitai.red/models/966483/96yottea-style-or-illustrious?modelVersionId=1082928",
     "tags": [
       "style",
       "anime",
@@ -2181,7 +2178,6 @@
     "civitai_url": "https://civitai.red/models/341353/expressiveh-hentai-lora-style?modelVersionId=382152",
     "source_url": "https://civitai.red/models/341353/expressiveh-hentai-lora-style?modelVersionId=382152",
     "tags": [
-      "Expressiveh",
       "sexy",
       "anime",
       "game character",
@@ -2277,8 +2273,7 @@
         "Rent",
         "Sell"
       ]
-    },
-    "source_url": "https://civitai.red/models/2674611/futurabbitstyle-anima?modelVersionId=3003138"
+    }
   },
   "loras/g0th1c2XLP.safetensors": {
     "name": "Vixon's Anima/Pony Styles - Gothic Neon",
@@ -5881,5 +5876,217 @@
       "wuthering waves",
       "woman"
     ]
+  },
+  "checkpoints/mixtapeReggae_v30Rocksteady.safetensors": {
+    "name": "MixTape /// Reggae",
+    "version": "v3.0 Rocksteady",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/4ec56150-40dd-4e93-840a-702c76289191/original=true/4884764.jpeg",
+    "civitai_url": "https://civitai.red/models/228451/mixtape-reggae?modelVersionId=257909",
+    "source_url": "https://civitai.red/models/228451/mixtape-reggae?modelVersionId=257909",
+    "tags": [
+      "retro",
+      "music",
+      "base model",
+      "sci-fi",
+      "woman",
+      "fantasy"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
+  },
+  "checkpoints/majicmixRealistic_v5.safetensors": {
+    "name": "majicMIX realistic 麦橘写实",
+    "version": "v5",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/463df9c6-9e44-449a-b1a4-337c6631e15f/original=true/928127.jpeg",
+    "civitai_url": "https://civitai.red/models/43331/majicmix-realistic?modelVersionId=82446",
+    "source_url": "https://civitai.red/models/43331/majicmix-realistic?modelVersionId=82446",
+    "tags": [
+      "base model",
+      "asian",
+      "realistic",
+      "photoralistic"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
+    }
+  },
+  "checkpoints/moodyCutieMixKrea2_v10BETA.safetensors": {
+    "name": "Moody Cutie Mix (Krea2 Uncensored)",
+    "version": "V1.0 (BETA)",
+    "base_model": "Krea 2",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/39035c2c-482a-46e0-942a-e71bd0f3bc2d/original=true/136157617.jpeg",
+    "civitai_url": "https://civitai.red/models/2764429/moody-cutie-mix-krea2-uncensored?modelVersionId=3111393",
+    "source_url": "https://civitai.red/models/2764429/moody-cutie-mix-krea2-uncensored?modelVersionId=3111393",
+    "tags": [
+      "base model"
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
+    }
+  },
+  "loras/SummerVibesHM_krea2_epoch8.safetensors": {
+    "name": "Realism Enhancer Krea2",
+    "version": "v1.0",
+    "base_model": "Krea 2",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/696c960e-2bf4-4561-a744-51b29097fc70/original=true/134723086.jpeg",
+    "civitai_url": "https://civitai.red/models/2727284/realism-enhancer-krea2?modelVersionId=3065628",
+    "source_url": "https://civitai.red/models/2727284/realism-enhancer-krea2?modelVersionId=3065628",
+    "tags": [
+      "concept",
+      "realism",
+      "krea2"
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
+  },
+  "loras/Detailer-KREA2.safetensors": {
+    "name": "[KREA 2] Detail Slider",
+    "version": "v1.0",
+    "base_model": "Krea 2",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/87770265-3293-4292-b32d-c464b23ae6c7/original=true/134831972.jpeg",
+    "civitai_url": "https://civitai.red/models/2729908/krea-2-detail-slider?modelVersionId=3068874",
+    "source_url": "https://civitai.red/models/2729908/krea-2-detail-slider?modelVersionId=3068874",
+    "tags": [
+      "detail",
+      "tool",
+      "detailer",
+      "slider"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
+  },
+  "loras/Krea2Turbo_RadianceChromeVoluptuous_v1.0.safetensors": {
+    "name": "Radiance Chrome Voluptuous",
+    "version": "Krea2 Turbo v1.0",
+    "base_model": "Krea 2",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/e9b8266e-e89d-4b41-a801-5c15c7190716/original=true/134923567.jpeg",
+    "civitai_url": "https://civitai.red/models/2323765/radiance-chrome-voluptuous?modelVersionId=3071582",
+    "source_url": "https://civitai.red/models/2323765/radiance-chrome-voluptuous?modelVersionId=3071582",
+    "tags": [
+      "style"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent"
+      ]
+    }
+  },
+  "loras/KNPV4.1_pre.safetensors": {
+    "name": "Krea 2 NSFW V4",
+    "version": "V4.1 Exp, pre",
+    "base_model": "Krea 2",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/81b6898c-84c8-4f07-9749-2cf5c400eae3/original=true/135353587.jpeg",
+    "civitai_url": "https://civitai.red/models/2725430/krea-2-nsfw-v4?modelVersionId=3085473",
+    "source_url": "https://civitai.red/models/2725430/krea-2-nsfw-v4?modelVersionId=3085473",
+    "tags": [
+      "concept",
+      "nsfw"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
+  },
+  "diffusion_models/krea2TurboOfficialComfy_krea2TurboFp8.safetensors": {
+    "name": "Krea 2 Turbo Official Comfy-Org Checkpoints (Krea2)",
+    "version": "krea2_turbo_fp8",
+    "base_model": "Krea 2",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/49cb45b4-0e6c-4ede-ab5c-41439dfd2ee0/original=true/134687632.jpeg",
+    "civitai_url": "https://civitai.red/models/2726029/krea-2-turbo-official-comfy-org-checkpoints-krea2?modelVersionId=3064297",
+    "source_url": "https://civitai.red/models/2726029/krea-2-turbo-official-comfy-org-checkpoints-krea2?modelVersionId=3064297",
+    "tags": [
+      "base model"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
+  },
+  "checkpoints/stormtoothXL_version.safetensors": {
+    "name": "Stormtooth XL",
+    "version": "Version - β",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/850266c8-b15b-4690-8735-e03ae5671f09/original=true/85338867.jpeg",
+    "civitai_url": "https://civitai.red/models/1729989/stormtooth-xl?modelVersionId=1957905",
+    "source_url": "https://civitai.red/models/1729989/stormtooth-xl?modelVersionId=1957905",
+    "tags": [
+      "base model",
+      "yiff",
+      "anthro",
+      "furry",
+      "fantasy",
+      "semi-realism",
+      "2.5d"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
   }
 }

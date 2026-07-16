@@ -6,6 +6,19 @@ import {
   type GenerationParams,
   type GenerationStatus,
 } from "./types";
+import type { MissingResource } from "./civitai-resource-matching";
+
+interface CivitaiImportState {
+  url: string;
+  status: string;
+  missingResources: MissingResource[];
+}
+
+const EMPTY_CIVITAI_IMPORT: CivitaiImportState = {
+  url: "",
+  status: "",
+  missingResources: [],
+};
 
 interface AppState {
   params: GenerationParams;
@@ -14,6 +27,7 @@ interface AppState {
   selectedImage: GeneratedImage | null;
   language: AppLanguage;
   civitaiReference: CivitaiOrigin | null;
+  civitaiImport: CivitaiImportState;
 
   setParams: (update: Partial<GenerationParams>) => void;
   setStatus: (status: Partial<GenerationStatus>) => void;
@@ -27,6 +41,11 @@ interface AppState {
   setLanguage: (language: AppLanguage) => void;
   setCivitaiReference: (origin: CivitaiOrigin | null) => void;
   clearCivitaiReference: () => void;
+  setCivitaiImport: (update: Partial<CivitaiImportState>) => void;
+  updateCivitaiImportMissing: (
+    updater: (resources: MissingResource[]) => MissingResource[]
+  ) => void;
+  resetCivitaiImport: () => void;
 }
 
 export type AppLanguage = "ko" | "en";
@@ -118,6 +137,7 @@ export const useStore = create<AppState>((set) => ({
   selectedImage: null,
   language: getInitialLanguage(),
   civitaiReference: null,
+  civitaiImport: EMPTY_CIVITAI_IMPORT,
 
   setParams: (update) =>
     set((s) => ({ params: { ...s.params, ...update } })),
@@ -172,4 +192,17 @@ export const useStore = create<AppState>((set) => ({
   setCivitaiReference: (origin) => set({ civitaiReference: origin }),
 
   clearCivitaiReference: () => set({ civitaiReference: null }),
+
+  setCivitaiImport: (update) =>
+    set((s) => ({ civitaiImport: { ...s.civitaiImport, ...update } })),
+
+  updateCivitaiImportMissing: (updater) =>
+    set((s) => ({
+      civitaiImport: {
+        ...s.civitaiImport,
+        missingResources: updater(s.civitaiImport.missingResources),
+      },
+    })),
+
+  resetCivitaiImport: () => set({ civitaiImport: EMPTY_CIVITAI_IMPORT }),
 }));

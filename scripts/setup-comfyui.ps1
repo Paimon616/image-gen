@@ -1,6 +1,7 @@
 param(
   [string]$ComfyUIDir = "",
   [string]$ComfyUIRepo = "https://github.com/comfyanonymous/ComfyUI.git",
+  [string]$ComfyUIRef = "",
   [string]$PythonBin = ""
 )
 
@@ -13,6 +14,13 @@ if (-not $ComfyUIDir) {
   $ComfyUIDir = Join-Path $RootDir "ComfyUI"
 }
 
+# Pin ComfyUI to a known-good commit for reproducibility. Precedence:
+# -ComfyUIRef param > comfyui-config/comfyui-version.txt > latest master.
+$VersionFile = Join-Path $RootDir "comfyui-config\comfyui-version.txt"
+if (-not $ComfyUIRef -and (Test-Path $VersionFile)) {
+  $ComfyUIRef = (Get-Content $VersionFile -Raw).Trim()
+}
+
 Ensure-Git
 $PythonBin = Ensure-Python310 -PreferredBin $PythonBin
 
@@ -20,7 +28,7 @@ $ComfyGitDir = Join-Path $ComfyUIDir ".git"
 if (Test-Path $ComfyGitDir) {
   Write-Host "Updating existing ComfyUI checkout..."
   Invoke-Checked { git -C $ComfyUIDir rev-parse --is-inside-work-tree | Out-Null } "$ComfyUIDir has a .git directory but is not a valid git checkout. Move it aside or pass -ComfyUIDir."
-  Invoke-Checked { git -C $ComfyUIDir pull --ff-only } "Failed to update ComfyUI checkout."
+  Invoke-Checked { git -C $ComfyUIDir fetch --quiet origin } "Failed to fetch ComfyUI updates."
 } elseif (Test-Path $ComfyUIDir) {
   $ComfyItems = @(Get-ChildItem -Force -LiteralPath $ComfyUIDir)
   if ($ComfyItems.Count -gt 0) {
@@ -32,6 +40,17 @@ if (Test-Path $ComfyGitDir) {
 } else {
   Write-Host "Cloning ComfyUI into $ComfyUIDir..."
   Invoke-Checked { git clone $ComfyUIRepo $ComfyUIDir } "Failed to clone ComfyUI."
+}
+
+if ($ComfyUIRef) {
+  Write-Host "Checking out pinned ComfyUI ref: $ComfyUIRef"
+  git -C $ComfyUIDir fetch --quiet origin $ComfyUIRef 2>$null
+  if ($LASTEXITCODE -ne 0) { git -C $ComfyUIDir fetch --quiet --all }
+  Invoke-Checked { git -C $ComfyUIDir checkout $ComfyUIRef } "Failed to checkout pinned ComfyUI ref $ComfyUIRef."
+} else {
+  Write-Host "No pinned ref set; using latest master."
+  git -C $ComfyUIDir checkout master 2>$null | Out-Null
+  Invoke-Checked { git -C $ComfyUIDir pull --ff-only } "Failed to update ComfyUI checkout."
 }
 
 $VenvDir = Join-Path $ComfyUIDir "venv"
@@ -55,6 +74,8 @@ Invoke-Checked { & $VenvPython -m pip install -r (Join-Path $ComfyUIDir "require
 
 @(
   "models\checkpoints",
+  "models\diffusion_models",
+  "models\text_encoders",
   "models\loras",
   "models\embeddings",
   "models\vae",
@@ -65,6 +86,16 @@ Invoke-Checked { & $VenvPython -m pip install -r (Join-Path $ComfyUIDir "require
   "temp"
 ) | ForEach-Object {
   New-Item -ItemType Directory -Force -Path (Join-Path $ComfyUIDir $_) | Out-Null
+}
+
+$ConfigScript = Join-Path $PSScriptRoot "setup-comfyui-config.ps1"
+if (Test-Path $ConfigScript) {
+  Write-Host "Provisioning ComfyUI config (custom nodes, workflows, settings)..."
+  try {
+    & $ConfigScript -ComfyUIDir $ComfyUIDir
+  } catch {
+    Write-Host "ComfyUI config provisioning skipped/failed; run 'npm run setup:comfyui-config:win' manually."
+  }
 }
 
 Write-Host ""
