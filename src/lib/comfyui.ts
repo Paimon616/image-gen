@@ -10,9 +10,12 @@ import { isAbsolute, join } from "path";
 import {
   ANIMA_CLIP_NAME,
   ANIMA_VAE_NAME,
+  KREA2_CLIP_NAME,
+  KREA2_VAE_NAME,
   getCheckpointCapabilities,
   getMissingRequiredModelFiles,
   isAnimaCheckpointName,
+  isKrea2CheckpointName,
 } from "./comfyui-model-files";
 import { normalizeGenerationSeed } from "./types";
 
@@ -459,8 +462,174 @@ async function buildAnimaWorkflow(params: GenerationParams, checkpoint: string) 
   return workflow;
 }
 
+async function assertKrea2SupportFiles(checkpoint: string) {
+  const missing = await getMissingRequiredModelFiles(checkpoint);
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Krea 2 generation requires these additional files: ${missing.join(", ")}`
+    );
+  }
+}
+
+async function buildKrea2Workflow(params: GenerationParams, checkpoint: string) {
+  await assertKrea2SupportFiles(checkpoint);
+
+  const loras = cleanLoras(params.loras);
+  const seed = normalizeGenerationSeed(params.seed);
+  const samplerName =
+    !params.sampler_name || params.sampler_name === "dpmpp_2m"
+      ? "euler"
+      : params.sampler_name;
+  const scheduler =
+    !params.scheduler || params.scheduler === "karras" ? "simple" : params.scheduler;
+  // Krea 2 Turbo is distilled and runs at cfg 1 with a zeroed-out negative.
+  const cfg = params.guidance_scale === 7.5 ? 1 : params.guidance_scale;
+  const workflow: Record<string, unknown> = {
+    "1": {
+      class_type: "UNETLoader",
+      inputs: {
+        unet_name: checkpoint,
+        weight_dtype: "default",
+      },
+    },
+    "8": {
+      class_type: "CLIPLoader",
+      inputs: {
+        clip_name: KREA2_CLIP_NAME,
+        type: "krea2",
+        device: "default",
+      },
+    },
+    "9": {
+      class_type: "VAELoader",
+      inputs: {
+        vae_name: KREA2_VAE_NAME,
+      },
+    },
+  };
+
+  let modelRef: [string, number] = ["1", 0];
+  const clipRef: [string, number] = ["8", 0];
+  const vaeRef: [string, number] = ["9", 0];
+
+  // Krea 2 LoRAs are diffusion-model-only (no CLIP side).
+  loras.forEach((lora, index) => {
+    const nodeId = String(10 + index);
+    workflow[nodeId] = {
+      class_type: "LoraLoaderModelOnly",
+      inputs: {
+        lora_name: lora.path,
+        strength_model: lora.scale,
+        model: modelRef,
+      },
+    };
+    modelRef = [nodeId, 0];
+  });
+
+  workflow["2"] = {
+    class_type: "CLIPTextEncode",
+    inputs: {
+      text: withEmbeddingTokens(params.prompt, params.embeddings),
+      clip: clipRef,
+    },
+  };
+  workflow["3"] = {
+    class_type: "ConditioningZeroOut",
+    inputs: {
+      conditioning: ["2", 0],
+    },
+  };
+
+  let latentRef: [string, number] = ["4", 0];
+  let denoise = 1;
+
+  if (params.generation_mode === "image_to_image" && params.source_image) {
+    const sourceImage = await resolveControlNetImage(params.source_image);
+
+    workflow["4"] = {
+      class_type: "LoadImage",
+      inputs: {
+        image: sourceImage,
+      },
+    };
+    workflow["22"] = {
+      class_type: "ImageScale",
+      inputs: {
+        image: ["4", 0],
+        upscale_method: "lanczos",
+        width: params.width,
+        height: params.height,
+        crop: "center",
+      },
+    };
+    workflow["23"] = {
+      class_type: "VAEEncode",
+      inputs: {
+        pixels: ["22", 0],
+        vae: vaeRef,
+      },
+    };
+    latentRef = ["23", 0];
+    denoise = clampDenoiseStrength(params.denoise_strength);
+  } else {
+    workflow["4"] = {
+      class_type: "EmptyLatentImage",
+      inputs: {
+        width: params.width,
+        height: params.height,
+        batch_size: Math.min(Math.max(Number(params.num_images) || 1, 1), 4),
+      },
+    };
+  }
+
+  workflow["5"] = {
+    class_type: "KSampler",
+    inputs: {
+      seed,
+      steps: params.num_inference_steps,
+      cfg,
+      sampler_name: samplerName,
+      scheduler,
+      denoise,
+      model: modelRef,
+      positive: ["2", 0],
+      negative: ["3", 0],
+      latent_image: latentRef,
+    },
+  };
+  workflow["6"] = {
+    class_type: "VAEDecode",
+    inputs: {
+      samples: ["5", 0],
+      vae: vaeRef,
+    },
+  };
+  const saveImageRef = addUpscaleWorkflowNodes(
+    workflow,
+    params,
+    ["6", 0],
+    "70",
+    "71"
+  );
+  workflow["7"] = {
+    class_type: "SaveImage",
+    inputs: {
+      filename_prefix: "image-gen-krea2",
+      images: saveImageRef,
+    },
+  };
+
+  return workflow;
+}
+
 async function buildDefaultWorkflow(params: GenerationParams) {
   const checkpoint = params.model_name.trim() || "sd_xl_base_1.0.safetensors";
+
+  if (isKrea2CheckpointName(checkpoint)) {
+    return buildKrea2Workflow(params, checkpoint);
+  }
+
   const checkpointCapabilities = await getCheckpointCapabilities(checkpoint);
 
   if (checkpointCapabilities?.clip === false) {

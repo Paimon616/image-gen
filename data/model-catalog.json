@@ -5674,5 +5674,55 @@
         "Sell"
       ]
     }
+  },
+  "diffusion_models/krea2TurboOfficialComfy_krea2TurboFp8.safetensors": {
+    "name": "Krea 2 Turbo Official Comfy-Org Checkpoints (Krea2)",
+    "version": "krea2_turbo_fp8",
+    "base_model": "Krea 2",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/49cb45b4-0e6c-4ede-ab5c-41439dfd2ee0/original=true/134687632.jpeg",
+    "civitai_url": "https://civitai.red/models/2726029/krea-2-turbo-official-comfy-org-checkpoints-krea2?modelVersionId=3064297",
+    "source_url": "https://civitai.red/models/2726029/krea-2-turbo-official-comfy-org-checkpoints-krea2?modelVersionId=3064297",
+    "tags": [
+      "base model"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
+  },
+  "checkpoints/stormtoothXL_version.safetensors": {
+    "name": "Stormtooth XL",
+    "version": "Version - β",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/850266c8-b15b-4690-8735-e03ae5671f09/original=true/85338867.jpeg",
+    "civitai_url": "https://civitai.red/models/1729989/stormtooth-xl?modelVersionId=1957905",
+    "source_url": "https://civitai.red/models/1729989/stormtooth-xl?modelVersionId=1957905",
+    "tags": [
+      "base model",
+      "yiff",
+      "anthro",
+      "furry",
+      "fantasy",
+      "semi-realism",
+      "2.5d"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
   }
 }
