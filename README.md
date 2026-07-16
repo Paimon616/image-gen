@@ -45,7 +45,27 @@ On Windows PowerShell:
 npm run setup:comfyui:win
 ```
 
-The setup script clones ComfyUI into `ComfyUI/`, creates `ComfyUI/venv`, installs ComfyUI Python dependencies, and creates the expected model directories.
+The setup script clones ComfyUI into `ComfyUI/`, creates `ComfyUI/venv`, installs ComfyUI Python dependencies, and creates the expected model directories. It pins ComfyUI to the commit in `comfyui-config/comfyui-version.txt` for reproducibility, and then provisions the version-controlled ComfyUI config (see below).
+
+## ComfyUI config (custom nodes, workflows, settings)
+
+Unlike model weights, small ComfyUI assets are version-controlled under `comfyui-config/` so a fresh clone can reproduce the same setup:
+
+```text
+comfyui-config/custom-nodes.json      # custom node repos pinned to commits
+comfyui-config/comfyui-version.txt    # pinned ComfyUI commit
+comfyui-config/workflows/             # GUI workflow JSONs
+comfyui-config/settings/              # baseline comfy.settings.json
+```
+
+`npm run setup:comfyui` provisions these automatically. To (re)provision on its own:
+
+```bash
+npm run setup:comfyui-config          # macOS/Linux
+npm run setup:comfyui-config:win      # Windows
+```
+
+The provisioning is idempotent: it installs/pins custom nodes into `ComfyUI/custom_nodes/`, copies workflows into `ComfyUI/user/default/workflows/`, and seeds settings only if missing. Pass `--force` (or `-Force` on Windows) to overwrite existing workflows/settings. To add a node or bump a version, edit `comfyui-config/custom-nodes.json` and rerun. Restart ComfyUI afterward to load new nodes.
 
 ## Models
 

@@ -1,0 +1,20 @@
+{
+  "$comment": "Custom ComfyUI nodes to provision. Each entry is git-cloned into ComfyUI/custom_nodes/<name> and checked out at the pinned ref. Update ref to bump a node. Run: npm run setup:comfyui-config",
+  "custom_nodes": [
+    {
+      "name": "ComfyUI-WD14-Tagger",
+      "repo": "https://github.com/pythongosssss/ComfyUI-WD14-Tagger.git",
+      "ref": "9e0a6e700299182fc05c58b62e7ad9f72182a78b"
+    },
+    {
+      "name": "ComfyUI-Custom-Scripts",
+      "repo": "https://github.com/pythongosssss/ComfyUI-Custom-Scripts.git",
+      "ref": "609f3afaa74b2f88ef9ce8d939626065e3247469"
+    },
+    {
+      "name": "ComfyUI-Florence2",
+      "repo": "https://github.com/kijai/ComfyUI-Florence2.git",
+      "ref": "9ece3de914214c5f581d725167bc9d0eeb0d1120"
+    }
+  ]
+}
