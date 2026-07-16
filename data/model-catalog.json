@@ -5512,5 +5512,56 @@
         "Sell"
       ]
     }
+  },
+  "checkpoints/mixtapeReggae_v30Rocksteady.safetensors": {
+    "name": "MixTape /// Reggae",
+    "version": "v3.0 Rocksteady",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/4ec56150-40dd-4e93-840a-702c76289191/original=true/4884764.jpeg",
+    "civitai_url": "https://civitai.red/models/228451/mixtape-reggae?modelVersionId=257909",
+    "source_url": "https://civitai.red/models/228451/mixtape-reggae?modelVersionId=257909",
+    "tags": [
+      "retro",
+      "music",
+      "base model",
+      "sci-fi",
+      "woman",
+      "fantasy"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
+  },
+  "checkpoints/majicmixRealistic_v5.safetensors": {
+    "name": "majicMIX realistic 麦橘写实",
+    "version": "v5",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/463df9c6-9e44-449a-b1a4-337c6631e15f/original=true/928127.jpeg",
+    "civitai_url": "https://civitai.red/models/43331/majicmix-realistic?modelVersionId=82446",
+    "source_url": "https://civitai.red/models/43331/majicmix-realistic?modelVersionId=82446",
+    "tags": [
+      "base model",
+      "asian",
+      "realistic",
+      "photoralistic"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
+    }
   }
 }
