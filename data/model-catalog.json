@@ -5563,5 +5563,93 @@
         "Rent"
       ]
     }
+  },
+  "checkpoints/moodyCutieMixKrea2_v10BETA.safetensors": {
+    "name": "Moody Cutie Mix (Krea2 Uncensored)",
+    "version": "V1.0 (BETA)",
+    "base_model": "Krea 2",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/39035c2c-482a-46e0-942a-e71bd0f3bc2d/original=true/136157617.jpeg",
+    "civitai_url": "https://civitai.red/models/2764429/moody-cutie-mix-krea2-uncensored?modelVersionId=3111393",
+    "source_url": "https://civitai.red/models/2764429/moody-cutie-mix-krea2-uncensored?modelVersionId=3111393",
+    "tags": [
+      "base model"
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
+    }
+  },
+  "loras/SummerVibesHM_krea2_epoch8.safetensors": {
+    "name": "Realism Enhancer Krea2",
+    "version": "v1.0",
+    "base_model": "Krea 2",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/696c960e-2bf4-4561-a744-51b29097fc70/original=true/134723086.jpeg",
+    "civitai_url": "https://civitai.red/models/2727284/realism-enhancer-krea2?modelVersionId=3065628",
+    "source_url": "https://civitai.red/models/2727284/realism-enhancer-krea2?modelVersionId=3065628",
+    "tags": [
+      "concept",
+      "realism",
+      "krea2"
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
+  },
+  "loras/Detailer-KREA2.safetensors": {
+    "name": "[KREA 2] Detail Slider",
+    "version": "v1.0",
+    "base_model": "Krea 2",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/87770265-3293-4292-b32d-c464b23ae6c7/original=true/134831972.jpeg",
+    "civitai_url": "https://civitai.red/models/2729908/krea-2-detail-slider?modelVersionId=3068874",
+    "source_url": "https://civitai.red/models/2729908/krea-2-detail-slider?modelVersionId=3068874",
+    "tags": [
+      "detail",
+      "tool",
+      "detailer",
+      "slider"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
+  },
+  "loras/Krea2Turbo_RadianceChromeVoluptuous_v1.0.safetensors": {
+    "name": "Radiance Chrome Voluptuous",
+    "version": "Krea2 Turbo v1.0",
+    "base_model": "Krea 2",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/e9b8266e-e89d-4b41-a801-5c15c7190716/original=true/134923567.jpeg",
+    "civitai_url": "https://civitai.red/models/2323765/radiance-chrome-voluptuous?modelVersionId=3071582",
+    "source_url": "https://civitai.red/models/2323765/radiance-chrome-voluptuous?modelVersionId=3071582",
+    "tags": [
+      "style"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent"
+      ]
+    }
   }
 }
