@@ -5651,5 +5651,28 @@
         "Rent"
       ]
     }
+  },
+  "loras/KNPV4.1_pre.safetensors": {
+    "name": "Krea 2 NSFW V4",
+    "version": "V4.1 Exp, pre",
+    "base_model": "Krea 2",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/81b6898c-84c8-4f07-9749-2cf5c400eae3/original=true/135353587.jpeg",
+    "civitai_url": "https://civitai.red/models/2725430/krea-2-nsfw-v4?modelVersionId=3085473",
+    "source_url": "https://civitai.red/models/2725430/krea-2-nsfw-v4?modelVersionId=3085473",
+    "tags": [
+      "concept",
+      "nsfw"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
   }
 }

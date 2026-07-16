@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { CivitaiMissingResources } from "@/components/civitai-missing-resources";
+import { CopyLinkButton } from "@/components/copy-link-button";
 import { ImageUpload } from "@/components/image-upload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -610,16 +611,23 @@ export default function VideoPage() {
                   Paste an image or video URL to load compatible video fields.
                 </p>
               </div>
-              <a
-                href="https://civitai.red/images"
-                target="_blank"
-                rel="noreferrer"
-                aria-label="Open Civitai images"
-                title="Open Civitai images"
-                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-background text-primary shadow-sm transition-colors hover:border-primary/35 hover:bg-secondary"
-              >
-                <LinkIcon className="h-4 w-4" />
-              </a>
+              <div className="flex shrink-0 items-center gap-1.5">
+                <a
+                  href="https://civitai.red/images"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Open Civitai images"
+                  title="Open Civitai images"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-primary shadow-sm transition-colors hover:border-primary/35 hover:bg-secondary"
+                >
+                  <LinkIcon className="h-4 w-4" />
+                </a>
+                <CopyLinkButton
+                  url="https://civitai.red/images"
+                  iconClassName="h-4 w-4"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-primary shadow-sm transition-colors hover:border-primary/35 hover:bg-secondary"
+                />
+              </div>
             </div>
 
             <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">

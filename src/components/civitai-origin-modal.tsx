@@ -2,6 +2,7 @@
 
 import { ExternalLink } from "lucide-react";
 import type { CivitaiOrigin } from "@/lib/types";
+import { CopyLinkButton } from "@/components/copy-link-button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 interface CivitaiOriginModalProps {
@@ -48,15 +49,23 @@ export function CivitaiOriginModal({
               <span>Image ID: {origin.imageId}</span>
             </div>
             {origin.pageUrl && (
-              <a
-                href={origin.pageUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1.5 font-medium text-primary transition-colors hover:border-primary/40"
-              >
-                <ExternalLink className="h-3.5 w-3.5" />
-                {ko ? "Civitai에서 보기" : "View on Civitai"}
-              </a>
+              <div className="flex items-center gap-2">
+                <a
+                  href={origin.pageUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1.5 font-medium text-primary transition-colors hover:border-primary/40"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  {ko ? "Civitai에서 보기" : "View on Civitai"}
+                </a>
+                <CopyLinkButton
+                  url={origin.pageUrl}
+                  language={language}
+                  showLabel
+                  className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1.5 font-medium text-primary transition-colors hover:border-primary/40"
+                />
+              </div>
             )}
           </div>
         </div>

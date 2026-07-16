@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { CivitaiOriginModal } from "@/components/civitai-origin-modal";
+import { CopyLinkButton } from "@/components/copy-link-button";
 import { ModelMediaThumbnail } from "@/components/model-media-thumbnail";
 import {
   Dialog,
@@ -787,15 +788,23 @@ export function ImageViewer() {
                             : "Generated from this scrap unchanged."}
                         </span>
                         {civitaiOrigin.pageUrl && (
-                          <a
-                            href={civitaiOrigin.pageUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex w-fit items-center gap-1 font-medium text-primary hover:underline"
-                          >
-                            <ExternalLink className="h-3.5 w-3.5" />
-                            {language === "ko" ? "Civitai에서 보기" : "View on Civitai"}
-                          </a>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <a
+                              href={civitaiOrigin.pageUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex w-fit items-center gap-1 font-medium text-primary hover:underline"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                              {language === "ko" ? "Civitai에서 보기" : "View on Civitai"}
+                            </a>
+                            <CopyLinkButton
+                              url={civitaiOrigin.pageUrl}
+                              language={language}
+                              showLabel
+                              className="inline-flex w-fit items-center gap-1 font-medium text-primary hover:underline"
+                            />
+                          </div>
                         )}
                       </div>
                     </div>

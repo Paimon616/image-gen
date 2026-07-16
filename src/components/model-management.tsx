@@ -32,6 +32,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { ModelMediaThumbnail } from "@/components/model-media-thumbnail";
+import { CopyLinkButton } from "@/components/copy-link-button";
 import { ModelRiskBadge, type ModelRisk } from "@/components/model-risk-badge";
 import { LicenseBadges } from "@/components/civitai-license-badges";
 import type { CivitaiLicenseInfo } from "@/lib/types";
@@ -403,16 +404,24 @@ function ModelCard({
               )}
             </Button>
             {sourceUrl && (
-              <a
-                href={sourceUrl}
-                target="_blank"
-                rel="noreferrer"
-                onClick={(event) => event.stopPropagation()}
-                className="inline-flex h-7 items-center gap-1.5 rounded-md border border-border bg-card px-2 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/30 hover:text-primary"
-              >
-                <ExternalLink className="h-3.5 w-3.5" />
-                Open
-              </a>
+              <>
+                <a
+                  href={sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(event) => event.stopPropagation()}
+                  className="inline-flex h-7 items-center gap-1.5 rounded-md border border-border bg-card px-2 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/30 hover:text-primary"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Open
+                </a>
+                <CopyLinkButton
+                  url={sourceUrl}
+                  showLabel
+                  stopPropagation
+                  className="inline-flex h-7 items-center gap-1.5 rounded-md border border-border bg-card px-2 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/30 hover:text-primary"
+                />
+              </>
             )}
           </div>
         </div>
@@ -838,15 +847,22 @@ function ModelDetailsDialog({
               className="aspect-square w-full shadow-sm"
             />
             {sourceUrl && (
-              <a
-                href={sourceUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-center gap-1.5 rounded-md border border-border bg-card px-2 py-2 text-xs font-semibold text-muted-foreground hover:border-primary/30 hover:text-primary"
-              >
-                <ExternalLink className="h-3.5 w-3.5" />
-                Open {sourceLabel(sourceUrl)}
-              </a>
+              <div className="grid grid-cols-2 gap-2">
+                <a
+                  href={sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-center gap-1.5 rounded-md border border-border bg-card px-2 py-2 text-xs font-semibold text-muted-foreground hover:border-primary/30 hover:text-primary"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Open {sourceLabel(sourceUrl)}
+                </a>
+                <CopyLinkButton
+                  url={sourceUrl}
+                  showLabel
+                  className="flex items-center justify-center gap-1.5 rounded-md border border-border bg-card px-2 py-2 text-xs font-semibold text-muted-foreground hover:border-primary/30 hover:text-primary"
+                />
+              </div>
             )}
           </div>
 

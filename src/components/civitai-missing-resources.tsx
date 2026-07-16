@@ -8,6 +8,7 @@ import {
 } from "@/lib/civitai-resource-matching";
 import type { CivitaiLicenseInfo } from "@/lib/types";
 import { LicenseBadges } from "@/components/civitai-license-badges";
+import { CopyLinkButton } from "@/components/copy-link-button";
 import { Button } from "@/components/ui/button";
 import {
   downloadResourceKey,
@@ -239,16 +240,23 @@ export function CivitaiMissingResources({
                 </span>
                 <span className="flex shrink-0 items-center gap-1">
                   {resource.url ? (
-                    <a
-                      href={resource.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label={`Open ${resource.name} on Civitai`}
-                      title="Open Civitai page"
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition-colors hover:border-primary/35 hover:text-primary"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </a>
+                    <>
+                      <a
+                        href={resource.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label={`Open ${resource.name} on Civitai`}
+                        title="Open Civitai page"
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition-colors hover:border-primary/35 hover:text-primary"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                      <CopyLinkButton
+                        url={resource.url}
+                        language={language}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition-colors hover:border-primary/35 hover:text-primary"
+                      />
+                    </>
                   ) : (
                     <span className="text-muted-foreground">
                       {language === "ko" ? "Civitai 링크 없음" : "Not on Civitai"}
