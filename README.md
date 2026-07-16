@@ -15,6 +15,9 @@ Local image generation UI built with Next.js and ComfyUI.
 
 ## Setup
 
+For the full ComfyUI setup guide (version pinning, custom nodes, workflows,
+hardware notes, and troubleshooting) see [docs/comfyui-setup.md](docs/comfyui-setup.md).
+
 Install app dependencies:
 
 ```bash
