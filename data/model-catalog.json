@@ -6547,5 +6547,52 @@
         "Rent"
       ]
     }
+  },
+  "loras/Girls' Frontline-OTs-14[lightning]-V3.safetensors": {
+    "name": "Girls' Frontline-OTs-14\"lightning\"",
+    "version": "v3.0",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/952a09ed-ab06-4d61-7d78-a9269d2aa800/original=true/75126.jpeg",
+    "civitai_url": "https://civitai.red/models/6525/girls-frontline-ots-14-lightning?modelVersionId=7932",
+    "source_url": "https://civitai.red/models/6525/girls-frontline-ots-14-lightning?modelVersionId=7932",
+    "tags": [
+      "purpleheart",
+      "redgown",
+      "original_outfit",
+      "ohead",
+      "character",
+      "girls_frontline",
+      "game character",
+      "anime"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": []
+    }
+  },
+  "checkpoints/cetusMix_Coda2.safetensors": {
+    "name": "Cetus-Mix",
+    "version": "CetusMix_Coda2",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/399afc22-2a06-4873-d283-c81f3ba60500/original=true/521590.jpeg",
+    "civitai_url": "https://civitai.red/models/6755/cetus-mix?modelVersionId=48569",
+    "source_url": "https://civitai.red/models/6755/cetus-mix?modelVersionId=48569",
+    "tags": [
+      "anime",
+      "base model",
+      "2d",
+      "2.5d",
+      "basemodel",
+      "styles",
+      "eagelaxis"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": []
+    }
   }
 }

@@ -127,8 +127,8 @@ function resourceMatchScore(asset: LocalModelAsset, resource: ImportedCivitaiRes
   return 0;
 }
 
-function resolveLocalVaeName(vaeName: string, assets: LocalModelAsset[]) {
-  const trimmed = vaeName.trim();
+function resolveLocalAssetName(name: string, assets: LocalModelAsset[]) {
+  const trimmed = name.trim();
   if (!trimmed) return "";
   if (assets.some((asset) => asset.path === trimmed)) return trimmed;
 
@@ -258,7 +258,13 @@ export function reconcileImportedParams(
   });
 
   if (typeof matched.vae_name === "string") {
-    matched.vae_name = resolveLocalVaeName(matched.vae_name, models.vaeAssets ?? []);
+    matched.vae_name = resolveLocalAssetName(matched.vae_name, models.vaeAssets ?? []);
+  }
+  if (typeof matched.upscale_model_name === "string") {
+    matched.upscale_model_name = resolveLocalAssetName(
+      matched.upscale_model_name,
+      models.upscaleModelAssets ?? []
+    );
   }
 
   const importedCheckpoint = imported.resources.some(
