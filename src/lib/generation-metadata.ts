@@ -430,8 +430,8 @@ function assetResourceMatchScore(asset: LocalModelAsset, resource: ImportedCivit
   return 0;
 }
 
-function resolveLocalVaeName(vaeName: string, assets: LocalModelAsset[]) {
-  const trimmed = vaeName.trim();
+function resolveLocalAssetName(name: string, assets: LocalModelAsset[]) {
+  const trimmed = name.trim();
   if (!trimmed) return "";
   if (assets.some((asset) => asset.path === trimmed)) return trimmed;
 
@@ -523,7 +523,14 @@ export function reconcileMetadataResources(
   });
 
   if (!matchedVae && typeof params.vae_name === "string") {
-    params.vae_name = resolveLocalVaeName(params.vae_name, models.vaeAssets ?? []);
+    params.vae_name = resolveLocalAssetName(params.vae_name, models.vaeAssets ?? []);
+  }
+
+  if (!matchedUpscaler && typeof params.upscale_model_name === "string") {
+    params.upscale_model_name = resolveLocalAssetName(
+      params.upscale_model_name,
+      models.upscaleModelAssets ?? []
+    );
   }
 
   if (parsed.hasExplicitResources) {
