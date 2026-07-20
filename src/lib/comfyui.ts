@@ -128,7 +128,13 @@ function cleanLoras(loras: LoraConfig[]) {
       path: lora.path.trim(),
       scale: Number.isFinite(lora.scale) ? lora.scale : 1,
     }))
-    .filter((lora) => lora.path.length > 0);
+    .filter((lora) => lora.path.length > 0)
+    .filter(
+      (lora, index, all) =>
+        all.findIndex(
+          (candidate) => candidate.path.toLowerCase() === lora.path.toLowerCase()
+        ) === index
+    );
 }
 
 function embeddingTokens(embeddings: EmbeddingConfig[]) {
@@ -144,7 +150,12 @@ function embeddingTokens(embeddings: EmbeddingConfig[]) {
 
 function withEmbeddingTokens(prompt: string, embeddings: EmbeddingConfig[]) {
   const tokens = embeddingTokens(embeddings);
-  return tokens ? `${prompt}, ${tokens}` : prompt;
+  const cleanPrompt = prompt.replace(/<lora:[^>]+>/gi, " ").replace(/\s+/g, " ").trim();
+  return tokens ? `${cleanPrompt}, ${tokens}` : cleanPrompt;
+}
+
+function hiresDimension(value: number, scale: number) {
+  return Math.max(8, Math.floor((value * scale) / 8) * 8);
 }
 
 function isRemoteImageRef(image: string) {
@@ -444,13 +455,49 @@ async function buildAnimaWorkflow(params: GenerationParams, checkpoint: string) 
       vae: vaeRef,
     },
   };
-  const saveImageRef = addUpscaleWorkflowNodes(
-    workflow,
-    params,
-    ["6", 0],
-    "70",
-    "71"
-  );
+  const hiresScale = Number(params.hires_upscale);
+  const useHiresFix = Number.isFinite(hiresScale) && hiresScale > 1;
+  let saveImageRef: [string, number];
+
+  if (useHiresFix) {
+    const upscaledRef = addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71");
+    workflow["72"] = {
+      class_type: "ImageScale",
+      inputs: {
+        image: upscaledRef,
+        upscale_method: "lanczos",
+        width: hiresDimension(params.width, hiresScale),
+        height: hiresDimension(params.height, hiresScale),
+        crop: "disabled",
+      },
+    };
+    workflow["73"] = {
+      class_type: "VAEEncode",
+      inputs: { pixels: ["72", 0], vae: vaeRef },
+    };
+    workflow["74"] = {
+      class_type: "KSampler",
+      inputs: {
+        seed,
+        steps: params.hires_steps > 0 ? params.hires_steps : params.num_inference_steps,
+        cfg: params.guidance_scale,
+        sampler_name: params.sampler_name || "dpmpp_2m",
+        scheduler: params.scheduler || "karras",
+        denoise: clampDenoiseStrength(params.denoise_strength),
+        model: modelRef,
+        positive: positiveRef,
+        negative: negativeRef,
+        latent_image: ["73", 0],
+      },
+    };
+    workflow["75"] = {
+      class_type: "VAEDecode",
+      inputs: { samples: ["74", 0], vae: vaeRef },
+    };
+    saveImageRef = ["75", 0];
+  } else {
+    saveImageRef = addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71");
+  }
   workflow["7"] = {
     class_type: "SaveImage",
     inputs: {
@@ -476,6 +523,7 @@ async function buildKrea2Workflow(params: GenerationParams, checkpoint: string) 
   await assertKrea2SupportFiles(checkpoint);
 
   const loras = cleanLoras(params.loras);
+  const vaeName = (await resolveAvailableVaeName(params.vae_name)) || KREA2_VAE_NAME;
   const seed = normalizeGenerationSeed(params.seed);
   const samplerName =
     !params.sampler_name || params.sampler_name === "dpmpp_2m"
@@ -504,7 +552,7 @@ async function buildKrea2Workflow(params: GenerationParams, checkpoint: string) 
     "9": {
       class_type: "VAELoader",
       inputs: {
-        vae_name: KREA2_VAE_NAME,
+        vae_name: vaeName,
       },
     },
   };
@@ -605,13 +653,49 @@ async function buildKrea2Workflow(params: GenerationParams, checkpoint: string) 
       vae: vaeRef,
     },
   };
-  const saveImageRef = addUpscaleWorkflowNodes(
-    workflow,
-    params,
-    ["6", 0],
-    "70",
-    "71"
-  );
+  const hiresScale = Number(params.hires_upscale);
+  const useHiresFix = Number.isFinite(hiresScale) && hiresScale > 1;
+  let saveImageRef: [string, number];
+
+  if (useHiresFix) {
+    const upscaledRef = addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71");
+    workflow["72"] = {
+      class_type: "ImageScale",
+      inputs: {
+        image: upscaledRef,
+        upscale_method: "lanczos",
+        width: hiresDimension(params.width, hiresScale),
+        height: hiresDimension(params.height, hiresScale),
+        crop: "disabled",
+      },
+    };
+    workflow["73"] = {
+      class_type: "VAEEncode",
+      inputs: { pixels: ["72", 0], vae: vaeRef },
+    };
+    workflow["74"] = {
+      class_type: "KSampler",
+      inputs: {
+        seed,
+        steps: params.hires_steps > 0 ? params.hires_steps : params.num_inference_steps,
+        cfg: params.guidance_scale,
+        sampler_name: params.sampler_name || "dpmpp_2m",
+        scheduler: params.scheduler || "karras",
+        denoise: clampDenoiseStrength(params.denoise_strength),
+        model: modelRef,
+        positive: ["2", 0],
+        negative: ["3", 0],
+        latent_image: ["73", 0],
+      },
+    };
+    workflow["75"] = {
+      class_type: "VAEDecode",
+      inputs: { samples: ["74", 0], vae: vaeRef },
+    };
+    saveImageRef = ["75", 0];
+  } else {
+    saveImageRef = addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71");
+  }
   workflow["7"] = {
     class_type: "SaveImage",
     inputs: {
@@ -840,13 +924,49 @@ async function buildDefaultWorkflow(params: GenerationParams) {
       vae: vaeRef,
     },
   };
-  const saveImageRef = addUpscaleWorkflowNodes(
-    workflow,
-    params,
-    ["6", 0],
-    "70",
-    "71"
-  );
+  const hiresScale = Number(params.hires_upscale);
+  const useHiresFix = Number.isFinite(hiresScale) && hiresScale > 1;
+  let saveImageRef: [string, number];
+
+  if (useHiresFix) {
+    const upscaledRef = addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71");
+    workflow["72"] = {
+      class_type: "ImageScale",
+      inputs: {
+        image: upscaledRef,
+        upscale_method: "lanczos",
+        width: hiresDimension(params.width, hiresScale),
+        height: hiresDimension(params.height, hiresScale),
+        crop: "disabled",
+      },
+    };
+    workflow["73"] = {
+      class_type: "VAEEncode",
+      inputs: { pixels: ["72", 0], vae: vaeRef },
+    };
+    workflow["74"] = {
+      class_type: "KSampler",
+      inputs: {
+        seed,
+        steps: params.hires_steps > 0 ? params.hires_steps : params.num_inference_steps,
+        cfg: params.guidance_scale,
+        sampler_name: params.sampler_name || "dpmpp_2m",
+        scheduler: params.scheduler || "karras",
+        denoise: clampDenoiseStrength(params.denoise_strength),
+        model: modelRef,
+        positive: positiveRef,
+        negative: negativeRef,
+        latent_image: ["73", 0],
+      },
+    };
+    workflow["75"] = {
+      class_type: "VAEDecode",
+      inputs: { samples: ["74", 0], vae: vaeRef },
+    };
+    saveImageRef = ["75", 0];
+  } else {
+    saveImageRef = addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71");
+  }
   workflow["7"] = {
     class_type: "SaveImage",
     inputs: {

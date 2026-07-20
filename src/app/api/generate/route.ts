@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateWithComfyUI } from "@/lib/comfyui";
+import { generateWithA1111 } from "@/lib/a1111";
 import { writeFile, mkdir } from "fs/promises";
 import { randomUUID } from "crypto";
 import {
@@ -99,11 +100,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const images = await generateWithComfyUI(body);
+    const images =
+      body.backend === "a1111"
+        ? await generateWithA1111(body, req.signal)
+        : await generateWithComfyUI(body);
     const savedImages = await saveBufferedImages({
       images,
       params: body,
-      endpoint: modelConfig.id,
+      endpoint: body.backend === "a1111" ? "a1111/local" : modelConfig.id,
     });
 
     return NextResponse.json({ images: savedImages });

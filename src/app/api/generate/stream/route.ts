@@ -17,6 +17,7 @@ import {
 import type { CivitaiOrigin, GenerationParams } from "@/lib/types";
 import { imageUrl, OUTPUT_DIR, thumbnailUrl } from "@/lib/server-images";
 import { buildGenerationResources } from "@/lib/generation-resource-links";
+import { generateWithA1111, interruptA1111 } from "@/lib/a1111";
 
 interface ComfyWsMessage {
   type?: string;
@@ -166,6 +167,10 @@ export async function POST(req: NextRequest) {
     if (promptId) {
       void cancelComfyPrompt(promptId).catch(() => {});
     }
+
+    if (body.backend === "a1111") {
+      void interruptA1111().catch(() => {});
+    }
   };
 
   req.signal.addEventListener("abort", abortComfyPrompt, { once: true });
@@ -178,6 +183,55 @@ export async function POST(req: NextRequest) {
       };
 
       try {
+        if (body.backend === "a1111") {
+          send("progress", { progress: 5, message: "Waiting for A1111..." });
+          const progressUrl =
+            (process.env.A1111_BASE_URL?.replace(/\/$/, "") ??
+              "http://127.0.0.1:7860") +
+            "/sdapi/v1/progress?skip_current_image=true";
+          const progressTimer = setInterval(async () => {
+            try {
+              const response = await fetch(progressUrl, {
+                cache: "no-store",
+                signal: AbortSignal.timeout(2_000),
+              });
+              if (!response.ok) return;
+              const status = (await response.json()) as {
+                progress?: number;
+                eta_relative?: number;
+                state?: { sampling_step?: number; sampling_steps?: number };
+              };
+              send("progress", {
+                progress: Math.max(
+                  1,
+                  Math.min(99, Math.round((status.progress ?? 0) * 100))
+                ),
+                step: status.state?.sampling_step,
+                total_steps: status.state?.sampling_steps,
+                eta_seconds: status.eta_relative,
+                message: "Generating with A1111...",
+              });
+            } catch {
+              send("progress", { progress: 5, message: "Waiting for A1111..." });
+            }
+          }, 5_000);
+          let images: Awaited<ReturnType<typeof generateWithA1111>>;
+          try {
+            images = await generateWithA1111(body, abortController.signal);
+          } finally {
+            clearInterval(progressTimer);
+          }
+          const savedImages = await saveBufferedImages({
+            images,
+            params: body,
+            endpoint: "a1111/local",
+            civitaiOrigin,
+          });
+          send("progress", { progress: 100, message: "Done" });
+          send("complete", { images: savedImages });
+          return;
+        }
+
         const clientId = randomUUID();
         ws = await openComfyWebSocket(clientId);
 

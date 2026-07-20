@@ -36,6 +36,7 @@ export const AVAILABLE_MODELS: ModelConfig[] = [
 ];
 
 export interface GenerationParams {
+  backend: "comfyui" | "a1111";
   model: string;
   model_name: string;
   prompt: string;
@@ -53,6 +54,8 @@ export interface GenerationParams {
   clip_skip: number;
   vae_name: string;
   upscale_model_name: string;
+  hires_upscale: number;
+  hires_steps: number;
   loras: LoraConfig[];
   embeddings: EmbeddingConfig[];
   controlnets: ControlNetConfig[];
@@ -208,6 +211,7 @@ export interface HistoryEntry {
 }
 
 export const DEFAULT_PARAMS: GenerationParams = {
+  backend: "comfyui",
   model: "comfyui/local-sdxl",
   model_name: "sd_xl_base_1.0.safetensors",
   prompt: "",
@@ -225,6 +229,8 @@ export const DEFAULT_PARAMS: GenerationParams = {
   clip_skip: 1,
   vae_name: "",
   upscale_model_name: "",
+  hires_upscale: 1,
+  hires_steps: 0,
   loras: [],
   embeddings: [],
   controlnets: [],

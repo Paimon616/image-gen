@@ -1,4 +1,4 @@
-﻿import { mkdir, readdir, readFile, rm, writeFile } from "fs/promises";
+import { mkdir, readdir, readFile, rm, writeFile } from "fs/promises";
 import { basename, extname, join, normalize, relative } from "path";
 import { NextRequest, NextResponse } from "next/server";
 import {
@@ -260,7 +260,9 @@ function buildModelAssets(
   catalog: Record<string, LocalModelMetadata>
 ) {
   return paths.map((path) => {
-    const metadata = catalog[`${folder}/${path}`];
+    const metadata =
+      catalog[`${folder}/${path}`] ??
+      (folder === "diffusion_models" ? catalog[`checkpoints/${path}`] : undefined);
     const fallback = humanizeFilename(path);
 
     return {
@@ -387,7 +389,10 @@ export async function GET() {
     listModelAssets("controlnet", catalog),
     listVideoModelAssets(catalog),
   ]);
-  const checkpointAssets = [...checkpointFolderAssets, ...krea2ImageAssets].sort(
+  const checkpointAssets = [
+    ...checkpointFolderAssets.filter((asset) => !isKrea2CheckpointName(asset.path)),
+    ...krea2ImageAssets,
+  ].sort(
     (a, b) => a.name.localeCompare(b.name)
   );
   const animaMissingRequiredFiles = await getMissingRequiredModelFiles("anima");

@@ -6,6 +6,8 @@
     "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/be363071-0c5f-4235-88b5-47e27740e298/original=true/82973996.jpeg",
     "civitai_url": "https://civitai.red/models/1692152/a-mix-illustrious?modelVersionId=1915059",
     "tags": [
+      "POS: masterwork, masterpiece, best quality, detailed, depth of field, high detail, best quality, very aesthetic, 8k",
+      "NEG: lowres, worst quality, low quality, bad anatomy, bad hands, jpeg artifacts",
       "hentai",
       "illustrtion",
       "base model",
@@ -25,7 +27,8 @@
         "RentCivit",
         "Rent"
       ]
-    }
+    },
+    "source_url": "https://civitai.red/models/1692152/a-mix-illustrious?modelVersionId=1915059"
   },
   "checkpoints/anima_baseV10.safetensors": {
     "name": "Anima",
@@ -462,19 +465,14 @@
     "version": "v7",
     "base_model": "SD 1.5",
     "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/4fd40408-f963-4d2d-8caa-8d3f176139cf/original=true/2805533.jpeg",
-    "civitai_url": "https://civitai.red/models/43331/majicmix-realistic",
-    "source_url": "https://civitai.red/models/43331/majicmix-realistic",
+    "civitai_url": "https://civitai.red/models/43331/majicmix-realistic?modelVersionId=176425",
+    "source_url": "https://civitai.red/models/43331/majicmix-realistic?modelVersionId=176425",
     "tags": [
+      "base model",
       "asian",
-      "photoralistic",
       "realistic",
-      "base model"
+      "photoralistic"
     ],
-    "risk": {
-      "level": "OK",
-      "reason": "Rent 허용 + 특이사항 없음",
-      "allow_commercial_use": "Y"
-    },
     "license": {
       "allowNoCredit": true,
       "allowDerivatives": true,
@@ -1019,11 +1017,6 @@
     "tags": [
       "base model"
     ],
-    "risk": {
-      "level": "OK",
-      "reason": "Rent 허용 + 특이사항 없음",
-      "allow_commercial_use": "Y"
-    },
     "license": {
       "allowNoCredit": true,
       "allowDerivatives": true,
@@ -1220,8 +1213,8 @@
     "version": "v1.1 - WAI",
     "base_model": "Illustrious",
     "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/178058a4-35b6-4869-a805-b27ab4289d4e/original=true/41204042.jpeg",
-    "civitai_url": "https://civitai.red/models/966483/96yottea-style-or-illustrious?modelVersionId=1082928",
-    "source_url": "https://civitai.red/models/966483/96yottea-style-or-illustrious?modelVersionId=1082928",
+    "civitai_url": "https://civitai.red/models/966483/96yottea-style-illustrious?modelVersionId=1082928",
+    "source_url": "https://civitai.red/models/966483/96yottea-style-illustrious?modelVersionId=1082928",
     "tags": [
       "style",
       "anime",
@@ -2178,6 +2171,7 @@
     "civitai_url": "https://civitai.red/models/341353/expressiveh-hentai-lora-style?modelVersionId=382152",
     "source_url": "https://civitai.red/models/341353/expressiveh-hentai-lora-style?modelVersionId=382152",
     "tags": [
+      "Expressiveh",
       "sexy",
       "anime",
       "game character",
@@ -2273,7 +2267,8 @@
         "Rent",
         "Sell"
       ]
-    }
+    },
+    "source_url": "https://civitai.red/models/2674611/futurabbitstyle-anima?modelVersionId=3003138"
   },
   "loras/g0th1c2XLP.safetensors": {
     "name": "Vixon's Anima/Pony Styles - Gothic Neon",
@@ -2616,24 +2611,15 @@
     "version": "v1.5",
     "base_model": "SD 1.5",
     "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/42bb3051-7e2c-49fa-88b4-61e624b24f00/original=true/394771.jpeg",
-    "civitai_url": "https://civitai.red/models/28811/japanesedolllikeness-v15?modelVersionId=34562",
-    "source_url": "https://civitai.red/models/28811/japanesedolllikeness-v15?modelVersionId=34562",
+    "civitai_url": "https://civitai.red/models/28811/japanesedolllikeness-v1-5?modelVersionId=34562",
+    "source_url": "https://civitai.red/models/28811/japanesedolllikeness-v1-5?modelVersionId=34562",
     "tags": [
-      "women",
       "photorealistic",
       "asian",
       "style",
-      "japanese"
+      "japanese",
+      "women"
     ],
-    "risk": {
-      "level": "HIGH",
-      "reason": "실인물 유사성 의심(검수)",
-      "flags": [
-        "person",
-        "nsfw"
-      ],
-      "allow_commercial_use": "N"
-    },
     "license": {
       "allowNoCredit": true,
       "allowDerivatives": true,
@@ -3341,18 +3327,13 @@
     "civitai_url": "https://civitai.red/models/996220/ri-mix-style-lora-illustrious-anima?modelVersionId=3011920",
     "source_url": "https://civitai.red/models/996220/ri-mix-style-lora-illustrious-anima?modelVersionId=3011920",
     "tags": [
-      "illustration",
-      "illustrious",
       "style",
+      "illustration",
       "anima",
-      "flux",
-      "pony"
+      "pony",
+      "illustrious",
+      "flux"
     ],
-    "risk": {
-      "level": "OK",
-      "reason": "Rent 허용 + 특이사항 없음",
-      "allow_commercial_use": "Y"
-    },
     "license": {
       "allowNoCredit": true,
       "allowDerivatives": true,
@@ -3912,14 +3893,9 @@
     "civitai_url": "https://civitai.red/models/856285/pony-people-s-works-v1-v6?modelVersionId=1020899",
     "source_url": "https://civitai.red/models/856285/pony-people-s-works-v1-v6?modelVersionId=1020899",
     "tags": [
-      "style",
-      "anime"
+      "anime",
+      "style"
     ],
-    "risk": {
-      "level": "OK",
-      "reason": "Rent 허용 + 특이사항 없음",
-      "allow_commercial_use": "Y"
-    },
     "license": {
       "allowNoCredit": true,
       "allowDerivatives": true,
@@ -6086,6 +6062,489 @@
         "RentCivit",
         "Rent",
         "Sell"
+      ]
+    }
+  },
+  "loras/curtainpartedhair.safetensors": {
+    "name": "Male curtain hair style // middle-parted hair",
+    "version": "v1.0",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/66337511-b04e-4307-9621-cc76ce29cfd8/original=true/5303147.jpeg",
+    "civitai_url": "https://civitai.red/models/258822/male-curtain-hair-style-middle-parted-hair?modelVersionId=291849",
+    "source_url": "https://civitai.red/models/258822/male-curtain-hair-style-middle-parted-hair?modelVersionId=291849",
+    "tags": [
+      "curtainpartedhair",
+      "concept",
+      "male",
+      "hair",
+      "hairstyle",
+      "middle parted hair"
+    ]
+  },
+  "loras/Blade_Honkai_Star_Rail-000012.safetensors": {
+    "name": "Blade | Honkai: Star Rail",
+    "version": "v1.0",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/f1ad2e79-7fa9-40c2-bded-35f5517e5a44/original=true/960329.jpeg",
+    "civitai_url": "https://civitai.red/models/80109/blade-honkai-star-rail?modelVersionId=84939",
+    "source_url": "https://civitai.red/models/80109/blade-honkai-star-rail?modelVersionId=84939",
+    "tags": [
+      "blade \\(honkai: star rail\\)",
+      "anime",
+      "character",
+      "game character",
+      "male",
+      "video game",
+      "honkai star rail",
+      "blade",
+      "honkai",
+      "honkai: star rail"
+    ]
+  },
+  "checkpoints/lunarcherrymix_v24.safetensors": {
+    "name": "LunarCherryMix🍒 (Illustrious)",
+    "version": "v2.4",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/6fb0d739-8896-4201-acc4-ba16098cd8b5/original=true/117226538.jpeg",
+    "civitai_url": "https://civitai.red/models/1412760/lunarcherrymix-illustrious?modelVersionId=2590517",
+    "source_url": "https://civitai.red/models/1412760/lunarcherrymix-illustrious?modelVersionId=2590517",
+    "tags": [
+      "sexy",
+      "base model",
+      "woman",
+      "nsfw",
+      "sfw",
+      "styles"
+    ]
+  },
+  "checkpoints/divingIllustriousReal_v70VAE.safetensors": {
+    "name": "Diving-Illustrious Real-Asian",
+    "version": "v7.0+VAE",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/77389cd5-3de0-496b-ade1-35bc38af666c/original=true/113362113.jpeg",
+    "civitai_url": "https://civitai.red/models/1562047/diving-illustrious-real-asian?modelVersionId=2490435",
+    "source_url": "https://civitai.red/models/1562047/diving-illustrious-real-asian?modelVersionId=2490435",
+    "tags": [],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
+    }
+  },
+  "loras/CHAR-NakiriAyamePonyXL.safetensors": {
+    "name": "Nakiri Ayame (7 Outfits) | Hololive | [Pony XL]",
+    "version": "v1.0",
+    "base_model": "Pony",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/99334869-7dd8-4e46-b217-749298f67dd3/original=true/6980923.jpeg",
+    "civitai_url": "https://civitai.red/models/317577/nakiri-ayame-7-outfits-hololive-pony-xl?modelVersionId=356178",
+    "source_url": "https://civitai.red/models/317577/nakiri-ayame-7-outfits-hololive-pony-xl?modelVersionId=356178",
+    "tags": [
+      "NakiriAyame, oni horns, long hair",
+      "AyameBase, oni horns, long hair, double bun, black kimono, short kimono, hair bell, obi, shimenawa, white thighhighs, bare shoulders, long sleeves, oni mask, mask on head",
+      "AyameSummer, oni horns, twintails, blue bikini, frilled bikini, bikini skirt, hair bow, black bow, frilled choker",
+      "AyameGirly, white hair, oni horns, long hair, frilled hairband, black hair ribbon, white shirt, collared shirt, long sleeves, shoulder cutouts, black skirt, high-waist skirt, blue bow",
+      "AyameNewYears, oni horns, long hair, side ponytail, red kimono, floral print, hair flower, sash, haori",
+      "AyameCasual, oni horns, long hair, hair ribbon, x hair ornament, twintails, white shirt, sleeveless shirt, chest belt, black necktie, black skirt, pleated skirt, black thighhighs, thigh strap, black jacket, open jacket, off shoulder, black choker",
+      "AyameShrine, oni horns, hair flower, long hair, braided hair rings, japanese clothes, hakama skirt, white thighhighs",
+      "AyameTracksuit, oni horns, long hair, red jacket, white shirt, clothes writing, red pants, track pants",
+      "anime",
+      "character",
+      "female",
+      "vtuber",
+      "hololive",
+      "woman",
+      "virtual youtuber"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit"
+      ]
+    }
+  },
+  "loras/Dramatic Lighting Slider.safetensors": {
+    "name": "Dramatic Lighting Slider [Pony, Illustrious]",
+    "version": "v1.0",
+    "base_model": "Pony",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/19750a92-a93e-43a6-b078-5575c06dc50f/original=true/49634404.jpeg",
+    "civitai_url": "https://civitai.red/models/1105685/dramatic-lighting-slider-pony-illustrious?modelVersionId=1242203",
+    "source_url": "https://civitai.red/models/1105685/dramatic-lighting-slider-pony-illustrious?modelVersionId=1242203",
+    "tags": [
+      "anime",
+      "neon",
+      "lighting",
+      "moody",
+      "style",
+      "realistic",
+      "dramatic",
+      "pony",
+      "dramatic light",
+      "raw",
+      "shadows",
+      "slider",
+      "dramatic lighting",
+      "lighting concept"
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
+    }
+  },
+  "loras/Bridge Tools Line Weight.safetensors": {
+    "name": "Line Weight Slider - Bridge Tools (NoobAI/Illustrious/Pony)",
+    "version": "v1.0",
+    "base_model": "NoobAI",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/4d5bc27f-caed-465f-af28-06d96b52e754/original=true/103410005.jpeg",
+    "civitai_url": "https://civitai.red/models/2004228/line-weight-slider-bridge-tools-noobai-illustrious-pony?modelVersionId=2268553",
+    "source_url": "https://civitai.red/models/2004228/line-weight-slider-bridge-tools-noobai-illustrious-pony?modelVersionId=2268553",
+    "tags": [
+      "lineweight",
+      "lineart",
+      "ink",
+      "cartoon",
+      "toon",
+      "comic",
+      "tool",
+      "slider"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit"
+      ]
+    }
+  },
+  "loras/Nakiri Ayame (VTuber).safetensors": {
+    "name": "Nakiri Ayame (VTuber)",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/b1f35beb-e138-4d9a-be09-a00c9bcf28aa/original=true/109669705.jpeg",
+    "civitai_url": "https://civitai.red/models/2116257/nakiri-ayame-vtuber?modelVersionId=2394008",
+    "source_url": "https://civitai.red/models/2116257/nakiri-ayame-vtuber?modelVersionId=2394008",
+    "tags": [
+      "nakiri ayame, long silver hair with pink gradient ends, twin tails, oni horns, red eyes, fair skin, fanged smile, playful expression, energetic aura, anime girl",
+      "black and red techwear jacket, white shirt, red tie, dark pleated skirt, thigh straps, white thigh-high stockings, black and red sneakers, streetwear theme, hololive outfit design",
+      "character",
+      "vtuber",
+      "nakiri ayame"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
+  },
+  "diffusion_models/krea2_turbo_fp8_scaled.safetensors": {
+    "name": "Krea2 Turbo_FP8",
+    "version": "Krea 2 TURBO",
+    "base_model": "Krea 2",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/5513863c-49e7-4030-93cb-b005d4bba68b/original=true/134583021.jpeg",
+    "civitai_url": "https://civitai.red/models/2723583/krea2-turbofp8?modelVersionId=3132956",
+    "source_url": "https://civitai.red/models/2723583/krea2-turbofp8?modelVersionId=3132956",
+    "tags": [
+      "base model",
+      "krea2"
+    ],
+    "risk": null,
+    "license": null
+  },
+  "diffusion_models/moodyCutieMixKrea2_v10BETA.safetensors": {
+    "name": "Moody Cutie Mix (Krea2 Uncensored)",
+    "version": "V1.0 (BETA)",
+    "base_model": "Krea 2",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/39035c2c-482a-46e0-942a-e71bd0f3bc2d/original=true/136157617.jpeg",
+    "civitai_url": "https://civitai.red/models/2764429/moody-cutie-mix-krea2-uncensored?modelVersionId=3111393",
+    "source_url": "https://civitai.red/models/2764429/moody-cutie-mix-krea2-uncensored?modelVersionId=3111393",
+    "tags": [
+      "base model"
+    ],
+    "risk": null,
+    "license": null
+  },
+  "loras/RealismSlider-v1.safetensors": {
+    "name": "[KREA 2] Realism Slider",
+    "version": "v1.0",
+    "base_model": "Krea 2",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/58ad5326-f7f5-4974-b922-8ae0f056be22/original=true/136809931.jpeg",
+    "civitai_url": "https://civitai.red/models/2781697/krea-2-realism-slider?modelVersionId=3132956",
+    "source_url": "https://civitai.red/models/2781697/krea-2-realism-slider?modelVersionId=3132956",
+    "tags": [
+      "realism",
+      "illustration",
+      "tool"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
+  },
+  "loras/KreaShizuka_V1_E10.safetensors": {
+    "name": "KreaShizuka",
+    "version": "V1T1",
+    "base_model": "Krea 2",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/9feaad1f-bad4-4d91-addc-e354ed6c3eee/original=true/135497949.jpeg",
+    "civitai_url": "https://civitai.red/models/2747399/kreashizuka?modelVersionId=3090477",
+    "source_url": "https://civitai.red/models/2747399/kreashizuka?modelVersionId=3090477",
+    "tags": [
+      "Bradhamel art style",
+      "style"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit"
+      ]
+    }
+  },
+  "loras/Starlit_Krea_V2.safetensors": {
+    "name": "Starlit",
+    "version": "Krea 2 V2.0",
+    "base_model": "Krea 2",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/8334f184-4c7d-4c6a-a9f0-8d7302e56b24/original=true/135168599.jpeg",
+    "civitai_url": "https://civitai.red/models/2149001/starlit?modelVersionId=3079413",
+    "source_url": "https://civitai.red/models/2149001/starlit?modelVersionId=3079413",
+    "tags": [
+      "anime",
+      "style",
+      "illustration",
+      "cartoon",
+      "fantasy",
+      "portraits",
+      "2.5d"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent",
+        "Sell",
+        "Image"
+      ]
+    }
+  },
+  "loras/real_body_anime_face_krea.safetensors": {
+    "name": "Anime Girl in Real Life",
+    "version": "v1.0",
+    "base_model": "Krea 2",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/12cfa7a8-7c29-4a10-9658-ee169e2b93a4/original=true/135381479.jpeg",
+    "civitai_url": "https://civitai.red/models/2744181/anime-girl-in-real-life?modelVersionId=3086503",
+    "source_url": "https://civitai.red/models/2744181/anime-girl-in-real-life?modelVersionId=3086503",
+    "tags": [
+      "Anime Face Realistic Body.",
+      "her face is that of an anime girl, but her body, clothes, and the background are all realistic.",
+      "anime",
+      "concept",
+      "anime girl",
+      "real life"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
+  },
+  "loras/krea2_Enhancer.safetensors": {
+    "name": "Krea2_Enhancer",
+    "version": "v1.0",
+    "base_model": "Krea 2",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/8a975262-caf9-4c94-a5a6-6d6f9e6d1503/original=true/135050699.jpeg",
+    "civitai_url": "https://civitai.red/models/2730896/krea2-enhancer?modelVersionId=3070143",
+    "source_url": "https://civitai.red/models/2730896/krea2-enhancer?modelVersionId=3070143",
+    "tags": [
+      "style",
+      "krea2"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent",
+        "Image"
+      ]
+    }
+  },
+  "loras/asia_cosplay_krea_2.safetensors": {
+    "name": "Cosplay-ANIMA-krea 2",
+    "version": "Krea 2",
+    "base_model": "Krea 2",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/03434ab7-e17d-46f8-839c-fd78d111e694/original=true/135562902.jpeg",
+    "civitai_url": "https://civitai.red/models/2630055/cosplay-anima-krea-2?modelVersionId=3092829",
+    "source_url": "https://civitai.red/models/2630055/cosplay-anima-krea-2?modelVersionId=3092829",
+    "tags": [
+      "anime",
+      "cosplay",
+      "style",
+      "krea 2"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
+  },
+  "loras/Krea2Rella_c1-st8000.safetensors": {
+    "name": "Krea2 Rella Style",
+    "version": "v1.0",
+    "base_model": "Krea 2",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/c039588c-bbc0-4706-af71-5cba11f2560d/original=true/135690341.jpeg",
+    "civitai_url": "https://civitai.red/models/2752705/krea2-rella-style?modelVersionId=3096998",
+    "source_url": "https://civitai.red/models/2752705/krea2-rella-style?modelVersionId=3096998",
+    "tags": [
+      "style"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
+    }
+  },
+  "loras/Krea2_Pantyhose Helper V2_000003000.safetensors": {
+    "name": "Pantyhose Helper Krea2 V2",
+    "version": "v2.0",
+    "base_model": "Krea 2",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/b43e3a93-49ad-4ae2-b978-f4d0f58bd4fc/original=true/135389839.jpeg",
+    "civitai_url": "https://civitai.red/models/2731108/pantyhose-helper-krea2-v2?modelVersionId=3086804",
+    "source_url": "https://civitai.red/models/2731108/pantyhose-helper-krea2-v2?modelVersionId=3086804",
+    "tags": [
+      "Pantyhose",
+      "fashion",
+      "pantyhose",
+      "clothing",
+      "leggings",
+      "nylons",
+      "krea2"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
+  },
+  "checkpoints/krea2TurboOfficialComfy_krea2TurboNvfp4.safetensors": {
+    "name": "Krea 2 Turbo Official Comfy-Org Checkpoints (Krea2)",
+    "version": "krea2_turbo_nvfp4",
+    "base_model": "Krea 2",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/b0a34a6c-2ad3-4de2-9b65-3e96073324b1/original=true/134676595.jpeg",
+    "civitai_url": "https://civitai.red/models/2726029/krea-2-turbo-official-comfy-org-checkpoints-krea2?modelVersionId=3064058",
+    "source_url": "https://civitai.red/models/2726029/krea-2-turbo-official-comfy-org-checkpoints-krea2?modelVersionId=3064058",
+    "tags": [
+      "base model"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
+  },
+  "checkpoints/oneObsession_v20Bold.safetensors": {
+    "name": "One obsession",
+    "version": "v20_Bold色彩",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/4d1e6a49-a605-49bc-add5-07cd002f5cdd/original=true/119920456.jpeg",
+    "civitai_url": "https://civitai.red/models/1318945/one-obsession?modelVersionId=2657925",
+    "source_url": "https://civitai.red/models/1318945/one-obsession?modelVersionId=2657925",
+    "tags": [
+      "anime",
+      "base model",
+      "one",
+      "noob",
+      "sdxl",
+      "obsession",
+      "my style",
+      "one obsession"
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Image"
+      ]
+    }
+  },
+  "loras/rimixO.safetensors": {
+    "name": "Ri-mix - Style LORA [ Illustrious + Anima]",
+    "version": "Ri-mix Ω (Illustrious)",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/40e0532e-34ad-4f17-b2cb-10ddc7a3bfa5/original=true/83176328.jpeg",
+    "civitai_url": "https://civitai.red/models/996220/ri-mix-style-lora-illustrious-anima?modelVersionId=1918677",
+    "source_url": "https://civitai.red/models/996220/ri-mix-style-lora-illustrious-anima?modelVersionId=1918677",
+    "tags": [
+      "style",
+      "illustration",
+      "anima",
+      "pony",
+      "illustrious",
+      "flux"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent"
       ]
     }
   }

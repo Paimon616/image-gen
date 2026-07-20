@@ -150,6 +150,21 @@ export function GenerationParams() {
 
   return (
     <div className="space-y-3">
+      <div className="rounded-md border border-border bg-card p-3 shadow-sm">
+        <Label className="mb-2 block text-xs text-muted-foreground">Generation backend</Label>
+        <select
+          value={params.backend}
+          onChange={(e) => setParams({ backend: e.target.value as "comfyui" | "a1111" })}
+          className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+        >
+          <option value="comfyui">ComfyUI (Krea / Wan / workflows)</option>
+          <option value="a1111">AUTOMATIC1111 v1.10.0 (Civitai SD 1.5 / SDXL)</option>
+        </select>
+        {params.backend === "a1111" && params.generation_mode !== "text_to_image" && (
+          <p className="mt-2 text-xs text-amber-600">A1111 currently supports Text to Image in image-gen.</p>
+        )}
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-2">
         <div>
           <div className="mb-2 flex items-center justify-between gap-2">
@@ -449,6 +464,37 @@ export function GenerationParams() {
               )}
             </div>
 
+            <div>
+              <Label className="text-xs text-muted-foreground mb-2 block">Hires upscale</Label>
+              <Input
+                type="number"
+                min={1}
+                max={4}
+                step={0.05}
+                value={params.hires_upscale}
+                onChange={(e) =>
+                  setParams({ hires_upscale: Math.max(1, Number(e.target.value) || 1) })
+                }
+                className="h-8 text-xs"
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs text-muted-foreground mb-2 block">
+                Hires steps (0 = same)
+              </Label>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                step={1}
+                value={params.hires_steps}
+                onChange={(e) =>
+                  setParams({ hires_steps: Math.max(0, Math.round(Number(e.target.value) || 0)) })
+                }
+                className="h-8 text-xs"
+              />
+            </div>
           </div>
 
           <div className="grid gap-3 lg:grid-cols-2">

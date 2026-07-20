@@ -570,25 +570,51 @@ function enrichResourcesWithPageData(
   return [...enriched, ...remainingMetaResources];
 }
 
-function parseSize(meta: Record<string, unknown>, item: CivitaiImageItem) {
+function parseSize(
+  meta: Record<string, unknown>,
+  item: CivitaiImageItem,
+  shouldInferHires: boolean
+) {
   const size = stringValue(meta.Size ?? meta.size);
   const match = size.match(/(\d+)\s*[x×]\s*(\d+)/i);
-  const width =
+  let width =
     match?.[1] ? Number(match[1]) : numberValue(meta.width) ?? numberValue(item.width);
-  const height =
+  let height =
     match?.[2] ? Number(match[2]) : numberValue(meta.height) ?? numberValue(item.height);
+
+  // Civitai often reports final post-upscale dimensions instead of the base pass.
+  const inferredHires =
+    !match &&
+    shouldInferHires &&
+    Boolean(
+      width &&
+        height &&
+        (Math.max(width, height) > 1536 || width * height > 2_000_000)
+    );
+  if (inferredHires && width && height) {
+    width = Math.round(width / 2 / 8) * 8;
+    height = Math.round(height / 2 / 8) * 8;
+  }
 
   return {
     width: width ? clampImportedImageDimension(width) : undefined,
     height: height ? clampImportedImageDimension(height) : undefined,
+    inferredHires,
   };
 }
 
 function parseSampler(rawSampler: string, rawScheduler = "") {
   const sampler = rawSampler.toLowerCase();
-  const scheduler = rawScheduler.toLowerCase().includes("karras")
+  const schedulerText = `${rawSampler} ${rawScheduler}`.toLowerCase();
+  const scheduler = schedulerText.includes("karras")
     ? "karras"
-    : "normal";
+    : schedulerText.includes("simple")
+      ? "simple"
+      : "normal";
+
+  if (sampler.includes("er_sde")) {
+    return { sampler_name: "er_sde", scheduler };
+  }
 
   if (sampler.includes("dpm++ 2m sde")) {
     return {
@@ -626,7 +652,9 @@ function parseSampler(rawSampler: string, rawScheduler = "") {
 }
 
 function parseImportParams(meta: Record<string, unknown>, item: CivitaiImageItem) {
+  const usesA1111 = Boolean(stringValue(meta.Version ?? meta.version));
   const params: Partial<GenerationParams> = {
+    backend: usesA1111 ? "a1111" : "comfyui",
     generation_mode: "text_to_image",
     output_format: "jpeg",
   };
@@ -639,12 +667,21 @@ function parseImportParams(meta: Record<string, unknown>, item: CivitaiImageItem
   const seed = numberValue(meta.seed ?? meta.Seed);
   const clipSkip = numberValue(meta["Clip skip"] ?? meta.clipSkip);
   const denoise = numberValue(meta["Denoising strength"] ?? meta.denoisingStrength);
+  const hiresUpscale = numberValue(meta["Hires upscale"] ?? meta.hiresUpscale);
+  const hiresSteps = numberValue(meta["Hires steps"] ?? meta.hiresSteps);
+  const hiresUpscaler = stringValue(meta["Hires upscaler"] ?? meta.hiresUpscaler);
   const vaeName = stringValue(meta.VAE ?? meta.vae);
   const sampler = stringValue(meta.sampler ?? meta.Sampler);
   const scheduler = stringValue(
     meta.scheduler ?? meta.Scheduler ?? meta["Schedule type"] ?? meta["schedule type"]
   );
-  const { width, height } = parseSize(meta, item);
+  const modelName = stringValue(meta.Model ?? meta.model ?? meta.ModelName);
+  const isKrea2 = /krea[-_ ]?2/i.test(modelName);
+  const { width, height, inferredHires } = parseSize(
+    meta,
+    item,
+    isKrea2 || usesA1111
+  );
 
   if (prompt) params.prompt = prompt;
   if (negativePrompt) params.negative_prompt = negativePrompt;
@@ -653,6 +690,13 @@ function parseImportParams(meta: Record<string, unknown>, item: CivitaiImageItem
   if (seed) params.seed = Math.round(seed);
   if (clipSkip) params.clip_skip = Math.round(clipSkip);
   if (denoise) params.denoise_strength = denoise;
+  if (hiresUpscale && hiresUpscale > 1) params.hires_upscale = hiresUpscale;
+  else if (inferredHires) params.hires_upscale = 2;
+  if (hiresSteps) params.hires_steps = Math.round(hiresSteps);
+  if (hiresUpscaler && hiresUpscaler.toLowerCase() !== "none") {
+    params.upscale_model_name =
+      hiresUpscaler.toLowerCase() === "esrgan_4x" ? "ESRGAN_4x.pth" : hiresUpscaler;
+  }
   if (vaeName) params.vae_name = vaeName;
   if (width) params.width = width;
   if (height) params.height = height;

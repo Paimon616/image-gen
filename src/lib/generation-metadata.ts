@@ -251,6 +251,7 @@ function normalizeParams(rawParams: Record<string, unknown>) {
   const parsedSize = parseSize(rawParams.Size ?? rawParams.size);
   const params: GenerationParams = {
     ...DEFAULT_PARAMS,
+    backend: rawParams.backend === "a1111" ? "a1111" : "comfyui",
     model: stringValue(rawParams.model) || DEFAULT_PARAMS.model,
     model_name:
       stringValue(rawParams.model_name) ||
@@ -311,6 +312,12 @@ function normalizeParams(rawParams: Record<string, unknown>) {
       stringValue(rawParams.upscale_model_name) ||
       stringValue(rawParams.upscaler) ||
       DEFAULT_PARAMS.upscale_model_name,
+    hires_upscale:
+      numberValue(rawParams.hires_upscale ?? rawParams.hiresUpscale ?? rawParams["Hires upscale"]) ??
+      DEFAULT_PARAMS.hires_upscale,
+    hires_steps:
+      numberValue(rawParams.hires_steps ?? rawParams.hiresSteps ?? rawParams["Hires steps"]) ??
+      DEFAULT_PARAMS.hires_steps,
     loras: normalizeLoras(rawParams.loras),
     embeddings: normalizeEmbeddings(rawParams.embeddings),
     controlnets: normalizeControlnets(rawParams.controlnets),

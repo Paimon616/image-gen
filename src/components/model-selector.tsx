@@ -242,9 +242,13 @@ function formatScale(value: number) {
 function LoraScaleSlider({
   value,
   onChange,
+  min = 0,
+  max = 2,
 }: {
   value: number;
   onChange: (value: number) => void;
+  min?: number;
+  max?: number;
 }) {
   return (
     <div className="grid min-w-32 gap-1">
@@ -252,14 +256,14 @@ function LoraScaleSlider({
         <span className="text-[10px] text-muted-foreground">Weight</span>
         <Input
           type="number"
-          min={0}
-          max={2}
+          min={min}
+          max={max}
           step={0.05}
           value={formatScale(value)}
           onChange={(event) => {
             const nextValue = Number(event.target.value);
             if (!Number.isFinite(nextValue)) return;
-            onChange(roundToStep(clampNumber(nextValue, 0, 2), 0.05));
+            onChange(roundToStep(clampNumber(nextValue, min, max), 0.05));
           }}
           className="h-6 w-16 px-2 text-right text-[10px] font-mono"
         />
@@ -274,11 +278,23 @@ function LoraScaleSlider({
             )
           )
         }
-        min={0}
-        max={2}
+        min={min}
+        max={max}
         step={0.05}
       />
     </div>
+  );
+}
+
+function isKreaSliderLora(asset: LocalModelAsset | undefined, path: string) {
+  const label = [asset?.name, asset?.base_model, asset?.path, path]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return (
+    (asset?.base_model.toLowerCase() === "krea 2" && label.includes("slider")) ||
+    /realism.?slider|detail.?slider|detailer-krea2/i.test(label)
   );
 }
 
@@ -535,6 +551,22 @@ export function ModelSelector() {
                       <LoraScaleSlider
                         value={lora.scale}
                         onChange={(value) => updateLora(i, "scale", value)}
+                        min={
+                          isKreaSliderLora(
+                            findAsset(localModels.loraAssets, lora.path),
+                            lora.path
+                          )
+                            ? -5
+                            : 0
+                        }
+                        max={
+                          isKreaSliderLora(
+                            findAsset(localModels.loraAssets, lora.path),
+                            lora.path
+                          )
+                            ? 5
+                            : 2
+                        }
                       />
                       <Button
                         size="sm"
@@ -558,6 +590,22 @@ export function ModelSelector() {
                       <LoraScaleSlider
                         value={lora.scale}
                         onChange={(value) => updateLora(i, "scale", value)}
+                        min={
+                          isKreaSliderLora(
+                            findAsset(localModels.loraAssets, lora.path),
+                            lora.path
+                          )
+                            ? -5
+                            : 0
+                        }
+                        max={
+                          isKreaSliderLora(
+                            findAsset(localModels.loraAssets, lora.path),
+                            lora.path
+                          )
+                            ? 5
+                            : 2
+                        }
                       />
                       <Button
                         size="sm"

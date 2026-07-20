@@ -156,6 +156,12 @@ function findLocalAsset(assets: LocalModelAsset[], resource: ImportedCivitaiReso
   return ranked[0]?.asset;
 }
 
+function isKrea2Resource(resource: ImportedCivitaiResource) {
+  return /krea[-_ ]?2/i.test(
+    `${resource.name} ${resource.versionName ?? ""} ${resource.baseModel ?? ""}`
+  );
+}
+
 function resourceBucket(
   models: LocalModelsResponse,
   type: ImportedCivitaiResource["type"]
@@ -177,7 +183,12 @@ export function findMissingCivitaiResources(
   return imported.resources.reduce<MissingResource[]>((missing, resource) => {
     if (resource.type === "other") return missing;
 
-    const match = findLocalAsset(resourceBucket(models, resource.type), resource);
+    const bucket = resourceBucket(models, resource.type);
+    const match =
+      findLocalAsset(bucket, resource) ??
+      (resource.type === "checkpoint" && isKrea2Resource(resource)
+        ? bucket.find((asset) => /krea[-_ ]?2/i.test(`${asset.path} ${asset.name}`))
+        : undefined);
     if (!match) {
       missing.push({
         ...resource,
@@ -203,7 +214,12 @@ export function reconcileImportedParams(
   imported.resources.forEach((resource) => {
     if (resource.type === "other") return;
 
-    const match = findLocalAsset(resourceBucket(models, resource.type), resource);
+    const bucket = resourceBucket(models, resource.type);
+    const match =
+      findLocalAsset(bucket, resource) ??
+      (resource.type === "checkpoint" && isKrea2Resource(resource)
+        ? bucket.find((asset) => /krea[-_ ]?2/i.test(`${asset.path} ${asset.name}`))
+        : undefined);
 
     if (!match) {
       missing.push({
@@ -271,7 +287,12 @@ export function reconcileImportedParams(
     matchedLoras.length > 0 ||
     imported.resources.some((resource) => resource.type === "lora")
   ) {
-    matched.loras = matchedLoras;
+    matched.loras = matchedLoras.filter(
+      (lora, index, all) =>
+        all.findIndex(
+          (candidate) => candidate.path.toLowerCase() === lora.path.toLowerCase()
+        ) === index
+    );
   }
   if (
     importedGenerationMetadata ||
