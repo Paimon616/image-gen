@@ -1038,17 +1038,12 @@
     "tags": [
       "easynegative",
       "anime",
-      "embedding",
       "negative",
       "negative embedding",
       "textual inversion",
+      "embedding",
       "tool"
     ],
-    "risk": {
-      "level": "OK",
-      "reason": "Rent 허용 + 특이사항 없음",
-      "allow_commercial_use": "Y"
-    },
     "license": {
       "allowNoCredit": true,
       "allowDerivatives": true,
@@ -3558,20 +3553,17 @@
   },
   "loras/USNR STYLE_XL_lokr.safetensors": {
     "name": "薄塗り / USNR STYLE",
-    "version": "vSDXL_Illustrious-XL",
+    "version": "SDXL_Illustrious-XL",
     "base_model": "Illustrious",
     "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/42d872a7-acd3-43bb-b203-258b5a281567/original=true/34753131.jpeg",
     "civitai_url": "https://civitai.red/models/176554/usnr-style?modelVersionId=959419",
+    "source_url": "https://civitai.red/models/176554/usnr-style?modelVersionId=959419",
     "tags": [
+      "usnr",
       "anime",
       "girls",
       "style"
     ],
-    "risk": {
-      "level": "OK",
-      "reason": "Rent 허용 + 특이사항 없음",
-      "allow_commercial_use": "Y"
-    },
     "license": {
       "allowNoCredit": false,
       "allowDerivatives": true,
@@ -6547,5 +6539,489 @@
         "Rent"
       ]
     }
+  },
+  "loras/Girls' Frontline-OTs-14[lightning]-V3.safetensors": {
+    "name": "Girls' Frontline-OTs-14\"lightning\"",
+    "version": "v3.0",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/952a09ed-ab06-4d61-7d78-a9269d2aa800/original=true/75126.jpeg",
+    "civitai_url": "https://civitai.red/models/6525/girls-frontline-ots-14-lightning?modelVersionId=7932",
+    "source_url": "https://civitai.red/models/6525/girls-frontline-ots-14-lightning?modelVersionId=7932",
+    "tags": [
+      "purpleheart",
+      "redgown",
+      "original_outfit",
+      "ohead",
+      "character",
+      "girls_frontline",
+      "game character",
+      "anime"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": []
+    }
+  },
+  "checkpoints/cetusMix_Coda2.safetensors": {
+    "name": "Cetus-Mix",
+    "version": "CetusMix_Coda2",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/399afc22-2a06-4873-d283-c81f3ba60500/original=true/521590.jpeg",
+    "civitai_url": "https://civitai.red/models/6755/cetus-mix?modelVersionId=48569",
+    "source_url": "https://civitai.red/models/6755/cetus-mix?modelVersionId=48569",
+    "tags": [
+      "anime",
+      "base model",
+      "2d",
+      "2.5d",
+      "basemodel",
+      "styles",
+      "eagelaxis"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": []
+    }
+  },
+  "embeddings/ng_deepnegative_v1_75t.pt": {
+    "name": "Deep Negative V1.x",
+    "version": "V1 75T",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/f7fe0b31-86a6-48ff-4fc2-906227af9300/original=true/45555.jpeg",
+    "civitai_url": "https://civitai.red/models/4629/deep-negative-v1-x?modelVersionId=5637",
+    "source_url": "https://civitai.red/models/4629/deep-negative-v1-x?modelVersionId=5637",
+    "tags": [
+      "ng_deepnegative_v1_75t",
+      "concept",
+      "negative",
+      "negative embedding"
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
+    }
+  },
+  "embeddings/bad_prompt_version2-neg.pt": {
+    "name": "bad_prompt Negative Embedding",
+    "version": "bad_prompt_version2",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/0f12ec45-0d26-4e15-0bb1-6e23230d8700/original=true/656105.jpeg",
+    "civitai_url": "https://civitai.red/models/55700/bad-prompt-negative-embedding?modelVersionId=60095",
+    "source_url": "https://civitai.red/models/55700/bad-prompt-negative-embedding?modelVersionId=60095",
+    "tags": [
+      "bad_prompt_version2",
+      "concept",
+      "negative embedding",
+      "embedding",
+      "orginal content"
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
+    }
+  },
+  "embeddings/badhandv4.pt": {
+    "name": "badhandv4",
+    "version": "badhandv4",
+    "base_model": "Other",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/45318cc7-231d-4d8a-044d-a081d0a40700/original=true/212048.jpeg",
+    "civitai_url": "https://civitai.red/models/16993/badhandv4?modelVersionId=20068",
+    "source_url": "https://civitai.red/models/16993/badhandv4?modelVersionId=20068",
+    "tags": [
+      "badhandv4",
+      "anime",
+      "textual inversion",
+      "style"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
+    }
+  },
+  "embeddings/By bad artist -neg.pt": {
+    "name": "Bad artist Negative embedding ",
+    "version": "Bad artist ",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/cb4bd554-c7ed-4837-3803-8f24fa8fc900/original=true/52078.jpeg",
+    "civitai_url": "https://civitai.red/models/5224/bad-artist-negative-embedding?modelVersionId=6056",
+    "source_url": "https://civitai.red/models/5224/bad-artist-negative-embedding?modelVersionId=6056",
+    "tags": [
+      "By bad artist ",
+      "bad artist"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
+  },
+  "loras/0_11Xx_B.safetensors": {
+    "name": "0__11Xx | Shiiro's Styles | Niji",
+    "version": "B",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/a21366a0-0b72-4dfc-9500-a02e0fb91a26/original=true/106983116.jpeg",
+    "civitai_url": "https://civitai.red/models/1197562/0-11xx-shiiro-s-styles-niji?modelVersionId=2334279",
+    "source_url": "https://civitai.red/models/1197562/0-11xx-shiiro-s-styles-niji?modelVersionId=2334279",
+    "tags": [
+      "0_11Xx_B",
+      "surreal",
+      "anime",
+      "photorealistic",
+      "art",
+      "manga",
+      "flowers",
+      "style",
+      "paint",
+      "art style",
+      "woman",
+      "artist",
+      "artstyle",
+      "cartoon",
+      "game character",
+      "girls",
+      "male",
+      "man",
+      "realistic",
+      "detail",
+      "nsfw",
+      "lora",
+      "shapes",
+      "color",
+      "geometry",
+      "background plate",
+      "backgrounds",
+      "styles",
+      "abstract painting",
+      "background pony",
+      "shiiro",
+      "manga artist"
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
+    }
+  },
+  "loras/aosiai123_style.safetensors": {
+    "name": "Aosiai123 | Shiiro's Styles",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/33025bfd-c23d-4192-a340-01b32ba793c6/original=true/62947288.jpeg",
+    "civitai_url": "https://civitai.red/models/1346615/aosiai123-shiiro-s-styles?modelVersionId=1520880",
+    "source_url": "https://civitai.red/models/1346615/aosiai123-shiiro-s-styles?modelVersionId=1520880",
+    "tags": [
+      "traditional media,  aosiai123_illu",
+      "anime",
+      "photorealistic",
+      "art",
+      "manga",
+      "flowers",
+      "style",
+      "paint",
+      "art style",
+      "woman",
+      "artist",
+      "artstyle",
+      "cartoon",
+      "game character",
+      "girls",
+      "male",
+      "man",
+      "realistic",
+      "detail",
+      "nsfw",
+      "lora",
+      "shapes",
+      "color",
+      "geometry",
+      "background plate",
+      "backgrounds",
+      "styles",
+      "abstract painting",
+      "background pony",
+      "shiiro",
+      "manga artist"
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
+    }
+  },
+  "loras/CADENZA.safetensors": {
+    "name": "GENESIS",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/cab9ae2d-6a71-45e4-9823-687a0260b2ad/original=true/87961660.jpeg",
+    "civitai_url": "https://civitai.red/models/846953/genesis?modelVersionId=2004152",
+    "source_url": "https://civitai.red/models/846953/genesis?modelVersionId=2004152",
+    "tags": [
+      "anime",
+      "style",
+      "girls"
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
+    }
+  },
+  "loras/Alicia_Termina_Magentano__The_Greatest_Estate_Designer.safetensors": {
+    "name": "Alicia Termina Magentano | The Greatest Estate Designer | Manhwa | Webtoon | Illustrious",
+    "version": "V1",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/3c3a5719-c500-4851-b291-6f6234cd2c6d/original=true/68134311.jpeg",
+    "civitai_url": "https://civitai.red/models/1433767/alicia-termina-magentano-the-greatest-estate-designer-manhwa-webtoon-illustrious?modelVersionId=1620692",
+    "source_url": "https://civitai.red/models/1433767/alicia-termina-magentano-the-greatest-estate-designer-manhwa-webtoon-illustrious?modelVersionId=1620692",
+    "tags": [
+      "1 girl, solo, red hair, blue eyes, medium hair, curly hair",
+      "red jacket, jacket on shoulders, yellow ascot, epaulettes, high colar, brown pants, white shirt, long sleeves, black boots, knee boots",
+      "armor, red cape, black shoulder armor, black pauldrons, black gauntlets, black breastplate, sheath, sword",
+      "sweater, ribbed sweater, fur trim, turtleneck sweater, blue gloves, cape",
+      "anime",
+      "lora",
+      "the greatest estate designer",
+      "manhwa",
+      "webtoon",
+      "character"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Rent",
+        "RentCivit"
+      ]
+    }
+  },
+  "embeddings/realisticvision-negative-embedding.pt": {
+    "name": "Negative Embedding for Realistic Vision v2.0",
+    "version": "v1.0",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/79c4b80a-d5f6-4aaa-aac2-ce2e0ecc7900/original=true/463922.jpeg",
+    "civitai_url": "https://civitai.red/models/36070/negative-embedding-for-realistic-vision-v2-0?modelVersionId=42247",
+    "source_url": "https://civitai.red/models/36070/negative-embedding-for-realistic-vision-v2-0?modelVersionId=42247",
+    "tags": [
+      "realisticvision-negative-embedding",
+      "realisticvision",
+      "negative embedding",
+      "realistic",
+      "embedding",
+      "textual inversion",
+      "tool"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit"
+      ]
+    }
+  },
+  "loras/PosingDynamicsILL.safetensors": {
+    "name": "Posing Dynamics",
+    "version": "v1.0 Illustrious",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/83533ee8-1544-4b38-abe4-a96dda14b307/original=true/102744266.jpeg",
+    "civitai_url": "https://civitai.red/models/1185671/posing-dynamics?modelVersionId=2257711",
+    "source_url": "https://civitai.red/models/1185671/posing-dynamics?modelVersionId=2257711",
+    "tags": [
+      "PosingDynamicsDaal",
+      "anime",
+      "colorful",
+      "whimsical",
+      "poses",
+      "cartoon",
+      "girls",
+      "bright",
+      "dynamic",
+      "psychadelic"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit"
+      ]
+    }
+  },
+  "checkpoints/BSSEquinoxILSemi_v20.safetensors": {
+    "name": "[BSS] - 🌗 Equinox (IL Semi-Realistic model)",
+    "version": "v2.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/adb327a9-bcf0-422b-8bda-66af077d480d/original=true/95081454.jpeg",
+    "civitai_url": "https://civitai.red/models/1833737/bss-equinox-il-semi-realistic-model?modelVersionId=2124648",
+    "source_url": "https://civitai.red/models/1833737/bss-equinox-il-semi-realistic-model?modelVersionId=2124648",
+    "tags": [
+      "semi-realistic",
+      "anime",
+      "base model",
+      "realistic"
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
+    }
+  },
+  "checkpoints/animayhemPaleRider_v40LongRider.safetensors": {
+    "name": "AniMayhem - Pale Rider",
+    "version": "v4.0 Long Rider",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/30fcc901-9e44-4b03-8e4a-48bda88ff4ed/original=true/134240827.jpeg",
+    "civitai_url": "https://civitai.red/models/1984400/animayhem-pale-rider?modelVersionId=3039900",
+    "source_url": "https://civitai.red/models/1984400/animayhem-pale-rider?modelVersionId=3039900",
+    "tags": [
+      "characters",
+      "high quality",
+      "women",
+      "base model",
+      "anime"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent"
+      ]
+    }
+  },
+  "loras/Ayla__FFXIV_OC__epoch_10.safetensors": {
+    "name": "Ayla (FFXIV OC)",
+    "version": "V2",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/3c02dba7-0771-4d34-9e7d-f71c36bb685c/original=true/125554517.jpeg",
+    "civitai_url": "https://civitai.red/models/2132012/ayla-ffxiv-oc?modelVersionId=2808578",
+    "source_url": "https://civitai.red/models/2132012/ayla-ffxiv-oc?modelVersionId=2808578",
+    "tags": [
+      "ayla_xiv, (dark-skinned_female:1.2), (dark_skin:1.2), tan, medium_hair, blonde_hair, blue_eyes, red_hairband, short_hair, wavy_hair, forehead, (small_breasts:1.2)",
+      "round_breasts, large_areolae, nipples, big_labia, pussy, pubic_hair, hairy_pussy",
+      "character",
+      "final fantasy xiv",
+      "final fantasy",
+      "ffxiv",
+      "hyur"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent"
+      ]
+    }
+  },
+  "checkpoints/hyphoria_v001.safetensors": {
+    "name": "Hyphoria",
+    "version": "v0.01",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/955147b8-8cd1-48b2-b28e-8da508acfab6/original=true/77879909.jpeg",
+    "civitai_url": "https://civitai.red/models/1595884/hyphoria?modelVersionId=1805971",
+    "source_url": "https://civitai.red/models/1595884/hyphoria?modelVersionId=1805971",
+    "tags": [
+      "base model"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Image"
+      ]
+    }
+  },
+  "diffusion_models/smoothMixWan2214BI2V_i2vV20High.safetensors": {
+    "name": "Smooth Mix Wan 2.2 14B (I2V/T2V)",
+    "version": "I2V v2.0 High",
+    "base_model": "Wan Video 2.2 I2V-A14B",
+    "thumbnail_url": null,
+    "civitai_url": "https://civitai.red/models/1995784?modelVersionId=2513182",
+    "source_url": "https://civitai.red/models/1995784?modelVersionId=2513182",
+    "tags": [
+      "video",
+      "i2v",
+      "wan-2.2"
+    ],
+    "risk": null,
+    "license": null
+  },
+  "loras/SmoothXXXAnimation_High.safetensors": {
+    "name": "SmoothMix Animations WAN 2.2",
+    "version": "XXX Animations High",
+    "base_model": "Wan Video 2.2 I2V-A14B",
+    "thumbnail_url": null,
+    "civitai_url": "https://civitai.red/models/2040641?modelVersionId=2376136",
+    "source_url": "https://civitai.red/models/2040641?modelVersionId=2376136",
+    "tags": [
+      "video",
+      "i2v",
+      "wan-2.2"
+    ],
+    "risk": null,
+    "license": null
+  },
+  "loras/matingPressHigh.safetensors": {
+    "name": "WAN 2.2 I2V Mating Press",
+    "version": "v1.0 HIGH",
+    "base_model": "Wan Video 2.2 I2V-A14B",
+    "thumbnail_url": null,
+    "civitai_url": "https://civitai.red/models/2368333?modelVersionId=2663475",
+    "source_url": "https://civitai.red/models/2368333?modelVersionId=2663475",
+    "tags": [
+      "video",
+      "i2v",
+      "wan-2.2"
+    ],
+    "risk": null,
+    "license": null
   }
 }

@@ -251,7 +251,10 @@ function normalizeParams(rawParams: Record<string, unknown>) {
   const parsedSize = parseSize(rawParams.Size ?? rawParams.size);
   const params: GenerationParams = {
     ...DEFAULT_PARAMS,
-    backend: rawParams.backend === "a1111" ? "a1111" : "comfyui",
+    backend:
+      rawParams.backend === "a1111" || rawParams.backend === "forge"
+        ? rawParams.backend
+        : "comfyui",
     model: stringValue(rawParams.model) || DEFAULT_PARAMS.model,
     model_name:
       stringValue(rawParams.model_name) ||

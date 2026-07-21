@@ -1,5 +1,7 @@
 # ComfyUI Setup
 
+For the complete three-backend installation order, start with [Local image backends](image-backends-setup.md). For Civitai import diagnostics and recommendations, see [Civitai metadata reproduction](civitai-metadata-reproduction.md).
+
 This app renders images/videos by talking to a local ComfyUI server. The `ComfyUI/`
 runtime, its Python virtualenv, custom nodes, and model weights are **not** committed
 to Git — each machine recreates them with the setup scripts below. Small,
@@ -175,3 +177,10 @@ and opens the app.
   `setup:comfyui-config`; nodes load at startup.
 - **`... exists but is not a git checkout`** — a custom node or the ComfyUI dir
   was created without `.git`. Move it aside and rerun the setup script.
+
+- **Imported Civitai image differs from the source** — a `Version: ComfyUI` label
+  does not include the original node graph, VAE, RNG, Hires stages, or custom
+  node versions. Review the import completeness report and the
+  [Civitai reproduction guide](civitai-metadata-reproduction.md).
+- **Resolution guard** — image-gen rejects ComfyUI output above roughly 4.2 MP
+  to prevent accidental 4K-to-8K jobs.

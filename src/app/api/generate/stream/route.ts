@@ -168,8 +168,8 @@ export async function POST(req: NextRequest) {
       void cancelComfyPrompt(promptId).catch(() => {});
     }
 
-    if (body.backend === "a1111") {
-      void interruptA1111().catch(() => {});
+    if (body.backend === "a1111" || body.backend === "forge") {
+      void interruptA1111(body.backend).catch(() => {});
     }
   };
 
@@ -183,12 +183,16 @@ export async function POST(req: NextRequest) {
       };
 
       try {
-        if (body.backend === "a1111") {
+        if (body.backend === "a1111" || body.backend === "forge") {
           send("progress", { progress: 5, message: "Waiting for A1111..." });
+          const progressBaseUrl =
+            body.backend === "forge"
+              ? process.env.FORGE_BASE_URL?.replace(/\/$/, "") ??
+                "http://127.0.0.1:7861"
+              : process.env.A1111_BASE_URL?.replace(/\/$/, "") ??
+                "http://127.0.0.1:7860";
           const progressUrl =
-            (process.env.A1111_BASE_URL?.replace(/\/$/, "") ??
-              "http://127.0.0.1:7860") +
-            "/sdapi/v1/progress?skip_current_image=true";
+            progressBaseUrl + "/sdapi/v1/progress?skip_current_image=true";
           const progressTimer = setInterval(async () => {
             try {
               const response = await fetch(progressUrl, {
@@ -224,7 +228,7 @@ export async function POST(req: NextRequest) {
           const savedImages = await saveBufferedImages({
             images,
             params: body,
-            endpoint: "a1111/local",
+            endpoint: `${body.backend}/local`,
             civitaiOrigin,
           });
           send("progress", { progress: 100, message: "Done" });

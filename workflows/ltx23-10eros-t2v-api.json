@@ -110,7 +110,7 @@
         0
       ],
       "lora_name": "DR34ML4Y_LTXXX_V2.safetensors",
-      "strength_model": 1
+      "strength_model": "{{ltx_dr34_strength}}"
     }
   },
   "288": {
@@ -538,7 +538,7 @@
         0
       ],
       "lora_name": "DaSiWa_LTX23_NSFW_Bodyphysics_Fluid_Motion_Enhancer_v01.safetensors",
-      "strength_model": 1
+      "strength_model": "{{ltx_dasiwa_strength}}"
     }
   },
   "325": {

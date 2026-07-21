@@ -36,7 +36,7 @@ export const AVAILABLE_MODELS: ModelConfig[] = [
 ];
 
 export interface GenerationParams {
-  backend: "comfyui" | "a1111";
+  backend: "comfyui" | "a1111" | "forge";
   model: string;
   model_name: string;
   prompt: string;
@@ -112,7 +112,10 @@ export interface ImageGenerationStatus {
   message: string;
 }
 
+export type VideoModelPreset = "wan-smoothmix" | "wan-base" | "ltx-10eros";
+
 export interface VideoGenerationParams {
+  video_model: VideoModelPreset;
   prompt: string;
   negative_prompt: string;
   width: number;
@@ -122,6 +125,16 @@ export interface VideoGenerationParams {
   duration_seconds: number;
   num_inference_steps: number;
   guidance_scale: number;
+  vae_tile_size: number;
+  vae_tile_overlap: number;
+  vae_temporal_size: number;
+  vae_temporal_overlap: number;
+  smooth_xxx_strength: number;
+  mating_press_strength: number;
+  lightx2v_high_strength: number;
+  lightx2v_low_strength: number;
+  ltx_dr34_strength: number;
+  ltx_dasiwa_strength: number;
   seed: number | null;
   source_image: string | null;
   enable_sound: boolean;
@@ -184,6 +197,40 @@ export interface CivitaiImportResult {
   warning?: string;
   params: Partial<GenerationParams>;
   resources: ImportedCivitaiResource[];
+  metadataReport?: CivitaiMetadataReport;
+  recommendations?: CivitaiGenerationRecommendation[];
+}
+
+export type CivitaiMetadataStatus =
+  | "confirmed"
+  | "inferred"
+  | "missing"
+  | "conflict";
+
+export interface CivitaiMetadataField {
+  key: string;
+  label: string;
+  status: CivitaiMetadataStatus;
+  value?: string;
+  note?: string;
+}
+
+export interface CivitaiMetadataReport {
+  reproducibility: "high" | "medium" | "low";
+  summary: string;
+  confirmedCount: number;
+  inferredCount: number;
+  missingCount: number;
+  fields: CivitaiMetadataField[];
+}
+
+export interface CivitaiGenerationRecommendation {
+  id: string;
+  title: string;
+  goal: "closest" | "literal" | "stable" | "quality";
+  description: string;
+  caution?: string;
+  params: Partial<GenerationParams>;
 }
 
 export interface HistoryMissingResource extends ImportedCivitaiResource {
@@ -246,15 +293,26 @@ export const DEFAULT_PARAMS: GenerationParams = {
 };
 
 export const DEFAULT_VIDEO_PARAMS: VideoGenerationParams = {
+  video_model: "wan-smoothmix",
   prompt: "",
   negative_prompt: "low quality, blurry, flicker, warped, distorted motion",
-  width: 720,
-  height: 1280,
-  num_frames: 126,
-  fps: 25,
+  width: 480,
+  height: 592,
+  num_frames: 81,
+  fps: 16,
   duration_seconds: 5,
-  num_inference_steps: 30,
-  guidance_scale: 3,
+  num_inference_steps: 6,
+  guidance_scale: 1,
+  vae_tile_size: 256,
+  vae_tile_overlap: 64,
+  vae_temporal_size: 64,
+  vae_temporal_overlap: 16,
+  smooth_xxx_strength: 1,
+  mating_press_strength: 0.85,
+  lightx2v_high_strength: 3,
+  lightx2v_low_strength: 1.5,
+  ltx_dr34_strength: 1,
+  ltx_dasiwa_strength: 1,
   seed: null,
   source_image: null,
   enable_sound: false,

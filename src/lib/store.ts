@@ -12,12 +12,14 @@ interface CivitaiImportState {
   url: string;
   status: string;
   missingResources: MissingResource[];
+  resetVersion: number;
 }
 
 const EMPTY_CIVITAI_IMPORT: CivitaiImportState = {
   url: "",
   status: "",
   missingResources: [],
+  resetVersion: 0,
 };
 
 interface AppState {
@@ -178,7 +180,14 @@ export const useStore = create<AppState>((set) => ({
   loadParamsFromImage: (image) =>
     set((state) =>
       image.params
-        ? { params: { ...DEFAULT_PARAMS, ...image.params } }
+        ? {
+            params: { ...DEFAULT_PARAMS, ...image.params },
+            civitaiReference: null,
+            civitaiImport: {
+              ...EMPTY_CIVITAI_IMPORT,
+              resetVersion: state.civitaiImport.resetVersion + 1,
+            },
+          }
         : state
     ),
 
@@ -204,5 +213,11 @@ export const useStore = create<AppState>((set) => ({
       },
     })),
 
-  resetCivitaiImport: () => set({ civitaiImport: EMPTY_CIVITAI_IMPORT }),
+  resetCivitaiImport: () =>
+    set((state) => ({
+      civitaiImport: {
+        ...EMPTY_CIVITAI_IMPORT,
+        resetVersion: state.civitaiImport.resetVersion + 1,
+      },
+    })),
 }));

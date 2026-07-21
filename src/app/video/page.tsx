@@ -12,6 +12,13 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useStore } from "@/lib/store";
+import {
   DEFAULT_VIDEO_PARAMS,
   type CivitaiImportResult,
   type GeneratedVideo,
@@ -26,6 +33,7 @@ import {
 } from "@/lib/civitai-resource-matching";
 import {
   Film,
+  HelpCircle,
   LinkIcon,
   Loader2,
   Play,
@@ -33,6 +41,56 @@ import {
   Volume2,
   X,
 } from "lucide-react";
+
+type AppLanguage = "ko" | "en";
+
+const VAE_SETTING_HELP = {
+  tileSize: {
+    ko: "한 번에 디코딩하는 이미지 영역의 크기입니다. 값이 크면 타일 경계가 줄고 처리 속도가 좋아질 수 있지만 VRAM 사용량이 증가합니다. RTX 3060 12GB 권장값은 256이며, 여유가 있으면 320~512를 시험하세요.",
+    en: "The spatial image area decoded at once. Larger values can reduce tile seams and improve speed, but consume more VRAM. Use 256 for an RTX 3060 12 GB; try 320–512 only if memory allows.",
+  },
+  tileOverlap: {
+    ko: "인접한 공간 타일이 서로 겹치는 픽셀 수입니다. 값을 높이면 타일 경계선이나 색상 차이가 줄지만 디코딩 시간이 늘어납니다. 일반적으로 Tile Size의 1/4 정도인 64가 안정적입니다.",
+    en: "The number of pixels shared by adjacent spatial tiles. More overlap reduces seams and color shifts, but increases decode time. A stable starting point is 64, about one quarter of a 256 tile.",
+  },
+  temporalSize: {
+    ko: "한 번에 디코딩하는 연속 프레임 수입니다. 영상이 규칙적으로 밝아지거나 깜빡이면 이 값을 높이세요. 값이 클수록 시간 청크 경계가 줄지만 VRAM 사용량이 크게 증가합니다. 81프레임 영상은 64가 권장값입니다.",
+    en: "The number of consecutive frames decoded in one temporal chunk. Increase it when the video brightens or flashes at regular intervals. Larger chunks reduce temporal boundaries but significantly increase VRAM use. Use 64 for an 81-frame video.",
+  },
+  temporalOverlap: {
+    ko: "인접한 시간 청크가 공유하는 프레임 수입니다. 값을 높이면 청크 사이의 밝기와 색상 전환이 부드러워지지만 처리 시간이 늘어납니다. Temporal Size 64에는 16을 권장하며, 반드시 Temporal Size보다 작아야 합니다.",
+    en: "The number of frames shared by adjacent temporal chunks. More overlap smooths brightness and color transitions, but increases processing time. Use 16 with a Temporal Size of 64; it must remain smaller than Temporal Size.",
+  },
+} as const;
+
+function SettingHelpTooltip({
+  text,
+  language,
+}: {
+  text: string;
+  language: AppLanguage;
+}) {
+  return (
+    <TooltipProvider delay={150}>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <button
+              type="button"
+              className="inline-flex size-4 items-center justify-center rounded-full text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label={language === "ko" ? "설정 상세 설명" : "Setting details"}
+            />
+          }
+        >
+          <HelpCircle className="size-3.5" />
+        </TooltipTrigger>
+        <TooltipContent className="max-w-sm whitespace-normal py-2.5 text-left leading-relaxed">
+          {text}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
 
 interface WorkflowConfigState {
   configured: boolean;
@@ -158,8 +216,26 @@ function mapCivitaiParamsToVideoParams(
   if (importedParams.negative_prompt) {
     mapped.negative_prompt = importedParams.negative_prompt;
   }
-  if (typeof importedParams.width === "number") mapped.width = importedParams.width;
-  if (typeof importedParams.height === "number") mapped.height = importedParams.height;
+  if (
+    typeof importedParams.width === "number" &&
+    typeof importedParams.height === "number"
+  ) {
+    const maxGenerationPixels = 480 * 592;
+    const scale = Math.min(
+      1,
+      Math.sqrt(
+        maxGenerationPixels / (importedParams.width * importedParams.height)
+      )
+    );
+    mapped.width = Math.max(
+      16,
+      Math.round((importedParams.width * scale) / 16) * 16
+    );
+    mapped.height = Math.max(
+      16,
+      Math.round((importedParams.height * scale) / 16) * 16
+    );
+  }
   if (typeof importedParams.num_inference_steps === "number") {
     mapped.num_inference_steps = importedParams.num_inference_steps;
   }
@@ -173,6 +249,7 @@ function mapCivitaiParamsToVideoParams(
 }
 
 export default function VideoPage() {
+  const language = useStore((state) => state.language);
   const [params, setParams] = useState<VideoGenerationParams>(DEFAULT_VIDEO_PARAMS);
   const [status, setStatus] = useState<GenerationStatus>({
     state: "idle",
@@ -208,7 +285,7 @@ export default function VideoPage() {
   const isGenerating = status.state === "generating";
   const videoWorkflowReady =
     videoConfig.configured && videoConfig.exists && videoConfig.ready;
-  const videoRequiresSourceImage = videoConfig.requiresSourceImage !== false;
+  const videoRequiresSourceImage = params.video_model !== "ltx-10eros";
   const videoIncludesAudio = Boolean(videoConfig.includesAudio);
   const soundWorkflowReady =
     videoConfig.audio.configured && videoConfig.audio.exists && videoConfig.audio.ready;
@@ -679,6 +756,98 @@ export default function VideoPage() {
             />
           </section>
 
+          <section className="space-y-3 rounded-md border border-border bg-card/85 p-3 shadow-sm">
+            <div>
+              <Label className="mb-1.5 block text-xs text-muted-foreground">
+                {language === "ko" ? "영상 모델" : "Video Model"}
+              </Label>
+              <select
+                value={params.video_model}
+                onChange={(event) =>
+                  updateParams({
+                    video_model: event.target.value as VideoGenerationParams["video_model"],
+                  })
+                }
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="wan-smoothmix">SmoothMix Wan 2.2 I2V</option>
+                <option value="wan-base">Wan 2.2 Base I2V</option>
+                <option value="ltx-10eros">LTX 2.3 10Eros T2V</option>
+              </select>
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                {params.video_model === "ltx-10eros"
+                  ? language === "ko"
+                    ? "텍스트 기반 영상 모델이며 시작 이미지가 필요하지 않습니다."
+                    : "Text-to-video preset; no start image is required."
+                  : language === "ko"
+                    ? "이미지 기반 영상 모델이며 시작 이미지가 필요합니다."
+                    : "Image-to-video preset; a start image is required."}
+              </p>
+            </div>
+
+            {params.video_model === "wan-smoothmix" && (
+              <div className="space-y-2">
+                <div className="text-xs font-medium text-foreground">
+                  {language === "ko" ? "Wan LoRA 강도 (0 = 끔)" : "Wan LoRA strengths (0 = off)"}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="mb-1 block text-[11px] text-muted-foreground">SmoothXXX High/Low</Label>
+                    <Input type="number" min={0} max={2} step={0.05}
+                      value={params.smooth_xxx_strength}
+                      onChange={(event) => updateParams({ smooth_xxx_strength: numericValue(event.target.value, params.smooth_xxx_strength) })}
+                    />
+                  </div>
+                  <div>
+                    <Label className="mb-1 block text-[11px] text-muted-foreground">Mating Press High/Low</Label>
+                    <Input type="number" min={0} max={2} step={0.05}
+                      value={params.mating_press_strength}
+                      onChange={(event) => updateParams({ mating_press_strength: numericValue(event.target.value, params.mating_press_strength) })}
+                    />
+                  </div>
+                  <div>
+                    <Label className="mb-1 block text-[11px] text-muted-foreground">LightX2V High</Label>
+                    <Input type="number" min={0} max={4} step={0.1}
+                      value={params.lightx2v_high_strength}
+                      onChange={(event) => updateParams({ lightx2v_high_strength: numericValue(event.target.value, params.lightx2v_high_strength) })}
+                    />
+                  </div>
+                  <div>
+                    <Label className="mb-1 block text-[11px] text-muted-foreground">LightX2V Low</Label>
+                    <Input type="number" min={0} max={4} step={0.1}
+                      value={params.lightx2v_low_strength}
+                      onChange={(event) => updateParams({ lightx2v_low_strength: numericValue(event.target.value, params.lightx2v_low_strength) })}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {params.video_model === "ltx-10eros" && (
+              <div className="space-y-2">
+                <div className="text-xs font-medium text-foreground">
+                  {language === "ko" ? "LTX LoRA 강도 (0 = 끔)" : "LTX LoRA strengths (0 = off)"}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="mb-1 block text-[11px] text-muted-foreground">DR34ML4Y LTXXX V2</Label>
+                    <Input type="number" min={0} max={2} step={0.05}
+                      value={params.ltx_dr34_strength}
+                      onChange={(event) => updateParams({ ltx_dr34_strength: numericValue(event.target.value, params.ltx_dr34_strength) })}
+                    />
+                  </div>
+                  <div>
+                    <Label className="mb-1 block text-[11px] text-muted-foreground">DaSiWa Body Physics</Label>
+                    <Input type="number" min={0} max={2} step={0.05}
+                      value={params.ltx_dasiwa_strength}
+                      onChange={(event) => updateParams({ ltx_dasiwa_strength: numericValue(event.target.value, params.ltx_dasiwa_strength) })}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+
           <div className="grid gap-3">
             <div>
               <Label className="mb-2 block text-xs text-muted-foreground">
@@ -957,6 +1126,73 @@ export default function VideoPage() {
               />
             </div>
           </div>
+
+          <Separator />
+
+          <section className="space-y-3">
+            <div>
+              <div className="text-sm font-medium text-foreground">
+                VAE Decode Tiling
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Larger temporal chunks reduce brightness flashes but use more VRAM.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+              <div>
+                <Label className="mb-1.5 flex items-center gap-1 text-xs text-muted-foreground">
+                  <span>Tile Size</span>
+                  <SettingHelpTooltip
+                    text={VAE_SETTING_HELP.tileSize[language]}
+                    language={language}
+                  />
+                </Label>
+                <Input type="number" min={128} max={1024} step={32}
+                  value={params.vae_tile_size}
+                  onChange={(event) => updateParams({ vae_tile_size: numericValue(event.target.value, params.vae_tile_size) })}
+                />
+              </div>
+              <div>
+                <Label className="mb-1.5 flex items-center gap-1 text-xs text-muted-foreground">
+                  <span>Tile Overlap</span>
+                  <SettingHelpTooltip
+                    text={VAE_SETTING_HELP.tileOverlap[language]}
+                    language={language}
+                  />
+                </Label>
+                <Input type="number" min={0} max={256} step={16}
+                  value={params.vae_tile_overlap}
+                  onChange={(event) => updateParams({ vae_tile_overlap: numericValue(event.target.value, params.vae_tile_overlap) })}
+                />
+              </div>
+              <div>
+                <Label className="mb-1.5 flex items-center gap-1 text-xs text-muted-foreground">
+                  <span>Temporal Size</span>
+                  <SettingHelpTooltip
+                    text={VAE_SETTING_HELP.temporalSize[language]}
+                    language={language}
+                  />
+                </Label>
+                <Input type="number" min={8} max={256} step={8}
+                  value={params.vae_temporal_size}
+                  onChange={(event) => updateParams({ vae_temporal_size: numericValue(event.target.value, params.vae_temporal_size) })}
+                />
+              </div>
+              <div>
+                <Label className="mb-1.5 flex items-center gap-1 text-xs text-muted-foreground">
+                  <span>Temporal Overlap</span>
+                  <SettingHelpTooltip
+                    text={VAE_SETTING_HELP.temporalOverlap[language]}
+                    language={language}
+                  />
+                </Label>
+                <Input type="number" min={0} max={128} step={4}
+                  value={params.vae_temporal_overlap}
+                  onChange={(event) => updateParams({ vae_temporal_overlap: numericValue(event.target.value, params.vae_temporal_overlap) })}
+                />
+              </div>
+            </div>
+          </section>
         </div>
 
         <div className="border-t border-border p-4">

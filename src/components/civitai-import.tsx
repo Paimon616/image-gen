@@ -10,6 +10,7 @@ import {
   type MissingResource,
 } from "@/lib/civitai-resource-matching";
 import { CivitaiMissingResources } from "@/components/civitai-missing-resources";
+import { CivitaiMetadataAdvice } from "@/components/civitai-metadata-advice";
 import { CopyLinkButton } from "@/components/copy-link-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,15 +68,26 @@ export function CivitaiImport() {
     setCivitaiImport,
     updateCivitaiImportMissing,
   } = useStore();
-  const { url, status, missingResources } = civitaiImport;
+  const { url, status, missingResources, resetVersion } = civitaiImport;
   const setUrl = (value: string) => setCivitaiImport({ url: value });
   const setStatus = (value: string) => setCivitaiImport({ status: value });
-  const [isImporting, setIsImporting] = useState(false);
+  const [importingVersion, setImportingVersion] = useState<number | null>(null);
+  const [storedImportResult, setStoredImportResult] = useState<{
+    resetVersion: number;
+    result: CivitaiImportResult;
+  } | null>(null);
+  const isImporting = importingVersion === resetVersion;
+  const importResult =
+    storedImportResult?.resetVersion === resetVersion
+      ? storedImportResult.result
+      : null;
 
   const importFromCivitai = async () => {
     if (!url.trim() || isImporting) return;
 
-    setIsImporting(true);
+    const currentResetVersion = resetVersion;
+    setImportingVersion(currentResetVersion);
+    setStoredImportResult(null);
     setCivitaiImport({ status: "Fetching Civitai metadata...", missingResources: [] });
 
     try {
@@ -89,11 +101,20 @@ export function CivitaiImport() {
       ]);
       const importData = await importResponse.json();
 
+      if (
+        currentResetVersion !==
+        useStore.getState().civitaiImport.resetVersion
+      ) return;
+
       if (!importResponse.ok) {
         throw new Error(importData.error || "Failed to import Civitai metadata");
       }
 
       const imported = importData as CivitaiImportResult;
+      setStoredImportResult({
+        resetVersion: currentResetVersion,
+        result: imported,
+      });
       const modelsData = (await modelsResponse.json()) as LocalModelsResponse;
       const { matched, missing } = reconcileImportedParams(
         imported,
@@ -132,9 +153,18 @@ export function CivitaiImport() {
         )
       );
     } catch (error) {
+      if (
+        currentResetVersion !==
+        useStore.getState().civitaiImport.resetVersion
+      ) return;
       setStatus(error instanceof Error ? error.message : "Failed to import Civitai metadata");
     } finally {
-      setIsImporting(false);
+      if (
+        currentResetVersion ===
+        useStore.getState().civitaiImport.resetVersion
+      ) {
+        setImportingVersion(null);
+      }
     }
   };
 
@@ -230,6 +260,24 @@ export function CivitaiImport() {
       </div>
 
       {status && <p className="mt-2 text-xs text-muted-foreground">{status}</p>}
+
+      <CivitaiMetadataAdvice
+        report={importResult?.metadataReport}
+        recommendations={importResult?.recommendations}
+        language={language}
+        onApply={(recommendedParams) => {
+          const current = useStore.getState().params;
+          setParams({
+            ...recommendedParams,
+            // Keep paths already reconciled to local files.
+            model_name: current.model_name,
+            vae_name: current.vae_name,
+            loras: current.loras,
+            embeddings: current.embeddings,
+          });
+          setStatus(language === "ko" ? "추천 설정을 적용했습니다." : "Applied recommended settings.");
+        }}
+      />
 
       <CivitaiMissingResources
         resources={missingResources}

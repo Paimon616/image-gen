@@ -22,6 +22,12 @@ import {
 const VIDEO_OUTPUT_DIR = join(process.cwd(), "output", "videos");
 const AUDIO_OUTPUT_DIR = join(process.cwd(), "output", "audios");
 
+const VIDEO_WORKFLOW_PATHS = {
+  "wan-smoothmix": "workflows/wan22-i2v-smoothmix-api.json",
+  "wan-base": "workflows/wan22-i2v-base-api.json",
+  "ltx-10eros": "workflows/ltx23-10eros-t2v-api.json",
+} as const;
+
 interface ComfyWsMessage {
   type?: string;
   data?: {
@@ -96,6 +102,9 @@ function clampNumber(value: unknown, fallback: number, min: number, max: number)
 }
 
 function normalizeVideoParams(rawBody: Partial<VideoGenerationParams>) {
+  const videoModel = Object.hasOwn(VIDEO_WORKFLOW_PATHS, rawBody.video_model ?? "")
+    ? (rawBody.video_model as keyof typeof VIDEO_WORKFLOW_PATHS)
+    : DEFAULT_VIDEO_PARAMS.video_model;
   const fps = Math.round(clampNumber(rawBody.fps, DEFAULT_VIDEO_PARAMS.fps, 1, 60));
   const durationSeconds = clampNumber(
     rawBody.duration_seconds,
@@ -109,10 +118,29 @@ function normalizeVideoParams(rawBody: Partial<VideoGenerationParams>) {
     1,
     300
   );
+  const vaeTileSize = Math.round(
+    clampNumber(rawBody.vae_tile_size, DEFAULT_VIDEO_PARAMS.vae_tile_size, 128, 1024) / 32
+  ) * 32;
+  const vaeTileOverlap = Math.min(
+    Math.round(
+      clampNumber(rawBody.vae_tile_overlap, DEFAULT_VIDEO_PARAMS.vae_tile_overlap, 0, 256) / 16
+    ) * 16,
+    Math.floor(vaeTileSize / 2)
+  );
+  const vaeTemporalSize = Math.round(
+    clampNumber(rawBody.vae_temporal_size, DEFAULT_VIDEO_PARAMS.vae_temporal_size, 8, 256)
+  );
+  const vaeTemporalOverlap = Math.min(
+    Math.round(
+      clampNumber(rawBody.vae_temporal_overlap, DEFAULT_VIDEO_PARAMS.vae_temporal_overlap, 0, 128)
+    ),
+    Math.max(0, vaeTemporalSize - 1)
+  );
 
   return {
     ...DEFAULT_VIDEO_PARAMS,
     ...rawBody,
+    video_model: videoModel,
     prompt: String(rawBody.prompt ?? "").trim(),
     negative_prompt: String(
       rawBody.negative_prompt ?? DEFAULT_VIDEO_PARAMS.negative_prompt
@@ -138,6 +166,16 @@ function normalizeVideoParams(rawBody: Partial<VideoGenerationParams>) {
       0,
       30
     ),
+    vae_tile_size: vaeTileSize,
+    vae_tile_overlap: vaeTileOverlap,
+    vae_temporal_size: vaeTemporalSize,
+    vae_temporal_overlap: vaeTemporalOverlap,
+    smooth_xxx_strength: clampNumber(rawBody.smooth_xxx_strength, DEFAULT_VIDEO_PARAMS.smooth_xxx_strength, 0, 2),
+    mating_press_strength: clampNumber(rawBody.mating_press_strength, DEFAULT_VIDEO_PARAMS.mating_press_strength, 0, 2),
+    lightx2v_high_strength: clampNumber(rawBody.lightx2v_high_strength, DEFAULT_VIDEO_PARAMS.lightx2v_high_strength, 0, 4),
+    lightx2v_low_strength: clampNumber(rawBody.lightx2v_low_strength, DEFAULT_VIDEO_PARAMS.lightx2v_low_strength, 0, 4),
+    ltx_dr34_strength: clampNumber(rawBody.ltx_dr34_strength, DEFAULT_VIDEO_PARAMS.ltx_dr34_strength, 0, 2),
+    ltx_dasiwa_strength: clampNumber(rawBody.ltx_dasiwa_strength, DEFAULT_VIDEO_PARAMS.ltx_dasiwa_strength, 0, 2),
     seed: normalizeGenerationSeed(rawBody.seed),
     source_image: rawBody.source_image?.trim() || null,
     enable_sound: Boolean(rawBody.enable_sound),
@@ -147,32 +185,18 @@ function normalizeVideoParams(rawBody: Partial<VideoGenerationParams>) {
   } satisfies VideoGenerationParams;
 }
 
-async function assertVideoWorkflowConfigured() {
-  const workflowPath = process.env.COMFYUI_VIDEO_WORKFLOW_PATH?.trim();
-
-  if (!workflowPath) {
-    throw new Error(
-      "Set COMFYUI_VIDEO_WORKFLOW_PATH to a ComfyUI API workflow JSON file before generating video."
-    );
-  }
-
-  const resolvedPath = isAbsolute(workflowPath)
-    ? workflowPath
-    : join(/*turbopackIgnore: true*/ process.cwd(), workflowPath);
-
-  await access(resolvedPath);
+async function selectedVideoWorkflowPath(model: keyof typeof VIDEO_WORKFLOW_PATHS) {
+  return join(process.cwd(), VIDEO_WORKFLOW_PATHS[model]);
 }
 
-async function configuredVideoWorkflowRequiresSourceImage() {
-  const workflowPath = process.env.COMFYUI_VIDEO_WORKFLOW_PATH?.trim();
+async function assertVideoWorkflowConfigured(model: keyof typeof VIDEO_WORKFLOW_PATHS) {
+  await access(await selectedVideoWorkflowPath(model));
+}
 
-  if (!workflowPath) return true;
-
-  const resolvedPath = isAbsolute(workflowPath)
-    ? workflowPath
-    : join(/*turbopackIgnore: true*/ process.cwd(), workflowPath);
-  const rawWorkflow = JSON.parse(await readFile(resolvedPath, "utf-8")) as unknown;
-
+async function configuredVideoWorkflowRequiresSourceImage(model: keyof typeof VIDEO_WORKFLOW_PATHS) {
+  const rawWorkflow = JSON.parse(
+    await readFile(await selectedVideoWorkflowPath(model), "utf-8")
+  ) as unknown;
   return JSON.stringify(rawWorkflow).includes("{{source_image}}");
 }
 
@@ -354,7 +378,7 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "Prompt is required." }, { status: 400 });
   }
 
-  const requiresSourceImage = await configuredVideoWorkflowRequiresSourceImage();
+  const requiresSourceImage = await configuredVideoWorkflowRequiresSourceImage(body.video_model);
 
   if (requiresSourceImage && !body.source_image) {
     return Response.json(
@@ -364,7 +388,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    await assertVideoWorkflowConfigured();
+    await assertVideoWorkflowConfigured(body.video_model);
     if (body.enable_sound) {
       await assertAudioWorkflowConfigured();
     }

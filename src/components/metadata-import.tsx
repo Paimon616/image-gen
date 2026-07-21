@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { FileJson, Loader2, Upload } from "lucide-react";
+import { ChevronDown, FileJson, Loader2, Upload } from "lucide-react";
 import { useStore } from "@/lib/store";
 import type { GenerationParams, ImportedCivitaiResource } from "@/lib/types";
 import {
@@ -163,7 +163,13 @@ export function MetadataImport() {
   };
 
   return (
-    <section className="rounded-md border border-border bg-card/85 p-3 shadow-sm">
+    <details className="group overflow-hidden rounded-md border border-border bg-card/85 shadow-sm">
+      <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-sm font-medium">
+        <span>Metadata</span>
+        <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+      </summary>
+
+      <div className="border-t border-border p-3">
       <div className="mb-2 flex items-start justify-between gap-2">
         <div>
           <Label className="text-xs text-muted-foreground">Metadata</Label>
@@ -246,6 +252,7 @@ export function MetadataImport() {
           );
         }}
       />
-    </section>
+      </div>
+    </details>
   );
 }
