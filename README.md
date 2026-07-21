@@ -170,43 +170,26 @@ By default the app connects to `http://127.0.0.1:8188` and reads models from `Co
 
 ## Video generation
 
-The Video Generation page queues a ComfyUI API workflow from `COMFYUI_VIDEO_WORKFLOW_PATH`.
-Export an API-format workflow JSON from ComfyUI and use placeholders such as
-`{{prompt}}`, `{{negative_prompt}}`, `{{width}}`, `{{height}}`, `{{num_frames}}`,
-`{{fps}}`, `{{steps}}`, `{{cfg}}`, `{{seed}}`, and `{{source_image}}` in node inputs
-that should be filled from the UI.
+The `/video` page queues a ComfyUI API workflow. The selected UI preset chooses
+an allowlisted workflow; `COMFYUI_VIDEO_WORKFLOW_PATH` is only the default/fallback.
 
-This repo includes two Wan 2.2 I2V API workflows:
+| UI preset | Workflow | Input |
+| --- | --- | --- |
+| Wan 2.2 SmoothMix | `workflows/wan22-i2v-smoothmix-api.json` | image required |
+| Wan 2.2 Base | `workflows/wan22-i2v-base-api.json` | image required |
+| LTX 2.3 10Eros | `workflows/ltx23-10eros-t2v-api.json` | text prompt |
 
-```text
-workflows/wan22-i2v-base-api.json
-workflows/wan22-i2v-civitai-133468541-api.json
-```
+Each workflow refers to its model weights by exact filename, so place them under
+`ComfyUI/models/` using the names in
+[Local image backends](docs/image-backends-setup.md#video-generation-wan-22-and-ltx-23),
+which lists every Wan/LTX file, folder, and SHA-256. Restart ComfyUI after adding
+weights.
 
-The base workflow uses native ComfyUI Wan 2.2 image-to-video nodes and expects
-these files:
+> Most Wan/LTX weights (and the LTX Gemma encoder) are fp8/fp4, which **cannot run
+> on Apple Silicon (MPS)**. Video generation needs an NVIDIA/CUDA host (local or
+> RunPod). See [RunPod deployment](docs/RUNPOD-image-gen-deploy.md).
 
-```text
-ComfyUI/models/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors
-ComfyUI/models/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors
-ComfyUI/models/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors
-ComfyUI/models/vae/wan_2.1_vae.safetensors
-```
-
-The Civitai workflow additionally expects these LoRA files in
-`ComfyUI/models/loras/`:
-
-```text
-doggyPOV_v1_1.safetensors
-DR34ML4Y_I2V_14B_LOW_V2.safetensors
-```
-
-Civitai requires an API token for those LoRA downloads. On Windows PowerShell:
-
-```powershell
-$env:CIVITAI_API_TOKEN="your-token"
-powershell -ExecutionPolicy Bypass -File scripts/download-civitai-video-loras.ps1
-```
-
-Then set `COMFYUI_VIDEO_WORKFLOW_PATH` to
-`workflows/wan22-i2v-civitai-133468541-api.json` and restart the app.
+To author your own workflow, export an API-format JSON from ComfyUI and use
+placeholders such as `{{prompt}}`, `{{negative_prompt}}`, `{{width}}`,
+`{{height}}`, `{{num_frames}}`, `{{fps}}`, `{{steps}}`, `{{cfg}}`, `{{seed}}`, and
+`{{source_image}}` in the node inputs that the UI should fill.
