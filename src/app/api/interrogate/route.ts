@@ -18,10 +18,17 @@ function friendlyInterrogateError(error: unknown) {
     rawMessage.includes("WD14Tagger|pysssss") ||
     rawMessage.includes("ShowText|pysssss")
   ) {
+    const setupCommand =
+      process.platform === "win32"
+        ? "npm run setup:itp-nodes:win"
+        : "npm run setup:itp-nodes";
+
     return {
       status: 424,
       message:
-        "ComfyUI image-to-prompt nodes are not installed or ComfyUI was not restarted after installation.\n\nRun `npm run setup:itp-nodes:win`, restart ComfyUI, then try Extract Prompt again.",
+        "ComfyUI image-to-prompt nodes are not installed or ComfyUI was not restarted after installation.\n\nRun `" +
+        setupCommand +
+        "`, restart ComfyUI, then try Extract Prompt again.",
     };
   }
 
