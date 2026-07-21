@@ -6,6 +6,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Copy,
   Download,
   ExternalLink,
   FileJson,
@@ -136,6 +137,63 @@ function ApplyButton({
         <Wand2 className="h-3.5 w-3.5" />
       )}
       {applied ? appliedLabel : label}
+    </Button>
+  );
+}
+
+function CopyIconButton({
+  value,
+  label,
+  copiedLabel,
+}: {
+  value: string;
+  label: string;
+  copiedLabel: string;
+}) {
+  const [copied, setCopied] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    },
+    []
+  );
+
+  const handleClick = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = value;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    }
+    setCopied(true);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <Button
+      type="button"
+      size="sm"
+      variant="ghost"
+      className="h-6 shrink-0 gap-1 px-2 text-xs"
+      onClick={handleClick}
+      title={copied ? copiedLabel : label}
+      aria-label={copied ? copiedLabel : label}
+    >
+      {copied ? (
+        <Check className="h-3.5 w-3.5 text-primary" />
+      ) : (
+        <Copy className="h-3.5 w-3.5" />
+      )}
+      {copied ? copiedLabel : label}
     </Button>
   );
 }
@@ -405,6 +463,17 @@ export function ImageViewer() {
 
         <div className="grid h-full w-full grid-cols-[minmax(0,1fr)_minmax(22rem,34rem)] bg-background">
           <div className="relative min-w-0 overflow-auto border-r border-border bg-[radial-gradient(circle_at_1px_1px,color-mix(in_oklch,var(--border)_55%,transparent)_1px,transparent_0)] [background-size:24px_24px]">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => openDownloadPrompt("image")}
+              className="absolute right-4 top-4 z-10 h-11 w-11 rounded-full bg-card/90 shadow-lg backdrop-blur hover:bg-card"
+              aria-label={ko ? "이미지 다운로드" : "Download image"}
+              title={ko ? "이미지 다운로드" : "Download image"}
+            >
+              <Download className="h-5 w-5" />
+            </Button>
             {hasNavigation && (
               <>
                 <Button
@@ -520,12 +589,19 @@ export function ImageViewer() {
                   label="Prompt"
                   action={
                     params.prompt ? (
-                      <ApplyButton
-                        applied={appliedKey === "prompt"}
-                        label={ko ? "적용" : "Apply"}
-                        appliedLabel={ko ? "적용됨" : "Applied"}
-                        onClick={() => applyPartial("prompt", { prompt: params.prompt })}
-                      />
+                      <div className="flex shrink-0 items-center gap-1">
+                        <CopyIconButton
+                          value={params.prompt}
+                          label={ko ? "복사" : "Copy"}
+                          copiedLabel={ko ? "복사됨" : "Copied"}
+                        />
+                        <ApplyButton
+                          applied={appliedKey === "prompt"}
+                          label={ko ? "적용" : "Apply"}
+                          appliedLabel={ko ? "적용됨" : "Applied"}
+                          onClick={() => applyPartial("prompt", { prompt: params.prompt })}
+                        />
+                      </div>
                     ) : undefined
                   }
                 >
