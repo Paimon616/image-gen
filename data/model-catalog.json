@@ -2002,18 +2002,13 @@
     "version": "v3.0",
     "base_model": "SDXL 1.0",
     "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/cebd0283-6c71-45e2-b204-c9fa3b6bea1f/original=true/2148743.jpeg",
-    "civitai_url": "https://civitai.red/models/120723/detailedeyesxl?modelVersionId=145907",
-    "source_url": "https://civitai.red/models/120723/detailedeyesxl?modelVersionId=145907",
+    "civitai_url": "https://civitai.red/models/120723/detailedeyes-xl?modelVersionId=145907",
+    "source_url": "https://civitai.red/models/120723/detailedeyes-xl?modelVersionId=145907",
     "tags": [
       "eyes",
       "detailed eyes",
       "tool"
     ],
-    "risk": {
-      "level": "OK",
-      "reason": "Rent 허용 + 특이사항 없음",
-      "allow_commercial_use": "Y"
-    },
     "license": {
       "allowNoCredit": false,
       "allowDerivatives": true,
@@ -7023,5 +7018,76 @@
     ],
     "risk": null,
     "license": null
+  },
+  "loras/2dRealPhoto_Background.safetensors": {
+    "name": "2dReal/Photo Background",
+    "version": "V1",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/dd61fbac-8306-41a1-bdea-d955f00cf94c/original=true/97191872.jpeg",
+    "civitai_url": "https://civitai.red/models/1908594/2dreal-photo-background?modelVersionId=2160260",
+    "source_url": "https://civitai.red/models/1908594/2dreal-photo-background?modelVersionId=2160260",
+    "tags": [
+      "style"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
+    }
+  },
+  "loras/zy_illustrious_Realism_Enhancer_v1.safetensors": {
+    "name": "Illustrious Realism Enhancer ✨",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/c7b4f210-4679-4c45-a905-7be23d01f637/original=true/50141873.jpeg",
+    "civitai_url": "https://civitai.red/models/1115090/illustrious-realism-enhancer?modelVersionId=1253047",
+    "source_url": "https://civitai.red/models/1115090/illustrious-realism-enhancer?modelVersionId=1253047",
+    "tags": [
+      "realistic",
+      "woman",
+      "photo",
+      "photorealistic",
+      "real",
+      "realism",
+      "style",
+      "photorealism",
+      "enhancer",
+      "girls",
+      "sexy"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Image"
+      ]
+    }
+  },
+  "loras/ponyv6_noobV1_2_adamW-000017.safetensors": {
+    "name": "Pony: People's Works v1-v6",
+    "version": "v6_noobVv1.0",
+    "base_model": "NoobAI",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/bf16a5f5-d2cb-422f-bd71-58f2e481a208/original=true/49879463.jpeg",
+    "civitai_url": "https://civitai.red/models/856285/pony-people-s-works-v1-v6?modelVersionId=1247042",
+    "source_url": "https://civitai.red/models/856285/pony-people-s-works-v1-v6?modelVersionId=1247042",
+    "tags": [
+      "style",
+      "anime"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
+    }
   }
 }
