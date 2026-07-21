@@ -21,6 +21,19 @@ guides: [ComfyUI](docs/comfyui-setup.md), [A1111](docs/a1111-setup.md),
 [Forge](docs/forge-setup.md), and
 [Civitai metadata reproduction](docs/civitai-metadata-reproduction.md).
 
+### Backends
+
+| Backend | Default URL | Recommended use | Setup script |
+| --- | --- | --- | --- |
+| ComfyUI | `http://127.0.0.1:8188` | Krea 2, Wan/LTX, video, ComfyUI workflows | `setup:comfyui` (macOS/Linux + Windows) |
+| AUTOMATIC1111 v1.10.0 | `http://127.0.0.1:7860` | Civitai images made with A1111 | `setup:a1111:win` (Windows only) |
+| ForgeUI | `http://127.0.0.1:7861` | Illustrious/SDXL needing Forge compatibility | `setup:forge:win` (Windows only) |
+
+ComfyUI is the only backend with a macOS/Linux setup script; A1111 and Forge ship
+Windows-only scripts. On Apple Silicon (MPS), fp8/fp4 models cannot run — use
+bf16 variants instead. All three servers can run at once; before generation the
+app unloads the inactive backends' checkpoints.
+
 Install app dependencies:
 
 ```bash
@@ -93,6 +106,27 @@ models. The repo includes a custom git merge driver for that file. During
 `git pull`, it keeps your local catalog values for matching model paths and
 adds new catalog entries from the pulled branch when they do not exist locally.
 Run `npm run setup:git-merge` once per clone so git can use that merge driver.
+
+## Civitai API token
+
+The app downloads models directly from Civitai (the download actions in the model
+manager and the missing-resource prompts) and reads license/metadata through the
+Civitai API. Both need a personal API token.
+
+1. Sign in at [civitai.red](https://civitai.red) (or civitai.com — same account)
+   and open **Account settings** (`https://civitai.red/user/account`).
+2. Scroll to **API Keys**, click **Add API key**, give it a name, and copy the
+   generated token.
+3. Add it to `.env.local` in the project root:
+
+   ```dotenv
+   CIVITAI_API_TOKEN=your-token
+   ```
+
+4. Restart `npm run dev` so the server reads the new value.
+
+Without a token, downloads fail with `CIVITAI_API_TOKEN is not configured`. Never
+commit `.env.local` or the token to git.
 
 ## Run
 
