@@ -26,7 +26,7 @@ export function imageContentType(filename: string) {
 }
 
 function thumbnailFilename(filename: string) {
-  return `${filename.replace(/\.\w+$/, "")}.webp`;
+  return `${filename.replace(/\.\w+$/, "")}.ratio-v2.webp`;
 }
 
 export function imageUrl(filename: string) {
@@ -34,7 +34,7 @@ export function imageUrl(filename: string) {
 }
 
 export function thumbnailUrl(filename: string) {
-  return `/api/images/thumb/${filename}`;
+  return `/api/images/thumb/${filename}?v=2`;
 }
 
 function parsePositiveInt(value: string | null, fallback: number) {
@@ -189,7 +189,7 @@ export async function readOrCreateThumbnail(filename: string) {
       .resize({
         width: 512,
         height: 512,
-        fit: "cover",
+        fit: "inside",
         withoutEnlargement: true,
       })
       .webp({ quality: 76, effort: 1 })

@@ -5,7 +5,9 @@ import {
   type UIEvent,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useStore } from "@/lib/store";
@@ -69,6 +71,13 @@ const GalleryCard = memo(function GalleryCard({
   onDelete,
   onCancelGeneration,
 }: GalleryCardProps) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const initialAspectRatio =
+    img.params?.width && img.params?.height
+      ? img.params.width / img.params.height
+      : 4 / 5;
+  const [aspectRatio, setAspectRatio] = useState(initialAspectRatio);
+
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [originOpen, setOriginOpen] = useState(false);
   const language = useStore((state) => state.language);
@@ -114,27 +123,53 @@ const GalleryCard = memo(function GalleryCard({
               ? XCircle
               : null;
 
+  useLayoutEffect(() => {
+    const card = cardRef.current;
+    if (!card) return;
+
+    const updateSpan = () => {
+      const contentHeight = card.clientWidth / Math.max(aspectRatio, 0.05);
+      card.style.gridRowEnd =
+        "span " + Math.max(1, Math.ceil((contentHeight + 12) / 20));
+    };
+    const observer = new ResizeObserver(updateSpan);
+    observer.observe(card);
+    updateSpan();
+
+    return () => observer.disconnect();
+  }, [aspectRatio]);
+
   return (
     <>
-    <div className="group relative aspect-square overflow-hidden rounded-lg border border-border transition-colors [contain-intrinsic-size:320px] [content-visibility:auto] hover:border-primary/50">
+    <div
+      ref={cardRef}
+      className="group relative overflow-hidden rounded-lg border border-border transition-colors [contain-intrinsic-size:320px_420px] [content-visibility:auto] hover:border-primary/50"
+
+    >
       {hasImage ? (
         <button
           type="button"
-          className="absolute inset-0 cursor-pointer"
+          className="block w-full cursor-pointer"
           onClick={() => onOpen(img)}
           aria-label="Open image details"
         >
           <img
             src={displayUrl}
             alt=""
-            className="h-full w-full object-cover"
+            className="block h-auto w-full"
             loading="lazy"
             decoding="async"
             fetchPriority="low"
+            onLoad={(event) => {
+              const image = event.currentTarget;
+              if (image.naturalWidth && image.naturalHeight) {
+                setAspectRatio(image.naturalWidth / image.naturalHeight);
+              }
+            }}
           />
         </button>
       ) : (
-        <div className="absolute inset-0 flex flex-col justify-between bg-card p-3">
+        <div className="flex aspect-[4/5] flex-col justify-between bg-card p-3">
           <div className="flex items-center justify-between gap-2">
             <Badge variant="outline" className="rounded-md">
               {StatusIcon && (
@@ -328,7 +363,7 @@ const GalleryCard = memo(function GalleryCard({
 
 interface GalleryProps {
   onCancelGeneration?: (img: GeneratedImage) => void;
-  columns?: number;
+  thumbnailWidth?: number;
 }
 
 interface ImagesResponse {
@@ -337,7 +372,7 @@ interface ImagesResponse {
   total?: number;
 }
 
-export function Gallery({ onCancelGeneration, columns = 3 }: GalleryProps) {
+export function Gallery({ onCancelGeneration, thumbnailWidth = 240 }: GalleryProps) {
   const images = useStore((state) => state.images);
   const setSelectedImage = useStore((state) => state.setSelectedImage);
   const addImages = useStore((state) => state.addImages);
@@ -555,8 +590,12 @@ export function Gallery({ onCancelGeneration, columns = 3 }: GalleryProps) {
   return (
     <div className="flex-1 overflow-y-auto p-3" onScroll={handleGalleryScroll}>
       <div
-        className="grid gap-3"
-        style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+        className="grid grid-flow-row-dense gap-3"
+        style={{
+          gridTemplateColumns:
+            "repeat(auto-fill, minmax(min(100%, " + thumbnailWidth + "px), 1fr))",
+          gridAutoRows: "8px",
+        }}
       >
         {visibleImages.map((img) => (
           <GalleryCard

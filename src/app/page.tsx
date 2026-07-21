@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useStore } from "@/lib/store";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,20 @@ import type {
   GenerationParams as GenerationParamsType,
 } from "@/lib/types";
 import { getModelConfig, randomGenerationSeed } from "@/lib/types";
-import { ImageIcon, ImageUp, ScanLine, X } from "lucide-react";
+import {
+  GripVertical,
+  ImageIcon,
+  ImageUp,
+  PanelLeftClose,
+  PanelLeftOpen,
+  ScanLine,
+  X,
+} from "lucide-react";
+
+const EDITOR_MIN_WIDTH = 320;
+const GALLERY_MIN_WIDTH = 320;
+const THUMBNAIL_MIN_WIDTH = 140;
+const THUMBNAIL_MAX_WIDTH = 420;
 
 function choosePoseControlNet(controlnets: string[]) {
   return (
@@ -103,13 +116,55 @@ export default function Home() {
   const [posePreviewUrl, setPosePreviewUrl] = useState<string | null>(null);
   const [posePreviewStatus, setPosePreviewStatus] = useState("");
   const [sourceImagePreviewOpen, setSourceImagePreviewOpen] = useState(false);
-  const [galleryColumns, setGalleryColumns] = useState(3);
+  const [thumbnailWidth, setThumbnailWidth] = useState(240);
+  const [editorWidth, setEditorWidth] = useState(720);
+  const [editorOpen, setEditorOpen] = useState(true);
+  const layoutRef = useRef<HTMLDivElement | null>(null);
   const [generationQueue, setGenerationQueue] = useState<GenerationQueueItem[]>([]);
   const [activeGeneration, setActiveGeneration] =
     useState<GenerationQueueItem | null>(null);
   const activePromptIdRef = useRef("");
   const generationAbortControllerRef = useRef<AbortController | null>(null);
   const activeGenerationRef = useRef<GenerationQueueItem | null>(null);
+
+  const startEditorResize = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (!editorOpen) return;
+
+      event.preventDefault();
+      const startX = event.clientX;
+      const startWidth = editorWidth;
+
+      const onMove = (moveEvent: PointerEvent) => {
+        const layoutWidth = layoutRef.current?.clientWidth ?? window.innerWidth;
+        const maxWidth = Math.max(
+          EDITOR_MIN_WIDTH,
+          layoutWidth - GALLERY_MIN_WIDTH
+        );
+        setEditorWidth(
+          Math.min(
+            maxWidth,
+            Math.max(
+              EDITOR_MIN_WIDTH,
+              startWidth + moveEvent.clientX - startX
+            )
+          )
+        );
+      };
+      const onUp = () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+      };
+
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+    },
+    [editorOpen, editorWidth]
+  );
 
   useEffect(() => {
     fetch("/api/models")
@@ -452,11 +507,12 @@ export default function Home() {
   const queuedJobCount = generationQueue.length;
 
   return (
-    <div className="flex h-screen bg-background">
+    <div ref={layoutRef} className="flex h-screen bg-background">
       <AppSidebar />
 
       {/* Left Sidebar - Controls */}
-      <aside className="w-[42rem] xl:w-[52rem] max-w-[64vw] border-r border-border flex flex-col overflow-hidden">
+      {editorOpen && (
+        <aside className="flex shrink-0 flex-col overflow-hidden" style={{ width: editorWidth }}>
         <div className="px-4 py-3 border-b border-border">
           <h1 className="text-lg font-semibold">Image Generation</h1>
           <p className="text-xs text-muted-foreground">{currentModel.name}</p>
@@ -797,28 +853,51 @@ export default function Home() {
             )}
           </div>
         </div>
-      </aside>
+        </aside>
+      )}
+
+      {editorOpen && (
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize editor and gallery"
+          onPointerDown={startEditorResize}
+          className="group relative z-20 w-2 shrink-0 cursor-col-resize border-x border-border bg-muted/40 hover:bg-primary/20"
+        >
+          <GripVertical className="absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 text-muted-foreground group-hover:text-primary" />
+        </div>
+      )}
 
       {/* Main Content - Gallery */}
       <main className="flex-1 flex flex-col overflow-hidden">
         <div className="p-4 border-b border-border flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="outline"
+              onClick={() => setEditorOpen((open) => !open)}
+              aria-label={editorOpen ? "Hide editor" : "Show editor"}
+              title={editorOpen ? "Hide editor" : "Show editor"}
+            >
+              {editorOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
+            </Button>
             <h2 className="text-sm font-medium">Gallery</h2>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground whitespace-nowrap">가로 columns</span>
+              <span className="whitespace-nowrap text-xs text-muted-foreground">Thumbnail width</span>
               <Slider
-                value={[galleryColumns]}
+                value={[thumbnailWidth]}
                 onValueChange={(v) => {
                   const val = Array.isArray(v) ? v[0] : v;
-                  setGalleryColumns(val);
+                  setThumbnailWidth(val);
                 }}
-                min={1}
-                max={10}
-                step={1}
-                style={{ width: "50px" }}
+                min={THUMBNAIL_MIN_WIDTH}
+                max={THUMBNAIL_MAX_WIDTH}
+                step={10}
+                style={{ width: "110px" }}
               />
               <span className="w-6 text-center text-xs font-mono tabular-nums text-foreground">
-                {galleryColumns}
+                {thumbnailWidth}
               </span>
             </div>
           </div>
@@ -826,7 +905,7 @@ export default function Home() {
             {images.length} images
           </span>
         </div>
-        <Gallery onCancelGeneration={(image) => cancelGeneration(image.id)} columns={galleryColumns} />
+        <Gallery onCancelGeneration={(image) => cancelGeneration(image.id)} thumbnailWidth={thumbnailWidth} />
       </main>
 
       {/* Image Viewer Dialog */}

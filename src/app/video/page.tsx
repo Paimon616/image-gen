@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { CivitaiMissingResources } from "@/components/civitai-missing-resources";
 import { CopyLinkButton } from "@/components/copy-link-button";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -33,11 +34,15 @@ import {
 } from "@/lib/civitai-resource-matching";
 import {
   Film,
+  GripVertical,
   HelpCircle,
   LinkIcon,
   Loader2,
+  PanelLeftClose,
+  PanelLeftOpen,
   Play,
   RefreshCcw,
+  Trash2,
   Volume2,
   X,
 } from "lucide-react";
@@ -206,6 +211,149 @@ function isGif(video: GeneratedVideo) {
   return video.contentType === "image/gif" || video.filename.toLowerCase().endsWith(".gif");
 }
 
+const VIDEO_EDITOR_MIN_WIDTH = 320;
+const VIDEO_GALLERY_MIN_WIDTH = 320;
+const VIDEO_THUMBNAIL_MIN_WIDTH = 180;
+const VIDEO_THUMBNAIL_MAX_WIDTH = 560;
+
+function VideoGalleryCard({
+  video,
+  onDelete,
+}: {
+  video: GeneratedVideo;
+  onDelete: (video: GeneratedVideo) => Promise<void>;
+}) {
+  const articleRef = useRef<HTMLElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
+  useLayoutEffect(() => {
+    const article = articleRef.current;
+    const content = contentRef.current;
+    if (!article || !content) return;
+
+    const updateSpan = () => {
+      article.style.gridRowEnd =
+        "span " + Math.max(1, Math.ceil((content.offsetHeight + 16) / 24));
+    };
+    const observer = new ResizeObserver(updateSpan);
+    observer.observe(content);
+    updateSpan();
+
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <article
+      ref={articleRef}
+      className="relative overflow-hidden rounded-md border border-border bg-card shadow-sm"
+    >
+      <div ref={contentRef}>
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="destructive"
+          className="absolute right-2 top-2 z-20 shadow-md"
+          onClick={() => setConfirmingDelete((current) => !current)}
+          disabled={deleting}
+          aria-label="Delete video"
+          title="Delete video"
+        >
+          {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
+        </Button>
+        {confirmingDelete && (
+          <div className="absolute right-2 top-12 z-30 w-44 rounded-md border border-border bg-popover p-2.5 shadow-xl">
+            <p className="text-[11px] font-medium text-popover-foreground">
+              Delete this video?
+            </p>
+            {deleteError && (
+              <p className="mt-1 text-[11px] text-destructive">{deleteError}</p>
+            )}
+            <div className="mt-2 flex gap-1.5">
+              <Button
+                type="button"
+                size="sm"
+                variant="destructive"
+                className="h-7 flex-1 text-[11px]"
+                disabled={deleting}
+                onClick={async () => {
+                  setDeleting(true);
+                  setDeleteError("");
+                  try {
+                    await onDelete(video);
+                    setConfirmingDelete(false);
+                  } catch (error) {
+                    setDeleteError(
+                      error instanceof Error ? error.message : "Failed to delete video."
+                    );
+                  } finally {
+                    setDeleting(false);
+                  }
+                }}
+              >
+                Delete
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 flex-1 text-[11px]"
+                disabled={deleting}
+                onClick={() => setConfirmingDelete(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+        <div className="bg-background">
+          {isGif(video) ? (
+            <img
+              src={video.url}
+              alt={video.params?.prompt || "Generated video"}
+              className="block h-auto w-full"
+            />
+          ) : (
+            <video
+              src={video.url}
+              controls
+              playsInline
+              preload="metadata"
+              className="block h-auto w-full"
+            />
+          )}
+        </div>
+        <div className="space-y-1 border-t border-border p-3">
+          <p className="line-clamp-2 text-sm font-medium">
+            {video.params?.prompt || "Generated video"}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {new Date(video.timestamp).toLocaleString()}
+          </p>
+          {video.audios && video.audios.length > 0 && (
+            <div className="space-y-2 pt-2">
+              {video.audios.map((audio) => (
+                <div
+                  key={audio.id}
+                  className="rounded-md border border-border bg-background/80 p-2"
+                >
+                  <div className="mb-1 flex items-center gap-1.5 text-xs font-medium">
+                    <Volume2 className="h-3.5 w-3.5 text-muted-foreground" />
+                    Sound
+                  </div>
+                  <audio src={audio.url} controls className="h-8 w-full" />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </article>
+  );
+}
+
 function mapCivitaiParamsToVideoParams(
   imported: CivitaiImportResult
 ): Partial<VideoGenerationParams> {
@@ -259,6 +407,10 @@ export default function VideoPage() {
   const [buttonProgress, setButtonProgress] = useState(0);
   const [generationDetails, setGenerationDetails] = useState<GenerationDetail[]>([]);
   const [videos, setVideos] = useState<GeneratedVideo[]>([]);
+  const [thumbnailWidth, setThumbnailWidth] = useState(320);
+  const [editorWidth, setEditorWidth] = useState(576);
+  const [editorOpen, setEditorOpen] = useState(true);
+  const layoutRef = useRef<HTMLDivElement | null>(null);
   const [civitaiUrl, setCivitaiUrl] = useState("");
   const [civitaiStatus, setCivitaiStatus] = useState("");
   const [missingCivitaiResources, setMissingCivitaiResources] = useState<
@@ -281,6 +433,44 @@ export default function VideoPage() {
   });
   const activePromptIdRef = useRef("");
   const generationAbortControllerRef = useRef<AbortController | null>(null);
+
+  const startEditorResize = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (!editorOpen) return;
+
+      event.preventDefault();
+      const startX = event.clientX;
+      const startWidth = editorWidth;
+      const onMove = (moveEvent: PointerEvent) => {
+        const layoutWidth = layoutRef.current?.clientWidth ?? window.innerWidth;
+        const maxWidth = Math.max(
+          VIDEO_EDITOR_MIN_WIDTH,
+          layoutWidth - VIDEO_GALLERY_MIN_WIDTH
+        );
+        setEditorWidth(
+          Math.min(
+            maxWidth,
+            Math.max(
+              VIDEO_EDITOR_MIN_WIDTH,
+              startWidth + moveEvent.clientX - startX
+            )
+          )
+        );
+      };
+      const onUp = () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+      };
+
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+    },
+    [editorOpen, editorWidth]
+  );
 
   const isGenerating = status.state === "generating";
   const videoWorkflowReady =
@@ -382,6 +572,20 @@ export default function VideoPage() {
         setVideos(data.videos ?? []);
       })
       .catch(() => {});
+  }, []);
+
+  const deleteVideo = useCallback(async (video: GeneratedVideo) => {
+    const response = await fetch(
+      "/api/videos/" + encodeURIComponent(video.filename),
+      { method: "DELETE" }
+    );
+    if (!response.ok) {
+      const data = (await response.json().catch(() => null)) as
+        | { error?: string }
+        | null;
+      throw new Error(data?.error || "Failed to delete video.");
+    }
+    setVideos((current) => current.filter((item) => item.id !== video.id));
   }, []);
 
   useEffect(() => {
@@ -666,10 +870,14 @@ export default function VideoPage() {
   }, [appendGenerationDetail]);
 
   return (
-    <div className="flex h-screen bg-background">
+    <div ref={layoutRef} className="flex h-screen bg-background">
       <AppSidebar />
 
-      <aside className="flex w-[36rem] max-w-[58vw] flex-col overflow-hidden border-r border-border">
+      {editorOpen && (
+        <aside
+          className="flex shrink-0 flex-col overflow-hidden"
+          style={{ width: editorWidth }}
+        >
         <div className="border-b border-border px-4 py-3">
           <h1 className="text-lg font-semibold">Video Generation</h1>
           <p className="text-xs text-muted-foreground">
@@ -1312,15 +1520,56 @@ export default function VideoPage() {
             )}
           </div>
         </div>
-      </aside>
+        </aside>
+      )}
+
+      {editorOpen && (
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize video editor and gallery"
+          onPointerDown={startEditorResize}
+          className="group relative z-20 w-2 shrink-0 cursor-col-resize border-x border-border bg-muted/40 hover:bg-primary/20"
+        >
+          <GripVertical className="absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 text-muted-foreground group-hover:text-primary" />
+        </div>
+      )}
 
       <main className="flex flex-1 flex-col overflow-hidden">
         <div className="flex items-center justify-between border-b border-border p-4">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="outline"
+              onClick={() => setEditorOpen((open) => !open)}
+              aria-label={editorOpen ? "Hide video editor" : "Show video editor"}
+              title={editorOpen ? "Hide video editor" : "Show video editor"}
+            >
+              {editorOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
+            </Button>
             <Film className="h-4 w-4 text-muted-foreground" />
             <h2 className="text-sm font-medium">Video Gallery</h2>
           </div>
           <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              <span className="whitespace-nowrap text-xs text-muted-foreground">
+                Video width
+              </span>
+              <Slider
+                value={[thumbnailWidth]}
+                onValueChange={(value) =>
+                  setThumbnailWidth(Array.isArray(value) ? value[0] : value)
+                }
+                min={VIDEO_THUMBNAIL_MIN_WIDTH}
+                max={VIDEO_THUMBNAIL_MAX_WIDTH}
+                step={20}
+                className="w-28"
+              />
+              <span className="w-8 text-right text-xs font-mono tabular-nums">
+                {thumbnailWidth}
+              </span>
+            </div>
             <span className="text-xs text-muted-foreground">
               {videos.length} videos
             </span>
@@ -1346,57 +1595,22 @@ export default function VideoPage() {
               </div>
             </div>
           ) : (
-            <div className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
+            <div
+              className="grid grid-flow-row-dense gap-4"
+              style={{
+                gridTemplateColumns:
+                  "repeat(auto-fill, minmax(min(100%, " +
+                  thumbnailWidth +
+                  "px), 1fr))",
+                gridAutoRows: "8px",
+              }}
+            >
               {videos.map((video) => (
-                <article
+                <VideoGalleryCard
                   key={video.id}
-                  className="overflow-hidden rounded-md border border-border bg-card shadow-sm"
-                >
-                  <div className="aspect-video bg-background">
-                    {isGif(video) ? (
-                      <img
-                        src={video.url}
-                        alt={video.params?.prompt || "Generated video"}
-                        className="h-full w-full object-contain"
-                      />
-                    ) : (
-                      <video
-                        src={video.url}
-                        controls
-                        playsInline
-                        className="h-full w-full object-contain"
-                      />
-                    )}
-                  </div>
-                  <div className="space-y-1 border-t border-border p-3">
-                    <p className="line-clamp-2 text-sm font-medium">
-                      {video.params?.prompt || "Generated video"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(video.timestamp).toLocaleString()}
-                    </p>
-                    {video.audios && video.audios.length > 0 && (
-                      <div className="space-y-2 pt-2">
-                        {video.audios.map((audio) => (
-                          <div
-                            key={audio.id}
-                            className="rounded-md border border-border bg-background/80 p-2"
-                          >
-                            <div className="mb-1 flex items-center gap-1.5 text-xs font-medium">
-                              <Volume2 className="h-3.5 w-3.5 text-muted-foreground" />
-                              Sound
-                            </div>
-                            <audio
-                              src={audio.url}
-                              controls
-                              className="h-8 w-full"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </article>
+                  video={video}
+                  onDelete={deleteVideo}
+                />
               ))}
             </div>
           )}
