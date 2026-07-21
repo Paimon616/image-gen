@@ -5586,7 +5586,18 @@
       "portrait",
       "anime",
       "style"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
   },
   "loras/HerrscherAGGA2025_Alluring_Face-IL_V1.safetensors": {
     "name": "Alluring Face | Lora Style",
@@ -5608,7 +5619,17 @@
       "stylemix",
       "lora",
       "sexy"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
+    }
   },
   "loras/Semi-realism_illustrious.safetensors": {
     "name": "Niji semi realism",
@@ -5626,7 +5647,17 @@
       "girls",
       "anime",
       "lora"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent",
+        "Image"
+      ]
+    }
   },
   "loras/Fl1_illu.safetensors": {
     "name": "Fl1 | Shiiro's Styles",
@@ -5667,7 +5698,15 @@
       "abstract painting",
       "nsfw",
       "artstyle"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
+    }
   },
   "loras/rakugakingu.safetensors": {
     "name": "rakugakingu",
@@ -5679,7 +5718,15 @@
     "tags": [
       "rakugakingu",
       "style"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
+    }
   },
   "loras/Vexilapse.safetensors": {
     "name": "GENESIS",
@@ -5692,7 +5739,15 @@
       "anime",
       "style",
       "girls"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
+    }
   },
   "checkpoints/hassakuXLIllustrious_v13StyleA.safetensors": {
     "name": "Hassaku XL (Illustrious)",
@@ -5702,14 +5757,20 @@
     "civitai_url": "https://civitai.red/models/140272/hassaku-xl-illustrious?modelVersionId=1240288",
     "source_url": "https://civitai.red/models/140272/hassaku-xl-illustrious?modelVersionId=1240288",
     "tags": [
-      "base model",
       "anime",
-      "sfw",
-      "nsfw",
-      "woman",
-      "hentai",
+      "base model",
       "characters"
-    ]
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent",
+        "Image"
+      ]
+    }
   },
   "loras/gokurakugai-guy90-Illust-Lorav1.safetensors": {
     "name": "Gokurakugai [Illustrious] Style Lora",
@@ -5829,12 +5890,22 @@
     "civitai_url": "https://civitai.red/models/122359/detail-tweaker-xl?modelVersionId=135867",
     "source_url": "https://civitai.red/models/122359/detail-tweaker-xl?modelVersionId=135867",
     "tags": [
+      "concept",
       "detailed",
-      "enhancer",
-      "undetailed",
       "detail",
-      "concept"
-    ]
+      "enhancer",
+      "undetailed"
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
+    }
   },
   "loras/PhoebeV1.safetensors": {
     "name": "Phoebe | Wuthering Waves | WuWa",
@@ -6593,6 +6664,197 @@
       "allowDerivatives": true,
       "allowDifferentLicense": true,
       "allowCommercialUse": []
+    }
+  },
+  "loras/0_11Xx_B.safetensors": {
+    "name": "0__11Xx | Shiiro's Styles | Niji",
+    "version": "B",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/a21366a0-0b72-4dfc-9500-a02e0fb91a26/original=true/106983116.jpeg",
+    "civitai_url": "https://civitai.red/models/1197562/0-11xx-shiiro-s-styles-niji?modelVersionId=2334279",
+    "source_url": "https://civitai.red/models/1197562/0-11xx-shiiro-s-styles-niji?modelVersionId=2334279",
+    "tags": [
+      "0_11Xx_B",
+      "surreal",
+      "anime",
+      "photorealistic",
+      "art",
+      "manga",
+      "flowers",
+      "style",
+      "paint",
+      "art style",
+      "woman",
+      "artist",
+      "artstyle",
+      "cartoon",
+      "game character",
+      "girls",
+      "male",
+      "man",
+      "realistic",
+      "detail",
+      "nsfw",
+      "lora",
+      "shapes",
+      "color",
+      "geometry",
+      "background plate",
+      "backgrounds",
+      "styles",
+      "abstract painting",
+      "background pony",
+      "shiiro",
+      "manga artist"
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
+    }
+  },
+  "loras/CADENZA.safetensors": {
+    "name": "GENESIS",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/cab9ae2d-6a71-45e4-9823-687a0260b2ad/original=true/87961660.jpeg",
+    "civitai_url": "https://civitai.red/models/846953/genesis?modelVersionId=2004152",
+    "source_url": "https://civitai.red/models/846953/genesis?modelVersionId=2004152",
+    "tags": [
+      "anime",
+      "style",
+      "girls"
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
+    }
+  },
+  "loras/aosiai123_style.safetensors": {
+    "name": "Aosiai123 | Shiiro's Styles",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/33025bfd-c23d-4192-a340-01b32ba793c6/original=true/62947288.jpeg",
+    "civitai_url": "https://civitai.red/models/1346615/aosiai123-shiiro-s-styles?modelVersionId=1520880",
+    "source_url": "https://civitai.red/models/1346615/aosiai123-shiiro-s-styles?modelVersionId=1520880",
+    "tags": [
+      "traditional media,  aosiai123_illu",
+      "anime",
+      "photorealistic",
+      "art",
+      "manga",
+      "flowers",
+      "style",
+      "paint",
+      "art style",
+      "woman",
+      "artist",
+      "artstyle",
+      "cartoon",
+      "game character",
+      "girls",
+      "male",
+      "man",
+      "realistic",
+      "detail",
+      "nsfw",
+      "lora",
+      "shapes",
+      "color",
+      "geometry",
+      "background plate",
+      "backgrounds",
+      "styles",
+      "abstract painting",
+      "background pony",
+      "shiiro",
+      "manga artist"
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
+    }
+  },
+  "loras/2dRealPhoto_Background.safetensors": {
+    "name": "2dReal/Photo Background",
+    "version": "V1",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/dd61fbac-8306-41a1-bdea-d955f00cf94c/original=true/97191872.jpeg",
+    "civitai_url": "https://civitai.red/models/1908594/2dreal-photo-background?modelVersionId=2160260",
+    "source_url": "https://civitai.red/models/1908594/2dreal-photo-background?modelVersionId=2160260",
+    "tags": [
+      "style"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
+    }
+  },
+  "loras/zy_illustrious_Realism_Enhancer_v1.safetensors": {
+    "name": "Illustrious Realism Enhancer ✨",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/c7b4f210-4679-4c45-a905-7be23d01f637/original=true/50141873.jpeg",
+    "civitai_url": "https://civitai.red/models/1115090/illustrious-realism-enhancer?modelVersionId=1253047",
+    "source_url": "https://civitai.red/models/1115090/illustrious-realism-enhancer?modelVersionId=1253047",
+    "tags": [
+      "realistic",
+      "woman",
+      "photo",
+      "photorealistic",
+      "real",
+      "realism",
+      "style",
+      "photorealism",
+      "enhancer",
+      "girls",
+      "sexy"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Image"
+      ]
+    }
+  },
+  "loras/ponyv6_noobV1_2_adamW-000017.safetensors": {
+    "name": "Pony: People's Works v1-v6",
+    "version": "v6_noobVv1.0",
+    "base_model": "NoobAI",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/bf16a5f5-d2cb-422f-bd71-58f2e481a208/original=true/49879463.jpeg",
+    "civitai_url": "https://civitai.red/models/856285/pony-people-s-works-v1-v6?modelVersionId=1247042",
+    "source_url": "https://civitai.red/models/856285/pony-people-s-works-v1-v6?modelVersionId=1247042",
+    "tags": [
+      "style",
+      "anime"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
     }
   }
 }
