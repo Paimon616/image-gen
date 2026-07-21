@@ -23,6 +23,10 @@ const DEFAULT_COMFYUI_URL = "http://127.0.0.1:8188";
 export const COMFYUI_BASE_URL =
   process.env.COMFYUI_BASE_URL?.replace(/\/$/, "") ?? DEFAULT_COMFYUI_URL;
 const COMFYUI_TIMEOUT_MS = Number(process.env.COMFYUI_TIMEOUT_MS ?? 300_000);
+const A1111_BASE_URL =
+  process.env.A1111_BASE_URL?.replace(/\/$/, "") ?? "http://127.0.0.1:7860";
+const FORGE_BASE_URL =
+  process.env.FORGE_BASE_URL?.replace(/\/$/, "") ?? "http://127.0.0.1:7861";
 
 interface ComfyImageRef {
   filename: string;
@@ -92,14 +96,16 @@ interface ResolvedControlNetConfig extends WorkflowControlNetConfig {
   image: string;
 }
 
-function addUpscaleWorkflowNodes(
+async function addUpscaleWorkflowNodes(
   workflow: Record<string, unknown>,
   params: GenerationParams,
   imageRef: [string, number],
   loaderNodeId: string,
   upscaleNodeId: string
 ) {
-  const modelName = params.upscale_model_name?.trim();
+  const modelName = await resolveAvailableUpscaleModelName(
+    params.upscale_model_name?.trim() ?? ""
+  );
 
   if (!modelName) {
     return imageRef;
@@ -460,7 +466,7 @@ async function buildAnimaWorkflow(params: GenerationParams, checkpoint: string) 
   let saveImageRef: [string, number];
 
   if (useHiresFix) {
-    const upscaledRef = addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71");
+    const upscaledRef = await addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71");
     workflow["72"] = {
       class_type: "ImageScale",
       inputs: {
@@ -496,7 +502,7 @@ async function buildAnimaWorkflow(params: GenerationParams, checkpoint: string) 
     };
     saveImageRef = ["75", 0];
   } else {
-    saveImageRef = addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71");
+    saveImageRef = await addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71");
   }
   workflow["7"] = {
     class_type: "SaveImage",
@@ -658,7 +664,7 @@ async function buildKrea2Workflow(params: GenerationParams, checkpoint: string) 
   let saveImageRef: [string, number];
 
   if (useHiresFix) {
-    const upscaledRef = addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71");
+    const upscaledRef = await addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71");
     workflow["72"] = {
       class_type: "ImageScale",
       inputs: {
@@ -694,7 +700,7 @@ async function buildKrea2Workflow(params: GenerationParams, checkpoint: string) 
     };
     saveImageRef = ["75", 0];
   } else {
-    saveImageRef = addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71");
+    saveImageRef = await addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71");
   }
   workflow["7"] = {
     class_type: "SaveImage",
@@ -929,7 +935,7 @@ async function buildDefaultWorkflow(params: GenerationParams) {
   let saveImageRef: [string, number];
 
   if (useHiresFix) {
-    const upscaledRef = addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71");
+    const upscaledRef = await addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71");
     workflow["72"] = {
       class_type: "ImageScale",
       inputs: {
@@ -965,7 +971,7 @@ async function buildDefaultWorkflow(params: GenerationParams) {
     };
     saveImageRef = ["75", 0];
   } else {
-    saveImageRef = addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71");
+    saveImageRef = await addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71");
   }
   workflow["7"] = {
     class_type: "SaveImage",
@@ -1006,7 +1012,39 @@ export async function queueComfyWorkflow(
   return { ...queued, client_id: clientId };
 }
 
+async function releaseWebUiMemory() {
+  await Promise.all(
+    [A1111_BASE_URL, FORGE_BASE_URL].map(async (baseUrl) => {
+      try {
+        await fetch(baseUrl + "/sdapi/v1/unload-checkpoint", {
+          method: "POST",
+          signal: AbortSignal.timeout(10_000),
+          cache: "no-store",
+        });
+      } catch {
+        // WebUI backends are optional when ComfyUI is selected.
+      }
+    })
+  );
+}
+
 export async function queueComfyPrompt(params: GenerationParams, clientId = crypto.randomUUID()) {
+  const basePixels = params.width * params.height;
+  const hiresScale = Number(params.hires_upscale);
+  const finalPixels =
+    Number.isFinite(hiresScale) && hiresScale > 1
+      ? basePixels * hiresScale * hiresScale
+      : basePixels;
+  // Permit high-resolution single-pass recipes imported explicitly from ComfyUI,
+  // while retaining the final-pixel guard that blocks runaway 4K/8K jobs.
+  if (basePixels > 4_200_000 || finalPixels > 4_200_000) {
+    throw new Error(
+      `ComfyUI resolution is too large for this GPU: ${params.width}x${params.height}` +
+        (hiresScale > 1 ? `, Hires ${hiresScale}x` : "") +
+        ". Reduce the base size or disable Hires fix."
+    );
+  }
+  await releaseWebUiMemory();
   const prompt = await buildDefaultWorkflow(params);
   return queueComfyWorkflow(prompt, clientId);
 }
@@ -1063,6 +1101,24 @@ function promptIdFromQueueItem(item: unknown) {
   return "";
 }
 
+async function resolveAvailableUpscaleModelName(modelName: string) {
+  const trimmed = modelName.trim();
+  if (!trimmed) return "";
+
+  try {
+    const names = await getComfyObjectInputOptions("UpscaleModelLoader", "model_name");
+    if (names.includes(trimmed)) return trimmed;
+    const normalize = (value: string) =>
+      value
+        .replace(/\.(pth|pt|safetensors|ckpt)$/i, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "");
+    const normalized = normalize(trimmed);
+    return names.find((name) => normalize(name) === normalized) ?? "";
+  } catch {
+    return trimmed;
+  }
+}
 async function isPromptActive(promptId: string) {
   const queue = await getQueue();
   const queuedItems = [
@@ -1396,6 +1452,16 @@ function replaceWorkflowPlaceholders(value: unknown, params: VideoGenerationPara
       low_noise_start_step: Math.max(1, Math.floor(params.num_inference_steps / 2)),
       cfg: params.guidance_scale,
       guidance_scale: params.guidance_scale,
+      vae_tile_size: params.vae_tile_size,
+      vae_tile_overlap: params.vae_tile_overlap,
+      vae_temporal_size: params.vae_temporal_size,
+      vae_temporal_overlap: params.vae_temporal_overlap,
+      smooth_xxx_strength: params.smooth_xxx_strength,
+      mating_press_strength: params.mating_press_strength,
+      lightx2v_high_strength: params.lightx2v_high_strength,
+      lightx2v_low_strength: params.lightx2v_low_strength,
+      ltx_dr34_strength: params.ltx_dr34_strength,
+      ltx_dasiwa_strength: params.ltx_dasiwa_strength,
       seed: normalizeGenerationSeed(params.seed),
       source_image: params.source_image ?? "",
       enable_sound: params.enable_sound ? 1 : 0,
@@ -1429,9 +1495,10 @@ function replaceWorkflowPlaceholders(value: unknown, params: VideoGenerationPara
 
 async function loadWorkflowFromEnv(
   envName: "COMFYUI_VIDEO_WORKFLOW_PATH" | "COMFYUI_AUDIO_WORKFLOW_PATH",
-  params: VideoGenerationParams
+  params: VideoGenerationParams,
+  workflowPathOverride?: string
 ) {
-  const workflowPath = process.env[envName]?.trim();
+  const workflowPath = workflowPathOverride ?? process.env[envName]?.trim();
 
   if (!workflowPath) {
     throw new Error(
@@ -1459,8 +1526,18 @@ async function loadWorkflowFromEnv(
   return replaceWorkflowPlaceholders(workflow, resolvedParams) as Record<string, unknown>;
 }
 
+const VIDEO_WORKFLOW_PATHS = {
+  "wan-smoothmix": "workflows/wan22-i2v-smoothmix-api.json",
+  "wan-base": "workflows/wan22-i2v-base-api.json",
+  "ltx-10eros": "workflows/ltx23-10eros-t2v-api.json",
+} as const;
+
 async function loadVideoWorkflow(params: VideoGenerationParams) {
-  return loadWorkflowFromEnv("COMFYUI_VIDEO_WORKFLOW_PATH", params);
+  return loadWorkflowFromEnv(
+    "COMFYUI_VIDEO_WORKFLOW_PATH",
+    params,
+    VIDEO_WORKFLOW_PATHS[params.video_model]
+  );
 }
 
 async function loadAudioWorkflow(params: VideoGenerationParams) {

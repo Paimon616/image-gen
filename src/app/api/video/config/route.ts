@@ -29,7 +29,7 @@ function configuredWorkflowPath(envName: string) {
 
   if (isAbsolute(workflowPath)) return workflowPath;
 
-  const relativeWorkflowPath = normalize(workflowPath).replace(/^workflows\//, "");
+  const relativeWorkflowPath = normalize(workflowPath).replace(/^workflows[\\/]/, "");
   const resolvedWorkflowPath = resolve(WORKFLOWS_DIR, relativeWorkflowPath);
 
   return isInsideDirectory(WORKFLOWS_DIR, resolvedWorkflowPath)

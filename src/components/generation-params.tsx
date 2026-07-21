@@ -154,15 +154,21 @@ export function GenerationParams() {
         <Label className="mb-2 block text-xs text-muted-foreground">Generation backend</Label>
         <select
           value={params.backend}
-          onChange={(e) => setParams({ backend: e.target.value as "comfyui" | "a1111" })}
+          onChange={(e) =>
+            setParams({ backend: e.target.value as "comfyui" | "a1111" | "forge" })
+          }
           className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <option value="comfyui">ComfyUI (Krea / Wan / workflows)</option>
           <option value="a1111">AUTOMATIC1111 v1.10.0 (Civitai SD 1.5 / SDXL)</option>
+          <option value="forge">ForgeUI (Forge / Illustrious compatibility)</option>
         </select>
-        {params.backend === "a1111" && params.generation_mode !== "text_to_image" && (
-          <p className="mt-2 text-xs text-amber-600">A1111 currently supports Text to Image in image-gen.</p>
-        )}
+        {(params.backend === "a1111" || params.backend === "forge") &&
+          params.generation_mode !== "text_to_image" && (
+            <p className="mt-2 text-xs text-amber-600">
+              WebUI backends currently support Text to Image in image-gen.
+            </p>
+          )}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">

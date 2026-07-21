@@ -15,8 +15,11 @@ Local image generation UI built with Next.js and ComfyUI.
 
 ## Setup
 
-For the full ComfyUI setup guide (version pinning, custom nodes, workflows,
-hardware notes, and troubleshooting) see [docs/comfyui-setup.md](docs/comfyui-setup.md).
+Start with [Local image backends](docs/image-backends-setup.md) for the complete
+Windows setup order, shared model layout, ports, and backend selection. Related
+guides: [ComfyUI](docs/comfyui-setup.md), [A1111](docs/a1111-setup.md),
+[Forge](docs/forge-setup.md), and
+[Civitai metadata reproduction](docs/civitai-metadata-reproduction.md).
 
 Install app dependencies:
 

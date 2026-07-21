@@ -4,6 +4,8 @@ import type { GenerationParams } from "./types";
 
 const A1111_BASE_URL =
   process.env.A1111_BASE_URL?.replace(/\/$/, "") ?? "http://127.0.0.1:7860";
+const FORGE_BASE_URL =
+  process.env.FORGE_BASE_URL?.replace(/\/$/, "") ?? "http://127.0.0.1:7861";
 const A1111_TIMEOUT_MS = Number(process.env.A1111_TIMEOUT_MS ?? 3_600_000);
 const COMFYUI_BASE_URL =
   process.env.COMFYUI_BASE_URL?.replace(/\/$/, "") ?? "http://127.0.0.1:8188";
@@ -51,8 +53,36 @@ function normalizeUpscalerName(value: string) {
     .replace(/[^a-z0-9]+/g, "");
 }
 
-async function resolveA1111Upscaler(requested: string, signal: AbortSignal) {
-  const response = await fetch(A1111_BASE_URL + "/sdapi/v1/upscalers", {
+function webUiBaseUrl(backend: GenerationParams["backend"]) {
+  return backend === "forge" ? FORGE_BASE_URL : A1111_BASE_URL;
+}
+
+async function resolveA1111Upscaler(
+  baseUrl: string,
+  requested: string,
+  signal: AbortSignal
+) {
+  const cleanRequested = requested.replace(/\.(pth|safetensors|ckpt)$/i, "").trim();
+  if (/^latent(?:\s|$|\()/i.test(cleanRequested)) {
+    try {
+      const latentResponse = await fetch(baseUrl + "/sdapi/v1/latent-upscale-modes", {
+        signal,
+        cache: "no-store",
+      });
+      if (latentResponse.ok) {
+        const modes = (await latentResponse.json()) as Array<{ name?: string }>;
+        const match = modes.find(
+          (mode) => normalizeUpscalerName(mode.name ?? "") === normalizeUpscalerName(cleanRequested)
+        );
+        if (match?.name) return match.name;
+      }
+    } catch {
+      // Older WebUI builds may not expose the discovery endpoint.
+    }
+    return cleanRequested;
+  }
+
+  const response = await fetch(baseUrl + "/sdapi/v1/upscalers", {
     signal,
     cache: "no-store",
   });
@@ -60,12 +90,15 @@ async function resolveA1111Upscaler(requested: string, signal: AbortSignal) {
 
   const upscalers = (await response.json()) as A1111Upscaler[];
   const target = normalizeUpscalerName(requested);
-  const exact = upscalers.find(
-    (upscaler) =>
-      normalizeUpscalerName(upscaler.name ?? "") === target ||
-      normalizeUpscalerName(upscaler.model_name ?? "") === target
-  );
+  const exact =
+    upscalers.find(
+      (upscaler) => normalizeUpscalerName(upscaler.name ?? "") === target
+    ) ??
+    upscalers.find(
+      (upscaler) => normalizeUpscalerName(upscaler.model_name ?? "") === target
+    );
   if (exact?.name) return exact.name;
+
 
   return (
     upscalers.find((upscaler) => upscaler.name === "ESRGAN_4x")?.name ??
@@ -98,6 +131,24 @@ function decodeBase64Image(value: string) {
   } satisfies A1111GeneratedImage;
 }
 
+async function releaseWebUiMemory(activeBaseUrl: string) {
+  await Promise.all(
+    [A1111_BASE_URL, FORGE_BASE_URL]
+      .filter((baseUrl) => baseUrl !== activeBaseUrl)
+      .map(async (baseUrl) => {
+        try {
+          await fetch(baseUrl + "/sdapi/v1/unload-checkpoint", {
+            method: "POST",
+            signal: AbortSignal.timeout(10_000),
+            cache: "no-store",
+          });
+        } catch {
+          // The alternate WebUI backend may not be running.
+        }
+      })
+  );
+}
+
 async function releaseComfyUiMemory() {
   try {
     await fetch(COMFYUI_BASE_URL + "/free", {
@@ -116,7 +167,7 @@ export async function generateWithA1111(
   signal?: AbortSignal
 ) {
   if (params.generation_mode !== "text_to_image") {
-    throw new Error("A1111 backend currently supports Text to Image only.");
+    throw new Error("WebUI backends currently support Text to Image only.");
   }
 
   const controller = new AbortController();
@@ -125,7 +176,9 @@ export async function generateWithA1111(
   signal?.addEventListener("abort", abort, { once: true });
 
   try {
-    await releaseComfyUiMemory();
+    const baseUrl = webUiBaseUrl(params.backend);
+    const backendLabel = params.backend === "forge" ? "Forge" : "A1111";
+    await Promise.all([releaseComfyUiMemory(), releaseWebUiMemory(baseUrl)]);
     const requestedHiresScale = Number(params.hires_upscale);
     const autoHires =
       requestedHiresScale <= 1 && params.width * params.height > 2_000_000;
@@ -136,6 +189,7 @@ export async function generateWithA1111(
     const imageCount = Math.min(Math.max(Number(params.num_images) || 1, 1), 4);
     const hrUpscaler = enableHr
       ? await resolveA1111Upscaler(
+          baseUrl,
           params.upscale_model_name || "ESRGAN_4x",
           controller.signal
         )
@@ -157,33 +211,69 @@ export async function generateWithA1111(
       hr_scale: enableHr ? hiresScale : 1,
       hr_upscaler: hrUpscaler,
       hr_second_pass_steps: enableHr ? params.hires_steps : 0,
+      // Keep the second pass on the same recipe instead of Forge's nullable/API
+      // defaults (notably hr_cfg=1), which can substantially change the image.
+      hr_cfg: params.guidance_scale,
+      hr_sampler_name: a1111SamplerName(params),
+      hr_scheduler: params.scheduler === "karras" ? "Karras" : "Automatic",
+      // Forge leaves this nullable but iterates it during Hires fix.
+      hr_additional_modules: [],
       override_settings: {
         sd_model_checkpoint: params.model_name,
         CLIP_stop_at_last_layers: Math.max(1, params.clip_skip),
         ...(params.vae_name ? { sd_vae: params.vae_name } : {}),
       },
-      override_settings_restore_afterwards: true,
+      // Keep the requested checkpoint active. Restoring the previous checkpoint after
+      // every request can leave WebUI tensors split between CPU and CUDA.
+      override_settings_restore_afterwards: false,
       send_images: true,
       save_images: false,
     };
 
-    const response = await fetch(A1111_BASE_URL + "/sdapi/v1/txt2img", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-      cache: "no-store",
-    });
+    const requestImage = () =>
+      fetch(baseUrl + "/sdapi/v1/txt2img", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+        cache: "no-store",
+      });
+
+    let response = await requestImage();
+    let responseError = response.ok ? "" : await response.text();
+    if (
+      !response.ok &&
+      /Expected all tensors to be on the same device|cpu and cuda/i.test(responseError)
+    ) {
+      // WebUI can retain a partially offloaded checkpoint after switching backends
+      // or models. A full unload/reload repairs that state; retry only once.
+      await fetch(baseUrl + "/sdapi/v1/unload-checkpoint", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+        signal: controller.signal,
+        cache: "no-store",
+      });
+      await fetch(baseUrl + "/sdapi/v1/reload-checkpoint", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+        signal: controller.signal,
+        cache: "no-store",
+      });
+      response = await requestImage();
+      responseError = response.ok ? "" : await response.text();
+    }
 
     if (!response.ok) {
       throw new Error(
-        "A1111 " + response.status + ": " + ((await response.text()) || response.statusText)
+        backendLabel + " " + response.status + ": " + (responseError || response.statusText)
       );
     }
 
     const result = (await response.json()) as A1111Txt2ImgResponse;
     if (!result.images?.length) {
-      throw new Error("A1111 completed without returning an image.");
+      throw new Error(backendLabel + " completed without returning an image.");
     }
 
     return result.images.map(decodeBase64Image);
@@ -193,8 +283,8 @@ export async function generateWithA1111(
   }
 }
 
-export async function interruptA1111() {
-  await fetch(A1111_BASE_URL + "/sdapi/v1/interrupt", {
+export async function interruptA1111(backend: GenerationParams["backend"] = "a1111") {
+  await fetch(webUiBaseUrl(backend) + "/sdapi/v1/interrupt", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: "{}",

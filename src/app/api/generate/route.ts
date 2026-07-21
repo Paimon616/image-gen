@@ -101,13 +101,16 @@ export async function POST(req: NextRequest) {
     }
 
     const images =
-      body.backend === "a1111"
+      body.backend === "a1111" || body.backend === "forge"
         ? await generateWithA1111(body, req.signal)
         : await generateWithComfyUI(body);
     const savedImages = await saveBufferedImages({
       images,
       params: body,
-      endpoint: body.backend === "a1111" ? "a1111/local" : modelConfig.id,
+      endpoint:
+        body.backend === "a1111" || body.backend === "forge"
+          ? `${body.backend}/local`
+          : modelConfig.id,
     });
 
     return NextResponse.json({ images: savedImages });

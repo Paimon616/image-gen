@@ -1,18 +1,17 @@
 param(
   [string]$HostName = "127.0.0.1",
-  [int]$Port = 7860
+  [int]$Port = 7861
 )
 
 $ErrorActionPreference = "Stop"
 $RootDir = Resolve-Path (Join-Path $PSScriptRoot "..")
-$WebUIDir = Join-Path $RootDir "stable-diffusion-webui"
-$Python = Join-Path $WebUIDir "venv\Scripts\python.exe"
+$ForgeDir = Join-Path $RootDir "stable-diffusion-webui-forge"
+$Python = Join-Path $ForgeDir "venv\Scripts\python.exe"
 
 if (-not (Test-Path $Python)) {
-  throw "A1111 is not installed."
+  throw "Forge is not installed. Run: npm run setup:forge:win"
 }
 
-$env:STABLE_DIFFUSION_REPO = "https://github.com/w-e-w/stablediffusion.git"
 $ModelRoot = Join-Path $RootDir "ComfyUI\models"
 $LaunchArgs = @(
   "launch.py",
@@ -29,7 +28,7 @@ $LaunchArgs = @(
   "--esrgan-models-path", (Join-Path $ModelRoot "upscale_models")
 ) + $args
 
-Push-Location $WebUIDir
+Push-Location $ForgeDir
 try {
   & $Python @LaunchArgs
 } finally {
