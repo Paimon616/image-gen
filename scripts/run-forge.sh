@@ -30,7 +30,10 @@ export PYTORCH_ENABLE_MPS_FALLBACK=1
 MAC_ARGS=""
 if [ "$(uname)" = "Darwin" ]; then
   export TORCH_COMMAND="${TORCH_COMMAND:-pip install torch==2.1.2 torchvision==0.16.2}"
-  MAC_ARGS="--skip-torch-cuda-test --upcast-sampling --no-half-vae"
+  # Forge computes the UNet in fp16 by default, which overflows to NaN on MPS and
+  # renders solid black (especially SDXL). Its native backend flags force bf16
+  # (stable + fast on Apple Silicon) and an fp32 VAE so the decode never NaNs.
+  MAC_ARGS="--skip-torch-cuda-test --unet-in-bf16 --vae-in-fp32"
 fi
 
 cd "$FORGE_DIR"
