@@ -18,6 +18,7 @@ if [ ! -x "$PYTHON" ]; then
   exit 1
 fi
 
+export STABLE_DIFFUSION_REPO="${STABLE_DIFFUSION_REPO:-https://github.com/w-e-w/stablediffusion.git}"
 export PYTORCH_ENABLE_MPS_FALLBACK=1
 MAC_ARGS=""
 if [ "$(uname)" = "Darwin" ]; then

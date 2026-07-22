@@ -18,6 +18,10 @@ if [ ! -x "$PYTHON" ]; then
   exit 1
 fi
 
+# The upstream Stability-AI/stablediffusion repo is gone; use the maintained fork
+# (matches the Windows launcher).
+export STABLE_DIFFUSION_REPO="${STABLE_DIFFUSION_REPO:-https://github.com/w-e-w/stablediffusion.git}"
+
 # Apple Silicon (MPS) needs a CPU/MPS torch build and the fallback flag; the mac
 # args mirror AUTOMATIC1111's own webui-macos-env.sh defaults.
 export PYTORCH_ENABLE_MPS_FALLBACK=1
