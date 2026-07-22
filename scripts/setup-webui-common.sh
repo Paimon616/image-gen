@@ -95,21 +95,30 @@ provision_webui() {
       echo "[$label] CLIP pre-install failed; the WebUI will retry on launch (see $log)." >&2
   fi
 
-  # Keep NumPy on the 1.x ABI. Installing torch/clip above can pull NumPy 2.x,
-  # but Forge's scikit-image (and friends) are compiled against 1.x and crash
-  # with "numpy.dtype size changed" under 2.x.
-  echo "[$label] Pinning NumPy to the 1.x series..."
-  "$venv_py" -m pip install "numpy<2" >>"$log" 2>&1 || true
-
   # ADetailer is a WebUI extension, not a built-in script. Without it the API
-  # rejects generations that request it ("Script 'ADetailer' not found"). Its own
-  # Python deps install when the WebUI loads it during the bootstrap launch below.
+  # rejects generations that request it ("Script 'ADetailer' not found").
   local ext_dir="$dir/extensions/adetailer"
   if [ ! -d "$ext_dir/.git" ]; then
     echo "[$label] Installing ADetailer extension..."
     git clone --depth 1 https://github.com/Bing-su/adetailer.git "$ext_dir" >>"$log" 2>&1 ||
       echo "[$label] ADetailer clone failed (see $log)." >&2
   fi
+
+  # ADetailer's install.py reinstalls the LATEST ultralytics/mediapipe on every
+  # launch, which drag in NumPy 2.x and break the WebUI's scikit-image ("numpy
+  # .dtype size changed"). Pre-install versions that satisfy its minimums but stay
+  # on the NumPy 1.x ABI so its install step finds them satisfied and skips.
+  local np_constraint="$log_dir/numpy1-constraint.txt"
+  echo "numpy<2" >"$np_constraint"
+  echo "[$label] Installing ADetailer dependencies (NumPy 1.x compatible)..."
+  "$venv_py" -m pip install -c "$np_constraint" \
+    "ultralytics==8.3.75" "mediapipe==0.10.14" "rich>=13" >>"$log" 2>&1 ||
+    echo "[$label] ADetailer dependency install failed (see $log)." >&2
+
+  # Final guard: keep NumPy on the 1.x ABI. Installing torch/clip/mediapipe above
+  # can otherwise pull NumPy 2.x, which crashes scikit-image and friends.
+  echo "[$label] Pinning NumPy to the 1.x series..."
+  "$venv_py" -m pip install "numpy<2" >>"$log" 2>&1 || true
 
   if curl -fsS --max-time 5 "http://127.0.0.1:$port/internal/ping" >/dev/null 2>&1; then
     echo "[$label] Something is already serving on port $port; skipping launch bootstrap."
