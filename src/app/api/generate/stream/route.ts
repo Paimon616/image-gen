@@ -221,7 +221,11 @@ export async function POST(req: NextRequest) {
           }, 5_000);
           let images: Awaited<ReturnType<typeof generateWithA1111>>;
           try {
-            images = await generateWithA1111(body, abortController.signal);
+            images = await generateWithA1111(
+              body,
+              abortController.signal,
+              (message) => send("progress", { progress: 4, message })
+            );
           } finally {
             clearInterval(progressTimer);
           }

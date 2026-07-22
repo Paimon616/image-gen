@@ -1,5 +1,8 @@
 import "server-only";
 
+import { spawn } from "child_process";
+import { existsSync } from "fs";
+import { join } from "path";
 import type { GenerationParams } from "./types";
 
 const A1111_BASE_URL =
@@ -7,6 +10,7 @@ const A1111_BASE_URL =
 const FORGE_BASE_URL =
   process.env.FORGE_BASE_URL?.replace(/\/$/, "") ?? "http://127.0.0.1:7861";
 const A1111_TIMEOUT_MS = Number(process.env.A1111_TIMEOUT_MS ?? 3_600_000);
+const WEBUI_BOOT_TIMEOUT_MS = Number(process.env.WEBUI_BOOT_TIMEOUT_MS ?? 300_000);
 const COMFYUI_BASE_URL =
   process.env.COMFYUI_BASE_URL?.replace(/\/$/, "") ?? "http://127.0.0.1:8188";
 
@@ -55,6 +59,113 @@ function normalizeUpscalerName(value: string) {
 
 function webUiBaseUrl(backend: GenerationParams["backend"]) {
   return backend === "forge" ? FORGE_BASE_URL : A1111_BASE_URL;
+}
+
+// Track backends we have already asked to launch so overlapping generation
+// requests don't each spawn their own WebUI process.
+const webUiLaunching = new Set<string>();
+
+async function isWebUiUp(baseUrl: string) {
+  for (const path of ["/internal/ping", "/sdapi/v1/options"]) {
+    try {
+      const response = await fetch(baseUrl + path, {
+        signal: AbortSignal.timeout(2_000),
+        cache: "no-store",
+      });
+      if (response.ok) return true;
+    } catch {
+      // Endpoint unreachable; try the next probe.
+    }
+  }
+  return false;
+}
+
+function launchWebUi(backend: GenerationParams["backend"]) {
+  const isForge = backend === "forge";
+  const customCommand = isForge
+    ? process.env.FORGE_LAUNCH_CMD
+    : process.env.A1111_LAUNCH_CMD;
+
+  if (customCommand) {
+    const child = spawn("bash", ["-lc", customCommand], {
+      detached: true,
+      stdio: "ignore",
+      cwd: process.cwd(),
+    });
+    child.unref();
+    return;
+  }
+
+  const script = join(
+    process.cwd(),
+    "scripts",
+    isForge ? "run-forge.sh" : "run-a1111.sh"
+  );
+  if (!existsSync(script)) {
+    throw new Error(
+      "No launcher for " +
+        (isForge ? "Forge" : "A1111") +
+        ". Start it manually or set " +
+        (isForge ? "FORGE_LAUNCH_CMD" : "A1111_LAUNCH_CMD") +
+        "."
+    );
+  }
+  const child = spawn("bash", [script], {
+    detached: true,
+    stdio: "ignore",
+    cwd: process.cwd(),
+  });
+  child.unref();
+}
+
+// Make sure the selected WebUI backend is reachable, launching it on demand and
+// polling until its API answers. Reports status through the optional callback so
+// the streaming route can surface "starting"/"waiting" progress to the client.
+async function ensureWebUiReady(
+  backend: GenerationParams["backend"],
+  signal: AbortSignal,
+  onStatus?: (message: string) => void
+) {
+  const baseUrl = webUiBaseUrl(backend);
+  const label = backend === "forge" ? "Forge" : "A1111";
+
+  if (await isWebUiUp(baseUrl)) return;
+
+  if (!webUiLaunching.has(backend)) {
+    webUiLaunching.add(backend);
+    try {
+      launchWebUi(backend);
+      onStatus?.("Starting " + label + "...");
+    } catch (error) {
+      webUiLaunching.delete(backend);
+      throw error;
+    }
+  } else {
+    onStatus?.("Waiting for " + label + " to start...");
+  }
+
+  const deadline = Date.now() + WEBUI_BOOT_TIMEOUT_MS;
+  try {
+    while (Date.now() < deadline) {
+      if (signal.aborted) throw new Error("Generation canceled.");
+      await new Promise((resolve) => setTimeout(resolve, 3_000));
+      if (await isWebUiUp(baseUrl)) {
+        onStatus?.(label + " is ready.");
+        return;
+      }
+      onStatus?.("Waiting for " + label + " to load...");
+    }
+    throw new Error(
+      label +
+        " did not become ready within " +
+        Math.round(WEBUI_BOOT_TIMEOUT_MS / 1000) +
+        "s. Confirm it is installed (see scripts/run-" +
+        (backend === "forge" ? "forge" : "a1111") +
+        ".sh)."
+    );
+  } finally {
+    webUiLaunching.delete(backend);
+  }
 }
 
 async function resolveA1111Upscaler(
@@ -304,7 +415,8 @@ async function releaseComfyUiMemory() {
 
 export async function generateWithA1111(
   params: GenerationParams,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  onStatus?: (message: string) => void
 ) {
   if (params.generation_mode === "pose_reference") {
     throw new Error("Pose Reference mode requires the ComfyUI backend.");
@@ -318,6 +430,7 @@ export async function generateWithA1111(
   try {
     const baseUrl = webUiBaseUrl(params.backend);
     const backendLabel = params.backend === "forge" ? "Forge" : "A1111";
+    await ensureWebUiReady(params.backend, controller.signal, onStatus);
     await Promise.all([releaseComfyUiMemory(), releaseWebUiMemory(baseUrl)]);
 
     const imageCount = Math.min(Math.max(Number(params.num_images) || 1, 1), 4);
