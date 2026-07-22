@@ -2,12 +2,33 @@
 # Shared provisioner for AUTOMATIC1111 / Forge on macOS/Linux.
 # Sourced by setup-a1111.sh and setup-forge.sh.
 
+# Resolve a Python 3.10 interpreter, installing it via Homebrew when missing.
+# Echoes the interpreter path on success; returns non-zero otherwise.
+resolve_python310() {
+  if command -v python3.10 >/dev/null 2>&1; then
+    command -v python3.10
+    return 0
+  fi
+
+  if command -v brew >/dev/null 2>&1; then
+    echo "[setup] Installing Python 3.10 via Homebrew..." >&2
+    brew install python@3.10 >&2 || true
+    local brew_py
+    brew_py="$(brew --prefix python@3.10 2>/dev/null)/bin/python3.10"
+    if [ -x "$brew_py" ]; then
+      echo "$brew_py"
+      return 0
+    fi
+    if command -v python3.10 >/dev/null 2>&1; then
+      command -v python3.10
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
 # provision_webui LABEL REPO_URL GIT_REF TARGET_DIR PORT RUN_SCRIPT
-#
-# Clones the repo, creates a virtualenv, then installs dependencies by launching
-# the WebUI once until its API answers and stopping it again. A1111/Forge clone
-# their sub-repositories and pip-install torch during that first run, so there is
-# no lighter, version-proof way to fully provision them.
 provision_webui() {
   local label="$1" repo="$2" ref="$3" dir="$4" port="$5" run_script="$6"
   local root_dir
@@ -15,11 +36,20 @@ provision_webui() {
   local log_dir="${LOG_DIR:-$root_dir/.local/logs}"
   mkdir -p "$log_dir"
   local log="$log_dir/setup-$label.log"
+  : >"$log"
 
   if ! command -v git >/dev/null 2>&1; then
     echo "[$label] git is required but was not found." >&2
     return 1
   fi
+
+  local py
+  if ! py="$(resolve_python310)"; then
+    echo "[$label] Python 3.10 is required and could not be installed automatically." >&2
+    echo "[$label] Install it (e.g. 'brew install python@3.10') and re-run: npm run setup:$label" >&2
+    return 1
+  fi
+  echo "[$label] Using Python: $py ($("$py" --version 2>&1))"
 
   if [ ! -f "$dir/launch.py" ]; then
     echo "[$label] Cloning into $dir ..."
@@ -32,29 +62,46 @@ provision_webui() {
     echo "[$label] Repository already present at $dir."
   fi
 
-  local py
-  if command -v python3.10 >/dev/null 2>&1; then
-    py=python3.10
-  else
-    py=python3
-    echo "[$label] WARNING: python3.10 not found; using $(python3 --version 2>&1)." >&2
-    echo "[$label] A1111/Forge are most reliable on Python 3.10 (brew install python@3.10)." >&2
+  # Recreate the virtualenv if it is missing or built with the wrong Python.
+  local venv_py="$dir/venv/bin/python"
+  if [ -x "$venv_py" ]; then
+    local ver
+    ver="$("$venv_py" -c 'import sys;print(f"{sys.version_info[0]}.{sys.version_info[1]}")' 2>/dev/null || echo "")"
+    if [ "$ver" != "3.10" ]; then
+      echo "[$label] Existing venv is Python ${ver:-unknown}; recreating with 3.10..."
+      rm -rf "$dir/venv"
+    fi
+  fi
+  if [ ! -x "$venv_py" ]; then
+    echo "[$label] Creating virtualenv..."
+    "$py" -m venv "$dir/venv"
   fi
 
-  if [ ! -x "$dir/venv/bin/python" ]; then
-    echo "[$label] Creating virtualenv with $py ..."
-    "$py" -m venv "$dir/venv"
-    "$dir/venv/bin/python" -m pip install --upgrade pip >>"$log" 2>&1 || true
-  else
-    echo "[$label] Virtualenv already present."
+  echo "[$label] Preparing build tools..."
+  # setuptools<81 keeps pkg_resources available, which the pinned OpenAI CLIP
+  # needs at build time; without this the dependency install fails.
+  "$venv_py" -m pip install --upgrade pip >>"$log" 2>&1 || true
+  "$venv_py" -m pip install "setuptools<81" wheel >>"$log" 2>&1 || true
+
+  # Pre-install OpenAI CLIP with build isolation disabled so it builds against
+  # our pinned setuptools instead of pip's fresh (too-new) overlay. A1111/Forge
+  # skip their own CLIP step once the module imports.
+  if ! "$venv_py" -c "import clip" >/dev/null 2>&1; then
+    echo "[$label] Pre-installing OpenAI CLIP..."
+    "$venv_py" -m pip install ftfy regex tqdm >>"$log" 2>&1 || true
+    "$venv_py" -m pip install --no-build-isolation \
+      "clip @ git+https://github.com/openai/CLIP.git@d50d76daa670286dd6cacf3bcd80b5e4823fc8e1" \
+      >>"$log" 2>&1 ||
+      echo "[$label] CLIP pre-install failed; the WebUI will retry on launch (see $log)." >&2
   fi
 
   if curl -fsS --max-time 5 "http://127.0.0.1:$port/internal/ping" >/dev/null 2>&1; then
-    echo "[$label] Something is already serving on port $port; skipping dependency bootstrap."
+    echo "[$label] Something is already serving on port $port; skipping launch bootstrap."
+    touch "$dir/.image-gen-ready"
     return 0
   fi
 
-  echo "[$label] Installing dependencies (first run downloads PyTorch and can take several minutes)."
+  echo "[$label] Installing remaining dependencies (first run downloads PyTorch; can take several minutes)."
   echo "[$label] Progress log: $log"
   ( bash "$run_script" ) >>"$log" 2>&1 &
   local pid=$!
@@ -75,7 +122,6 @@ provision_webui() {
 
   echo "[$label] Stopping bootstrap server..."
   kill "$pid" >/dev/null 2>&1 || true
-
   local leftover
   leftover="$(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null || true)"
   if [ -n "$leftover" ]; then
@@ -92,5 +138,6 @@ provision_webui() {
     return 1
   fi
 
+  touch "$dir/.image-gen-ready"
   echo "[$label] Dependencies installed."
 }

@@ -184,7 +184,8 @@ export async function POST(req: NextRequest) {
 
       try {
         if (body.backend === "a1111" || body.backend === "forge") {
-          send("progress", { progress: 5, message: "Waiting for A1111..." });
+          const webuiLabel = body.backend === "forge" ? "Forge" : "A1111";
+          send("progress", { progress: 5, message: `Waiting for ${webuiLabel}...` });
           const progressBaseUrl =
             body.backend === "forge"
               ? process.env.FORGE_BASE_URL?.replace(/\/$/, "") ??
@@ -213,10 +214,11 @@ export async function POST(req: NextRequest) {
                 step: status.state?.sampling_step,
                 total_steps: status.state?.sampling_steps,
                 eta_seconds: status.eta_relative,
-                message: "Generating with A1111...",
+                message: `Generating with ${webuiLabel}...`,
               });
             } catch {
-              send("progress", { progress: 5, message: "Waiting for A1111..." });
+              // Backend not answering yet (still booting). ensureWebUiReady drives
+              // the startup status messages, so stay quiet here to avoid conflicts.
             }
           }, 5_000);
           let images: Awaited<ReturnType<typeof generateWithA1111>>;

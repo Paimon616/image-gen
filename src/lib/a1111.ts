@@ -1,7 +1,7 @@
 import "server-only";
 
-import { spawn } from "child_process";
-import { existsSync } from "fs";
+import { spawn, type ChildProcess } from "child_process";
+import { existsSync, mkdirSync, openSync, readFileSync } from "fs";
 import { join } from "path";
 import type { GenerationParams } from "./types";
 
@@ -80,42 +80,58 @@ async function isWebUiUp(baseUrl: string) {
   return false;
 }
 
+function webUiLogPath(backend: GenerationParams["backend"]) {
+  const logDir = process.env.LOG_DIR || join(process.cwd(), ".local", "logs");
+  mkdirSync(logDir, { recursive: true });
+  return join(logDir, "webui-" + backend + ".log");
+}
+
 function launchWebUi(backend: GenerationParams["backend"]) {
   const isForge = backend === "forge";
   const customCommand = isForge
     ? process.env.FORGE_LAUNCH_CMD
     : process.env.A1111_LAUNCH_CMD;
+  const logPath = webUiLogPath(backend);
+  const fd = openSync(logPath, "w");
 
+  let child: ChildProcess;
   if (customCommand) {
-    const child = spawn("bash", ["-lc", customCommand], {
+    child = spawn("bash", ["-lc", customCommand], {
       detached: true,
-      stdio: "ignore",
+      stdio: ["ignore", fd, fd],
       cwd: process.cwd(),
     });
-    child.unref();
-    return;
-  }
-
-  const script = join(
-    process.cwd(),
-    "scripts",
-    isForge ? "run-forge.sh" : "run-a1111.sh"
-  );
-  if (!existsSync(script)) {
-    throw new Error(
-      "No launcher for " +
-        (isForge ? "Forge" : "A1111") +
-        ". Start it manually or set " +
-        (isForge ? "FORGE_LAUNCH_CMD" : "A1111_LAUNCH_CMD") +
-        "."
+  } else {
+    const script = join(
+      process.cwd(),
+      "scripts",
+      isForge ? "run-forge.sh" : "run-a1111.sh"
     );
+    if (!existsSync(script)) {
+      throw new Error(
+        "No launcher for " +
+          (isForge ? "Forge" : "A1111") +
+          ". Start it manually or set " +
+          (isForge ? "FORGE_LAUNCH_CMD" : "A1111_LAUNCH_CMD") +
+          "."
+      );
+    }
+    child = spawn("bash", [script], {
+      detached: true,
+      stdio: ["ignore", fd, fd],
+      cwd: process.cwd(),
+    });
   }
-  const child = spawn("bash", [script], {
-    detached: true,
-    stdio: "ignore",
-    cwd: process.cwd(),
-  });
   child.unref();
+  return { child, logPath };
+}
+
+function lastLogLines(logPath: string, lines: number) {
+  try {
+    return readFileSync(logPath, "utf8").trimEnd().split("\n").slice(-lines).join("\n");
+  } catch {
+    return "";
+  }
 }
 
 // Make sure the selected WebUI backend is reachable, launching it on demand and
@@ -131,10 +147,11 @@ async function ensureWebUiReady(
 
   if (await isWebUiUp(baseUrl)) return;
 
+  let launched: ReturnType<typeof launchWebUi> | null = null;
   if (!webUiLaunching.has(backend)) {
     webUiLaunching.add(backend);
     try {
-      launchWebUi(backend);
+      launched = launchWebUi(backend);
       onStatus?.("Starting " + label + "...");
     } catch (error) {
       webUiLaunching.delete(backend);
@@ -153,15 +170,30 @@ async function ensureWebUiReady(
         onStatus?.(label + " is ready.");
         return;
       }
+      // If we own the launcher and it has already exited, the WebUI crashed on
+      // startup (e.g. a broken venv). Fail fast instead of polling for minutes.
+      if (launched && launched.child.exitCode !== null) {
+        const tail = lastLogLines(launched.logPath, 20);
+        throw new Error(
+          label +
+            " failed to start (exit " +
+            launched.child.exitCode +
+            "). Check that it is installed correctly (npm run setup:" +
+            (backend === "forge" ? "forge" : "a1111") +
+            "). Log: " +
+            launched.logPath +
+            (tail ? "\n" + tail : "")
+        );
+      }
       onStatus?.("Waiting for " + label + " to load...");
     }
     throw new Error(
       label +
         " did not become ready within " +
         Math.round(WEBUI_BOOT_TIMEOUT_MS / 1000) +
-        "s. Confirm it is installed (see scripts/run-" +
-        (backend === "forge" ? "forge" : "a1111") +
-        ".sh)."
+        "s. See " +
+        webUiLogPath(backend) +
+        "."
     );
   } finally {
     webUiLaunching.delete(backend);
