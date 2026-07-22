@@ -13,6 +13,9 @@ COMFYUI_PORT="${COMFYUI_PORT:-8188}"
 COMFYUI_DIR="${COMFYUI_DIR:-$ROOT_DIR/ComfyUI}"
 LORA_RUNNER_DIR="${LORA_RUNNER_DIR:-$ROOT_DIR/runners/sd-scripts}"
 
+A1111_DIR="${A1111_DIR:-$ROOT_DIR/stable-diffusion-webui}"
+FORGE_DIR="${FORGE_DIR:-$ROOT_DIR/stable-diffusion-webui-forge}"
+
 STARTED_PIDS=()
 CLEANED_UP=0
 
@@ -274,6 +277,8 @@ export COMFYUI_HOST
 export COMFYUI_PORT
 export COMFYUI_DIR
 export LORA_RUNNER_DIR
+export A1111_DIR
+export FORGE_DIR
 
 if [ ! -f "$COMFYUI_DIR/main.py" ] || [ ! -x "$COMFYUI_DIR/venv/bin/python" ]; then
   echo "ComfyUI is missing. Running setup..."
@@ -283,6 +288,20 @@ fi
 if [ ! -f "$LORA_RUNNER_DIR/sdxl_train_network.py" ] || [ ! -x "$LORA_RUNNER_DIR/.venv/bin/python" ]; then
   echo "LoRA runner is missing. Running setup..."
   (cd "$ROOT_DIR" && npm run setup:lora-runner)
+fi
+
+# AUTOMATIC1111 / Forge are optional WebUI backends. Install them if missing so
+# the app can auto-launch them on demand. Set SKIP_WEBUI_SETUP=1 to opt out.
+if [ "${SKIP_WEBUI_SETUP:-0}" != "1" ]; then
+  if [ ! -f "$A1111_DIR/launch.py" ] || [ ! -x "$A1111_DIR/venv/bin/python" ]; then
+    echo "AUTOMATIC1111 is missing. Running setup (first run downloads PyTorch)..."
+    (cd "$ROOT_DIR" && npm run setup:a1111)
+  fi
+
+  if [ ! -f "$FORGE_DIR/launch.py" ] || [ ! -x "$FORGE_DIR/venv/bin/python" ]; then
+    echo "Forge is missing. Running setup (first run downloads PyTorch)..."
+    (cd "$ROOT_DIR" && npm run setup:forge)
+  fi
 fi
 
 # --- Fresh start: clean any leftover processes on our managed ports. ---
