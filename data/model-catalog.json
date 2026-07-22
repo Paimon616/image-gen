@@ -7173,5 +7173,137 @@
       "reason": "Civitai 조회 실패 — 수동확인",
       "allow_commercial_use": "N"
     }
+  },
+  "loras/ppw_v7_Animv4.safetensors": {
+    "name": "People's Works: SDXL",
+    "version": "v7_Animv4",
+    "base_model": "SDXL 1.0",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/4f89d35e-9224-4fb8-9a34-5105d94ff577/original=true/65966963.jpeg",
+    "civitai_url": "https://civitai.red/models/1400090/people-s-works-sdxl?modelVersionId=1582690",
+    "source_url": "https://civitai.red/models/1400090/people-s-works-sdxl?modelVersionId=1582690",
+    "tags": [
+      "anime",
+      "style"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
+    }
+  },
+  "loras/illustrious_all_rated_v1.safetensors": {
+    "name": "Motimalu - All Rated (Illustrious)",
+    "version": "v1.0 [Illustrious]",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/d3b25712-561a-4d64-b94f-7c2878d68adc/original=true/44339245.jpeg",
+    "civitai_url": "https://civitai.red/models/1018079/motimalu-all-rated-illustrious?modelVersionId=1141520",
+    "source_url": "https://civitai.red/models/1018079/motimalu-all-rated-illustrious?modelVersionId=1141520",
+    "tags": [
+      "masterpiece, best quality, very aesthetic, absurdres",
+      "illustrious",
+      "very aesthetic",
+      "anime",
+      "base model",
+      "best quality",
+      "masterpiece",
+      "niji"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
+    }
+  },
+  "loras/69yottea_illu_v2.safetensors": {
+    "name": "96yottea | Style LoRa",
+    "version": "96yottea",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/3b33299f-d4ae-4bfc-9b1f-62d57190700f/original=true/46715466.jpeg",
+    "civitai_url": "https://civitai.red/models/1031927/96yottea-style-lora?modelVersionId=1157361",
+    "source_url": "https://civitai.red/models/1031927/96yottea-style-lora?modelVersionId=1157361",
+    "tags": [
+      "69yottea_style_illu",
+      "photorealistic",
+      "anime",
+      "video game",
+      "illu",
+      "cartoon",
+      "girls",
+      "woman",
+      "game character",
+      "realistic",
+      "lora",
+      "male",
+      "painting",
+      "game",
+      "style",
+      "man",
+      "styles"
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
+    }
+  },
+  "checkpoints/bismuthIllustrious_v50.safetensors": {
+    "name": "Bismuth Illustrious Mix",
+    "version": "v5.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/c83874da-9869-46f4-87b0-23acc18dc05f/original=true/102713524.jpeg",
+    "civitai_url": "https://civitai.red/models/1359028/bismuth-illustrious-mix?modelVersionId=2257097",
+    "source_url": "https://civitai.red/models/1359028/bismuth-illustrious-mix?modelVersionId=2257097",
+    "tags": [
+      "base model"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit"
+      ]
+    }
+  },
+  "checkpoints/oneObsession_v18.safetensors": {
+    "name": "One obsession",
+    "version": "v18",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/af055785-c9e1-4b08-9b20-dc97009fb237/original=true/106319312.jpeg",
+    "civitai_url": "https://civitai.red/models/1318945/one-obsession?modelVersionId=2319122",
+    "source_url": "https://civitai.red/models/1318945/one-obsession?modelVersionId=2319122",
+    "tags": [
+      "base model",
+      "anime",
+      "one",
+      "noob",
+      "one obsession",
+      "sdxl",
+      "obsession",
+      "my style"
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Image"
+      ]
+    }
   }
 }

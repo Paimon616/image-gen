@@ -759,6 +759,36 @@ export default function Home() {
                     />
                   </div>
 
+                  {(params.backend === "a1111" || params.backend === "forge") && (
+                    <div>
+                      <div className="mb-2 flex items-center justify-between">
+                        <Label className="text-xs text-muted-foreground">
+                          Resize by
+                        </Label>
+                        <span className="text-xs font-mono">
+                          {params.img2img_resize.toFixed(2)}×
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min={1}
+                        max={4}
+                        step={0.05}
+                        value={params.img2img_resize}
+                        onChange={(e) =>
+                          setParams({
+                            img2img_resize: parseFloat(e.target.value),
+                          })
+                        }
+                        className="w-full accent-primary"
+                      />
+                      <p className="mt-1 text-[10px] text-muted-foreground">
+                        Upscales the source by this factor. Pick an Upscaler in
+                        Advanced to add ESRGAN detail before the img2img pass.
+                      </p>
+                    </div>
+                  )}
+
                   {generationModeError && (
                     <p className="text-xs text-yellow-500">{generationModeError}</p>
                   )}

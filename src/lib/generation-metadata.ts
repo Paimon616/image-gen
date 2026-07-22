@@ -321,6 +321,16 @@ function normalizeParams(rawParams: Record<string, unknown>) {
     hires_steps:
       numberValue(rawParams.hires_steps ?? rawParams.hiresSteps ?? rawParams["Hires steps"]) ??
       DEFAULT_PARAMS.hires_steps,
+    img2img_resize:
+      numberValue(rawParams.img2img_resize) ?? DEFAULT_PARAMS.img2img_resize,
+    adetailer_enabled:
+      booleanValue(rawParams.adetailer_enabled) ?? DEFAULT_PARAMS.adetailer_enabled,
+    adetailer_model:
+      stringValue(rawParams.adetailer_model) || DEFAULT_PARAMS.adetailer_model,
+    adetailer_prompt:
+      stringValue(rawParams.adetailer_prompt) || DEFAULT_PARAMS.adetailer_prompt,
+    adetailer_denoise:
+      numberValue(rawParams.adetailer_denoise) ?? DEFAULT_PARAMS.adetailer_denoise,
     loras: normalizeLoras(rawParams.loras),
     embeddings: normalizeEmbeddings(rawParams.embeddings),
     controlnets: normalizeControlnets(rawParams.controlnets),

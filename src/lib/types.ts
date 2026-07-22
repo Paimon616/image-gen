@@ -56,6 +56,11 @@ export interface GenerationParams {
   upscale_model_name: string;
   hires_upscale: number;
   hires_steps: number;
+  img2img_resize: number;
+  adetailer_enabled: boolean;
+  adetailer_model: string;
+  adetailer_prompt: string;
+  adetailer_denoise: number;
   loras: LoraConfig[];
   embeddings: EmbeddingConfig[];
   controlnets: ControlNetConfig[];
@@ -278,6 +283,11 @@ export const DEFAULT_PARAMS: GenerationParams = {
   upscale_model_name: "",
   hires_upscale: 1,
   hires_steps: 0,
+  img2img_resize: 1.5,
+  adetailer_enabled: false,
+  adetailer_model: "face_yolov8n.pt",
+  adetailer_prompt: "",
+  adetailer_denoise: 0.4,
   loras: [],
   embeddings: [],
   controlnets: [],

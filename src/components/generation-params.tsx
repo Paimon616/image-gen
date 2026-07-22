@@ -55,6 +55,7 @@ export function GenerationParams() {
   const { params, setParams } = useStore();
   const currentModel = getModelConfig(params.model);
   const isLocal = currentModel.provider === "comfyui";
+  const isWebUi = params.backend === "a1111" || params.backend === "forge";
   const [draftSize, setDraftSize] = useState<
     Partial<Record<"width" | "height", string>>
   >({});
@@ -63,6 +64,10 @@ export function GenerationParams() {
     upscaleModels: string[];
     controlnets: string[];
   }>({ vaes: [], upscaleModels: [], controlnets: [] });
+  const [webuiOptions, setWebuiOptions] = useState<{
+    upscalers: string[];
+    adetailerModels: string[];
+  }>({ upscalers: [], adetailerModels: [] });
 
   useEffect(() => {
     fetch("/api/models")
@@ -76,6 +81,26 @@ export function GenerationParams() {
       )
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!isWebUi) return;
+
+    let active = true;
+    fetch(`/api/webui/options?backend=${params.backend}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!active) return;
+        setWebuiOptions({
+          upscalers: data.upscalers ?? [],
+          adetailerModels: data.adetailerModels ?? [],
+        });
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
+  }, [isWebUi, params.backend]);
 
   useEffect(() => {
     if (!params.vae_name || localModels.vaes.length === 0) return;
@@ -163,12 +188,11 @@ export function GenerationParams() {
           <option value="a1111">AUTOMATIC1111 v1.10.0 (Civitai SD 1.5 / SDXL)</option>
           <option value="forge">ForgeUI (Forge / Illustrious compatibility)</option>
         </select>
-        {(params.backend === "a1111" || params.backend === "forge") &&
-          params.generation_mode !== "text_to_image" && (
-            <p className="mt-2 text-xs text-amber-600">
-              WebUI backends currently support Text to Image in image-gen.
-            </p>
-          )}
+        {isWebUi && params.generation_mode === "pose_reference" && (
+          <p className="mt-2 text-xs text-amber-600">
+            Pose Reference requires the ComfyUI backend.
+          </p>
+        )}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -440,7 +464,33 @@ export function GenerationParams() {
               <Label className="text-xs text-muted-foreground mb-2 block">
                 Upscaler
               </Label>
-              {isLocal && localModels.upscaleModels.length > 0 ? (
+              {isWebUi ? (
+                webuiOptions.upscalers.length > 0 ? (
+                  <select
+                    value={params.upscale_model_name}
+                    onChange={(e) =>
+                      setParams({ upscale_model_name: e.target.value })
+                    }
+                    className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                  >
+                    <option value="">Off</option>
+                    {webuiOptions.upscalers.map((model) => (
+                      <option key={model} value={model}>
+                        {model}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <Input
+                    placeholder="e.g. 4x-UltraSharp (start the WebUI to list)"
+                    value={params.upscale_model_name}
+                    onChange={(e) =>
+                      setParams({ upscale_model_name: e.target.value })
+                    }
+                    className="h-8 text-xs"
+                  />
+                )
+              ) : isLocal && localModels.upscaleModels.length > 0 ? (
                 <select
                   value={params.upscale_model_name}
                   onChange={(e) =>
@@ -502,6 +552,95 @@ export function GenerationParams() {
               />
             </div>
           </div>
+
+          {isWebUi && (
+            <div className="rounded-md border border-border bg-card p-3 shadow-sm">
+              <label className="flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-muted-foreground">
+                  ADetailer (auto face fix)
+                </span>
+                <input
+                  type="checkbox"
+                  checked={params.adetailer_enabled}
+                  onChange={(e) =>
+                    setParams({ adetailer_enabled: e.target.checked })
+                  }
+                  className="h-4 w-4 accent-primary"
+                />
+              </label>
+
+              {params.adetailer_enabled && (
+                <div className="mt-3 space-y-3">
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-2 block">
+                      Detection model
+                    </Label>
+                    {webuiOptions.adetailerModels.length > 0 ? (
+                      <select
+                        value={params.adetailer_model}
+                        onChange={(e) =>
+                          setParams({ adetailer_model: e.target.value })
+                        }
+                        className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                      >
+                        {webuiOptions.adetailerModels.map((model) => (
+                          <option key={model} value={model}>
+                            {model}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <Input
+                        placeholder="face_yolov8n.pt"
+                        value={params.adetailer_model}
+                        onChange={(e) =>
+                          setParams({ adetailer_model: e.target.value })
+                        }
+                        className="h-8 text-xs"
+                      />
+                    )}
+                  </div>
+
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-2 block">
+                      Face prompt (blank = reuse main prompt)
+                    </Label>
+                    <Input
+                      placeholder="detailed face, beautiful detailed eyes"
+                      value={params.adetailer_prompt}
+                      onChange={(e) =>
+                        setParams({ adetailer_prompt: e.target.value })
+                      }
+                      className="h-8 text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <Label className="text-xs text-muted-foreground">
+                        ADetailer denoise
+                      </Label>
+                      <span className="text-xs font-mono">
+                        {params.adetailer_denoise.toFixed(2)}
+                      </span>
+                    </div>
+                    <Slider
+                      value={[params.adetailer_denoise]}
+                      onValueChange={(v) => {
+                        const val = Array.isArray(v) ? v[0] : v;
+                        setParams({
+                          adetailer_denoise: Math.round(val * 100) / 100,
+                        });
+                      }}
+                      min={0.1}
+                      max={0.75}
+                      step={0.05}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="grid gap-3 lg:grid-cols-2">
             <div className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2 shadow-sm">
