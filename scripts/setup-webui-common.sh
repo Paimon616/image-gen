@@ -95,6 +95,12 @@ provision_webui() {
       echo "[$label] CLIP pre-install failed; the WebUI will retry on launch (see $log)." >&2
   fi
 
+  # Keep NumPy on the 1.x ABI. Installing torch/clip above can pull NumPy 2.x,
+  # but Forge's scikit-image (and friends) are compiled against 1.x and crash
+  # with "numpy.dtype size changed" under 2.x.
+  echo "[$label] Pinning NumPy to the 1.x series..."
+  "$venv_py" -m pip install "numpy<2" >>"$log" 2>&1 || true
+
   if curl -fsS --max-time 5 "http://127.0.0.1:$port/internal/ping" >/dev/null 2>&1; then
     echo "[$label] Something is already serving on port $port; skipping launch bootstrap."
     touch "$dir/.image-gen-ready"
