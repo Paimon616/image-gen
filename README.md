@@ -19,18 +19,21 @@ Start with [Local image backends](docs/image-backends-setup.md) for the complete
 Windows setup order, shared model layout, ports, and backend selection. Related
 guides: [ComfyUI](docs/comfyui-setup.md), [A1111](docs/a1111-setup.md),
 [Forge](docs/forge-setup.md), and
-[Civitai metadata reproduction](docs/civitai-metadata-reproduction.md).
+[Civitai metadata reproduction](docs/civitai-metadata-reproduction.md). For the
+current editor, Hires/ADetailer behavior, and gallery controls, see
+[Image generation UI](docs/image-generation-ui.md).
 
 ### Backends
 
 | Backend | Default URL | Recommended use | Setup script |
 | --- | --- | --- | --- |
 | ComfyUI | `http://127.0.0.1:8188` | Krea 2, Wan/LTX, video, ComfyUI workflows | `setup:comfyui` (macOS/Linux + Windows) |
-| AUTOMATIC1111 v1.10.0 | `http://127.0.0.1:7860` | Civitai images made with A1111 | `setup:a1111:win` (Windows only) |
-| ForgeUI | `http://127.0.0.1:7861` | Illustrious/SDXL needing Forge compatibility | `setup:forge:win` (Windows only) |
+| AUTOMATIC1111 v1.10.0 | `http://127.0.0.1:7860` | Civitai images made with A1111 | `setup:a1111` / `setup:a1111:win` |
+| ForgeUI | `http://127.0.0.1:7861` | Illustrious/SDXL needing Forge compatibility | `setup:forge` / `setup:forge:win` |
 
-ComfyUI is the only backend with a macOS/Linux setup script; A1111 and Forge ship
-Windows-only scripts. On Apple Silicon (MPS), fp8/fp4 models cannot run — use
+The A1111 and Forge setup scripts install and validate ADetailer automatically
+on every supported platform. The local launcher repairs a missing extension
+before starting the WebUI. On Apple Silicon (MPS), fp8/fp4 models cannot run — use
 bf16 variants instead. All three servers can run at once; before generation the
 app unloads the inactive backends' checkpoints.
 
@@ -132,7 +135,12 @@ commit `.env.local` or the token to git.
 
 On macOS, double-click `Launch Image Gen.command` from Finder. It starts ComfyUI and the Next.js app, then opens `http://localhost:5353`.
 
-On Windows, double-click `Launch Image Gen.bat`. It runs the same local launcher through PowerShell.
+On Windows, double-click `Launch Image Gen.bat`. The launcher installs missing
+Node dependencies, ComfyUI, A1111, and the LoRA runner; starts ComfyUI, A1111,
+and the app; then opens `http://localhost:5353`. First launch can take a while.
+Existing listeners on ports 5353, 8188, and 7860 are stopped before startup.
+Keep the launcher window open; closing it stops the processes it started. Logs
+are under `.local/logs/`.
 
 You can also run the same launcher from a terminal:
 
@@ -167,6 +175,19 @@ npm run dev -- --port 5353
 Open `http://localhost:5353`.
 
 By default the app connects to `http://127.0.0.1:8188` and reads models from `ComfyUI/models`. Copy `.env.example` to `.env.local` if you need to override those paths.
+
+## Image generation UI
+
+The editor is organized into Import, Models, Composition, Output, Advanced,
+Upscaler, and ADetailer sections. Width and height always describe the requested
+**final image size**. When Hires is enabled, the app derives the first-pass size
+from the final size and upscale factor, then targets the requested dimensions.
+
+ADetailer supports a detector, optional detail checkpoint and LoRAs, separate
+positive/negative prompts, steps, confidence, mask blur, denoise, and noise
+settings. Generated-image metadata preserves those settings. See
+[Image generation UI](docs/image-generation-ui.md) for backend requirements and
+gallery/viewer actions.
 
 ## Video generation
 

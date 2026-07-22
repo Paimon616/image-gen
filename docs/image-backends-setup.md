@@ -34,6 +34,12 @@ npm run setup:forge:win
 Copy-Item .env.example .env.local
 ```
 
+The A1111 and Forge setup commands install the official ADetailer extension and
+its compatible detector dependencies automatically. Rerunning a setup command
+installs a missing extension; an incomplete checkout fails setup visibly. The
+local launcher also checks ADetailer before starting managed WebUI backends and
+invokes setup when it is absent.
+
 Run each API in a separate terminal, then start the app:
 
 ```powershell
@@ -87,6 +93,38 @@ A1111_TIMEOUT_MS=3600000
 ```
 
 Never commit tokens from `.env.local`.
+
+Optional WebUI process settings:
+
+```dotenv
+WEBUI_BOOT_TIMEOUT_MS=300000
+# A1111_LAUNCH_CMD=powershell ...
+# FORGE_LAUNCH_CMD=powershell ...
+```
+
+When A1111 or Forge is selected but its API is not running, image-gen starts the
+platform-appropriate script automatically (`.ps1` on Windows, `.sh` elsewhere).
+Set a launch command only for a custom installation. It runs through PowerShell
+on Windows and through `bash -lc` on macOS/Linux.
+
+## Hires and ADetailer backend behavior
+
+The editor's width and height are final output dimensions. With Hires enabled,
+image-gen divides them by the upscale factor for the first pass (rounded to a
+multiple of 8), then refines at the requested final size. Older gallery metadata
+that stored first-pass dimensions is normalized when loaded into the editor.
+
+- A1111/Forge use the WebUI ADetailer extension installed by their setup
+  scripts and pass its detector, detail
+  checkpoint, detail-only LoRAs, prompts, steps, confidence, mask, noise, and
+  denoise settings.
+- ComfyUI builds an Impact Pack `FaceDetailer` workflow with an Ultralytics face
+  detector. The running ComfyUI must provide `UltralyticsDetectorProvider` and
+  `FaceDetailer` plus their detector models.
+
+See [Image generation UI](image-generation-ui.md) for the controls and metadata
+semantics.
+
 ## Video generation: Wan 2.2 and LTX 2.3
 
 The `/video` page has three presets. The selected preset chooses an allowlisted

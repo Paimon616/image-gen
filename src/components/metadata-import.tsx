@@ -13,6 +13,7 @@ import {
   type MissingResource,
 } from "@/lib/civitai-resource-matching";
 import { CivitaiMissingResources } from "@/components/civitai-missing-resources";
+import { FieldHelp } from "@/components/field-help";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -163,16 +164,16 @@ export function MetadataImport() {
   };
 
   return (
-    <details className="group overflow-hidden rounded-md border border-border bg-card/85 shadow-sm">
-      <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-sm font-medium">
+    <details className="group">
+      <summary className="flex cursor-pointer list-none items-center justify-between py-2 text-sm font-medium">
         <span>Metadata</span>
         <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
       </summary>
 
-      <div className="border-t border-border p-3">
+      <div className="border-t border-border/70 pt-3">
       <div className="mb-2 flex items-start justify-between gap-2">
         <div>
-          <Label className="text-xs text-muted-foreground">Metadata</Label>
+          <FieldHelp label={language === "ko" ? "메타데이터" : "Metadata"} help={language === "ko" ? "이전에 생성한 이미지의 JSON 메타데이터를 붙여 넣거나 파일로 불러와 설정을 복원합니다." : "Paste or upload JSON metadata from a previously generated image to restore its settings."} />
           <p className="mt-1 text-xs text-muted-foreground">
             생성 이미지 JSON이나 받은 메타데이터를 현재 입력창에 적용합니다.
           </p>

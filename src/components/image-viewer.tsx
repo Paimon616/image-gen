@@ -36,6 +36,9 @@ interface LocalModelAsset {
   version: string;
   base_model: string;
   thumbnail_url: string | null;
+  civitai_url?: string | null;
+  source_url?: string | null;
+  tags?: string[];
 }
 
 function MetadataRow({
@@ -203,14 +206,24 @@ function ModelRow({
   name,
   subtitle,
   action,
+  onView,
 }: {
   asset: LocalModelAsset | undefined;
   name: string;
   subtitle?: string;
   action: React.ReactNode;
+  onView?: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2">
+    <div
+      role={onView ? "button" : undefined}
+      tabIndex={onView ? 0 : undefined}
+      onClick={onView}
+      onKeyDown={(event) => {
+        if (onView && (event.key === "Enter" || event.key === " ")) onView();
+      }}
+      className={onView ? "flex cursor-pointer items-center gap-3 rounded-md border border-border bg-background px-3 py-2 transition-colors hover:border-primary/50 hover:bg-accent/40" : "flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2"}
+    >
       <ModelMediaThumbnail
         src={asset?.thumbnail_url}
         alt={name}
@@ -223,7 +236,7 @@ function ModelRow({
           <div className="truncate text-xs text-muted-foreground">{subtitle}</div>
         )}
       </div>
-      {action}
+      <div onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>{action}</div>
     </div>
   );
 }
@@ -244,11 +257,18 @@ export function ImageViewer() {
   } = useStore();
   const ko = language === "ko";
   const [originModalOpen, setOriginModalOpen] = useState(false);
+  const [actualImageSize, setActualImageSize] = useState({ width: 0, height: 0 });
+  const [modelInfo, setModelInfo] = useState<{
+    asset?: LocalModelAsset;
+    name: string;
+    subtitle?: string;
+  } | null>(null);
   const [modelAssets, setModelAssets] = useState<{
     checkpointAssets: LocalModelAsset[];
     loraAssets: LocalModelAsset[];
     embeddingAssets: LocalModelAsset[];
-  }>({ checkpointAssets: [], loraAssets: [], embeddingAssets: [] });
+    upscalerAssets: LocalModelAsset[];
+  }>({ checkpointAssets: [], loraAssets: [], embeddingAssets: [], upscalerAssets: [] });
   const [appliedKey, setAppliedKey] = useState<string | null>(null);
   const appliedTimer = useRef<number | null>(null);
   const [scrappingImageId, setScrappingImageId] = useState<string | null>(null);
@@ -270,6 +290,7 @@ export function ImageViewer() {
           checkpointAssets: data.checkpointAssets ?? [],
           loraAssets: data.loraAssets ?? [],
           embeddingAssets: data.embeddingAssets ?? [],
+          upscalerAssets: data.upscaleModelAssets ?? [],
         })
       )
       .catch(() => {});
@@ -348,6 +369,59 @@ export function ImageViewer() {
     setDownloadPrompt(null);
   };
 
+  const metadataText = async () => {
+    if (selectedImage.filename) {
+      const response = await fetch("/api/images/" + selectedImage.filename + "/metadata");
+      if (response.ok) return response.text();
+    }
+
+    return JSON.stringify(
+      {
+        id: selectedImage.id,
+        filename: selectedImage.filename,
+        url: selectedImage.url,
+        timestamp: selectedImage.timestamp,
+        createdAt: new Date(selectedImage.timestamp).toISOString(),
+        params: selectedImage.params,
+      },
+      null,
+      2
+    );
+  };
+
+  const copyMetadata = async () => {
+    await navigator.clipboard.writeText(await metadataText());
+    setAppliedKey("metadata-copied");
+    window.setTimeout(() => setAppliedKey(null), 1500);
+  };
+
+  const copyImage = async () => {
+    const response = await fetch(selectedImage.url);
+    const sourceBlob = await response.blob();
+    let clipboardBlob = sourceBlob;
+
+    if (sourceBlob.type !== "image/png") {
+      const bitmap = await createImageBitmap(sourceBlob);
+      const canvas = document.createElement("canvas");
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      canvas.getContext("2d")?.drawImage(bitmap, 0, 0);
+      bitmap.close();
+      clipboardBlob = await new Promise<Blob>((resolve, reject) =>
+        canvas.toBlob(
+          (blob) => (blob ? resolve(blob) : reject(new Error("Image conversion failed"))),
+          "image/png"
+        )
+      );
+    }
+
+    await navigator.clipboard.write([
+      new ClipboardItem({ "image/png": clipboardBlob }),
+    ]);
+    setAppliedKey("image-copied");
+    window.setTimeout(() => setAppliedKey(null), 1500);
+  };
+
   const handleDelete = async () => {
     await fetch(`/api/images/${selectedImage.filename}`, { method: "DELETE" });
     removeImage(selectedImage.id);
@@ -412,6 +486,20 @@ export function ImageViewer() {
 
   const params = selectedImage.params;
   const civitaiOrigin = selectedImage.civitaiOrigin;
+  const displayHiresScale =
+    params && Number.isFinite(params.hires_upscale) && params.hires_upscale > 1
+      ? params.hires_upscale
+      : 1;
+  const generationWidth = params
+    ? selectedImage.sizeSemantics === "final"
+      ? Math.max(8, Math.floor(params.width / displayHiresScale / 8) * 8)
+      : params.width
+    : 0;
+  const generationHeight = params
+    ? selectedImage.sizeSemantics === "final"
+      ? Math.max(8, Math.floor(params.height / displayHiresScale / 8) * 8)
+      : params.height
+    : 0;
   const referenceImages = params
     ? [
         {
@@ -520,6 +608,7 @@ export function ImageViewer() {
                 <img
                   src={selectedImage.url}
                   alt="Generated"
+                  onLoad={(event) => setActualImageSize({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight })}
                   className={
                     isOriginalSize
                       ? "block h-auto max-h-none w-auto max-w-none rounded-md"
@@ -555,6 +644,14 @@ export function ImageViewer() {
               >
                 <Download className="h-4 w-4" />
                 Download
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => void copyImage()}>
+                {appliedKey === "image-copied" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {ko ? "이미지 복사" : "Copy image"}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => void copyMetadata()}>
+                {appliedKey === "metadata-copied" ? <Check className="h-4 w-4" /> : <FileJson className="h-4 w-4" />}
+                {ko ? "메타데이터 복사" : "Copy metadata"}
               </Button>
               <Button
                 size="sm"
@@ -613,16 +710,23 @@ export function ImageViewer() {
                     label="Negative Prompt"
                     muted
                     action={
-                      <ApplyButton
-                        applied={appliedKey === "negative_prompt"}
-                        label={ko ? "적용" : "Apply"}
-                        appliedLabel={ko ? "적용됨" : "Applied"}
-                        onClick={() =>
-                          applyPartial("negative_prompt", {
-                            negative_prompt: params.negative_prompt,
-                          })
-                        }
-                      />
+                      <div className="flex shrink-0 items-center gap-1">
+                        <CopyIconButton
+                          value={params.negative_prompt}
+                          label={ko ? "복사" : "Copy"}
+                          copiedLabel={ko ? "복사됨" : "Copied"}
+                        />
+                        <ApplyButton
+                          applied={appliedKey === "negative_prompt"}
+                          label={ko ? "적용" : "Apply"}
+                          appliedLabel={ko ? "적용됨" : "Applied"}
+                          onClick={() =>
+                            applyPartial("negative_prompt", {
+                              negative_prompt: params.negative_prompt,
+                            })
+                          }
+                        />
+                      </div>
                     }
                   >
                     {params.negative_prompt}
@@ -640,6 +744,7 @@ export function ImageViewer() {
                       appliedLabel={ko ? "적용됨" : "Applied"}
                       onClick={() =>
                         applyPartial("generation", {
+                          backend: params.backend,
                           width: params.width,
                           height: params.height,
                           num_inference_steps: params.num_inference_steps,
@@ -649,14 +754,35 @@ export function ImageViewer() {
                           clip_skip: params.clip_skip,
                           seed: params.seed,
                           generation_mode: params.generation_mode,
+                          num_images: params.num_images,
+                          output_format: params.output_format,
+                          vae_name: params.vae_name,
+                          prompt_weighting: params.prompt_weighting,
+                          enable_safety_checker: params.enable_safety_checker,
                         })
                       }
                     />
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     <MetadataRow
-                      label="Size"
-                      value={`${params.width} x ${params.height}`}
+                      label={ko ? "생성 백엔드" : "Generation backend"}
+                      value={params.backend === "a1111" ? "AUTOMATIC1111" : params.backend === "forge" ? "ForgeUI" : "ComfyUI"}
+                      applied={appliedKey === "backend"}
+                      applyTitle={ko ? "백엔드 적용" : "Apply backend"}
+                      appliedTitle={ko ? "적용됨" : "Applied"}
+                      onApply={() => applyPartial("backend", { backend: params.backend })}
+                    />
+                    <MetadataRow
+                      label={ko ? "출력 형식" : "Output format"}
+                      value={(params.output_format || "png").toUpperCase()}
+                      applied={appliedKey === "output-format"}
+                      applyTitle={ko ? "출력 형식 적용" : "Apply output format"}
+                      appliedTitle={ko ? "적용됨" : "Applied"}
+                      onApply={() => applyPartial("output-format", { output_format: params.output_format })}
+                    />
+                    <MetadataRow
+                      label={ko ? "생성 이미지 크기" : "Generation size"}
+                      value={generationWidth + " × " + generationHeight}
                       applied={appliedKey === "size"}
                       applyTitle={ko ? "적용" : "Apply"}
                       appliedTitle={ko ? "적용됨" : "Applied"}
@@ -667,6 +793,26 @@ export function ImageViewer() {
                         })
                       }
                     />
+                    <MetadataRow
+                      label={ko ? "최종 이미지 크기" : "Final image size"}
+                      value={
+                        actualImageSize.width && actualImageSize.height
+                          ? actualImageSize.width + " × " + actualImageSize.height
+                          : selectedImage.sizeSemantics === "final"
+                            ? params.width + " × " + params.height
+                            : Math.round(params.width * displayHiresScale) + " × " + Math.round(params.height * displayHiresScale)
+                      }
+                    />
+                    {params.hires_upscale > 1 && (
+                      <>
+                        {params.upscale_model_name && (
+                          <MetadataRow label={ko ? "업스케일러" : "Upscaler"} value={params.upscale_model_name} />
+                        )}
+                        <MetadataRow label={ko ? "업스케일 배율" : "Upscale factor"} value={params.hires_upscale + "×"} />
+                        <MetadataRow label={ko ? "업스케일 스텝" : "Upscale steps"} value={params.hires_steps} />
+                        <MetadataRow label={ko ? "업스케일 Denoise" : "Upscale denoise"} value={params.hires_denoise} />
+                      </>
+                    )}
                     <MetadataRow
                       label="Steps"
                       value={params.num_inference_steps}
@@ -704,6 +850,38 @@ export function ImageViewer() {
                         })
                       }
                     />
+                    <MetadataRow
+                      label={ko ? "스케줄러" : "Scheduler"}
+                      value={params.scheduler || "normal"}
+                      applied={appliedKey === "scheduler"}
+                      applyTitle={ko ? "스케줄러 적용" : "Apply scheduler"}
+                      appliedTitle={ko ? "적용됨" : "Applied"}
+                      onApply={() => applyPartial("scheduler", { scheduler: params.scheduler })}
+                    />
+                    <MetadataRow
+                      label="CLIP Skip"
+                      value={params.clip_skip ?? 1}
+                      applied={appliedKey === "clip-skip"}
+                      applyTitle={ko ? "CLIP Skip 적용" : "Apply CLIP Skip"}
+                      appliedTitle={ko ? "적용됨" : "Applied"}
+                      onApply={() => applyPartial("clip-skip", { clip_skip: params.clip_skip })}
+                    />
+                    <MetadataRow
+                      label="VAE"
+                      value={params.vae_name || (ko ? "기본값" : "Default")}
+                      applied={appliedKey === "vae"}
+                      applyTitle={ko ? "VAE 적용" : "Apply VAE"}
+                      appliedTitle={ko ? "적용됨" : "Applied"}
+                      onApply={() => applyPartial("vae", { vae_name: params.vae_name })}
+                    />
+                    <MetadataRow
+                      label={ko ? "생성 매수" : "Image count"}
+                      value={params.num_images ?? 1}
+                      applied={appliedKey === "image-count"}
+                      applyTitle={ko ? "생성 매수 적용" : "Apply image count"}
+                      appliedTitle={ko ? "적용됨" : "Applied"}
+                      onApply={() => applyPartial("image-count", { num_images: params.num_images })}
+                    />
                     {params.seed != null && (
                       <MetadataRow
                         label="Seed"
@@ -717,8 +895,8 @@ export function ImageViewer() {
                       />
                     )}
                     <MetadataRow
-                      label="Mode"
-                      value={params.generation_mode}
+                      label={ko ? "생성 모드" : "Mode"}
+                      value={params.generation_mode === "image_to_image" ? (ko ? "이미지 변환" : "Image to image") : params.generation_mode === "pose_reference" ? (ko ? "포즈 참조" : "Pose reference") : (ko ? "텍스트로 생성" : "Text to image")}
                       applied={appliedKey === "mode"}
                       applyTitle={ko ? "적용" : "Apply"}
                       appliedTitle={ko ? "적용됨" : "Applied"}
@@ -728,8 +906,103 @@ export function ImageViewer() {
                         })
                       }
                     />
+                    <MetadataRow
+                      label={ko ? "프롬프트 가중치" : "Prompt weighting"}
+                      value={params.prompt_weighting ? (ko ? "사용" : "Enabled") : (ko ? "사용 안 함" : "Disabled")}
+                    />
+                    <MetadataRow
+                      label={ko ? "안전 필터" : "Safety checker"}
+                      value={params.enable_safety_checker ? (ko ? "사용" : "Enabled") : (ko ? "사용 안 함" : "Disabled")}
+                    />
+                    {params.generation_mode === "image_to_image" && (
+                      <>
+                        <MetadataRow label={ko ? "변형 강도" : "Denoise strength"} value={params.denoise_strength} />
+                        <MetadataRow label={ko ? "원본 확대 배율" : "Source resize"} value={(params.img2img_resize ?? 1) + "×"} />
+                      </>
+                    )}
+                    {params.generation_mode === "pose_reference" && (
+                      <>
+                        <MetadataRow label={ko ? "포즈 ControlNet" : "Pose ControlNet"} value={params.pose_reference_model || (ko ? "지정 안 됨" : "Not set")} />
+                        <MetadataRow label={ko ? "포즈 강도" : "Pose strength"} value={params.pose_reference_strength} />
+                      </>
+                    )}
                   </div>
                 </section>
+
+                <section className="rounded-lg border border-border bg-card p-3 shadow-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                      ADetailer
+                    </h3>
+                    <ApplyButton
+                      applied={appliedKey === "adetailer"}
+                      label={ko ? "적용" : "Apply"}
+                      appliedLabel={ko ? "적용됨" : "Applied"}
+                      onClick={() => applyPartial("adetailer", {
+                        adetailer_enabled: params.adetailer_enabled,
+                        adetailer_model: params.adetailer_model,
+                        adetailer_checkpoint: params.adetailer_checkpoint,
+                        adetailer_prompt: params.adetailer_prompt,
+                        adetailer_negative_prompt: params.adetailer_negative_prompt,
+                        adetailer_use_steps: params.adetailer_use_steps,
+                        adetailer_steps: params.adetailer_steps,
+                        adetailer_confidence: params.adetailer_confidence,
+                        adetailer_mask_blur: params.adetailer_mask_blur,
+                        adetailer_noise_multiplier: params.adetailer_noise_multiplier,
+                        adetailer_inpaint_only_masked: params.adetailer_inpaint_only_masked,
+                        adetailer_loras: params.adetailer_loras,
+                        adetailer_denoise: params.adetailer_denoise,
+                      })}
+                    />
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <MetadataRow label={ko ? "사용 상태" : "Status"} value={params.adetailer_enabled ? (ko ? "사용" : "Enabled") : (ko ? "사용 안 함" : "Disabled")} />
+                    {params.adetailer_enabled && (<>
+                      <MetadataRow label={ko ? "감지 모델" : "Detection model"} value={params.adetailer_model || (ko ? "기본값" : "Default")} />
+                      <MetadataRow label={ko ? "얼굴 생성 모델" : "Face checkpoint"} value={params.adetailer_checkpoint || (ko ? "메인 모델" : "Main model")} />
+                      <MetadataRow label={ko ? "얼굴 보정 스텝" : "Face steps"} value={params.adetailer_use_steps ? params.adetailer_steps : `${ko ? "메인 스텝" : "Main steps"} (${params.num_inference_steps})`} />
+                      <MetadataRow label={ko ? "감지 신뢰도" : "Confidence"} value={params.adetailer_confidence} />
+                      <MetadataRow label={ko ? "마스크 흐림" : "Mask blur"} value={params.adetailer_mask_blur} />
+                      <MetadataRow label={ko ? "변형 강도" : "Denoise"} value={params.adetailer_denoise} />
+                      <MetadataRow label={ko ? "노이즈 배율" : "Noise multiplier"} value={params.adetailer_noise_multiplier} />
+                      <MetadataRow label={ko ? "마스크 영역만 보정" : "Inpaint masked only"} value={params.adetailer_inpaint_only_masked ? (ko ? "예" : "Yes") : (ko ? "아니요" : "No")} />
+                    </>)}
+                  </div>
+                  {params.adetailer_enabled && (params.adetailer_prompt || params.adetailer_negative_prompt || params.adetailer_loras?.length > 0) && (
+                    <div className="mt-3 space-y-2 text-xs">
+                      {params.adetailer_prompt && <div><span className="font-semibold text-muted-foreground">{ko ? "얼굴 프롬프트" : "Face prompt"}</span><p className="mt-1 whitespace-pre-wrap break-words">{params.adetailer_prompt}</p></div>}
+                      {params.adetailer_negative_prompt && <div><span className="font-semibold text-muted-foreground">{ko ? "얼굴 네거티브" : "Face negative"}</span><p className="mt-1 whitespace-pre-wrap break-words">{params.adetailer_negative_prompt}</p></div>}
+                      {params.adetailer_loras?.length > 0 && <div><span className="font-semibold text-muted-foreground">ADetailer LoRA</span><p className="mt-1 break-words">{params.adetailer_loras.map((lora) => `${lora.path} (${lora.scale})`).join(", ")}</p></div>}
+                    </div>
+                  )}
+                </section>
+
+                {params.controlnets?.length > 0 && (
+                  <section className="rounded-lg border border-border bg-card p-3 shadow-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">ControlNet</h3>
+                      <ApplyButton
+                        applied={appliedKey === "controlnets"}
+                        label={ko ? "적용" : "Apply"}
+                        appliedLabel={ko ? "적용됨" : "Applied"}
+                        onClick={() => applyPartial("controlnets", { controlnets: params.controlnets })}
+                      />
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      {params.controlnets.map((controlnet, index) => (
+                        <div key={`${controlnet.model}-${index}`} className="rounded-md border border-border bg-background p-2.5 text-xs">
+                          <div className="font-semibold">#{index + 1} · {controlnet.model || (ko ? "모델 지정 안 됨" : "Model not set")}</div>
+                          <div className="mt-1 grid grid-cols-3 gap-2 text-muted-foreground">
+                            <span>{ko ? "강도" : "Strength"}: {controlnet.strength}</span>
+                            <span>{ko ? "시작" : "Start"}: {controlnet.start_percent}</span>
+                            <span>{ko ? "종료" : "End"}: {controlnet.end_percent}</span>
+                          </div>
+                          {controlnet.image && <div className="mt-1 truncate text-muted-foreground">{ko ? "참조" : "Reference"}: {controlnet.image}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
 
                 <section className="rounded-lg border border-border bg-card p-3 shadow-sm">
                   <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
@@ -746,6 +1019,7 @@ export function ImageViewer() {
                         subtitle={`${getModelConfig(params.model).name} · ${
                           ko ? "체크포인트" : "Checkpoint"
                         }`}
+                        onView={() => setModelInfo({ asset: findAsset(modelAssets.checkpointAssets, params.model_name), name: findAsset(modelAssets.checkpointAssets, params.model_name)?.name ?? params.model_name, subtitle: ko ? "체크포인트" : "Checkpoint" })}
                         action={
                           <ApplyButton
                             applied={appliedKey === "checkpoint"}
@@ -770,6 +1044,8 @@ export function ImageViewer() {
                           findAsset(modelAssets.loraAssets, lora.path)?.name ?? lora.path
                         }
                         subtitle={`LoRA · Weight ${lora.scale}`}
+                        onView={() => setModelInfo({ asset: findAsset(modelAssets.loraAssets, lora.path), name: findAsset(modelAssets.loraAssets, lora.path)?.name ?? lora.path, subtitle: "LoRA · Weight " + lora.scale })}
+
                         action={
                           <ApplyButton
                             applied={appliedKey === `lora-${lora.path}`}
@@ -794,6 +1070,8 @@ export function ImageViewer() {
                             ? `Embedding · ${embedding.tokens}`
                             : "Embedding"
                         }
+                        onView={() => setModelInfo({ asset: findAsset(modelAssets.embeddingAssets, embedding.path), name: findAsset(modelAssets.embeddingAssets, embedding.path)?.name ?? embedding.path, subtitle: "Embedding" })}
+
                         action={
                           <ApplyButton
                             applied={appliedKey === `embedding-${embedding.path}`}
@@ -807,8 +1085,9 @@ export function ImageViewer() {
 
                     {params.upscale_model_name && (
                       <ModelRow
-                        asset={undefined}
-                        name={params.upscale_model_name}
+                        asset={findAsset(modelAssets.upscalerAssets, params.upscale_model_name)}
+                        name={findAsset(modelAssets.upscalerAssets, params.upscale_model_name)?.name ?? params.upscale_model_name}
+                        onView={() => setModelInfo({ asset: findAsset(modelAssets.upscalerAssets, params.upscale_model_name), name: findAsset(modelAssets.upscalerAssets, params.upscale_model_name)?.name ?? params.upscale_model_name, subtitle: ko ? "업스케일러" : "Upscaler" })}
                         subtitle={ko ? "업스케일러" : "Upscaler"}
                         action={
                           <ApplyButton
@@ -917,6 +1196,38 @@ export function ImageViewer() {
       </DialogContent>
     </Dialog>
 
+        <Dialog open={!!modelInfo} onOpenChange={(open) => { if (!open) setModelInfo(null); }}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{modelInfo?.name}</DialogTitle>
+          <DialogDescription>{modelInfo?.subtitle || (ko ? "모델 정보" : "Model information")}</DialogDescription>
+        </DialogHeader>
+        {modelInfo && (
+          <div className="space-y-4">
+            <div className="flex gap-4">
+              <ModelMediaThumbnail src={modelInfo.asset?.thumbnail_url} alt={modelInfo.name} fallback={modelInfo.name.slice(0, 2).toUpperCase()} className="h-24 w-24 shrink-0" />
+              <div className="min-w-0 space-y-2 text-sm">
+                <div><span className="text-muted-foreground">{ko ? "파일" : "File"}:</span> <span className="break-all font-medium">{modelInfo.asset?.path || modelInfo.name}</span></div>
+                {modelInfo.asset?.version && <div><span className="text-muted-foreground">{ko ? "버전" : "Version"}:</span> {modelInfo.asset.version}</div>}
+                {modelInfo.asset?.base_model && <div><span className="text-muted-foreground">{ko ? "기반 모델" : "Base model"}:</span> {modelInfo.asset.base_model}</div>}
+              </div>
+            </div>
+            {!!modelInfo.asset?.tags?.length && (
+              <div className="flex flex-wrap gap-1.5">
+                {modelInfo.asset.tags.map((tag) => <span key={tag} className="rounded bg-muted px-2 py-1 text-xs text-muted-foreground">{tag}</span>)}
+              </div>
+            )}
+            {(modelInfo.asset?.civitai_url || modelInfo.asset?.source_url) && (
+              <Button variant="outline" render={<a href={modelInfo.asset.civitai_url || modelInfo.asset.source_url || "#"} target="_blank" rel="noreferrer" />}>
+                <ExternalLink className="h-4 w-4" />
+                {ko ? "원본 페이지 보기" : "View source"}
+              </Button>
+            )}
+            {!modelInfo.asset && <p className="text-sm text-muted-foreground">{ko ? "로컬 모델 카탈로그에서 추가 정보를 찾지 못했습니다." : "No additional information was found in the local model catalog."}</p>}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
     <Dialog
       open={!!downloadPrompt}
       onOpenChange={(open) => {

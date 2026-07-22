@@ -128,6 +128,143 @@ async function addUpscaleWorkflowNodes(
   return [upscaleNodeId, 0] satisfies [string, number];
 }
 
+function addFaceDetailerWorkflowNode(
+  workflow: Record<string, unknown>,
+  params: GenerationParams,
+  imageRef: [string, number],
+  modelRef: [string, number],
+  clipRef: [string, number],
+  vaeRef: [string, number],
+  positiveRef: [string, number],
+  negativeRef: [string, number],
+  seed: number
+) {
+  if (!params.adetailer_enabled) return imageRef;
+
+  const requestedModel = params.adetailer_model.trim();
+  const normalizedDetectorModel = requestedModel.startsWith("bbox/")
+    ? requestedModel
+    : requestedModel
+      ? "bbox/" + requestedModel
+      : "";
+  const detectorModel = [
+    "bbox/face_yolov8n_v2.pt",
+    "bbox/face_yolov8m.pt",
+  ].includes(normalizedDetectorModel)
+    ? normalizedDetectorModel
+    : "bbox/face_yolov8n_v2.pt";
+  let detailModelRef = modelRef;
+  let detailClipRef = clipRef;
+  let detailVaeRef = vaeRef;
+  let detailPositiveRef = positiveRef;
+  let detailNegativeRef = negativeRef;
+  const detailCheckpoint = params.adetailer_checkpoint.trim();
+
+  if (detailCheckpoint) {
+    workflow["84"] = {
+      class_type: "CheckpointLoaderSimple",
+      inputs: {
+        ckpt_name: detailCheckpoint,
+      },
+    };
+    detailModelRef = ["84", 0];
+    detailClipRef = ["84", 1];
+    detailVaeRef = ["84", 2];
+  }
+
+  const detailLoras = cleanLoras(params.adetailer_loras);
+  detailLoras.forEach((lora, index) => {
+    const nodeId = String(85 + index);
+    workflow[nodeId] = {
+      class_type: "LoraLoader",
+      inputs: {
+        lora_name: lora.path,
+        strength_model: lora.scale,
+        strength_clip: lora.scale,
+        model: detailModelRef,
+        clip: detailClipRef,
+      },
+    };
+    detailModelRef = [nodeId, 0];
+    detailClipRef = [nodeId, 1];
+  });
+
+  if (params.adetailer_prompt.trim() || detailCheckpoint || detailLoras.length > 0) {
+    workflow["81"] = {
+      class_type: "CLIPTextEncode",
+      inputs: {
+        text: params.adetailer_prompt.trim() || params.prompt,
+        clip: detailClipRef,
+      },
+    };
+    detailPositiveRef = ["81", 0];
+  }
+
+  if (
+    params.adetailer_negative_prompt.trim() ||
+    detailCheckpoint ||
+    detailLoras.length > 0
+  ) {
+    workflow["83"] = {
+      class_type: "CLIPTextEncode",
+      inputs: {
+        text: params.adetailer_negative_prompt.trim() || params.negative_prompt,
+        clip: detailClipRef,
+      },
+    };
+    detailNegativeRef = ["83", 0];
+  }
+
+  workflow["80"] = {
+    class_type: "UltralyticsDetectorProvider",
+    inputs: {
+      model_name: detectorModel,
+    },
+  };
+  workflow["82"] = {
+    class_type: "FaceDetailer",
+    inputs: {
+      image: imageRef,
+      model: detailModelRef,
+      clip: detailClipRef,
+      vae: detailVaeRef,
+      guide_size: 512,
+      guide_size_for: true,
+      max_size: 1024,
+      seed,
+      steps: Math.max(
+        1,
+        params.adetailer_use_steps
+          ? params.adetailer_steps
+          : params.num_inference_steps
+      ),
+      cfg: params.guidance_scale,
+      sampler_name: params.sampler_name || "dpmpp_2m",
+      scheduler: params.scheduler || "karras",
+      positive: detailPositiveRef,
+      negative: detailNegativeRef,
+      denoise: clampDenoiseStrength(params.adetailer_denoise),
+      feather: params.adetailer_mask_blur,
+      noise_mask: params.adetailer_inpaint_only_masked,
+      force_inpaint: true,
+      bbox_threshold: params.adetailer_confidence,
+      bbox_dilation: 10,
+      bbox_crop_factor: 3,
+      sam_detection_hint: "none",
+      sam_dilation: 0,
+      sam_threshold: 0.93,
+      sam_bbox_expansion: 0,
+      sam_mask_hint_threshold: 0.7,
+      sam_mask_hint_use_negative: "False",
+      drop_size: 10,
+      bbox_detector: ["80", 0],
+      wildcard: "",
+      cycle: 1,
+    },
+  };
+
+  return ["82", 0] satisfies [string, number];
+}
 function cleanLoras(loras: LoraConfig[]) {
   return loras
     .map((lora) => ({
@@ -160,8 +297,9 @@ function withEmbeddingTokens(prompt: string, embeddings: EmbeddingConfig[]) {
   return tokens ? `${cleanPrompt}, ${tokens}` : cleanPrompt;
 }
 
-function hiresDimension(value: number, scale: number) {
-  return Math.max(8, Math.floor((value * scale) / 8) * 8);
+function generationDimension(value: number, scale: number) {
+  const divisor = Number.isFinite(scale) && scale > 1 ? scale : 1;
+  return Math.max(8, Math.floor(value / divisor / 8) * 8);
 }
 
 function isRemoteImageRef(image: string) {
@@ -356,8 +494,8 @@ async function buildAnimaWorkflow(params: GenerationParams, checkpoint: string) 
       inputs: {
         image: ["4", 0],
         upscale_method: "lanczos",
-        width: params.width,
-        height: params.height,
+        width: generationDimension(params.width, Number(params.hires_upscale)),
+        height: generationDimension(params.height, Number(params.hires_upscale)),
         crop: "center",
       },
     };
@@ -374,8 +512,8 @@ async function buildAnimaWorkflow(params: GenerationParams, checkpoint: string) 
     workflow["4"] = {
       class_type: "EmptyLatentImage",
       inputs: {
-        width: params.width,
-        height: params.height,
+        width: generationDimension(params.width, Number(params.hires_upscale)),
+        height: generationDimension(params.height, Number(params.hires_upscale)),
         batch_size: Math.min(Math.max(Number(params.num_images) || 1, 1), 4),
       },
     };
@@ -472,8 +610,8 @@ async function buildAnimaWorkflow(params: GenerationParams, checkpoint: string) 
       inputs: {
         image: upscaledRef,
         upscale_method: "lanczos",
-        width: hiresDimension(params.width, hiresScale),
-        height: hiresDimension(params.height, hiresScale),
+        width: params.width,
+        height: params.height,
         crop: "disabled",
       },
     };
@@ -504,6 +642,7 @@ async function buildAnimaWorkflow(params: GenerationParams, checkpoint: string) 
   } else {
     saveImageRef = await addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71");
   }
+  saveImageRef = addFaceDetailerWorkflowNode(workflow, params, saveImageRef, modelRef, clipRef, vaeRef, positiveRef, negativeRef, seed);
   workflow["7"] = {
     class_type: "SaveImage",
     inputs: {
@@ -612,8 +751,8 @@ async function buildKrea2Workflow(params: GenerationParams, checkpoint: string) 
       inputs: {
         image: ["4", 0],
         upscale_method: "lanczos",
-        width: params.width,
-        height: params.height,
+        width: generationDimension(params.width, Number(params.hires_upscale)),
+        height: generationDimension(params.height, Number(params.hires_upscale)),
         crop: "center",
       },
     };
@@ -630,8 +769,8 @@ async function buildKrea2Workflow(params: GenerationParams, checkpoint: string) 
     workflow["4"] = {
       class_type: "EmptyLatentImage",
       inputs: {
-        width: params.width,
-        height: params.height,
+        width: generationDimension(params.width, Number(params.hires_upscale)),
+        height: generationDimension(params.height, Number(params.hires_upscale)),
         batch_size: Math.min(Math.max(Number(params.num_images) || 1, 1), 4),
       },
     };
@@ -670,8 +809,8 @@ async function buildKrea2Workflow(params: GenerationParams, checkpoint: string) 
       inputs: {
         image: upscaledRef,
         upscale_method: "lanczos",
-        width: hiresDimension(params.width, hiresScale),
-        height: hiresDimension(params.height, hiresScale),
+        width: params.width,
+        height: params.height,
         crop: "disabled",
       },
     };
@@ -702,6 +841,7 @@ async function buildKrea2Workflow(params: GenerationParams, checkpoint: string) 
   } else {
     saveImageRef = await addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71");
   }
+  saveImageRef = addFaceDetailerWorkflowNode(workflow, params, saveImageRef, modelRef, clipRef, vaeRef, ["2", 0], ["3", 0], seed);
   workflow["7"] = {
     class_type: "SaveImage",
     inputs: {
@@ -825,8 +965,8 @@ async function buildDefaultWorkflow(params: GenerationParams) {
       inputs: {
         image: ["4", 0],
         upscale_method: "lanczos",
-        width: params.width,
-        height: params.height,
+        width: generationDimension(params.width, Number(params.hires_upscale)),
+        height: generationDimension(params.height, Number(params.hires_upscale)),
         crop: "center",
       },
     };
@@ -843,8 +983,8 @@ async function buildDefaultWorkflow(params: GenerationParams) {
     workflow["4"] = {
       class_type: "EmptyLatentImage",
       inputs: {
-        width: params.width,
-        height: params.height,
+        width: generationDimension(params.width, Number(params.hires_upscale)),
+        height: generationDimension(params.height, Number(params.hires_upscale)),
         batch_size: Math.min(Math.max(Number(params.num_images) || 1, 1), 4),
       },
     };
@@ -941,8 +1081,8 @@ async function buildDefaultWorkflow(params: GenerationParams) {
       inputs: {
         image: upscaledRef,
         upscale_method: "lanczos",
-        width: hiresDimension(params.width, hiresScale),
-        height: hiresDimension(params.height, hiresScale),
+        width: params.width,
+        height: params.height,
         crop: "disabled",
       },
     };
@@ -973,6 +1113,7 @@ async function buildDefaultWorkflow(params: GenerationParams) {
   } else {
     saveImageRef = await addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71");
   }
+  saveImageRef = addFaceDetailerWorkflowNode(workflow, params, saveImageRef, modelRef, clipRef, vaeRef, positiveRef, negativeRef, seed);
   workflow["7"] = {
     class_type: "SaveImage",
     inputs: {
@@ -1029,12 +1170,11 @@ async function releaseWebUiMemory() {
 }
 
 export async function queueComfyPrompt(params: GenerationParams, clientId = crypto.randomUUID()) {
-  const basePixels = params.width * params.height;
   const hiresScale = Number(params.hires_upscale);
-  const finalPixels =
-    Number.isFinite(hiresScale) && hiresScale > 1
-      ? basePixels * hiresScale * hiresScale
-      : basePixels;
+  const baseWidth = generationDimension(params.width, hiresScale);
+  const baseHeight = generationDimension(params.height, hiresScale);
+  const basePixels = baseWidth * baseHeight;
+  const finalPixels = params.width * params.height;
   // Permit high-resolution single-pass recipes imported explicitly from ComfyUI,
   // while retaining the final-pixel guard that blocks runaway 4K/8K jobs.
   if (basePixels > 4_200_000 || finalPixels > 4_200_000) {
@@ -1059,18 +1199,41 @@ async function getQueue() {
   return (await res.json()) as ComfyQueue;
 }
 
-async function getComfyObjectInputOptions(classType: string, inputName: string) {
+async function getComfyObjectInputOptions(
+  classType: string,
+  inputName: string
+): Promise<string[]> {
   const res = await comfyFetch(
     "/object_info/" + encodeURIComponent(classType)
   );
   const data = (await res.json()) as Record<string, ComfyObjectInfo>;
   const input = data[classType]?.input?.required?.[inputName];
 
-  if (!Array.isArray(input) || !Array.isArray(input[0])) {
+  if (!Array.isArray(input)) {
     return [];
   }
 
-  return input[0].filter((item): item is string => typeof item === "string");
+  // Older ComfyUI versions expose combo choices as [[...options]].
+  if (Array.isArray(input[0])) {
+    return input[0].filter((item: unknown): item is string => typeof item === "string");
+  }
+
+  // Newer versions expose them as ["COMBO", { options: [...] }].
+  const config = input[1];
+  if (
+    input[0] === "COMBO" &&
+    config &&
+    typeof config === "object" &&
+    !Array.isArray(config) &&
+    "options" in config &&
+    Array.isArray(config.options)
+  ) {
+    return config.options.filter(
+      (item: unknown): item is string => typeof item === "string"
+    );
+  }
+
+  return [];
 }
 
 async function resolveAvailableVaeName(vaeName: string) {

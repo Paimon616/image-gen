@@ -30,8 +30,9 @@ the selected application language for field explanations and recommendations.
 
 The importer presents separate presets:
 
-1. **Closest reconstruction estimate** preserves confirmed values and uses
-   conservative defaults for missing stages.
+1. **Closest reconstruction estimate** preserves confirmed values. When a large
+   published final size implies an omitted upscale stage, it automatically uses
+   the imported upscaler or `4x-UltraSharp` to reach that final size.
 2. **Literal metadata** applies published values without inventing a Hires pass.
 3. **Stable generation** favors a native first pass and lower failure risk.
 4. **Quality priority** may change the sampler recipe and therefore is not meant
@@ -39,6 +40,10 @@ The importer presents separate presets:
 
 Applying a recommendation does not replace matched local checkpoint, VAE, LoRA,
 or embedding paths.
+
+When the source metadata explicitly names ComfyUI, Forge, or A1111, that backend
+is selected. Model-family guesses and generic version strings are not considered
+proof of Forge; when the backend is uncertain, recommendations default to A1111.
 
 ## Illustrious and Forge guidance
 

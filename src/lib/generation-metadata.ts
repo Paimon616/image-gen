@@ -330,8 +330,28 @@ function normalizeParams(rawParams: Record<string, unknown>) {
       booleanValue(rawParams.adetailer_enabled) ?? DEFAULT_PARAMS.adetailer_enabled,
     adetailer_model:
       stringValue(rawParams.adetailer_model) || DEFAULT_PARAMS.adetailer_model,
+    adetailer_checkpoint:
+      stringValue(rawParams.adetailer_checkpoint) || DEFAULT_PARAMS.adetailer_checkpoint,
     adetailer_prompt:
       stringValue(rawParams.adetailer_prompt) || DEFAULT_PARAMS.adetailer_prompt,
+    adetailer_negative_prompt:
+      stringValue(rawParams.adetailer_negative_prompt) ||
+      DEFAULT_PARAMS.adetailer_negative_prompt,
+    adetailer_use_steps:
+      booleanValue(rawParams.adetailer_use_steps) ?? DEFAULT_PARAMS.adetailer_use_steps,
+    adetailer_steps:
+      numberValue(rawParams.adetailer_steps) ?? DEFAULT_PARAMS.adetailer_steps,
+    adetailer_confidence:
+      numberValue(rawParams.adetailer_confidence) ?? DEFAULT_PARAMS.adetailer_confidence,
+    adetailer_mask_blur:
+      numberValue(rawParams.adetailer_mask_blur) ?? DEFAULT_PARAMS.adetailer_mask_blur,
+    adetailer_noise_multiplier:
+      numberValue(rawParams.adetailer_noise_multiplier) ??
+      DEFAULT_PARAMS.adetailer_noise_multiplier,
+    adetailer_inpaint_only_masked:
+      booleanValue(rawParams.adetailer_inpaint_only_masked) ??
+      DEFAULT_PARAMS.adetailer_inpaint_only_masked,
+    adetailer_loras: normalizeLoras(rawParams.adetailer_loras),
     adetailer_denoise:
       numberValue(rawParams.adetailer_denoise) ?? DEFAULT_PARAMS.adetailer_denoise,
     loras: normalizeLoras(rawParams.loras),

@@ -60,7 +60,16 @@ export interface GenerationParams {
   img2img_resize: number;
   adetailer_enabled: boolean;
   adetailer_model: string;
+  adetailer_checkpoint: string;
   adetailer_prompt: string;
+  adetailer_negative_prompt: string;
+  adetailer_use_steps: boolean;
+  adetailer_steps: number;
+  adetailer_confidence: number;
+  adetailer_mask_blur: number;
+  adetailer_noise_multiplier: number;
+  adetailer_inpaint_only_masked: boolean;
+  adetailer_loras: LoraConfig[];
   adetailer_denoise: number;
   loras: LoraConfig[];
   embeddings: EmbeddingConfig[];
@@ -108,6 +117,7 @@ export interface GeneratedImage {
   params: GenerationParams | null;
   timestamp: number;
   filename: string;
+  sizeSemantics?: "base" | "final";
   generation?: ImageGenerationStatus;
   civitaiOrigin?: CivitaiOrigin;
 }
@@ -288,7 +298,16 @@ export const DEFAULT_PARAMS: GenerationParams = {
   img2img_resize: 1.5,
   adetailer_enabled: false,
   adetailer_model: "face_yolov8n.pt",
+  adetailer_checkpoint: "",
   adetailer_prompt: "",
+  adetailer_negative_prompt: "",
+  adetailer_use_steps: false,
+  adetailer_steps: 20,
+  adetailer_confidence: 0.5,
+  adetailer_mask_blur: 4,
+  adetailer_noise_multiplier: 1,
+  adetailer_inpaint_only_masked: true,
+  adetailer_loras: [],
   adetailer_denoise: 0.4,
   loras: [],
   embeddings: [],

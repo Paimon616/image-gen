@@ -49,6 +49,7 @@ async function saveBufferedImages({
             id,
             filename,
             params,
+            size_semantics: "final",
             resources,
             endpoint,
             timestamp,
@@ -66,6 +67,7 @@ async function saveBufferedImages({
         thumbnailUrl: thumbnailUrl(filename),
         filename,
         params,
+        sizeSemantics: "final" as const,
         timestamp,
       };
     })

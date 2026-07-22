@@ -184,3 +184,16 @@ and opens the app.
   [Civitai reproduction guide](civitai-metadata-reproduction.md).
 - **Resolution guard** — image-gen rejects ComfyUI output above roughly 4.2 MP
   to prevent accidental 4K-to-8K jobs.
+
+## Hires and face detailing
+
+The image editor treats width and height as final output dimensions. Enabling
+Hires creates a smaller first pass based on the selected factor, upscales to the
+requested dimensions, and performs a second sampling pass.
+
+Enabling ADetailer adds an Impact Pack `FaceDetailer` pass with an Ultralytics
+face detector. It can use a different checkpoint, detail-only LoRAs, separate
+prompts, custom steps, confidence, mask blur, and denoise. ComfyUI must expose
+`UltralyticsDetectorProvider` and `FaceDetailer` and have the selected detector
+model. If missing, install ComfyUI Impact Pack, restart ComfyUI, and verify the
+nodes appear in `/object_info`.

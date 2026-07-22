@@ -5,6 +5,9 @@ param(
   [string]$ComfyUIHost = "127.0.0.1",
   [int]$ComfyUIPort = 8188,
   [string]$ComfyUIDir = "",
+  [string]$A1111Host = "127.0.0.1",
+  [int]$A1111Port = 7860,
+  [string]$A1111Dir = "",
   [string]$LoraRunnerDir = "",
   [string]$LogDir = ""
 )
@@ -22,6 +25,9 @@ if (-not $LogDir) {
 }
 if (-not $ComfyUIDir) {
   $ComfyUIDir = Join-Path $RootDir "ComfyUI"
+}
+if (-not $A1111Dir) {
+  $A1111Dir = Join-Path $RootDir "stable-diffusion-webui"
 }
 if (-not $LoraRunnerDir) {
   $LoraRunnerDir = Join-Path $RootDir "runners\sd-scripts"
@@ -215,6 +221,7 @@ function Stop-LocalPort {
 function Stop-ExistingLocalServers {
   Stop-LocalPort -Name "Image Gen" -Port $ImageGenPort
   Stop-LocalPort -Name "ComfyUI" -Port $ComfyUIPort
+  Stop-LocalPort -Name "A1111" -Port $A1111Port
 }
 
 function Wait-ForPort {
@@ -347,6 +354,7 @@ try {
   $env:COMFYUI_HOST = $ComfyUIHost
   $env:COMFYUI_PORT = [string]$ComfyUIPort
   $env:COMFYUI_DIR = $ComfyUIDir
+  $env:A1111_DIR = $A1111Dir
   $env:LORA_RUNNER_DIR = $LoraRunnerDir
 
   $ComfyMain = Join-Path $ComfyUIDir "main.py"
@@ -357,6 +365,24 @@ try {
     Push-Location $RootDir
     try {
       & $NpmCommand run setup:comfyui:win
+    } finally {
+      Pop-Location
+    }
+  }
+
+  $A1111Launch = Join-Path $A1111Dir "launch.py"
+  $A1111Python = Join-Path $A1111Dir "venv\Scripts\python.exe"
+  $A1111ADetailer = Join-Path $A1111Dir "extensions\adetailer\scripts\!adetailer.py"
+  if (
+    (-not (Test-Path $A1111Launch)) -or
+    (-not (Test-Path $A1111Python)) -or
+    (-not (Test-Path $A1111ADetailer))
+  ) {
+    Write-Host "A1111 or its ADetailer extension is missing. Running setup..."
+    $NpmCommand = Ensure-Npm
+    Push-Location $RootDir
+    try {
+      & $NpmCommand run setup:a1111:win
     } finally {
       Pop-Location
     }
@@ -380,6 +406,12 @@ try {
     -HostName $ComfyUIHost `
     -Port $ComfyUIPort `
     -Arguments @("run", "comfyui:win", "--", "-HostName", $ComfyUIHost, "-Port", [string]$ComfyUIPort)
+
+  Start-LocalService `
+    -Name "A1111" `
+    -HostName $A1111Host `
+    -Port $A1111Port `
+    -Arguments @("run", "a1111:win", "--", "-HostName", $A1111Host, "-Port", [string]$A1111Port)
 
   Start-ImageGen
 

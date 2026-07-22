@@ -46,6 +46,7 @@ $ClipPackage = "https://github.com/openai/CLIP/archive/d50d76daa670286dd6cacf3bc
 Invoke-Checked {
   & $VenvPython -m pip install --no-build-isolation $ClipPackage
 } "Failed to install Forge CLIP dependency."
+Install-ADetailer -WebUIDir $ForgeDir -VenvPython $VenvPython -Label "Forge"
 
 Push-Location $ForgeDir
 try {
@@ -56,4 +57,4 @@ try {
   Pop-Location
 }
 
-Write-Host "Forge is ready. Start with: npm run forge:win"
+Write-Host "Forge and ADetailer are ready. Start with: npm run forge:win"

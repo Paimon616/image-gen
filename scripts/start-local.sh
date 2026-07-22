@@ -293,13 +293,13 @@ fi
 # AUTOMATIC1111 / Forge are optional WebUI backends. Install them if missing so
 # the app can auto-launch them on demand. Set SKIP_WEBUI_SETUP=1 to opt out.
 if [ "${SKIP_WEBUI_SETUP:-0}" != "1" ]; then
-  if [ ! -f "$A1111_DIR/.image-gen-ready" ]; then
-    echo "AUTOMATIC1111 is not ready. Running setup (first run downloads PyTorch)..."
+  if [ ! -f "$A1111_DIR/.image-gen-ready" ] || [ ! -f "$A1111_DIR/extensions/adetailer/scripts/!adetailer.py" ]; then
+    echo "AUTOMATIC1111 or ADetailer is not ready. Running setup (first run downloads PyTorch)..."
     (cd "$ROOT_DIR" && npm run setup:a1111)
   fi
 
-  if [ ! -f "$FORGE_DIR/.image-gen-ready" ]; then
-    echo "Forge is not ready. Running setup (first run downloads PyTorch)..."
+  if [ ! -f "$FORGE_DIR/.image-gen-ready" ] || [ ! -f "$FORGE_DIR/extensions/adetailer/scripts/!adetailer.py" ]; then
+    echo "Forge or ADetailer is not ready. Running setup (first run downloads PyTorch)..."
     (cd "$ROOT_DIR" && npm run setup:forge)
   fi
 fi

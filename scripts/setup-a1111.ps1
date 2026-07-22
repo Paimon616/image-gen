@@ -45,6 +45,7 @@ if (-not (Test-Path $VenvPython)) {
   Invoke-Checked { & $Python -m venv (Join-Path $WebUIDir "venv") } "Failed to create the A1111 venv."
 }
 Invoke-Checked { & $VenvPython -m pip install --upgrade pip "setuptools<70" wheel } "Failed to prepare pip."
+Install-ADetailer -WebUIDir $WebUIDir -VenvPython $VenvPython -Label "A1111"
 
 @("checkpoints", "loras", "vae", "upscale_models") | ForEach-Object {
   New-Item -ItemType Directory -Force -Path (Join-Path $ModelRoot $_) | Out-Null
@@ -74,5 +75,5 @@ try {
   Pop-Location
 }
 
-Write-Host "A1111 $WebUIRef and 4x-UltraSharp are ready."
+Write-Host "A1111 $WebUIRef, ADetailer, and 4x-UltraSharp are ready."
 Write-Host "Start with: npm run a1111:win"

@@ -17,8 +17,9 @@ import {
 } from "@/components/ui/dialog";
 import { ModelMediaThumbnail } from "@/components/model-media-thumbnail";
 import { ModelRiskBadge, type ModelRisk } from "@/components/model-risk-badge";
+import { FieldHelp } from "@/components/field-help";
 
-interface LocalModelAsset {
+export interface LocalModelAsset {
   path: string;
   name: string;
   version: string;
@@ -59,7 +60,7 @@ function AssetText({ asset }: { asset: LocalModelAsset }) {
   );
 }
 
-function AssetChoiceButton({
+export function AssetChoiceButton({
   asset,
   placeholder,
   onClick,
@@ -91,7 +92,7 @@ function AssetChoiceButton({
   );
 }
 
-function AssetPickerDialog({
+export function AssetPickerDialog({
   title,
   description,
   assets,
@@ -299,7 +300,8 @@ function isKreaSliderLora(asset: LocalModelAsset | undefined, path: string) {
 }
 
 export function ModelSelector() {
-  const { params, setParams } = useStore();
+  const { params, setParams, language } = useStore();
+  const ko = language === "ko";
   const currentModel = getModelConfig(params.model);
   const isLocal = currentModel.provider === "comfyui";
   const [pickerTarget, setPickerTarget] = useState<PickerTarget>(null);
@@ -475,9 +477,7 @@ export function ModelSelector() {
     <div className="space-y-3">
       <div>
         <div className="mb-1.5 flex items-center justify-between gap-2">
-          <Label className="text-xs text-muted-foreground">
-            Base Model
-          </Label>
+          <FieldHelp label={ko ? "기본 모델" : "Base Model"} help={ko ? "이미지의 기본 화풍과 표현 능력을 결정하는 체크포인트입니다." : "The checkpoint that determines the image's base style and capabilities."} />
           <Button
             type="button"
             size="sm"
@@ -519,10 +519,10 @@ export function ModelSelector() {
       </div>
 
       {(currentModel.supports.lora || currentModel.supports.embeddings) && (
-        <div className="grid gap-3 rounded-md border border-border bg-card/85 p-3 shadow-sm xl:grid-cols-2">
+        <div className="grid gap-4 border-t border-border pt-4">
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <Label className="text-xs text-muted-foreground">LoRA</Label>
+              <FieldHelp label="LoRA" help={ko ? "기본 모델에 특정 인물, 의상, 화풍이나 개념을 추가로 적용합니다. 강도로 영향 범위를 조절합니다." : "Adds a character, outfit, style, or concept to the base model; strength controls its influence."} />
               <Button
                 size="sm"
                 variant="ghost"
@@ -624,7 +624,7 @@ export function ModelSelector() {
 
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <Label className="text-xs text-muted-foreground">Embeddings</Label>
+              <FieldHelp label={ko ? "임베딩" : "Embeddings"} help={ko ? "학습된 토큰을 프롬프트에 삽입해 특정 개념이나 네거티브 품질 보정을 적용합니다." : "Injects trained tokens into the prompt for specific concepts or negative-quality corrections."} />
               <Button
                 size="sm"
                 variant="ghost"
@@ -687,7 +687,6 @@ export function ModelSelector() {
           </div>
         </div>
       )}
-
       {/* Compatibility warnings */}
       {params.style_image && !currentModel.supports.ip_adapter && (
         <p className="text-xs text-yellow-500 mt-2">

@@ -82,6 +82,7 @@ async function readImageMeta({
       thumbnailUrl: thumbnailUrl(filename),
       filename,
       params: meta.params,
+      sizeSemantics: meta.size_semantics === "final" ? "final" : "base",
       timestamp: meta.timestamp ?? timestamp,
       civitaiOrigin: meta.civitai_origin ?? undefined,
     };

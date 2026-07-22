@@ -21,8 +21,10 @@ import {
   BookmarkPlus,
   Check,
   Clock,
+  ClipboardCopy,
   CopyPlus,
   Loader2,
+  Sparkles,
   Trash2,
   XCircle,
 } from "lucide-react";
@@ -79,6 +81,7 @@ const GalleryCard = memo(function GalleryCard({
   const [aspectRatio, setAspectRatio] = useState(initialAspectRatio);
 
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [errorCopied, setErrorCopied] = useState(false);
   const [originOpen, setOriginOpen] = useState(false);
   const language = useStore((state) => state.language);
   const generation = img.generation;
@@ -100,15 +103,15 @@ const GalleryCard = memo(function GalleryCard({
   const progress = Math.min(100, Math.max(0, generation?.progress ?? 0));
   const statusLabel =
     displayState === "queued"
-      ? "Queued"
+      ? language === "ko" ? "대기열" : "Queued"
       : displayState === "waiting"
-        ? "Waiting"
+        ? language === "ko" ? "준비 중" : "Waiting"
         : displayState === "generating"
-          ? "Generating"
+          ? language === "ko" ? "생성 중" : "Generating"
           : displayState === "error"
-            ? "Error"
+            ? language === "ko" ? "오류" : "Error"
             : displayState === "canceled"
-              ? "Canceled"
+              ? language === "ko" ? "취소됨" : "Canceled"
               : "";
   const StatusIcon =
     displayState === "queued"
@@ -122,6 +125,17 @@ const GalleryCard = memo(function GalleryCard({
             : displayState === "canceled"
               ? XCircle
               : null;
+
+  const copyErrorDetails = async () => {
+    const details = generation?.message || (language === "ko" ? "알 수 없는 생성 오류" : "Unknown generation error");
+    try {
+      await navigator.clipboard.writeText(details);
+      setErrorCopied(true);
+      window.setTimeout(() => setErrorCopied(false), 1600);
+    } catch {
+      setErrorCopied(false);
+    }
+  };
 
   useLayoutEffect(() => {
     const card = cardRef.current;
@@ -149,14 +163,14 @@ const GalleryCard = memo(function GalleryCard({
       {hasImage ? (
         <button
           type="button"
-          className="block w-full cursor-pointer"
+          className="block h-full w-full cursor-pointer overflow-hidden"
           onClick={() => onOpen(img)}
           aria-label="Open image details"
         >
           <img
             src={displayUrl}
             alt=""
-            className="block h-auto w-full"
+            className="block h-full w-full object-cover"
             loading="lazy"
             decoding="async"
             fetchPriority="low"
@@ -169,9 +183,16 @@ const GalleryCard = memo(function GalleryCard({
           />
         </button>
       ) : (
-        <div className="flex aspect-[4/5] flex-col justify-between bg-card p-3">
-          <div className="flex items-center justify-between gap-2">
-            <Badge variant="outline" className="rounded-md">
+        <div className={`relative flex h-full min-h-0 flex-col justify-between overflow-hidden p-3 ${displayState === "generating" ? "bg-slate-950 text-white" : displayState === "error" ? "bg-red-50 text-red-950" : displayState === "canceled" ? "bg-slate-100 text-slate-700" : displayState === "waiting" ? "bg-amber-50 text-amber-950" : "bg-sky-50 text-sky-950"}`}>
+          {displayState === "generating" && (<>
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(34,211,238,0.28),transparent_38%),radial-gradient(circle_at_80%_70%,rgba(168,85,247,0.30),transparent_42%)]" />
+            <div className="gallery-generation-orb pointer-events-none absolute -left-12 top-1/3 h-32 w-32 rounded-full bg-cyan-400/20 blur-2xl" />
+            <div className="gallery-generation-orb pointer-events-none absolute -right-12 bottom-1/4 h-36 w-36 rounded-full bg-fuchsia-500/20 blur-2xl [animation-delay:-1.4s]" />
+            <div className="gallery-generation-scan pointer-events-none absolute inset-x-0 h-24 bg-gradient-to-b from-transparent via-cyan-300/20 to-transparent" />
+            <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.08)_1px,transparent_1px)] [background-size:24px_24px]" />
+          </>)}
+          <div className="relative z-10 flex items-center justify-between gap-2">
+            <Badge variant="outline" className={`rounded-md ${displayState === "generating" ? "border-cyan-300/40 bg-cyan-300/10 text-cyan-100" : displayState === "error" ? "border-red-300 bg-red-100 text-red-700" : displayState === "waiting" ? "border-amber-300 bg-amber-100 text-amber-800" : "border-sky-300 bg-sky-100 text-sky-800"}`}>
               {StatusIcon && (
                 <StatusIcon
                   className={`h-3 w-3 ${
@@ -181,27 +202,97 @@ const GalleryCard = memo(function GalleryCard({
               )}
               {statusLabel || "Pending"}
             </Badge>
-            <span className="text-xs tabular-nums text-muted-foreground">
-              {Math.round(progress)}%
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className={`text-xs font-medium tabular-nums ${displayState === "generating" ? "text-cyan-100" : "opacity-70"}`}>
+                {Math.round(progress)}%
+              </span>
+              {displayState === "generating" && onCancelGeneration && (
+                <Button type="button" size="xs" variant="outline" className="h-7 border-red-300/50 bg-red-500/20 px-2 text-[10px] text-red-100 shadow-sm hover:bg-red-500/35 hover:text-white" onClick={() => onCancelGeneration(img)}>
+                  <XCircle className="h-3.5 w-3.5" />
+                  {language === "ko" ? "생성 취소" : "Cancel"}
+                </Button>
+              )}
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-sky-500 via-cyan-400 to-emerald-400 transition-[width] duration-500"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <p className="line-clamp-4 text-xs leading-5 text-foreground">
-              {img.params?.prompt || "No prompt"}
-            </p>
-            {generation?.message && (
-              <p className="truncate text-[11px] text-muted-foreground">
+          <div className="relative z-10 flex flex-1 items-center justify-center py-3">
+            {displayState === "generating" ? (
+              <div className="relative flex h-24 w-24 items-center justify-center">
+                <div className="absolute inset-0 animate-spin rounded-full border border-transparent border-r-violet-400 border-t-cyan-300" />
+                <div className="absolute inset-2 animate-[spin_3s_linear_infinite_reverse] rounded-full border border-transparent border-b-fuchsia-300 border-l-cyan-200" />
+                <div className="absolute inset-5 animate-pulse rounded-full bg-white/10 shadow-[0_0_30px_rgba(34,211,238,.35)]" />
+                <Sparkles className="relative h-8 w-8 text-cyan-100 drop-shadow-[0_0_10px_rgba(103,232,249,.8)]" />
+              </div>
+            ) : displayState === "error" ? (
+              <div className="flex flex-col items-center gap-2 text-center">
+                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-red-100 text-red-600 ring-1 ring-red-200"><AlertCircle className="h-7 w-7" /></span>
+                <p className="text-sm font-semibold">{language === "ko" ? "생성에 실패했습니다" : "Generation failed"}</p>
+              </div>
+            ) : (
+              <span className={`flex h-14 w-14 items-center justify-center rounded-full ${displayState === "waiting" ? "bg-amber-100 text-amber-600" : "bg-sky-100 text-sky-600"}`}>
+                {StatusIcon && <StatusIcon className="h-7 w-7" />}
+              </span>
+            )}
+          </div>
+          <div className="relative z-10 space-y-2">
+            {displayState === "generating" && generation?.message && (
+              <p className="line-clamp-2 text-[11px] font-medium text-cyan-100/80">
                 {generation.message}
               </p>
             )}
-            {isPending && onCancelGeneration && (
+            <div className={`h-1.5 overflow-hidden rounded-full ${displayState === "generating" ? "bg-white/15" : "bg-black/10"}`}>
+              <div
+                className={`h-full rounded-full transition-[width] duration-500 ${displayState === "error" ? "bg-red-500" : displayState === "waiting" ? "bg-amber-500" : "bg-gradient-to-r from-sky-500 via-cyan-400 to-violet-500"}`}
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <p className={`line-clamp-3 text-xs leading-5 ${displayState === "generating" ? "text-white/90" : ""}`}>
+              {img.params?.prompt || "No prompt"}
+            </p>
+            {displayState !== "generating" && generation?.message && (
+              <p className={`line-clamp-2 text-[11px] ${displayState === "error" ? "text-red-700" : "opacity-65"}`}>
+                {generation.message}
+              </p>
+            )}
+            {displayState === "error" && (
+              <div className="grid grid-cols-3 gap-1.5 pt-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 min-w-0 px-1 text-[10px]"
+                  onClick={() => onReuse(img)}
+                  disabled={!img.params}
+                  title={language === "ko" ? "실패 당시의 생성 설정을 편집 영역에 불러옵니다" : "Load the failed generation settings into the editor"}
+                >
+                  <CopyPlus className="h-3.5 w-3.5" />
+                  {language === "ko" ? "설정 재사용" : "Reuse"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 min-w-0 px-1 text-[10px]"
+                  onClick={() => void copyErrorDetails()}
+                  title={language === "ko" ? "오류 메시지를 클립보드에 복사합니다" : "Copy the error message"}
+                >
+                  {errorCopied ? <Check className="h-3.5 w-3.5" /> : <ClipboardCopy className="h-3.5 w-3.5" />}
+                  {errorCopied ? (language === "ko" ? "복사됨" : "Copied") : (language === "ko" ? "오류 복사" : "Copy")}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="destructive"
+                  className="h-8 min-w-0 px-1 text-[10px]"
+                  onClick={() => setConfirmingDelete(true)}
+                  title={language === "ko" ? "오류 카드를 제거합니다" : "Remove this error card"}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  {language === "ko" ? "제거" : "Remove"}
+                </Button>
+              </div>
+            )}
+            {isPending && displayState !== "generating" && onCancelGeneration && (
               <Button
                 type="button"
                 size="sm"
@@ -213,6 +304,30 @@ const GalleryCard = memo(function GalleryCard({
                 생성 취소
               </Button>
             )}
+          </div>
+        </div>
+      )}
+      {!hasImage && displayState === "error" && confirmingDelete && (
+        <div className="absolute inset-x-3 bottom-3 z-30 rounded-md border border-red-200 bg-white p-2.5 shadow-xl">
+          <p className="text-[11px] font-medium text-red-950">
+            {language === "ko" ? "이 오류 카드를 제거할까요?" : "Remove this error card?"}
+          </p>
+          <div className="mt-2 flex gap-1.5">
+            <Button
+              type="button"
+              size="sm"
+              variant="destructive"
+              className="h-7 flex-1 text-[11px]"
+              onClick={() => {
+                setConfirmingDelete(false);
+                onDelete(img);
+              }}
+            >
+              {language === "ko" ? "제거" : "Remove"}
+            </Button>
+            <Button type="button" size="sm" variant="outline" className="h-7 flex-1 text-[11px]" onClick={() => setConfirmingDelete(false)}>
+              {language === "ko" ? "취소" : "Cancel"}
+            </Button>
           </div>
         </div>
       )}
@@ -268,7 +383,7 @@ const GalleryCard = memo(function GalleryCard({
           )}
         </div>
       )}
-      {!isPending && (
+      {hasImage && !isPending && (
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent opacity-0 transition-opacity group-hover:opacity-100">
         <div className="absolute left-2 right-2 top-2 flex gap-1.5">
           <Button

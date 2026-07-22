@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ImageIcon, LinkIcon, Loader2, X } from "lucide-react";
 import { useStore } from "@/lib/store";
-import type { CivitaiImportResult } from "@/lib/types";
+import type { CivitaiImportResult, GenerationParams } from "@/lib/types";
 import {
   reconcileImportedParams,
   type LocalModelsResponse,
@@ -11,6 +11,7 @@ import {
 } from "@/lib/civitai-resource-matching";
 import { CivitaiMissingResources } from "@/components/civitai-missing-resources";
 import { CivitaiMetadataAdvice } from "@/components/civitai-metadata-advice";
+import { FieldHelp } from "@/components/field-help";
 import { CopyLinkButton } from "@/components/copy-link-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,6 +76,7 @@ export function CivitaiImport() {
   const [storedImportResult, setStoredImportResult] = useState<{
     resetVersion: number;
     result: CivitaiImportResult;
+    matchedParams?: Partial<GenerationParams>;
   } | null>(null);
   const isImporting = importingVersion === resetVersion;
   const importResult =
@@ -111,16 +113,17 @@ export function CivitaiImport() {
       }
 
       const imported = importData as CivitaiImportResult;
-      setStoredImportResult({
-        resetVersion: currentResetVersion,
-        result: imported,
-      });
       const modelsData = (await modelsResponse.json()) as LocalModelsResponse;
       const { matched, missing } = reconcileImportedParams(
         imported,
         modelsData,
         params
       );
+      setStoredImportResult({
+        resetVersion: currentResetVersion,
+        result: imported,
+        matchedParams: matched,
+      });
       const appliedParams = { ...params, ...matched };
 
       setParams(matched);
@@ -169,12 +172,12 @@ export function CivitaiImport() {
   };
 
   return (
-    <section className="rounded-md border border-border bg-card/85 p-3 shadow-sm">
+    <section className="space-y-3 border-b border-border/70 pb-4">
       <div className="flex gap-3">
         <div className="min-w-0 flex-1">
           <div className="mb-2 flex items-center justify-between gap-2">
             <div>
-              <Label className="text-xs text-muted-foreground">Import from Civitai</Label>
+              <FieldHelp label={language === "ko" ? "Civitai에서 가져오기" : "Import from Civitai"} help={language === "ko" ? "Civitai 이미지 URL을 입력하면 공개된 프롬프트, 모델, 샘플러와 시드 정보를 현재 설정에 적용합니다." : "Paste a Civitai image URL to apply its published prompt, model, sampler, and seed settings."} />
               <p className="mt-1 text-xs text-muted-foreground">
                 Paste an image URL to load prompt, sampler, seed, and resource links.
               </p>
@@ -230,10 +233,7 @@ export function CivitaiImport() {
           </div>
         </div>
 
-        <div className="w-24 shrink-0">
-          <div className="mb-1 text-xs text-muted-foreground">
-            {language === "ko" ? "레퍼런스" : "Reference"}
-          </div>
+        <div className="w-20 shrink-0 self-end">
           {civitaiReference ? (
             <div className="group/ref relative aspect-square overflow-hidden rounded-md border border-border">
               <img
@@ -253,7 +253,7 @@ export function CivitaiImport() {
             </div>
           ) : (
             <div className="flex aspect-square items-center justify-center rounded-md border border-dashed border-border text-muted-foreground/50">
-              <ImageIcon className="h-6 w-6" />
+              <ImageIcon className="h-5 w-5" />
             </div>
           )}
         </div>
@@ -266,14 +266,18 @@ export function CivitaiImport() {
         recommendations={importResult?.recommendations}
         language={language}
         onApply={(recommendedParams) => {
-          const current = useStore.getState().params;
+          const matched = storedImportResult?.matchedParams;
           setParams({
             ...recommendedParams,
-            // Keep paths already reconciled to local files.
-            model_name: current.model_name,
-            vae_name: current.vae_name,
-            loras: current.loras,
-            embeddings: current.embeddings,
+            // Restore the locally matched models from this Civitai import even
+            // if the user changed the form after importing it.
+            ...(matched?.model_name ? { model_name: matched.model_name } : {}),
+            ...(matched?.vae_name ? { vae_name: matched.vae_name } : {}),
+            ...(matched?.loras ? { loras: matched.loras } : {}),
+            ...(matched?.embeddings ? { embeddings: matched.embeddings } : {}),
+            ...(recommendedParams.upscale_model_name && matched?.upscale_model_name
+              ? { upscale_model_name: matched.upscale_model_name }
+              : {}),
           });
           setStatus(language === "ko" ? "추천 설정을 적용했습니다." : "Applied recommended settings.");
         }}

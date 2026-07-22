@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import {
   DEFAULT_PARAMS,
+  normalizeImageDimension,
   type CivitaiOrigin,
   type GeneratedImage,
   type GenerationParams,
@@ -181,7 +182,22 @@ export const useStore = create<AppState>((set) => ({
     set((state) =>
       image.params
         ? {
-            params: { ...DEFAULT_PARAMS, ...image.params },
+            params: {
+              ...DEFAULT_PARAMS,
+              ...image.params,
+              ...(image.sizeSemantics === "final" ||
+              !image.params.hires_upscale ||
+              image.params.hires_upscale <= 1
+                ? {}
+                : {
+                    width: normalizeImageDimension(
+                      image.params.width * image.params.hires_upscale
+                    ),
+                    height: normalizeImageDimension(
+                      image.params.height * image.params.hires_upscale
+                    ),
+                  }),
+            },
             civitaiReference: null,
             civitaiImport: {
               ...EMPTY_CIVITAI_IMPORT,

@@ -21,6 +21,8 @@ import { MetadataImport } from "@/components/metadata-import";
 import { Gallery } from "@/components/gallery";
 import { ImageViewer } from "@/components/image-viewer";
 import { AppSidebar } from "@/components/app-sidebar";
+import { EditorSection } from "@/components/editor-section";
+import { FieldHelp } from "@/components/field-help";
 import { Slider } from "@/components/ui/slider";
 import type {
   CivitaiOrigin,
@@ -111,7 +113,9 @@ export default function Home() {
     addImages,
     updateImage,
     images,
+    language,
   } = useStore();
+  const ko = language === "ko";
   const [localControlnets, setLocalControlnets] = useState<string[]>([]);
   const [posePreviewUrl, setPosePreviewUrl] = useState<string | null>(null);
   const [posePreviewStatus, setPosePreviewStatus] = useState("");
@@ -507,44 +511,46 @@ export default function Home() {
   const queuedJobCount = generationQueue.length;
 
   return (
-    <div ref={layoutRef} className="flex h-screen bg-background">
+    <div ref={layoutRef} className="flex h-screen">
       <AppSidebar />
 
       {/* Left Sidebar - Controls */}
       {editorOpen && (
         <aside className="flex shrink-0 flex-col overflow-hidden" style={{ width: editorWidth }}>
         <div className="px-4 py-3 border-b border-border">
-          <h1 className="text-lg font-semibold">Image Generation</h1>
+          <h1 className="text-lg font-semibold">{ko ? "이미지 생성" : "Image Generation"}</h1>
           <p className="text-xs text-muted-foreground">{currentModel.name}</p>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {/* Model Selector */}
-          <ModelSelector />
-
+        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          <EditorSection title={ko ? "가져오기" : "Import"} description={ko ? "Civitai URL이나 이미지 메타데이터에서 프롬프트와 설정을 가져옵니다." : "Import prompts and settings from Civitai or image metadata."}>
           <CivitaiImport />
-
           <MetadataImport />
+          </EditorSection>
 
-          <Separator />
+          <EditorSection title={ko ? "모델" : "Models"} description={ko ? "기본 모델과 LoRA, 임베딩을 선택합니다." : "Choose the base model, LoRA, and embeddings."}>
+            <ModelSelector />
+          </EditorSection>
+
+          <EditorSection title={ko ? "구성" : "Composition"} description={ko ? "생성 모드와 프롬프트, 참조 이미지를 설정합니다." : "Set the generation mode, prompt, and visual references."}>
 
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Mode</Label>
+            <FieldHelp label={ko ? "생성 모드" : "Mode"} help={ko ? "텍스트 생성, 이미지 변환, 포즈 참조 중 작업 방식을 선택합니다." : "Choose text generation, image-to-image, or pose reference workflow."} />
             <div className="grid grid-cols-3 gap-1.5 rounded-md border border-border bg-card/80 p-1 shadow-sm">
               {[
                 {
                   mode: "text_to_image" as const,
-                  label: "Text to Image",
+                  label: ko ? "텍스트로 생성" : "Text to Image",
                   icon: ImageIcon,
                 },
                 {
                   mode: "image_to_image" as const,
-                  label: "Image to Image",
+                  label: ko ? "이미지 변환" : "Image to Image",
                   icon: ImageUp,
                 },
                 {
                   mode: "pose_reference" as const,
-                  label: "Pose Reference",
+                  label: ko ? "포즈 참조" : "Pose Reference",
                   icon: ScanLine,
                 },
               ].map((item) => {
@@ -571,26 +577,24 @@ export default function Home() {
           </div>
 
           {/* Prompt */}
-          <div className="grid gap-3 xl:grid-cols-2">
+          <div className="space-y-3">
           <div>
-            <Label className="text-xs text-muted-foreground mb-2 block">Prompt</Label>
+            <FieldHelp className="mb-2" label={ko ? "프롬프트" : "Prompt"} help={ko ? "생성할 이미지의 피사체, 구도, 조명과 스타일을 설명합니다." : "Describe the subject, composition, lighting, and style to generate."} />
             <Textarea
-              placeholder="Describe the image you want to generate..."
+              placeholder={ko ? "생성할 이미지를 설명하세요..." : "Describe the image you want to generate..."}
               value={params.prompt}
               onChange={(e) => setParams({ prompt: e.target.value })}
-              className="h-36 text-sm resize-none"
+              className="min-h-36 resize-y text-sm"
             />
           </div>
 
           <div>
-            <Label className="text-xs text-muted-foreground mb-2 block">
-              Negative Prompt
-            </Label>
+            <FieldHelp className="mb-2" label={ko ? "네거티브 프롬프트" : "Negative Prompt"} help={ko ? "이미지에서 제외하거나 억제할 요소를 입력합니다." : "Describe elements that should be excluded or suppressed."} />
             <Textarea
-              placeholder="What to exclude..."
+              placeholder={ko ? "제외할 요소를 입력하세요..." : "What to exclude..."}
               value={params.negative_prompt}
               onChange={(e) => setParams({ negative_prompt: e.target.value })}
-              className="h-36 text-sm resize-none"
+              className="min-h-36 resize-y text-sm"
             />
           </div>
           </div>
@@ -601,9 +605,7 @@ export default function Home() {
               <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_16rem]">
                 <div>
                   <div className="mb-2 flex items-center justify-between gap-3">
-                    <Label className="text-xs text-muted-foreground">
-                      Pose Reference
-                    </Label>
+                    <FieldHelp label={ko ? "포즈 참조 이미지" : "Pose Reference"} help={ko ? "인물의 자세만 추출해 새 이미지의 구도에 반영합니다. 선명한 전신 사진일수록 인식이 안정적입니다." : "Extracts a person's pose and applies it to the new composition; clear full-body images work best."} />
                     {!supportsPoseReference && (
                       <span className="text-xs text-yellow-500">
                         Local ComfyUI only
@@ -611,8 +613,8 @@ export default function Home() {
                     )}
                   </div>
                   <ImageUpload
-                    label="Pose Image"
-                    description="Drop or click to upload a pose reference"
+                    label={ko ? "포즈 이미지" : "Pose Image"}
+                    description={ko ? "포즈 참조 이미지를 끌어놓거나 클릭해 업로드하세요" : "Drop or click to upload a pose reference"}
                     value={params.pose_reference_image}
                     onChange={(url) => {
                       setParams({ pose_reference_image: url });
@@ -651,9 +653,7 @@ export default function Home() {
 
                 <div className="space-y-3 rounded-md border border-border bg-card/80 p-3 shadow-sm">
                   <div>
-                    <Label className="mb-2 block text-xs text-muted-foreground">
-                      ControlNet
-                    </Label>
+                    <FieldHelp className="mb-2" label="ControlNet" help={ko ? "포즈의 관절 정보를 해석할 ControlNet 모델입니다. OpenPose 계열 모델을 선택하세요." : "The ControlNet model that interprets pose joints; choose an OpenPose model."} />
                     {localControlnets.length > 0 ? (
                       <select
                         value={params.pose_reference_model}
@@ -683,9 +683,7 @@ export default function Home() {
 
                   <div>
                     <div className="mb-2 flex items-center justify-between">
-                      <Label className="text-xs text-muted-foreground">
-                        Strength
-                      </Label>
+                      <FieldHelp label={ko ? "포즈 강도" : "Strength"} help={ko ? "참조 포즈를 결과가 얼마나 강하게 따를지 조절합니다. 높을수록 자세는 정확하지만 자연스러움이 줄 수 있습니다." : "Controls how strongly the result follows the reference pose; higher values are stricter but may look less natural."} />
                       <span className="text-xs font-mono">
                         {params.pose_reference_strength.toFixed(2)}
                       </span>
@@ -718,12 +716,10 @@ export default function Home() {
               <Separator />
               <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_16rem]">
                 <div>
-                  <Label className="mb-2 block text-xs text-muted-foreground">
-                    Source Image
-                  </Label>
+                  <FieldHelp className="mb-2" label={ko ? "원본 이미지" : "Source Image"} help={ko ? "이미지 변환의 출발점입니다. 프롬프트와 디노이즈 강도에 따라 이 이미지를 다시 그립니다." : "The starting image for image-to-image; it is redrawn according to the prompt and denoise strength."} />
                   <ImageUpload
-                    label="Source Image"
-                    description="Drop or click to upload a source image"
+                    label={ko ? "원본 이미지" : "Source Image"}
+                    description={ko ? "원본 이미지를 끌어놓거나 클릭해 업로드하세요" : "Drop or click to upload a source image"}
                     value={params.source_image}
                     onChange={(url) => setParams({ source_image: url })}
                     onPreview={
@@ -737,9 +733,7 @@ export default function Home() {
                 <div className="space-y-3 rounded-md border border-border bg-card/80 p-3 shadow-sm">
                   <div>
                     <div className="mb-2 flex items-center justify-between">
-                      <Label className="text-xs text-muted-foreground">
-                        Denoise
-                      </Label>
+                      <FieldHelp label={ko ? "변형 강도" : "Denoise"} help={ko ? "원본을 얼마나 새로 그릴지 조절합니다. 낮으면 원본을 보존하고, 높으면 프롬프트에 맞춰 크게 변형합니다." : "Controls how much of the source is redrawn; low values preserve it, high values transform it strongly."} />
                       <span className="text-xs font-mono">
                         {params.denoise_strength.toFixed(2)}
                       </span>
@@ -762,9 +756,7 @@ export default function Home() {
                   {(params.backend === "a1111" || params.backend === "forge") && (
                     <div>
                       <div className="mb-2 flex items-center justify-between">
-                        <Label className="text-xs text-muted-foreground">
-                          Resize by
-                        </Label>
+                        <FieldHelp label={ko ? "확대 배율" : "Resize by"} help={ko ? "이미지 변환 전에 원본을 확대할 배율입니다. 배율이 높을수록 메모리 사용량과 처리 시간이 증가합니다." : "Scale applied before image-to-image; higher values use more memory and processing time."} />
                         <span className="text-xs font-mono">
                           {params.img2img_resize.toFixed(2)}×
                         </span>
@@ -804,12 +796,10 @@ export default function Home() {
               <div className="grid gap-3 xl:grid-cols-2">
                 {currentModel.supports.ip_adapter && (
                   <div>
-                    <Label className="text-xs text-muted-foreground mb-2 block">
-                      Style Reference
-                    </Label>
+                    <FieldHelp className="mb-2" label={ko ? "스타일 참조" : "Style Reference"} help={ko ? "참조 이미지의 색감, 질감과 화풍을 결과에 반영합니다. 피사체 구조보다 시각적 분위기에 영향을 줍니다." : "Transfers color, texture, and visual style from a reference image rather than its exact structure."} />
                     <ImageUpload
-                      label="Style Image"
-                      description="Drop or click to upload style reference"
+                      label={ko ? "스타일 이미지" : "Style Image"}
+                      description={ko ? "스타일 참조 이미지를 업로드하세요" : "Drop or click to upload style reference"}
                       value={params.style_image}
                       onChange={(url) => setParams({ style_image: url })}
                     />
@@ -818,12 +808,10 @@ export default function Home() {
 
                 {currentModel.supports.face_id && (
                   <div>
-                    <Label className="text-xs text-muted-foreground mb-2 block">
-                      Character Reference
-                    </Label>
+                    <FieldHelp className="mb-2" label={ko ? "캐릭터 참조" : "Character Reference"} help={ko ? "참조 인물의 얼굴 특징과 정체성을 새 이미지에서 유지하도록 돕습니다." : "Helps preserve the referenced person's facial features and identity in the new image."} />
                     <ImageUpload
-                      label="Character Image"
-                      description="Drop or click to upload character reference"
+                      label={ko ? "캐릭터 이미지" : "Character Image"}
+                      description={ko ? "캐릭터 참조 이미지를 업로드하세요" : "Drop or click to upload character reference"}
                       value={params.character_image}
                       onChange={(url) => setParams({ character_image: url })}
                     />
@@ -832,9 +820,51 @@ export default function Home() {
               </div>
             </>
           )}
+          </EditorSection>
 
-          {/* Generation Parameters */}
-          <GenerationParams />
+          <EditorSection title={ko ? "출력" : "Output"} description={ko ? "생성 백엔드와 최종 이미지 크기, 생성 매수를 설정합니다." : "Choose the generation backend, final size, and image count."}>
+            <GenerationParams section="output" />
+          </EditorSection>
+
+          <EditorSection title={ko ? "고급 설정" : "Advanced"} description={ko ? "샘플링과 시드, VAE, 프롬프트 가중치, ControlNet을 세부 조정합니다." : "Fine-tune sampling, seed, VAE, prompt weighting, and ControlNet."}>
+            <GenerationParams section="advanced" />
+          </EditorSection>
+
+          <EditorSection
+            title={ko ? "업스케일러" : "Upscaler"}
+            description={ko ? "고해상도 보정과 업스케일 방식을 설정합니다." : "Configure high-resolution refinement and upscaling."}
+            toggle={{
+              checked: params.hires_upscale > 1,
+              label: ko ? "업스케일러 사용" : "Enable Upscaler",
+              onCheckedChange: (checked) => setParams({
+                hires_upscale: checked ? (params.hires_upscale > 1 ? params.hires_upscale : 2) : 1,
+              }),
+            }}
+          >
+            <GenerationParams section="upscaler" />
+          </EditorSection>
+
+          <EditorSection
+            title={ko ? "ADetailer 얼굴 보정" : "ADetailer"}
+            description={ko ? "얼굴을 감지하고 별도의 디테일 패스로 보정합니다." : "Detect and refine faces with a dedicated detail pass."}
+            toggle={{
+              checked: params.adetailer_enabled,
+              label: ko ? "ADetailer 사용" : "Enable ADetailer",
+              onCheckedChange: (checked) => setParams({
+                adetailer_enabled: checked,
+                ...(checked
+                  ? {
+                      adetailer_model:
+                        params.backend === "comfyui"
+                          ? "bbox/face_yolov8n_v2.pt"
+                          : "face_yolov8n.pt",
+                    }
+                  : {}),
+              }),
+            }}
+          >
+            <GenerationParams section="adetailer" />
+          </EditorSection>
         </div>
 
         {/* Generate Button */}
@@ -912,9 +942,9 @@ export default function Home() {
             >
               {editorOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
             </Button>
-            <h2 className="text-sm font-medium">Gallery</h2>
+            <h2 className="text-sm font-medium">{ko ? "갤러리" : "Gallery"}</h2>
             <div className="flex items-center gap-2">
-              <span className="whitespace-nowrap text-xs text-muted-foreground">Thumbnail width</span>
+              <span className="whitespace-nowrap text-xs text-muted-foreground">{ko ? "썸네일 너비" : "Thumbnail width"}</span>
               <Slider
                 value={[thumbnailWidth]}
                 onValueChange={(v) => {

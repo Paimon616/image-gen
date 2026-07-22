@@ -99,9 +99,15 @@ provision_webui() {
   # rejects generations that request it ("Script 'ADetailer' not found").
   local ext_dir="$dir/extensions/adetailer"
   if [ ! -d "$ext_dir/.git" ]; then
+    if [ -e "$ext_dir" ] && [ -n "$(ls -A "$ext_dir" 2>/dev/null)" ]; then
+      echo "[$label] ADetailer directory exists but is not a git checkout: $ext_dir" >&2
+      return 1
+    fi
     echo "[$label] Installing ADetailer extension..."
-    git clone --depth 1 https://github.com/Bing-su/adetailer.git "$ext_dir" >>"$log" 2>&1 ||
+    if ! git clone --depth 1 https://github.com/Bing-su/adetailer.git "$ext_dir" >>"$log" 2>&1; then
       echo "[$label] ADetailer clone failed (see $log)." >&2
+      return 1
+    fi
   fi
 
   # ADetailer's install.py reinstalls the LATEST ultralytics/mediapipe on every
@@ -111,14 +117,24 @@ provision_webui() {
   local np_constraint="$log_dir/numpy1-constraint.txt"
   echo "numpy<2" >"$np_constraint"
   echo "[$label] Installing ADetailer dependencies (NumPy 1.x compatible)..."
-  "$venv_py" -m pip install -c "$np_constraint" \
-    "ultralytics==8.3.75" "mediapipe==0.10.14" "rich>=13" >>"$log" 2>&1 ||
+  if ! "$venv_py" -m pip install -c "$np_constraint" \
+    "ultralytics==8.3.75" "mediapipe==0.10.14" "rich>=13" >>"$log" 2>&1; then
     echo "[$label] ADetailer dependency install failed (see $log)." >&2
+    return 1
+  fi
 
   # Final guard: keep NumPy on the 1.x ABI. Installing torch/clip/mediapipe above
   # can otherwise pull NumPy 2.x, which crashes scikit-image and friends.
   echo "[$label] Pinning NumPy to the 1.x series..."
-  "$venv_py" -m pip install "numpy<2" >>"$log" 2>&1 || true
+  if ! "$venv_py" -m pip install "numpy<2" >>"$log" 2>&1; then
+    echo "[$label] Failed to keep NumPy on the 1.x series (see $log)." >&2
+    return 1
+  fi
+
+  if [ ! -f "$ext_dir/scripts/!adetailer.py" ]; then
+    echo "[$label] ADetailer installation is incomplete: $ext_dir" >&2
+    return 1
+  fi
 
   if curl -fsS --max-time 5 "http://127.0.0.1:$port/internal/ping" >/dev/null 2>&1; then
     echo "[$label] Something is already serving on port $port; skipping launch bootstrap."

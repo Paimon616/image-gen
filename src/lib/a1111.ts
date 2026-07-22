@@ -101,16 +101,23 @@ function launchWebUi(backend: GenerationParams["backend"]) {
 
   let child: ChildProcess;
   if (customCommand) {
-    child = spawn("bash", ["-lc", customCommand], {
+    const command = process.platform === "win32" ? "powershell.exe" : "bash";
+    const args = process.platform === "win32"
+      ? ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", customCommand]
+      : ["-lc", customCommand];
+    child = spawn(command, args, {
       detached: true,
       stdio: ["ignore", fd, fd],
       cwd: process.cwd(),
     });
   } else {
+    const windows = process.platform === "win32";
     const script = join(
       process.cwd(),
       "scripts",
-      isForge ? "run-forge.sh" : "run-a1111.sh"
+      isForge
+        ? windows ? "run-forge.ps1" : "run-forge.sh"
+        : windows ? "run-a1111.ps1" : "run-a1111.sh"
     );
     if (!existsSync(script)) {
       throw new Error(
@@ -121,11 +128,17 @@ function launchWebUi(backend: GenerationParams["backend"]) {
           "."
       );
     }
-    child = spawn("bash", [script], {
-      detached: true,
-      stdio: ["ignore", fd, fd],
-      cwd: process.cwd(),
-    });
+    child = spawn(
+      windows ? "powershell.exe" : "bash",
+      windows
+        ? ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script]
+        : [script],
+      {
+        detached: true,
+        stdio: ["ignore", fd, fd],
+        cwd: process.cwd(),
+      }
+    );
   }
   child.unref();
   return { child, logPath };
@@ -336,9 +349,26 @@ async function extrasUpscale(
 function buildAlwaysOnScripts(params: GenerationParams) {
   if (!params.adetailer_enabled) return undefined;
 
-  const adPrompt = stripLoraTags(
-    [params.adetailer_prompt, loraPrompt(params)].find((value) => value?.trim()) ?? ""
-  );
+  // ComfyUI detector names are node paths and are not valid ADetailer model
+  // names. A detector selected before switching backends must not silently make
+  // the A1111/Forge detail pass a no-op.
+  const adModel = params.adetailer_model.startsWith("bbox/")
+    ? "face_yolov8n.pt"
+    : params.adetailer_model || "face_yolov8n.pt";
+
+  const adetailerLoraPrompt = params.adetailer_loras
+    .filter((lora) => lora.path.trim())
+    .map((lora) =>
+      "<lora:" +
+      lora.path.replace(/\.(safetensors|pt|ckpt)$/i, "") +
+      ":" +
+      lora.scale +
+      ">"
+    )
+    .join(" ");
+  const adPrompt = [stripLoraTags(params.adetailer_prompt), adetailerLoraPrompt]
+    .filter(Boolean)
+    .join(", ");
 
   return {
     ADetailer: {
@@ -346,9 +376,19 @@ function buildAlwaysOnScripts(params: GenerationParams) {
         true,
         false,
         {
-          ad_model: params.adetailer_model || "face_yolov8n.pt",
+          ad_model: adModel,
           ad_prompt: adPrompt,
-          ad_negative_prompt: params.negative_prompt,
+          ad_negative_prompt:
+            params.adetailer_negative_prompt || params.negative_prompt,
+          ad_confidence: params.adetailer_confidence,
+          ad_mask_blur: params.adetailer_mask_blur,
+          ad_inpaint_only_masked: params.adetailer_inpaint_only_masked,
+          ad_use_checkpoint: Boolean(params.adetailer_checkpoint),
+          ad_checkpoint: params.adetailer_checkpoint || "Use same checkpoint",
+          ad_use_steps: params.adetailer_use_steps,
+          ad_steps: params.adetailer_steps,
+          ad_use_noise_multiplier: true,
+          ad_noise_multiplier: params.adetailer_noise_multiplier,
           ad_denoising_strength: params.adetailer_denoise,
         },
       ],
@@ -545,8 +585,12 @@ export async function generateWithA1111(
         requestedHiresScale <= 1 && params.width * params.height > 2_000_000;
       const enableHr = requestedHiresScale > 1 || autoHires;
       const hiresScale = requestedHiresScale > 1 ? requestedHiresScale : 2;
-      const width = autoHires ? Math.round(params.width / 2 / 8) * 8 : params.width;
-      const height = autoHires ? Math.round(params.height / 2 / 8) * 8 : params.height;
+      const width = enableHr
+        ? Math.max(8, Math.round(params.width / hiresScale / 8) * 8)
+        : params.width;
+      const height = enableHr
+        ? Math.max(8, Math.round(params.height / hiresScale / 8) * 8)
+        : params.height;
       const hrUpscaler = enableHr
         ? await resolveA1111Upscaler(
             baseUrl,
@@ -563,6 +607,8 @@ export async function generateWithA1111(
         enable_hr: enableHr,
         denoising_strength: enableHr ? params.hires_denoise : params.denoise_strength,
         hr_scale: enableHr ? hiresScale : 1,
+        hr_resize_x: enableHr ? params.width : 0,
+        hr_resize_y: enableHr ? params.height : 0,
         hr_upscaler: hrUpscaler,
         hr_second_pass_steps: enableHr ? params.hires_steps : 0,
         // Keep the second pass on the same recipe instead of Forge's nullable/API

@@ -52,6 +52,45 @@ function Ensure-Git {
   }
 }
 
+function Install-ADetailer {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$WebUIDir,
+    [Parameter(Mandatory = $true)]
+    [string]$VenvPython,
+    [Parameter(Mandatory = $true)]
+    [string]$Label
+  )
+
+  $ExtensionsDir = Join-Path $WebUIDir "extensions"
+  $ADetailerDir = Join-Path $ExtensionsDir "adetailer"
+  $ADetailerGit = Join-Path $ADetailerDir ".git"
+
+  New-Item -ItemType Directory -Force -Path $ExtensionsDir | Out-Null
+  if (-not (Test-Path $ADetailerGit)) {
+    if ((Test-Path $ADetailerDir) -and @(Get-ChildItem -Force -LiteralPath $ADetailerDir).Count -gt 0) {
+      throw "$Label ADetailer directory exists but is not a git checkout: $ADetailerDir"
+    }
+    Write-Host "Installing ADetailer for $Label..."
+    Invoke-Checked {
+      git clone --depth 1 https://github.com/Bing-su/adetailer.git $ADetailerDir
+    } "Failed to install ADetailer for $Label."
+  }
+
+  # Keep ADetailer's computer-vision dependencies on the NumPy 1.x ABI used by
+  # the pinned WebUI environments. Passing the constraint in the same resolver
+  # transaction prevents mediapipe from temporarily upgrading NumPy to 2.x.
+  Write-Host "Installing ADetailer dependencies for $Label..."
+  Invoke-Checked {
+    & $VenvPython -m pip install "numpy<2" "ultralytics==8.3.75" "mediapipe==0.10.14" "rich>=13"
+  } "Failed to install ADetailer dependencies for $Label."
+
+  $ADetailerScript = Join-Path $ADetailerDir "scripts\!adetailer.py"
+  if (-not (Test-Path $ADetailerScript)) {
+    throw "ADetailer installation is incomplete for ${Label}: $ADetailerScript"
+  }
+}
+
 function Ensure-Npm {
   $NpmCommand = Get-Command npm.cmd -ErrorAction SilentlyContinue
   if (-not $NpmCommand) {

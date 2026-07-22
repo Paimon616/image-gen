@@ -50,7 +50,7 @@
 
 :root,
 .dark {
-  --background: oklch(0.965 0.035 190);
+  --background: oklch(0.968 0.004 255);
   --foreground: oklch(0.19 0.035 255);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.19 0.035 255);
@@ -58,15 +58,15 @@
   --popover-foreground: oklch(0.19 0.035 255);
   --primary: oklch(0.72 0.19 190);
   --primary-foreground: oklch(0.99 0.004 240);
-  --secondary: oklch(0.94 0.055 190);
+  --secondary: oklch(0.96 0.006 255);
   --secondary-foreground: oklch(0.24 0.09 196);
-  --muted: oklch(0.94 0.045 190);
+  --muted: oklch(0.96 0.006 255);
   --muted-foreground: oklch(0.46 0.045 255);
   --accent: oklch(0.72 0.22 28);
   --accent-foreground: oklch(0.16 0.03 32);
   --destructive: oklch(0.58 0.24 28);
-  --border: oklch(0.84 0.055 190);
-  --input: oklch(0.82 0.055 190);
+  --border: oklch(0.875 0.008 255);
+  --input: oklch(0.84 0.01 255);
   --ring: oklch(0.72 0.19 190);
   --chart-1: oklch(0.72 0.19 190);
   --chart-2: oklch(0.72 0.22 28);
@@ -74,17 +74,17 @@
   --chart-4: oklch(0.74 0.16 75);
   --chart-5: oklch(0.64 0.19 315);
   --radius: 0.5rem;
-  --sidebar: oklch(0.99 0.008 190);
+  --sidebar: oklch(0.985 0.002 255);
   --sidebar-foreground: oklch(0.2 0.04 255);
   --sidebar-primary: oklch(0.72 0.19 190);
   --sidebar-primary-foreground: oklch(0.99 0.004 240);
-  --sidebar-accent: oklch(0.93 0.065 190);
+  --sidebar-accent: oklch(0.95 0.008 255);
   --sidebar-accent-foreground: oklch(0.24 0.09 196);
-  --sidebar-border: oklch(0.84 0.055 190);
+  --sidebar-border: oklch(0.875 0.008 255);
   --sidebar-ring: oklch(0.66 0.19 257);
-  --surface: oklch(0.955 0.035 190);
+  --surface: oklch(0.975 0.003 255);
   --surface-raised: oklch(1 0 0);
-  --surface-tint: oklch(0.95 0.065 190);
+  --surface-tint: oklch(0.96 0.008 255);
   --success: oklch(0.64 0.17 150);
   --warning: oklch(0.75 0.17 75);
 }
@@ -104,4 +104,23 @@
   ::selection {
     background: color-mix(in oklch, var(--primary) 22%, white);
   }
+}
+
+@keyframes gallery-generation-scan {
+  0% { top: -25%; opacity: 0; }
+  20%, 80% { opacity: 1; }
+  100% { top: 105%; opacity: 0; }
+}
+
+@keyframes gallery-generation-orb {
+  0%, 100% { transform: scale(0.85) translateY(-6px); opacity: 0.45; }
+  50% { transform: scale(1.15) translateY(8px); opacity: 0.9; }
+}
+
+.gallery-generation-scan { animation: gallery-generation-scan 2.6s ease-in-out infinite; }
+.gallery-generation-orb { animation: gallery-generation-orb 3.2s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .gallery-generation-scan,
+  .gallery-generation-orb { animation: none; }
 }
