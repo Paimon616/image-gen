@@ -56,6 +56,7 @@ export interface GenerationParams {
   upscale_model_name: string;
   hires_upscale: number;
   hires_steps: number;
+  hires_denoise: number;
   img2img_resize: number;
   adetailer_enabled: boolean;
   adetailer_model: string;
@@ -282,7 +283,8 @@ export const DEFAULT_PARAMS: GenerationParams = {
   vae_name: "",
   upscale_model_name: "",
   hires_upscale: 1,
-  hires_steps: 0,
+  hires_steps: 12,
+  hires_denoise: 0.45,
   img2img_resize: 1.5,
   adetailer_enabled: false,
   adetailer_model: "face_yolov8n.pt",
@@ -379,4 +381,51 @@ export function normalizeImageDimension(value: unknown) {
 
 export function getModelConfig(modelId: string): ModelConfig {
   return AVAILABLE_MODELS.find((m) => m.id === modelId) ?? AVAILABLE_MODELS[0];
+}
+
+export type HiresModelFamily =
+  | "flux"
+  | "sd3"
+  | "pony"
+  | "illustrious"
+  | "sdxl"
+  | "sd15"
+  | "unknown";
+
+export interface HiresPreset {
+  family: HiresModelFamily;
+  familyLabel: string;
+  steps: number;
+  denoise: number;
+}
+
+// hires refine defaults are keyed to the model family: the second pass denoise
+// mostly tracks how much detail the base architecture invents, and each family
+// has a community-accepted sweet spot for an ESRGAN-style upscaler.
+const HIRES_PRESETS: Record<HiresModelFamily, Omit<HiresPreset, "family">> = {
+  flux: { familyLabel: "Flux", steps: 10, denoise: 0.35 },
+  sd3: { familyLabel: "SD3", steps: 12, denoise: 0.4 },
+  pony: { familyLabel: "Pony", steps: 10, denoise: 0.4 },
+  illustrious: { familyLabel: "Illustrious / NoobAI", steps: 10, denoise: 0.4 },
+  sdxl: { familyLabel: "SDXL", steps: 12, denoise: 0.4 },
+  sd15: { familyLabel: "SD 1.5", steps: 12, denoise: 0.5 },
+  unknown: { familyLabel: "기본", steps: 12, denoise: 0.45 },
+};
+
+export function detectModelFamily(modelName: string): HiresModelFamily {
+  const name = modelName.toLowerCase();
+
+  if (/flux/.test(name)) return "flux";
+  if (/(^|[^a-z])sd_?3|sd3/.test(name)) return "sd3";
+  if (/pony/.test(name)) return "pony";
+  if (/illustrious|ilxl|noob|noobai/.test(name)) return "illustrious";
+  if (/xl|sdxl|pdxl/.test(name)) return "sdxl";
+  if (/sd_?1\.?5|v1-?5|sd15|1_5/.test(name)) return "sd15";
+
+  return "unknown";
+}
+
+export function getHiresPreset(modelName: string): HiresPreset {
+  const family = detectModelFamily(modelName ?? "");
+  return { family, ...HIRES_PRESETS[family] };
 }

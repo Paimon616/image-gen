@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { HelpCircle } from "lucide-react";
 import { useStore } from "@/lib/store";
 import {
+  getHiresPreset,
   getModelConfig,
   IMAGE_SIZE_CONSTRAINTS,
   IMAGE_SIZES,
@@ -12,6 +14,12 @@ import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const SAMPLER_PRESETS = [
   { label: "Euler a", sampler: "euler_ancestral", scheduler: "normal" },
@@ -52,7 +60,8 @@ function clampNumber(value: number, min: number, max: number) {
 }
 
 export function GenerationParams() {
-  const { params, setParams } = useStore();
+  const { params, setParams, language } = useStore();
+  const ko = language === "ko";
   const currentModel = getModelConfig(params.model);
   const isLocal = currentModel.provider === "comfyui";
   const isWebUi = params.backend === "a1111" || params.backend === "forge";
@@ -109,7 +118,24 @@ export function GenerationParams() {
     setParams({ vae_name: "" });
   }, [localModels.vaes, params.vae_name, setParams]);
 
+  // Auto-apply the model-family hires preset when the checkpoint changes.
+  // Skip the first render so restored/imported hires values are preserved.
+  const presetModelRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (presetModelRef.current === null) {
+      presetModelRef.current = params.model_name;
+      return;
+    }
+    if (presetModelRef.current === params.model_name) return;
+
+    presetModelRef.current = params.model_name;
+    const preset = getHiresPreset(params.model_name);
+    setParams({ hires_steps: preset.steps, hires_denoise: preset.denoise });
+  }, [params.model_name, setParams]);
+
   const controlnets = params.controlnets ?? [];
+  const hiresEnabled = params.hires_upscale > 1;
+  const hiresPreset = getHiresPreset(params.model_name);
   const selectedSamplerValue = `${params.sampler_name}:${params.scheduler}`;
   const selectedPreset = IMAGE_SIZES.find(
     (size) => size.width === params.width && size.height === params.height
@@ -460,12 +486,133 @@ export function GenerationParams() {
               )}
             </div>
 
-            <div>
-              <Label className="text-xs text-muted-foreground mb-2 block">
-                Upscaler
-              </Label>
-              {isWebUi ? (
-                webuiOptions.upscalers.length > 0 ? (
+          </div>
+
+          <div className="rounded-md border border-border bg-card p-3 shadow-sm">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold">
+                  {ko ? "업스케일러 · Hires fix" : "Upscaler · Hires fix"}
+                </span>
+                <TooltipProvider delay={120}>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <span
+                          tabIndex={0}
+                          aria-label={ko ? "업스케일러 도움말" : "Upscaler help"}
+                          className="inline-flex cursor-help items-center text-muted-foreground transition-colors hover:text-foreground"
+                        />
+                      }
+                    >
+                      <HelpCircle width={14} height={14} />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[340px]">
+                      <div className="space-y-1.5 py-0.5 text-left leading-snug">
+                        <p className="font-semibold">
+                          {ko
+                            ? "2단계 업스케일 (Hires fix)"
+                            : "Two-pass upscale (Hires fix)"}
+                        </p>
+                        <p className="opacity-90">
+                          {ko
+                            ? "낮은 해상도로 먼저 생성한 뒤 고해상도로 다시 그려 디테일을 살리는 2단계 방식입니다."
+                            : "Generate at a lower resolution first, then re-render larger to add detail."}
+                        </p>
+                        <ul className="space-y-1 opacity-90">
+                          <li>
+                            <span className="font-medium">Upscaler</span>
+                            {ko
+                              ? " — 1차 확대에 쓸 모델. 4x-UltraSharp 같은 ESRGAN 계열은 선명하고 latent 방식은 부드럽습니다."
+                              : " — model for the first enlargement. ESRGAN types (e.g. 4x-UltraSharp) are sharp; latent is softer."}
+                          </li>
+                          <li>
+                            <span className="font-medium">Scale</span>
+                            {ko
+                              ? " — 최종 배율. 1이면 refine을 끕니다. 보통 1.5~2×."
+                              : " — final multiplier. 1 disables the refine. Usually 1.5–2×."}
+                          </li>
+                          <li>
+                            <span className="font-medium">Steps</span>
+                            {ko
+                              ? " — 2차 패스 샘플링 스텝. 보통 base의 절반(10~15)."
+                              : " — sampling steps for the second pass. Usually half of base (10–15)."}
+                          </li>
+                          <li>
+                            <span className="font-medium">Denoise</span>
+                            {ko
+                              ? " — 2차 패스에서 원본을 얼마나 다시 그릴지. 낮으면(0.3~0.4) 원본 유지, 높으면(0.5+) 디테일은 늘지만 형태가 바뀝니다."
+                              : " — how much the second pass repaints. Low (0.3–0.4) keeps the original; high (0.5+) adds detail but drifts."}
+                          </li>
+                        </ul>
+                        <p className="opacity-90">
+                          {ko
+                            ? "적정 denoise는 업스케일러 종류와 모델 계열에 따라 다릅니다. 체크포인트를 바꾸면 계열별 추천값이 자동 적용됩니다."
+                            : "The ideal denoise depends on the upscaler type and model family. Switching checkpoints auto-applies the family preset."}
+                        </p>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>
+                  {hiresEnabled ? `${params.hires_upscale}× ON` : "OFF"}
+                </span>
+                <input
+                  type="checkbox"
+                  checked={hiresEnabled}
+                  onChange={(e) =>
+                    setParams({
+                      hires_upscale: e.target.checked
+                        ? params.hires_upscale > 1
+                          ? params.hires_upscale
+                          : 2
+                        : 1,
+                    })
+                  }
+                  className="h-4 w-4 accent-primary"
+                />
+              </label>
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {ko
+                ? "모델 업스케일 후 저 denoise로 디테일을 보강하는 2단계 refine입니다."
+                : "A two-pass refine: model upscale, then low-denoise detail enhancement."}
+            </p>
+
+            <div className="mt-3 space-y-3">
+              <div>
+                <Label className="text-xs text-muted-foreground mb-2 block">
+                  Upscaler
+                </Label>
+                {isWebUi ? (
+                  webuiOptions.upscalers.length > 0 ? (
+                    <select
+                      value={params.upscale_model_name}
+                      onChange={(e) =>
+                        setParams({ upscale_model_name: e.target.value })
+                      }
+                      className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                    >
+                      <option value="">Off</option>
+                      {webuiOptions.upscalers.map((model) => (
+                        <option key={model} value={model}>
+                          {model}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <Input
+                      placeholder="e.g. 4x-UltraSharp (start the WebUI to list)"
+                      value={params.upscale_model_name}
+                      onChange={(e) =>
+                        setParams({ upscale_model_name: e.target.value })
+                      }
+                      className="h-8 text-xs"
+                    />
+                  )
+                ) : isLocal && localModels.upscaleModels.length > 0 ? (
                   <select
                     value={params.upscale_model_name}
                     onChange={(e) =>
@@ -474,7 +621,7 @@ export function GenerationParams() {
                     className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                   >
                     <option value="">Off</option>
-                    {webuiOptions.upscalers.map((model) => (
+                    {localModels.upscaleModels.map((model) => (
                       <option key={model} value={model}>
                         {model}
                       </option>
@@ -482,74 +629,109 @@ export function GenerationParams() {
                   </select>
                 ) : (
                   <Input
-                    placeholder="e.g. 4x-UltraSharp (start the WebUI to list)"
+                    placeholder={
+                      isLocal ? "upscale model file" : "Local ComfyUI only"
+                    }
                     value={params.upscale_model_name}
                     onChange={(e) =>
                       setParams({ upscale_model_name: e.target.value })
                     }
                     className="h-8 text-xs"
+                    disabled={!isLocal}
                   />
-                )
-              ) : isLocal && localModels.upscaleModels.length > 0 ? (
-                <select
-                  value={params.upscale_model_name}
-                  onChange={(e) =>
-                    setParams({ upscale_model_name: e.target.value })
-                  }
-                  className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                >
-                  <option value="">Off</option>
-                  {localModels.upscaleModels.map((model) => (
-                    <option key={model} value={model}>
-                      {model}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <Input
-                  placeholder={
-                    isLocal ? "upscale model file" : "Local ComfyUI only"
-                  }
-                  value={params.upscale_model_name}
-                  onChange={(e) =>
-                    setParams({ upscale_model_name: e.target.value })
-                  }
-                  className="h-8 text-xs"
-                  disabled={!isLocal}
-                />
+                )}
+              </div>
+
+              {hiresEnabled && (
+                <>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div>
+                      <Label className="text-xs text-muted-foreground mb-2 block">
+                        Scale
+                      </Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={4}
+                        step={0.05}
+                        value={params.hires_upscale}
+                        onChange={(e) =>
+                          setParams({
+                            hires_upscale: Math.max(1, Number(e.target.value) || 1),
+                          })
+                        }
+                        className="h-8 text-xs"
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-xs text-muted-foreground mb-2 block">
+                        Steps
+                      </Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={1}
+                        value={params.hires_steps}
+                        onChange={(e) =>
+                          setParams({
+                            hires_steps: Math.max(
+                              0,
+                              Math.round(Number(e.target.value) || 0)
+                            ),
+                          })
+                        }
+                        className="h-8 text-xs"
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-xs text-muted-foreground mb-2 block">
+                        Denoise
+                      </Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        value={params.hires_denoise}
+                        onChange={(e) =>
+                          setParams({
+                            hires_denoise: clampNumber(
+                              Number(e.target.value) || 0,
+                              0,
+                              1
+                            ),
+                          })
+                        }
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 rounded-md bg-muted/50 px-2 py-1.5">
+                    <span className="text-[11px] text-muted-foreground">
+                      {ko
+                        ? `추천 (${hiresPreset.familyLabel}) · steps ${hiresPreset.steps} · denoise ${hiresPreset.denoise}`
+                        : `Recommended (${hiresPreset.familyLabel}) · steps ${hiresPreset.steps} · denoise ${hiresPreset.denoise}`}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="xs"
+                      onClick={() =>
+                        setParams({
+                          hires_steps: hiresPreset.steps,
+                          hires_denoise: hiresPreset.denoise,
+                        })
+                      }
+                    >
+                      {ko ? "적용" : "Apply"}
+                    </Button>
+                  </div>
+                </>
               )}
-            </div>
-
-            <div>
-              <Label className="text-xs text-muted-foreground mb-2 block">Hires upscale</Label>
-              <Input
-                type="number"
-                min={1}
-                max={4}
-                step={0.05}
-                value={params.hires_upscale}
-                onChange={(e) =>
-                  setParams({ hires_upscale: Math.max(1, Number(e.target.value) || 1) })
-                }
-                className="h-8 text-xs"
-              />
-            </div>
-
-            <div>
-              <Label className="text-xs text-muted-foreground mb-2 block">
-                Hires steps (0 = same)
-              </Label>
-              <Input
-                type="number"
-                min={0}
-                max={100}
-                step={1}
-                value={params.hires_steps}
-                onChange={(e) =>
-                  setParams({ hires_steps: Math.max(0, Math.round(Number(e.target.value) || 0)) })
-                }
-                className="h-8 text-xs"
-              />
             </div>
           </div>
 

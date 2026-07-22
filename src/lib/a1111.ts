@@ -561,7 +561,7 @@ export async function generateWithA1111(
         width,
         height,
         enable_hr: enableHr,
-        denoising_strength: params.denoise_strength,
+        denoising_strength: enableHr ? params.hires_denoise : params.denoise_strength,
         hr_scale: enableHr ? hiresScale : 1,
         hr_upscaler: hrUpscaler,
         hr_second_pass_steps: enableHr ? params.hires_steps : 0,

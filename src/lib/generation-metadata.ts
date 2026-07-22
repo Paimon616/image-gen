@@ -321,6 +321,9 @@ function normalizeParams(rawParams: Record<string, unknown>) {
     hires_steps:
       numberValue(rawParams.hires_steps ?? rawParams.hiresSteps ?? rawParams["Hires steps"]) ??
       DEFAULT_PARAMS.hires_steps,
+    hires_denoise:
+      numberValue(rawParams.hires_denoise ?? rawParams.hiresDenoise ?? rawParams["Hires denoise"]) ??
+      DEFAULT_PARAMS.hires_denoise,
     img2img_resize:
       numberValue(rawParams.img2img_resize) ?? DEFAULT_PARAMS.img2img_resize,
     adetailer_enabled:
