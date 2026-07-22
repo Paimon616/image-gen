@@ -66,16 +66,21 @@ function webUiBaseUrl(backend: GenerationParams["backend"]) {
 const webUiLaunching = new Set<string>();
 
 async function isWebUiUp(baseUrl: string) {
-  for (const path of ["/internal/ping", "/sdapi/v1/options"]) {
-    try {
-      const response = await fetch(baseUrl + path, {
-        signal: AbortSignal.timeout(2_000),
-        cache: "no-store",
-      });
-      if (response.ok) return true;
-    } catch {
-      // Endpoint unreachable; try the next probe.
+  // Require the scripts registry to be populated, not just the HTTP server to
+  // answer. Forge/A1111 respond to /internal/ping before alwayson scripts (e.g.
+  // ADetailer) finish registering, so a plain ping race-conditions the first
+  // generation into "Script 'ADetailer' not found".
+  try {
+    const response = await fetch(baseUrl + "/sdapi/v1/scripts", {
+      signal: AbortSignal.timeout(3_000),
+      cache: "no-store",
+    });
+    if (response.ok) {
+      const data = (await response.json()) as { txt2img?: unknown[] };
+      if (Array.isArray(data.txt2img) && data.txt2img.length > 0) return true;
     }
+  } catch {
+    // Not reachable / not fully initialized yet.
   }
   return false;
 }
