@@ -6,6 +6,13 @@ WEBUI_DIR="${A1111_DIR:-$ROOT_DIR/stable-diffusion-webui}"
 HOST="${A1111_HOST:-127.0.0.1}"
 PORT="${A1111_PORT:-7860}"
 MODEL_ROOT="${COMFYUI_MODELS_DIR:-$ROOT_DIR/ComfyUI/models}"
+# COMFYUI_MODELS_DIR may be relative (e.g. from .env.local). The WebUI cd's into
+# its own directory before launch, so relative paths would resolve there and hide
+# the models. Anchor a relative value to the project root.
+case "$MODEL_ROOT" in
+  /*) : ;;
+  *) MODEL_ROOT="$ROOT_DIR/$MODEL_ROOT" ;;
+esac
 
 if [ ! -f "$WEBUI_DIR/launch.py" ]; then
   echo "A1111 is not installed at $WEBUI_DIR. Run: npm run setup:a1111" >&2
