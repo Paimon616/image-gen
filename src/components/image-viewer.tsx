@@ -271,6 +271,7 @@ export function ImageViewer() {
   }>({ checkpointAssets: [], loraAssets: [], embeddingAssets: [], upscalerAssets: [] });
   const [appliedKey, setAppliedKey] = useState<string | null>(null);
   const appliedTimer = useRef<number | null>(null);
+  const activeThumbRef = useRef<HTMLButtonElement>(null);
   const [scrappingImageId, setScrappingImageId] = useState<string | null>(null);
   const [scrappedImageId, setScrappedImageId] = useState<string | null>(null);
   const [imageSizeMode, setImageSizeMode] = useState<{
@@ -299,6 +300,47 @@ export function ImageViewer() {
   useEffect(() => () => {
     if (appliedTimer.current) window.clearTimeout(appliedTimer.current);
   }, []);
+
+  useEffect(() => {
+    if (!selectedImage) return;
+
+    const handler = (event: KeyboardEvent) => {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      const nav = images.filter((image) => image.url);
+      if (nav.length < 2) return;
+
+      const index = nav.findIndex((image) => image.id === selectedImage.id);
+      if (index === -1) return;
+
+      event.preventDefault();
+      if (event.key === "ArrowLeft") {
+        setSelectedImage(nav[index > 0 ? index - 1 : nav.length - 1]);
+      } else {
+        setSelectedImage(nav[index < nav.length - 1 ? index + 1 : 0]);
+      }
+    };
+
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [selectedImage, images, setSelectedImage]);
+
+  useEffect(() => {
+    activeThumbRef.current?.scrollIntoView({
+      inline: "center",
+      block: "nearest",
+    });
+  }, [selectedImage?.id]);
 
   const applyPartial = (key: string, update: Partial<GenerationParams>) => {
     setParams(update);
@@ -526,14 +568,19 @@ export function ImageViewer() {
   const isScrapped = scrappedImageId === selectedImage.id;
   const isOriginalSize =
     imageSizeMode.imageId === selectedImage.id && imageSizeMode.original;
-  const selectedIndex = images.findIndex((image) => image.id === selectedImage.id);
+  const navigableImages = images.filter((image) => image.url);
+  const selectedIndex = navigableImages.findIndex(
+    (image) => image.id === selectedImage.id
+  );
   const previousImage =
-    selectedIndex > 0 ? images[selectedIndex - 1] : images.at(-1) ?? null;
+    selectedIndex > 0
+      ? navigableImages[selectedIndex - 1]
+      : navigableImages.at(-1) ?? null;
   const nextImage =
-    selectedIndex >= 0 && selectedIndex < images.length - 1
-      ? images[selectedIndex + 1]
-      : images[0] ?? null;
-  const hasNavigation = images.length > 1;
+    selectedIndex >= 0 && selectedIndex < navigableImages.length - 1
+      ? navigableImages[selectedIndex + 1]
+      : navigableImages[0] ?? null;
+  const hasNavigation = navigableImages.length > 1;
 
   const showPreviousImage = () => {
     if (previousImage) setSelectedImage(previousImage);
@@ -549,7 +596,8 @@ export function ImageViewer() {
       <DialogContent className="!block h-[94vh] max-h-[94vh] w-[96vw] max-w-[96vw] overflow-hidden border border-border bg-card p-0 shadow-xl sm:max-w-[96vw]">
         <DialogTitle className="sr-only">Image Details</DialogTitle>
 
-        <div className="grid h-full w-full grid-cols-[minmax(0,1fr)_minmax(22rem,34rem)] bg-background">
+        <div className="flex h-full w-full flex-col bg-background">
+          <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(22rem,34rem)]">
           <div className="relative min-w-0 overflow-auto border-r border-border bg-[radial-gradient(circle_at_1px_1px,color-mix(in_oklch,var(--border)_55%,transparent)_1px,transparent_0)] [background-size:24px_24px]">
             <Button
               type="button"
@@ -612,7 +660,7 @@ export function ImageViewer() {
                   className={
                     isOriginalSize
                       ? "block h-auto max-h-none w-auto max-w-none rounded-md"
-                      : "block h-auto max-h-[calc(94vh-4rem)] max-w-full rounded-md object-contain"
+                      : "block h-auto max-h-[calc(94vh-9rem)] max-w-full rounded-md object-contain"
                   }
                 />
               </button>
@@ -1192,6 +1240,42 @@ export function ImageViewer() {
               </div>
             )}
           </aside>
+          </div>
+          {hasNavigation && (
+            <div className="flex shrink-0 items-center gap-2 overflow-x-auto border-t border-border bg-secondary/40 px-4 py-2">
+              {navigableImages.map((image) => {
+                const isActive = image.id === selectedImage.id;
+                const thumb =
+                  image.thumbnailUrl ||
+                  (image.filename
+                    ? `/api/images/thumb/${image.filename}`
+                    : image.url);
+                return (
+                  <button
+                    key={image.id}
+                    ref={isActive ? activeThumbRef : undefined}
+                    type="button"
+                    onClick={() => setSelectedImage(image)}
+                    aria-current={isActive}
+                    aria-label={ko ? "이 이미지 보기" : "View this image"}
+                    className={`relative h-14 w-14 shrink-0 overflow-hidden rounded-md border-2 transition-all ${
+                      isActive
+                        ? "border-primary ring-2 ring-primary/40"
+                        : "border-transparent opacity-60 hover:opacity-100"
+                    }`}
+                  >
+                    <img
+                      src={thumb}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
