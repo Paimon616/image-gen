@@ -7417,5 +7417,54 @@
       "allowDifferentLicense": true,
       "allowCommercialUse": []
     }
+  },
+  "checkpoints/oneObsession_v23.safetensors": {
+    "name": "One obsession",
+    "version": "v23",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/f06ec748-fdfa-4f4d-ba83-0515284acbae/original=true/136374252.jpeg",
+    "civitai_url": "https://civitai.red/models/1318945/one-obsession?modelVersionId=3118448",
+    "source_url": "https://civitai.red/models/1318945/one-obsession?modelVersionId=3118448",
+    "tags": [
+      "base model",
+      "anime",
+      "one",
+      "noob",
+      "one obsession",
+      "sdxl",
+      "obsession",
+      "my style"
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Image"
+      ]
+    }
+  },
+  "loras/Eye_DetailerXL.safetensors": {
+    "name": "Eye Detailer_XL",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/d087da5c-1931-49ad-bdc6-9377b8a983f3/original=true/98694427.jpeg",
+    "civitai_url": "https://civitai.red/models/1933152/eye-detailer-xl?modelVersionId=2188014",
+    "source_url": "https://civitai.red/models/1933152/eye-detailer-xl?modelVersionId=2188014",
+    "tags": [
+      "style"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
   }
 }

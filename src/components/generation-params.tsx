@@ -83,12 +83,21 @@ export function GenerationParams({ section = "output" }: {
   const [draftSize, setDraftSize] = useState<
     Partial<Record<"width" | "height", string>>
   >({});
-  const [aspectMode, setAspectMode] = useState<(typeof ASPECT_PRESETS)[number]["id"]>(
+  const [aspectMode, setAspectMode] = useState<
+    (typeof ASPECT_PRESETS)[number]["id"] | "custom"
+  >(() => {
+    if (params.width === params.height) return "square";
+    if (params.width * 2 === params.height * 3) return "3:2";
+    if (params.width * 3 === params.height * 2) return "2:3";
+    return "free";
+  });
+  const [customRatio, setCustomRatio] = useState<{ w: string; h: string }>(
     () => {
-      if (params.width === params.height) return "square";
-      if (params.width * 2 === params.height * 3) return "3:2";
-      if (params.width * 3 === params.height * 2) return "2:3";
-      return "free";
+      const divisor = greatestCommonDivisor(params.width, params.height) || 1;
+      return {
+        w: String(params.width / divisor),
+        h: String(params.height / divisor),
+      };
     }
   );
   const [draftHiresScale, setDraftHiresScale] = useState<string | null>(null);
@@ -167,7 +176,7 @@ export function GenerationParams({ section = "output" }: {
   const hiresEnabled = params.hires_upscale > 1;
   const hiresPreset = getHiresPreset(params.model_name);
   const selectedSamplerValue = `${params.sampler_name}:${params.scheduler}`;
-  const selectedPreset = ASPECT_PRESETS.find((size) => size.id === aspectMode)!;
+  const selectedPreset = ASPECT_PRESETS.find((size) => size.id === aspectMode);
   const adetailerModels = isWebUi
     ? webuiOptions.adetailerModels
     : ["bbox/face_yolov8n_v2.pt", "bbox/face_yolov8m.pt"];
@@ -180,16 +189,30 @@ export function GenerationParams({ section = "output" }: {
     height: draftSize.height ?? String(params.height),
   };
 
-  const getAspectSize = (dimension: "width" | "height", value: number) => {
-    const ratio =
-      aspectMode === "square"
-        ? ([1, 1] as const)
-        : aspectMode === "3:2"
-          ? ([3, 2] as const)
-          : aspectMode === "2:3"
-            ? ([2, 3] as const)
+  const parsedCustomRatio = ((): readonly [number, number] | null => {
+    const w = Number(customRatio.w);
+    const h = Number(customRatio.h);
+    if (Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0)
+      return [w, h];
+    return null;
+  })();
+
+  const activeRatio: readonly [number, number] | null =
+    aspectMode === "square"
+      ? [1, 1]
+      : aspectMode === "3:2"
+        ? [3, 2]
+        : aspectMode === "2:3"
+          ? [2, 3]
+          : aspectMode === "custom"
+            ? parsedCustomRatio
             : null;
 
+  const getAspectSize = (
+    dimension: "width" | "height",
+    value: number,
+    ratio: readonly [number, number] | null = activeRatio
+  ) => {
     if (!ratio) return { [dimension]: normalizeImageDimension(value) };
 
     const [widthRatio, heightRatio] = ratio;
@@ -240,6 +263,28 @@ export function GenerationParams({ section = "output" }: {
     const numericValue = typeof value === "number" ? value : value[0];
     setDraftSize({});
     setParams(getAspectSize(dimension, numericValue));
+  };
+
+  // Fill the ratio inputs from the current width:height and switch to custom mode.
+  const applyCurrentRatio = () => {
+    const divisor = greatestCommonDivisor(params.width, params.height) || 1;
+    setCustomRatio({
+      w: String(params.width / divisor),
+      h: String(params.height / divisor),
+    });
+    setAspectMode("custom");
+  };
+
+  const updateCustomRatio = (dimension: "w" | "h", value: string) => {
+    const next = { ...customRatio, [dimension]: value };
+    setCustomRatio(next);
+
+    const w = Number(next.w);
+    const h = Number(next.h);
+    if (!(w > 0 && h > 0)) return;
+
+    setAspectMode("custom");
+    setParams(getAspectSize("width", params.width, [w, h]));
   };
 
   const commitHiresScale = () => {
@@ -312,7 +357,11 @@ export function GenerationParams({ section = "output" }: {
           <div className="mb-2 flex items-center justify-between gap-2">
             <FieldHelp label={ko ? "최종 크기" : "Final size"} help={ko ? "결과 이미지의 가로·세로 크기와 화면 비율을 설정합니다." : "Set the final width, height, and aspect ratio."} />
             <span className="text-xs font-mono text-muted-foreground">
-              {selectedPreset ? (ko ? selectedPreset.labelKo : selectedPreset.label) : (ko ? "자유" : "Free")} · {aspectRatioLabel}
+              {aspectMode === "custom"
+                ? (ko ? "임의" : "Custom")
+                : selectedPreset
+                  ? (ko ? selectedPreset.labelKo : selectedPreset.label)
+                  : (ko ? "자유" : "Free")} · {aspectRatioLabel}
             </span>
           </div>
           <div className="grid grid-cols-4 gap-1.5">
@@ -334,6 +383,41 @@ export function GenerationParams({ section = "output" }: {
                 {ko ? size.labelKo : size.label}
               </button>
             ))}
+          </div>
+          <div className="mt-1.5 flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={applyCurrentRatio}
+              className={`whitespace-nowrap rounded-md border px-2 py-1.5 text-xs transition-colors ${
+                aspectMode === "custom"
+                  ? "border-primary bg-primary/10 text-primary shadow-sm"
+                  : "border-border bg-card/70 text-foreground hover:border-primary/40 hover:bg-secondary/70"
+              }`}
+              title={ko ? "현재 가로세로비를 비율로 설정" : "Set ratio from current size"}
+            >
+              {ko ? "임의 비율" : "Custom"}
+            </button>
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              aria-label={ko ? "가로 비율" : "Width ratio"}
+              value={customRatio.w}
+              onChange={(e) => updateCustomRatio("w", e.target.value)}
+              placeholder="16"
+              className="h-8 w-full text-center text-sm"
+            />
+            <span className="text-xs text-muted-foreground">:</span>
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              aria-label={ko ? "세로 비율" : "Height ratio"}
+              value={customRatio.h}
+              onChange={(e) => updateCustomRatio("h", e.target.value)}
+              placeholder="9"
+              className="h-8 w-full text-center text-sm"
+            />
           </div>
           <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-2">
             <div>
