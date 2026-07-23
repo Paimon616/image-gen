@@ -202,17 +202,11 @@ const GalleryCard = memo(function GalleryCard({
               )}
               {statusLabel || "Pending"}
             </Badge>
-            <div className="flex items-center gap-1.5">
+            {isPending && (
               <span className={`text-xs font-medium tabular-nums ${displayState === "generating" ? "text-cyan-100" : "opacity-70"}`}>
                 {Math.round(progress)}%
               </span>
-              {isPending && onCancelGeneration && (
-                <Button type="button" size="xs" variant="outline" className={`h-7 px-2 text-[10px] shadow-sm ${displayState === "generating" ? "border-red-300/50 bg-red-500/20 text-red-100 hover:bg-red-500/35 hover:text-white" : "border-red-300 bg-red-100 text-red-700 hover:bg-red-200 hover:text-red-800"}`} onClick={() => onCancelGeneration(img)}>
-                  <XCircle className="h-3.5 w-3.5" />
-                  {language === "ko" ? "생성 취소" : "Cancel"}
-                </Button>
-              )}
-            </div>
+            )}
           </div>
 
           <div className="relative z-10 flex flex-1 items-center justify-center py-3">
@@ -229,32 +223,29 @@ const GalleryCard = memo(function GalleryCard({
                 <p className="text-sm font-semibold">{language === "ko" ? "생성에 실패했습니다" : "Generation failed"}</p>
               </div>
             ) : (
-              <span className={`flex h-14 w-14 items-center justify-center rounded-full ${displayState === "waiting" ? "bg-amber-100 text-amber-600" : "bg-sky-100 text-sky-600"}`}>
+              <span className={`flex h-14 w-14 items-center justify-center rounded-full ${displayState === "waiting" ? "bg-amber-100 text-amber-600" : displayState === "canceled" ? "bg-slate-200 text-slate-500" : "bg-sky-100 text-sky-600"}`}>
                 {StatusIcon && <StatusIcon className="h-7 w-7" />}
               </span>
             )}
           </div>
           <div className="relative z-10 space-y-2">
-            {isPending && generation?.message && (
-              <p className={`line-clamp-2 text-[11px] font-medium ${displayState === "generating" ? "text-cyan-100/80" : displayState === "waiting" ? "text-amber-800/80" : "text-sky-800/80"}`}>
+            {generation?.message && (
+              <p className={`line-clamp-2 text-[11px] font-medium ${displayState === "generating" ? "text-cyan-100/80" : displayState === "waiting" ? "text-amber-800/80" : displayState === "error" ? "text-red-700" : displayState === "canceled" ? "text-slate-500" : "text-sky-800/80"}`}>
                 {generation.message}
               </p>
             )}
-            <div className={`h-1.5 overflow-hidden rounded-full ${displayState === "generating" ? "bg-white/15" : "bg-black/10"}`}>
-              <div
-                className={`h-full rounded-full transition-[width] duration-500 ${displayState === "error" ? "bg-red-500" : displayState === "waiting" ? "bg-amber-500" : "bg-gradient-to-r from-sky-500 via-cyan-400 to-violet-500"}`}
-                style={{ width: `${progress}%` }}
-              />
-            </div>
+            {isPending && (
+              <div className={`h-1.5 overflow-hidden rounded-full ${displayState === "generating" ? "bg-white/15" : "bg-black/10"}`}>
+                <div
+                  className={`h-full rounded-full transition-[width] duration-500 ${displayState === "waiting" ? "bg-amber-500" : "bg-gradient-to-r from-sky-500 via-cyan-400 to-violet-500"}`}
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            )}
             <p className={`line-clamp-3 text-xs leading-5 ${displayState === "generating" ? "text-white/90" : ""}`}>
               {img.params?.prompt || "No prompt"}
             </p>
-            {displayState === "error" && generation?.message && (
-              <p className="line-clamp-2 text-[11px] text-red-700">
-                {generation.message}
-              </p>
-            )}
-            {displayState === "error" && (
+            {displayState === "error" ? (
               <div className="grid grid-cols-3 gap-1.5 pt-1">
                 <Button
                   type="button"
@@ -290,6 +281,33 @@ const GalleryCard = memo(function GalleryCard({
                   <Trash2 className="h-3.5 w-3.5" />
                   {language === "ko" ? "제거" : "Remove"}
                 </Button>
+              </div>
+            ) : (
+              <div className={`grid gap-1.5 pt-1 ${isPending && onCancelGeneration ? "grid-cols-2" : "grid-cols-1"}`}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className={`h-8 min-w-0 px-1 text-[11px] ${displayState === "generating" ? "border-white/25 bg-white/10 text-white hover:bg-white/20 hover:text-white" : ""}`}
+                  onClick={() => onReuse(img)}
+                  disabled={!img.params}
+                  title={language === "ko" ? "이 생성의 설정을 편집 영역에 불러옵니다" : "Load this generation's settings into the editor"}
+                >
+                  <CopyPlus className="h-3.5 w-3.5" />
+                  {language === "ko" ? "설정 재사용" : "Reuse"}
+                </Button>
+                {isPending && onCancelGeneration && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="destructive"
+                    className="h-8 min-w-0 px-1 text-[11px]"
+                    onClick={() => onCancelGeneration(img)}
+                  >
+                    <XCircle className="h-3.5 w-3.5" />
+                    {language === "ko" ? "생성 취소" : "Cancel"}
+                  </Button>
+                )}
               </div>
             )}
           </div>
