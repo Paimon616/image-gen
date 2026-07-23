@@ -7305,5 +7305,117 @@
         "Image"
       ]
     }
+  },
+  "loras/BWSTits_PONY.safetensors": {
+    "name": "Big Wide-Set Saggy Tits | Z-image Turbo + Flux + Pony + ILL",
+    "version": "Pony v1.0",
+    "base_model": "Pony",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/32727b87-a5f6-49ed-87f3-6b470c00964b/original=true/65629563.jpeg",
+    "civitai_url": "https://civitai.red/models/1357639/big-wide-set-saggy-tits-z-image-turbo-flux-pony-ill?modelVersionId=1576409",
+    "source_url": "https://civitai.red/models/1357639/big-wide-set-saggy-tits-z-image-turbo-flux-pony-ill?modelVersionId=1576409",
+    "tags": [
+      "BWSTits",
+      "big tits",
+      "saggy tits",
+      "concept",
+      "natural tits"
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
+    }
+  },
+  "checkpoints/prefectPonyXL_v50.safetensors": {
+    "name": "Prefect Pony XL",
+    "version": "v5.0",
+    "base_model": "Pony",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/dc720ef4-dca7-4530-92ae-0b99939dc3ed/original=true/48693303.jpeg",
+    "civitai_url": "https://civitai.red/models/439889/prefect-pony-xl?modelVersionId=1199750",
+    "source_url": "https://civitai.red/models/439889/prefect-pony-xl?modelVersionId=1199750",
+    "tags": [
+      "animagine",
+      "base model",
+      "pony xl",
+      "woman",
+      "anime",
+      "girls"
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
+    }
+  },
+  "loras/add_detail.safetensors": {
+    "name": "Detail Tweaker LoRA (细节调整LoRA)",
+    "version": "v1.0",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/8db45d23-7bcf-4979-8b35-0e7779c5a8f8/original=true/692411.jpeg",
+    "civitai_url": "https://civitai.red/models/58390/detail-tweaker-lora-lora?modelVersionId=62833",
+    "source_url": "https://civitai.red/models/58390/detail-tweaker-lora-lora?modelVersionId=62833",
+    "tags": [
+      "lora",
+      "concept",
+      "anime",
+      "photorealistic",
+      "detailed",
+      "undetailed"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": []
+    }
+  },
+  "loras/detailed_notrigger.safetensors": {
+    "name": "extremely detailed (no trigger) - sliders.ntcai.xyz",
+    "version": "v2.0",
+    "base_model": "SDXL 1.0",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/3f5be346-5692-47d5-a9b3-a5d34e4e1a80/original=true/7702551.jpeg",
+    "civitai_url": "https://civitai.red/models/229213/extremely-detailed-no-trigger-sliders-ntcai-xyz?modelVersionId=383563",
+    "source_url": "https://civitai.red/models/229213/extremely-detailed-no-trigger-sliders-ntcai-xyz?modelVersionId=383563",
+    "tags": [
+      "concept",
+      "enhancer",
+      "sliders",
+      "detailed",
+      "extremely detailed"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
+  },
+  "loras/NiaoDAN_ILL_V1.safetensors": {
+    "name": "Artist Style: NiaoDan",
+    "version": "NiaoDan_ILL_V1",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/178d241d-68cd-4c31-8a6d-3efda69dc7c3/original=true/50672984.jpeg",
+    "civitai_url": "https://civitai.red/models/1124271/artist-style-niaodan?modelVersionId=1263639",
+    "source_url": "https://civitai.red/models/1124271/artist-style-niaodan?modelVersionId=1263639",
+    "tags": [
+      "style"
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": []
+    }
   }
 }

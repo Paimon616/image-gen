@@ -24,12 +24,14 @@ export const COMFYUI_BASE_URL =
   process.env.COMFYUI_BASE_URL?.replace(/\/$/, "") ?? DEFAULT_COMFYUI_URL;
 const COMFYUI_TIMEOUT_MS = Number(process.env.COMFYUI_TIMEOUT_MS ?? 300_000);
 // FaceDetailer samples the whole face crop (crop = bbox * this factor) at full
-// resolution when force_inpaint is on. On hires images the bbox is already ~1000px,
-// so the stock factor of 3 produces a ~3000px crop whose attention buffer OOMs (~45GiB)
-// on Apple Silicon / MPS. 1.0 keeps the crop at bbox size (proven to fit ~25GB unified
-// memory). Bump this on CUDA/RunPod hosts where more context improves blending.
+// resolution when force_inpaint is on. A larger factor includes more surrounding
+// context so the detailed face blends in — too tight (≈1) leaves a visible seam.
+// The stock Impact Pack default of 3 is safe now that output is no longer silently
+// upscaled (a normal 832x1216 render has a ~260px face → ~800px crop that fits MPS).
+// Memory scales ~O(crop_px²), so on Apple Silicon lower this toward 1 only when
+// running ADetailer on very large (multi-MP hires) images to avoid an MPS OOM.
 const COMFYUI_ADETAILER_CROP_FACTOR = Number(
-  process.env.COMFYUI_ADETAILER_CROP_FACTOR ?? 1
+  process.env.COMFYUI_ADETAILER_CROP_FACTOR ?? 3
 );
 const A1111_BASE_URL =
   process.env.A1111_BASE_URL?.replace(/\/$/, "") ?? "http://127.0.0.1:7860";

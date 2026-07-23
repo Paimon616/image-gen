@@ -237,17 +237,21 @@ nodes appear in `/object_info`.
 `FaceDetailer` runs with `force_inpaint` on, so it re-samples the whole face crop
 at full resolution rather than skipping already-large faces (skipping is why a
 detail pass can leave the face **unchanged**). The crop size is
-`detected bbox × crop factor`, and on a hires image the bbox is already ~1000px,
-so the stock crop factor of 3 produces a ~3000px crop whose attention buffer OOMs
-(~45 GiB) on ~25 GB unified memory.
+`detected bbox × crop factor`; the crop is sampled and composited back through a
+feathered mask, so **too small a crop leaves a visible seam** (the detailed face
+has little surrounding context to blend into).
 
-- **`COMFYUI_ADETAILER_CROP_FACTOR`** controls that multiplier. Default is **1**
-  (crop ≈ bbox), the safe value when faces are large. Now that output is no longer
-  silently 4x-upscaled (see above), normal-size renders have small faces, so **2–3
-  is usually fine on MPS too** and gives better blending; raise it if faces look
-  poorly merged. Measured on an M-series Mac with a 3328×4864 image (large face):
-  crop factor 1.0 ≈ 108 s (works), 1.5 thrashes/never finishes, 3.0 OOMs — so keep
-  it near 1 when you intentionally run ADetailer on big Hires output.
+- **`COMFYUI_ADETAILER_CROP_FACTOR`** controls that multiplier. Default is **3**
+  (Impact Pack's standard) for clean blending. Now that output is no longer
+  silently 4x-upscaled (see above), a normal 832×1216 render has a ~260px face →
+  ~800px crop that samples in ~1 min and fits MPS memory. Attention memory scales
+  ~O(crop_px²), so **lower it toward 1 only when detailing very large (multi-MP
+  hires) images** — measured on an M-series Mac with a 3328×4864 image (large face),
+  crop factor 3.0 OOMs (~45 GiB), 1.5 thrashes, and 1.0 ≈ 108 s.
+- If a seam is still visible, it is usually a **style mismatch from a different
+  ADetailer checkpoint** (e.g. a realistic face model over an anime base) or too
+  small a **mask blur / denoise**. Match the detail checkpoint to the base style,
+  raise mask blur, or lower ADetailer denoise.
 - Expect roughly **~100 s per detected face** on MPS for large hires images; this
   is inherent to unified-memory attention, not a hang.
 - Impact Pack does not downscale-and-inpaint, so the crop factor is the only knob
