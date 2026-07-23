@@ -246,7 +246,11 @@ function addFaceDetailerWorkflowNode(
       denoise: clampDenoiseStrength(params.adetailer_denoise),
       feather: params.adetailer_mask_blur,
       noise_mask: params.adetailer_inpaint_only_masked,
-      force_inpaint: true,
+      // MPS deadlocks when FaceDetailer samples a full-resolution crop. force_inpaint
+      // makes Impact Pack skip its guide_size/max_size downscale for large faces, so on
+      // hires images the crop hits ~9MP and the attention bmm hangs. Leaving it off keeps
+      // sampling within the same pixel bounds the base generation enforces.
+      force_inpaint: false,
       bbox_threshold: params.adetailer_confidence,
       bbox_dilation: 10,
       bbox_crop_factor: 3,
