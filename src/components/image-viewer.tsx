@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   BookmarkPlus,
   Check,
@@ -301,8 +301,43 @@ export function ImageViewer() {
     if (appliedTimer.current) window.clearTimeout(appliedTimer.current);
   }, []);
 
+  const navigate = useCallback(
+    async (direction: "prev" | "next") => {
+      const state = useStore.getState();
+      const current = state.selectedImage;
+      if (!current) return;
+
+      const nav = state.images.filter((image) => image.url);
+      const index = nav.findIndex((image) => image.id === current.id);
+      if (index === -1) return;
+
+      if (direction === "prev") {
+        setSelectedImage(index > 0 ? nav[index - 1] : nav[nav.length - 1]);
+        return;
+      }
+
+      if (index < nav.length - 1) {
+        setSelectedImage(nav[index + 1]);
+        return;
+      }
+
+      if (state.imagesNextCursor !== null) {
+        await state.fetchImagePage(state.imagesNextCursor);
+        const updated = useStore.getState().images.filter((image) => image.url);
+        const newIndex = updated.findIndex((image) => image.id === current.id);
+        if (newIndex >= 0 && newIndex < updated.length - 1) {
+          setSelectedImage(updated[newIndex + 1]);
+        }
+        return;
+      }
+
+      setSelectedImage(nav[0]);
+    },
+    [setSelectedImage]
+  );
+
   useEffect(() => {
-    if (!selectedImage) return;
+    if (!selectedImage || modelInfo || downloadPrompt || originModalOpen) return;
 
     const handler = (event: KeyboardEvent) => {
       if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
@@ -317,23 +352,13 @@ export function ImageViewer() {
         return;
       }
 
-      const nav = images.filter((image) => image.url);
-      if (nav.length < 2) return;
-
-      const index = nav.findIndex((image) => image.id === selectedImage.id);
-      if (index === -1) return;
-
       event.preventDefault();
-      if (event.key === "ArrowLeft") {
-        setSelectedImage(nav[index > 0 ? index - 1 : nav.length - 1]);
-      } else {
-        setSelectedImage(nav[index < nav.length - 1 ? index + 1 : 0]);
-      }
+      void navigate(event.key === "ArrowLeft" ? "prev" : "next");
     };
 
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [selectedImage, images, setSelectedImage]);
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
+  }, [selectedImage, modelInfo, downloadPrompt, originModalOpen, navigate]);
 
   useEffect(() => {
     activeThumbRef.current?.scrollIntoView({
@@ -569,26 +594,10 @@ export function ImageViewer() {
   const isOriginalSize =
     imageSizeMode.imageId === selectedImage.id && imageSizeMode.original;
   const navigableImages = images.filter((image) => image.url);
-  const selectedIndex = navigableImages.findIndex(
-    (image) => image.id === selectedImage.id
-  );
-  const previousImage =
-    selectedIndex > 0
-      ? navigableImages[selectedIndex - 1]
-      : navigableImages.at(-1) ?? null;
-  const nextImage =
-    selectedIndex >= 0 && selectedIndex < navigableImages.length - 1
-      ? navigableImages[selectedIndex + 1]
-      : navigableImages[0] ?? null;
   const hasNavigation = navigableImages.length > 1;
 
-  const showPreviousImage = () => {
-    if (previousImage) setSelectedImage(previousImage);
-  };
-
-  const showNextImage = () => {
-    if (nextImage) setSelectedImage(nextImage);
-  };
+  const showPreviousImage = () => void navigate("prev");
+  const showNextImage = () => void navigate("next");
 
   return (
     <>

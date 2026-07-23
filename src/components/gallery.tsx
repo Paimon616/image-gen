@@ -29,9 +29,6 @@ import {
   XCircle,
 } from "lucide-react";
 
-const INITIAL_VISIBLE_IMAGES = 18;
-const LOAD_MORE_IMAGES = INITIAL_VISIBLE_IMAGES;
-
 function generatedImageKeys(img: GeneratedImage) {
   return [
     img.id,
@@ -487,25 +484,19 @@ interface GalleryProps {
   thumbnailWidth?: number;
 }
 
-interface ImagesResponse {
-  images?: GeneratedImage[];
-  nextCursor?: number | null;
-  total?: number;
-}
-
 export function Gallery({ onCancelGeneration, thumbnailWidth = 240 }: GalleryProps) {
   const images = useStore((state) => state.images);
   const setSelectedImage = useStore((state) => state.setSelectedImage);
-  const addImages = useStore((state) => state.addImages);
   const loadParamsFromImage = useStore((state) => state.loadParamsFromImage);
   const removeImage = useStore((state) => state.removeImage);
+  const fetchImagePage = useStore((state) => state.fetchImagePage);
+  const nextCursor = useStore((state) => state.imagesNextCursor);
+  const totalImages = useStore((state) => state.imagesTotal);
+  const loadingMore = useStore((state) => state.isLoadingMoreImages);
   const [scrappingIds, setScrappingIds] = useState<Set<string>>(new Set());
   const [scrapIdByKey, setScrapIdByKey] = useState<Map<string, string>>(
     new Map()
   );
-  const [nextCursor, setNextCursor] = useState<number | null>(null);
-  const [totalImages, setTotalImages] = useState(0);
-  const [loadingMore, setLoadingMore] = useState(false);
 
   const visibleImages = images;
   const scrappedImageIds = useMemo(() => {
@@ -521,27 +512,9 @@ export function Gallery({ onCancelGeneration, thumbnailWidth = 240 }: GalleryPro
   }, [visibleImages, scrapIdByKey]);
   const hasMoreImages = nextCursor !== null;
 
-  const loadImagePage = useCallback(
-    async (cursor: number) => {
-      const response = await fetch(
-        `/api/images?cursor=${cursor}&limit=${LOAD_MORE_IMAGES}`,
-        { cache: "no-store" }
-      );
-      const data = (await response.json()) as ImagesResponse;
-
-      if (Array.isArray(data.images)) {
-        addImages(data.images);
-      }
-
-      setNextCursor(data.nextCursor ?? null);
-      setTotalImages(data.total ?? 0);
-    },
-    [addImages]
-  );
-
   useEffect(() => {
-    loadImagePage(0).catch(() => {});
-  }, [loadImagePage]);
+    fetchImagePage(0).catch(() => {});
+  }, [fetchImagePage]);
 
   useEffect(() => {
     fetch("/api/scrap", { cache: "no-store" })
@@ -661,13 +634,8 @@ export function Gallery({ onCancelGeneration, thumbnailWidth = 240 }: GalleryPro
   const handleLoadMore = useCallback(async () => {
     if (nextCursor === null || loadingMore) return;
 
-    setLoadingMore(true);
-    try {
-      await loadImagePage(nextCursor);
-    } finally {
-      setLoadingMore(false);
-    }
-  }, [loadImagePage, loadingMore, nextCursor]);
+    await fetchImagePage(nextCursor);
+  }, [fetchImagePage, loadingMore, nextCursor]);
 
   const handleGalleryScroll = useCallback(
     (event: UIEvent<HTMLDivElement>) => {

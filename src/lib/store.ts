@@ -27,6 +27,9 @@ interface AppState {
   params: GenerationParams;
   status: GenerationStatus;
   images: GeneratedImage[];
+  imagesNextCursor: number | null;
+  imagesTotal: number;
+  isLoadingMoreImages: boolean;
   selectedImage: GeneratedImage | null;
   language: AppLanguage;
   civitaiReference: CivitaiOrigin | null;
@@ -36,6 +39,7 @@ interface AppState {
   setStatus: (status: Partial<GenerationStatus>) => void;
   addImage: (image: GeneratedImage) => void;
   addImages: (images: GeneratedImage[]) => void;
+  fetchImagePage: (cursor: number) => Promise<void>;
   updateImage: (id: string, update: Partial<GeneratedImage>) => void;
   removeImage: (id: string) => void;
   setSelectedImage: (image: GeneratedImage | null) => void;
@@ -54,6 +58,7 @@ interface AppState {
 export type AppLanguage = "ko" | "en";
 
 const LANGUAGE_STORAGE_KEY = "image-gen-language";
+const IMAGE_PAGE_SIZE = 18;
 
 function getInitialLanguage(): AppLanguage {
   if (typeof window === "undefined") {
@@ -137,6 +142,9 @@ export const useStore = create<AppState>((set) => ({
   params: DEFAULT_PARAMS,
   status: { state: "idle", progress: 0, message: "" },
   images: [],
+  imagesNextCursor: null,
+  imagesTotal: 0,
+  isLoadingMoreImages: false,
   selectedImage: null,
   language: getInitialLanguage(),
   civitaiReference: null,
@@ -153,6 +161,30 @@ export const useStore = create<AppState>((set) => ({
 
   addImages: (images) =>
     set((s) => ({ images: mergeImages(s.images, images) })),
+
+  fetchImagePage: async (cursor) => {
+    if (useStore.getState().isLoadingMoreImages) return;
+
+    set({ isLoadingMoreImages: true });
+    try {
+      const response = await fetch(
+        `/api/images?cursor=${cursor}&limit=${IMAGE_PAGE_SIZE}`,
+        { cache: "no-store" }
+      );
+      const data = await response.json();
+      const loaded = Array.isArray(data.images)
+        ? (data.images as GeneratedImage[])
+        : [];
+
+      set((s) => ({
+        images: mergeImages(s.images, loaded),
+        imagesNextCursor: data.nextCursor ?? null,
+        imagesTotal: typeof data.total === "number" ? data.total : s.imagesTotal,
+      }));
+    } finally {
+      set({ isLoadingMoreImages: false });
+    }
+  },
 
   updateImage: (id, update) =>
     set((s) => {
