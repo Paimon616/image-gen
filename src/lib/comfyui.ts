@@ -654,7 +654,11 @@ async function buildAnimaWorkflow(params: GenerationParams, checkpoint: string) 
     };
     saveImageRef = ["75", 0];
   } else {
-    saveImageRef = await addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71");
+    // Hires is off: the upscale model belongs to the Hires-fix pass (it enlarges the
+    // first pass, then ImageScale brings it back to the requested final size). Running
+    // it here would apply the model's native factor (e.g. Remacri 4x) with no downscale,
+    // inflating output well past the requested width/height. Keep the base decode.
+    saveImageRef = ["6", 0];
   }
   saveImageRef = addFaceDetailerWorkflowNode(workflow, params, saveImageRef, modelRef, clipRef, vaeRef, positiveRef, negativeRef, seed);
   workflow["7"] = {
@@ -853,7 +857,11 @@ async function buildKrea2Workflow(params: GenerationParams, checkpoint: string) 
     };
     saveImageRef = ["75", 0];
   } else {
-    saveImageRef = await addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71");
+    // Hires is off: the upscale model belongs to the Hires-fix pass (it enlarges the
+    // first pass, then ImageScale brings it back to the requested final size). Running
+    // it here would apply the model's native factor (e.g. Remacri 4x) with no downscale,
+    // inflating output well past the requested width/height. Keep the base decode.
+    saveImageRef = ["6", 0];
   }
   saveImageRef = addFaceDetailerWorkflowNode(workflow, params, saveImageRef, modelRef, clipRef, vaeRef, ["2", 0], ["3", 0], seed);
   workflow["7"] = {
@@ -1125,7 +1133,11 @@ async function buildDefaultWorkflow(params: GenerationParams) {
     };
     saveImageRef = ["75", 0];
   } else {
-    saveImageRef = await addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71");
+    // Hires is off: the upscale model belongs to the Hires-fix pass (it enlarges the
+    // first pass, then ImageScale brings it back to the requested final size). Running
+    // it here would apply the model's native factor (e.g. Remacri 4x) with no downscale,
+    // inflating output well past the requested width/height. Keep the base decode.
+    saveImageRef = ["6", 0];
   }
   saveImageRef = addFaceDetailerWorkflowNode(workflow, params, saveImageRef, modelRef, clipRef, vaeRef, positiveRef, negativeRef, seed);
   workflow["7"] = {
