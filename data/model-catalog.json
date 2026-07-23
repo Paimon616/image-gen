@@ -7466,5 +7466,61 @@
         "Sell"
       ]
     }
+  },
+  "loras/SF 4 PoisonIlluLoRA.safetensors": {
+    "name": "Poison from Street Fighter | Illustrious",
+    "version": "v1.0 Illustrious",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/3aea8faf-fa53-4226-9c9c-45e5046a6ad2/original=true/52521977.jpeg",
+    "civitai_url": "https://civitai.red/models/1157659/poison-from-street-fighter-illustrious?modelVersionId=1302086",
+    "source_url": "https://civitai.red/models/1157659/poison-from-street-fighter-illustrious?modelVersionId=1302086",
+    "tags": [
+      "poisn, long hair, peaked cap, collar, tank top, midriff, silver bracelet, off shoulder, nail polish, denim shorts, brown bracelet, armlet, chain belt, handcuff on belt, pumps",
+      "riding crop",
+      "sexy",
+      "beautiful woman",
+      "mommy",
+      "street fighter",
+      "character",
+      "cute girl"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": false,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit"
+      ]
+    }
+  },
+  "checkpoints/animij_v10.safetensors": {
+    "name": "Animij",
+    "version": "v10",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/9aed08ab-82fa-4b5b-97a5-f8c6e1b6d4e3/original=true/126292343.jpeg",
+    "civitai_url": "https://civitai.red/models/1353314/animij?modelVersionId=2827109",
+    "source_url": "https://civitai.red/models/1353314/animij?modelVersionId=2827109",
+    "tags": [
+      "nsfw",
+      "merge",
+      "anime",
+      "colors",
+      "soft",
+      "sfw",
+      "model",
+      "base model",
+      "checkpoint",
+      "illustrious"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Image"
+      ]
+    }
   }
 }

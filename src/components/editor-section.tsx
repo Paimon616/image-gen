@@ -28,23 +28,23 @@ export function EditorSection({ title, description, children, defaultOpen = true
             activate();
           }
         }}
-        className={`group flex w-full cursor-pointer items-center gap-3 border-b px-5 py-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/25 ${expanded ? "border-primary/15 bg-gradient-to-r from-primary/14 via-primary/8 to-primary/[0.02]" : "border-transparent bg-primary/8 hover:bg-primary/12"}`}
+        className={`group flex w-full cursor-pointer items-center gap-2 border-b px-5 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/25 ${expanded ? "border-primary/15 bg-gradient-to-r from-primary/14 via-primary/8 to-primary/[0.02]" : "border-transparent bg-primary/8 hover:bg-primary/12"}`}
       >
-        <span className="min-w-0">
-          <span className="block text-base font-bold tracking-tight text-primary">{title}</span>
+        <span className="flex min-w-0 items-center gap-1">
+          <span className="text-lg font-bold leading-none tracking-tight text-primary">{title}</span>
+          {description && (
+            <span className="inline-flex" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+            <TooltipProvider delay={150}>
+              <Tooltip>
+                <TooltipTrigger render={<button type="button" aria-label={`${title} help`} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-primary/75 transition-colors hover:bg-card/70 hover:text-primary" />}>
+                  <CircleHelp className="h-4 w-4" />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-80 text-sm leading-relaxed">{description}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            </span>
+          )}
         </span>
-        {description && (
-          <span onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
-          <TooltipProvider delay={150}>
-            <Tooltip>
-              <TooltipTrigger render={<button type="button" aria-label={`${title} help`} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-primary/75 transition-colors hover:bg-card/70 hover:text-primary" />}>
-                <CircleHelp className="h-4 w-4" />
-              </TooltipTrigger>
-              <TooltipContent side="top" className="max-w-72 leading-relaxed">{description}</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          </span>
-        )}
         <span className="min-w-0 flex-1" />
         {badge}
         {toggle ? (

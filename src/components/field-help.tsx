@@ -13,7 +13,7 @@ export function FieldHelp({ label, help, className = "" }: { label: string; help
           <TooltipTrigger render={<button type="button" aria-label={`${label} help`} className="inline-flex text-muted-foreground/70 transition-colors hover:text-primary" />}>
             <CircleHelp className="h-3.5 w-3.5" />
           </TooltipTrigger>
-          <TooltipContent className="max-w-72 leading-relaxed">{help}</TooltipContent>
+          <TooltipContent className="max-w-80 text-sm leading-relaxed">{help}</TooltipContent>
         </Tooltip>
       </TooltipProvider>
     </span>
