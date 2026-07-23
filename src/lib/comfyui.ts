@@ -23,6 +23,14 @@ const DEFAULT_COMFYUI_URL = "http://127.0.0.1:8188";
 export const COMFYUI_BASE_URL =
   process.env.COMFYUI_BASE_URL?.replace(/\/$/, "") ?? DEFAULT_COMFYUI_URL;
 const COMFYUI_TIMEOUT_MS = Number(process.env.COMFYUI_TIMEOUT_MS ?? 300_000);
+// FaceDetailer samples the whole face crop (crop = bbox * this factor) at full
+// resolution when force_inpaint is on. On hires images the bbox is already ~1000px,
+// so the stock factor of 3 produces a ~3000px crop whose attention buffer OOMs (~45GiB)
+// on Apple Silicon / MPS. 1.0 keeps the crop at bbox size (proven to fit ~25GB unified
+// memory). Bump this on CUDA/RunPod hosts where more context improves blending.
+const COMFYUI_ADETAILER_CROP_FACTOR = Number(
+  process.env.COMFYUI_ADETAILER_CROP_FACTOR ?? 1
+);
 const A1111_BASE_URL =
   process.env.A1111_BASE_URL?.replace(/\/$/, "") ?? "http://127.0.0.1:7860";
 const FORGE_BASE_URL =
@@ -246,14 +254,16 @@ function addFaceDetailerWorkflowNode(
       denoise: clampDenoiseStrength(params.adetailer_denoise),
       feather: params.adetailer_mask_blur,
       noise_mask: params.adetailer_inpaint_only_masked,
-      // MPS deadlocks when FaceDetailer samples a full-resolution crop. force_inpaint
-      // makes Impact Pack skip its guide_size/max_size downscale for large faces, so on
-      // hires images the crop hits ~9MP and the attention bmm hangs. Leaving it off keeps
-      // sampling within the same pixel bounds the base generation enforces.
-      force_inpaint: false,
+      // Keep inpainting even when the face is already larger than guide_size — otherwise
+      // Impact Pack skips detailing on hires images ("segment skip (enough big)"). The full
+      // crop can hit ~9MP, which historically deadlocked MPS in a single attention bmm; that
+      // is why ComfyUI is launched with --use-split-cross-attention on macOS (run-comfyui.sh).
+      force_inpaint: true,
       bbox_threshold: params.adetailer_confidence,
       bbox_dilation: 10,
-      bbox_crop_factor: 3,
+      bbox_crop_factor: Number.isFinite(COMFYUI_ADETAILER_CROP_FACTOR)
+        ? COMFYUI_ADETAILER_CROP_FACTOR
+        : 1,
       sam_detection_hint: "none",
       sam_dilation: 0,
       sam_threshold: 0.93,
