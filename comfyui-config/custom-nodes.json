@@ -15,6 +15,16 @@
       "name": "ComfyUI-Florence2",
       "repo": "https://github.com/kijai/ComfyUI-Florence2.git",
       "ref": "9ece3de914214c5f581d725167bc9d0eeb0d1120"
+    },
+    {
+      "name": "ComfyUI-Impact-Pack",
+      "repo": "https://github.com/ltdrdata/ComfyUI-Impact-Pack.git",
+      "ref": "429d0159ad429e64d2b3916e6e7be9c22d025c3c"
+    },
+    {
+      "name": "ComfyUI-Impact-Subpack",
+      "repo": "https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git",
+      "ref": "50c7b71a6a224734cc9b21963c6d1926816a97f1"
     }
   ]
 }
