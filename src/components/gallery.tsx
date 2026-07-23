@@ -206,8 +206,8 @@ const GalleryCard = memo(function GalleryCard({
               <span className={`text-xs font-medium tabular-nums ${displayState === "generating" ? "text-cyan-100" : "opacity-70"}`}>
                 {Math.round(progress)}%
               </span>
-              {displayState === "generating" && onCancelGeneration && (
-                <Button type="button" size="xs" variant="outline" className="h-7 border-red-300/50 bg-red-500/20 px-2 text-[10px] text-red-100 shadow-sm hover:bg-red-500/35 hover:text-white" onClick={() => onCancelGeneration(img)}>
+              {isPending && onCancelGeneration && (
+                <Button type="button" size="xs" variant="outline" className={`h-7 px-2 text-[10px] shadow-sm ${displayState === "generating" ? "border-red-300/50 bg-red-500/20 text-red-100 hover:bg-red-500/35 hover:text-white" : "border-red-300 bg-red-100 text-red-700 hover:bg-red-200 hover:text-red-800"}`} onClick={() => onCancelGeneration(img)}>
                   <XCircle className="h-3.5 w-3.5" />
                   {language === "ko" ? "생성 취소" : "Cancel"}
                 </Button>
@@ -235,8 +235,8 @@ const GalleryCard = memo(function GalleryCard({
             )}
           </div>
           <div className="relative z-10 space-y-2">
-            {displayState === "generating" && generation?.message && (
-              <p className="line-clamp-2 text-[11px] font-medium text-cyan-100/80">
+            {isPending && generation?.message && (
+              <p className={`line-clamp-2 text-[11px] font-medium ${displayState === "generating" ? "text-cyan-100/80" : displayState === "waiting" ? "text-amber-800/80" : "text-sky-800/80"}`}>
                 {generation.message}
               </p>
             )}
@@ -249,8 +249,8 @@ const GalleryCard = memo(function GalleryCard({
             <p className={`line-clamp-3 text-xs leading-5 ${displayState === "generating" ? "text-white/90" : ""}`}>
               {img.params?.prompt || "No prompt"}
             </p>
-            {displayState !== "generating" && generation?.message && (
-              <p className={`line-clamp-2 text-[11px] ${displayState === "error" ? "text-red-700" : "opacity-65"}`}>
+            {displayState === "error" && generation?.message && (
+              <p className="line-clamp-2 text-[11px] text-red-700">
                 {generation.message}
               </p>
             )}
@@ -291,18 +291,6 @@ const GalleryCard = memo(function GalleryCard({
                   {language === "ko" ? "제거" : "Remove"}
                 </Button>
               </div>
-            )}
-            {isPending && displayState !== "generating" && onCancelGeneration && (
-              <Button
-                type="button"
-                size="sm"
-                variant="destructive"
-                className="w-full"
-                onClick={() => onCancelGeneration(img)}
-              >
-                <XCircle />
-                생성 취소
-              </Button>
             )}
           </div>
         </div>
