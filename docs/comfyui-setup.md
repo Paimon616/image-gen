@@ -194,6 +194,12 @@ and opens the app.
 - **ADetailer leaves the face unchanged** — the detail pass skipped an
   already-large face. Fixed by `force_inpaint` (on by default); if you still see
   no change, confirm the app was rebuilt/restarted after updating.
+- **Output is much larger than the requested width/height** (e.g. a 4x image with
+  no Hires) — the upscaler was applied with Hires off. The upscaler is a Hires-fix
+  stage only; leave `hires_upscale` at 1 to keep the requested size, or enable
+  Hires to use the upscaler intentionally. See
+  [Hires and face detailing](#hires-and-face-detailing). Fixed in current builds —
+  rebuild/restart the app if you still see it.
 - **`... exists but is not a git checkout`** — a custom node or the ComfyUI dir
   was created without `.git`. Move it aside and rerun the setup script.
 
@@ -209,6 +215,15 @@ and opens the app.
 The image editor treats width and height as final output dimensions. Enabling
 Hires creates a smaller first pass based on the selected factor, upscales to the
 requested dimensions, and performs a second sampling pass.
+
+The **Upscaler** model belongs to the Hires-fix pass — it enlarges the first pass
+before ComfyUI scales back to the requested width/height. It is **only applied
+when Hires is enabled** (`hires_upscale > 1`). With Hires off, the base render is
+kept as-is at the requested size; the selected upscaler is just remembered for the
+next time Hires is turned on. (Earlier builds ran the upscaler even with Hires off,
+so a 4x model like Remacri silently produced a 4x-larger image, e.g. 832×1216 →
+3328×4864. On Apple Silicon that oversized image is also what pushed ADetailer face
+crops into the MPS OOM range below — keep the app rebuilt/restarted to get the fix.)
 
 Enabling ADetailer adds an Impact Pack `FaceDetailer` pass with an Ultralytics
 face detector. It can use a different checkpoint, detail-only LoRAs, separate
@@ -227,9 +242,12 @@ so the stock crop factor of 3 produces a ~3000px crop whose attention buffer OOM
 (~45 GiB) on ~25 GB unified memory.
 
 - **`COMFYUI_ADETAILER_CROP_FACTOR`** controls that multiplier. Default is **1**
-  (crop ≈ bbox, fits MPS). Raise to ~3 on CUDA/RunPod hosts for more blending
-  context. Measured on an M-series Mac with a 3328×4864 image: crop factor 1.0
-  ≈ 108 s (works), 1.5 thrashes/never finishes, 3.0 OOMs.
+  (crop ≈ bbox), the safe value when faces are large. Now that output is no longer
+  silently 4x-upscaled (see above), normal-size renders have small faces, so **2–3
+  is usually fine on MPS too** and gives better blending; raise it if faces look
+  poorly merged. Measured on an M-series Mac with a 3328×4864 image (large face):
+  crop factor 1.0 ≈ 108 s (works), 1.5 thrashes/never finishes, 3.0 OOMs — so keep
+  it near 1 when you intentionally run ADetailer on big Hires output.
 - Expect roughly **~100 s per detected face** on MPS for large hires images; this
   is inherent to unified-memory attention, not a hang.
 - Impact Pack does not downscale-and-inpaint, so the crop factor is the only knob
