@@ -163,6 +163,15 @@ and opens the app.
   `RuntimeError: Undefined type Float8_e4m3fn`. Use **bf16** (or fp16/full
   precision) variants instead. For Krea 2, use `krea2_turbo_bf16.safetensors`
   + `qwen3vl_4b_bf16.safetensors` rather than the `*_fp8_scaled` files.
+  - **Attention:** `scripts/run-comfyui.sh` launches ComfyUI with
+    `--use-split-cross-attention` on macOS. Without it, sampling a large region
+    (e.g. an ADetailer face crop on a hires image) can deadlock PyTorch inside a
+    single Metal `bmm` — the job sticks in `queue_running` and the app freezes on
+    "Waiting for ComfyUI...". Override with `COMFYUI_CROSS_ATTENTION`
+    (`split` default, `quad`, `none`, or a custom flag).
+  - **ADetailer memory:** attention memory scales ~O(crop_px²), so face detailing
+    on large hires images is memory-bound on unified memory — see
+    [Hires and face detailing](#hires-and-face-detailing).
 
 ## Troubleshooting
 
@@ -175,6 +184,16 @@ and opens the app.
   has `comfy_kitchen` after `setup:comfyui`).
 - **Custom node changes not visible** — restart ComfyUI after running
   `setup:comfyui-config`; nodes load at startup.
+- **Stuck on "Waiting for ComfyUI..." with ADetailer (Apple Silicon)** — a large
+  face crop deadlocked or OOMed MPS (check the ComfyUI log for `Invalid buffer
+  size` or a frozen `metal gpu stream` thread via `sample <pid>`). ComfyUI
+  `/interrupt` cannot preempt a native MPS op, so **restart ComfyUI** to clear the
+  stuck job. Ensure it launches with `--use-split-cross-attention` and lower
+  `COMFYUI_ADETAILER_CROP_FACTOR` (default 1). See
+  [ADetailer on Apple Silicon](#adetailer-on-apple-silicon-mps).
+- **ADetailer leaves the face unchanged** — the detail pass skipped an
+  already-large face. Fixed by `force_inpaint` (on by default); if you still see
+  no change, confirm the app was rebuilt/restarted after updating.
 - **`... exists but is not a git checkout`** — a custom node or the ComfyUI dir
   was created without `.git`. Move it aside and rerun the setup script.
 
@@ -197,3 +216,23 @@ prompts, custom steps, confidence, mask blur, and denoise. ComfyUI must expose
 `UltralyticsDetectorProvider` and `FaceDetailer` and have the selected detector
 model. If missing, install ComfyUI Impact Pack, restart ComfyUI, and verify the
 nodes appear in `/object_info`.
+
+### ADetailer on Apple Silicon (MPS)
+
+`FaceDetailer` runs with `force_inpaint` on, so it re-samples the whole face crop
+at full resolution rather than skipping already-large faces (skipping is why a
+detail pass can leave the face **unchanged**). The crop size is
+`detected bbox × crop factor`, and on a hires image the bbox is already ~1000px,
+so the stock crop factor of 3 produces a ~3000px crop whose attention buffer OOMs
+(~45 GiB) on ~25 GB unified memory.
+
+- **`COMFYUI_ADETAILER_CROP_FACTOR`** controls that multiplier. Default is **1**
+  (crop ≈ bbox, fits MPS). Raise to ~3 on CUDA/RunPod hosts for more blending
+  context. Measured on an M-series Mac with a 3328×4864 image: crop factor 1.0
+  ≈ 108 s (works), 1.5 thrashes/never finishes, 3.0 OOMs.
+- Expect roughly **~100 s per detected face** on MPS for large hires images; this
+  is inherent to unified-memory attention, not a hang.
+- Impact Pack does not downscale-and-inpaint, so the crop factor is the only knob
+  for sampling resolution. For faster results, generate at a smaller base size or
+  run ADetailer without Hires fix (small faces are cheaply upscaled to
+  `guide_size`).

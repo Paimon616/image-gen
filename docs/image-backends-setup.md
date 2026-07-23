@@ -120,7 +120,11 @@ that stored first-pass dimensions is normalized when loaded into the editor.
   denoise settings.
 - ComfyUI builds an Impact Pack `FaceDetailer` workflow with an Ultralytics face
   detector. The running ComfyUI must provide `UltralyticsDetectorProvider` and
-  `FaceDetailer` plus their detector models.
+  `FaceDetailer` plus their detector models. On **Apple Silicon (MPS)** the face
+  crop must stay small enough to fit unified memory (env
+  `COMFYUI_ADETAILER_CROP_FACTOR`, default 1) and ComfyUI needs
+  `--use-split-cross-attention` to avoid a Metal deadlock — see
+  [ComfyUI setup › ADetailer on Apple Silicon](comfyui-setup.md#adetailer-on-apple-silicon-mps).
 
 See [Image generation UI](image-generation-ui.md) for the controls and metadata
 semantics.
