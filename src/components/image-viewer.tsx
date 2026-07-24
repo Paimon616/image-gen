@@ -282,6 +282,7 @@ export function ImageViewer() {
     kind: "image" | "metadata";
     filename: string;
   } | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   useEffect(() => {
     fetch("/api/models", { cache: "no-store" })
@@ -300,6 +301,10 @@ export function ImageViewer() {
   useEffect(() => () => {
     if (appliedTimer.current) window.clearTimeout(appliedTimer.current);
   }, []);
+
+  useEffect(() => {
+    setConfirmingDelete(false);
+  }, [selectedImage?.id]);
 
   const navigate = useCallback(
     async (direction: "prev" | "next") => {
@@ -490,9 +495,15 @@ export function ImageViewer() {
   };
 
   const handleDelete = async () => {
+    const nav = images.filter((image) => image.url);
+    const index = nav.findIndex((image) => image.id === selectedImage.id);
+    const neighbor =
+      index > 0 ? nav[index - 1] : nav[index + 1] ?? null;
+
     await fetch(`/api/images/${selectedImage.filename}`, { method: "DELETE" });
     removeImage(selectedImage.id);
-    setSelectedImage(null);
+    setConfirmingDelete(false);
+    setSelectedImage(neighbor);
   };
 
   const handleReuse = () => {
@@ -731,10 +742,43 @@ export function ImageViewer() {
                 )}
                 Scrap
               </Button>
-              <Button size="sm" variant="destructive" onClick={handleDelete}>
-                <Trash2 className="h-4 w-4" />
-                Delete
-              </Button>
+              <div className="relative">
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => setConfirmingDelete((current) => !current)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </Button>
+                {confirmingDelete && (
+                  <div className="absolute right-0 top-11 z-20 w-44 rounded-md border border-border bg-popover p-2.5 shadow-xl">
+                    <p className="text-[11px] font-medium leading-4 text-popover-foreground">
+                      {ko ? "이미지를 삭제할까요?" : "Delete this image?"}
+                    </p>
+                    <div className="mt-2 flex gap-1.5">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        className="h-7 flex-1 text-[11px]"
+                        onClick={() => void handleDelete()}
+                      >
+                        {ko ? "삭제" : "Delete"}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 flex-1 text-[11px]"
+                        onClick={() => setConfirmingDelete(false)}
+                      >
+                        {ko ? "취소" : "Cancel"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {params && (

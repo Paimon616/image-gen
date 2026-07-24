@@ -7522,5 +7522,29 @@
         "Image"
       ]
     }
+  },
+  "checkpoints/pieModels_oreo.safetensors": {
+    "name": "Pie - Models 🥧",
+    "version": "Oreo",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/d7c1e5d7-cf42-4bb6-8384-7254f55c6610/original=true/137104589.jpeg",
+    "civitai_url": "https://civitai.red/models/1593793/pie-models?modelVersionId=3142094",
+    "source_url": "https://civitai.red/models/1593793/pie-models?modelVersionId=3142094",
+    "tags": [
+      "model",
+      "merge",
+      "anime",
+      "illustrious",
+      "base model",
+      "women"
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
+    }
   }
 }
