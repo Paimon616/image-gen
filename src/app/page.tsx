@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as
 import { useStore } from "@/lib/store";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
@@ -23,6 +22,7 @@ import { ImageViewer } from "@/components/image-viewer";
 import { AppSidebar } from "@/components/app-sidebar";
 import { EditorSection } from "@/components/editor-section";
 import { FieldHelp } from "@/components/field-help";
+import { PaimonChat, type PaimonAttachment } from "@/components/paimon-chat";
 import { Slider } from "@/components/ui/slider";
 import type {
   CivitaiOrigin,
@@ -127,6 +127,8 @@ export default function Home() {
   const [generationQueue, setGenerationQueue] = useState<GenerationQueueItem[]>([]);
   const [activeGeneration, setActiveGeneration] =
     useState<GenerationQueueItem | null>(null);
+  const [paimonAttachment, setPaimonAttachment] =
+    useState<PaimonAttachment | null>(null);
   const activePromptIdRef = useRef("");
   const generationAbortControllerRef = useRef<AbortController | null>(null);
   const activeGenerationRef = useRef<GenerationQueueItem | null>(null);
@@ -430,6 +432,25 @@ export default function Home() {
     setGenerationQueue((queue) => [...queue, { id, params: jobParams, civitaiOrigin }]);
     setStatus({ state: "idle", progress: 0, message: "" });
   }, [addImage, generationModeError, params, setStatus]);
+
+  const sendImageToPaimon = useCallback((image: GeneratedImage) => {
+    setPaimonAttachment({
+      id: crypto.randomUUID(),
+      kind: "gallery_image",
+      label: "갤러리 이미지",
+      url: image.url || (image.filename ? `/api/images/${image.filename}` : ""),
+      metadata: {
+        id: image.id,
+        url: image.url,
+        thumbnailUrl: image.thumbnailUrl,
+        filename: image.filename,
+        timestamp: image.timestamp,
+        sizeSemantics: image.sizeSemantics,
+        params: image.params,
+        civitaiOrigin: image.civitaiOrigin,
+      },
+    });
+  }, []);
 
   const cancelGeneration = useCallback((imageId?: string) => {
     const targetId = imageId ?? activeGeneration?.id;
@@ -965,8 +986,18 @@ export default function Home() {
             {images.length} images
           </span>
         </div>
-        <Gallery onCancelGeneration={(image) => cancelGeneration(image.id)} thumbnailWidth={thumbnailWidth} />
+        <Gallery
+          onCancelGeneration={(image) => cancelGeneration(image.id)}
+          onSendToPaimon={sendImageToPaimon}
+          thumbnailWidth={thumbnailWidth}
+        />
       </main>
+
+      <PaimonChat
+        params={params}
+        onApplyParams={setParams}
+        queuedAttachment={paimonAttachment}
+      />
 
       {/* Image Viewer Dialog */}
       <ImageViewer />

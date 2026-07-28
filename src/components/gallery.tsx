@@ -23,6 +23,7 @@ import {
   Clock,
   ClipboardCopy,
   CopyPlus,
+  BotMessageSquare,
   Loader2,
   Sparkles,
   Trash2,
@@ -57,6 +58,7 @@ interface GalleryCardProps {
   onReuse: (img: GeneratedImage) => void;
   onScrap: (img: GeneratedImage) => void;
   onDelete: (img: GeneratedImage) => void;
+  onSendToPaimon?: (img: GeneratedImage) => void;
   onCancelGeneration?: (img: GeneratedImage) => void;
 }
 
@@ -68,6 +70,7 @@ const GalleryCard = memo(function GalleryCard({
   onReuse,
   onScrap,
   onDelete,
+  onSendToPaimon,
   onCancelGeneration,
 }: GalleryCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
@@ -399,6 +402,20 @@ const GalleryCard = memo(function GalleryCard({
             <CopyPlus />
             가져오기
           </Button>
+          {onSendToPaimon && (
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="outline"
+              className="pointer-events-auto bg-white/90 text-black hover:bg-white"
+              onClick={() => onSendToPaimon(img)}
+              disabled={!img.params || !canUseCompletedImageActions}
+              aria-label="Send image metadata to Paimon"
+              title="AI로 보내기"
+            >
+              <BotMessageSquare />
+            </Button>
+          )}
           <Button
             type="button"
             size="icon-sm"
@@ -481,10 +498,15 @@ const GalleryCard = memo(function GalleryCard({
 
 interface GalleryProps {
   onCancelGeneration?: (img: GeneratedImage) => void;
+  onSendToPaimon?: (img: GeneratedImage) => void;
   thumbnailWidth?: number;
 }
 
-export function Gallery({ onCancelGeneration, thumbnailWidth = 240 }: GalleryProps) {
+export function Gallery({
+  onCancelGeneration,
+  onSendToPaimon,
+  thumbnailWidth = 240,
+}: GalleryProps) {
   const images = useStore((state) => state.images);
   const setSelectedImage = useStore((state) => state.setSelectedImage);
   const loadParamsFromImage = useStore((state) => state.loadParamsFromImage);
@@ -696,6 +718,7 @@ export function Gallery({ onCancelGeneration, thumbnailWidth = 240 }: GalleryPro
             onReuse={handleReuse}
             onScrap={handleScrap}
             onDelete={handleDelete}
+            onSendToPaimon={onSendToPaimon}
             onCancelGeneration={onCancelGeneration}
           />
         ))}
