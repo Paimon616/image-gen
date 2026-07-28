@@ -33,7 +33,8 @@ export interface PaimonAttachment {
 interface PaimonChatProps {
   params: GenerationParams;
   onApplyParams: (patch: Partial<GenerationParams>) => void;
-  queuedAttachment: PaimonAttachment | null;
+  attachments: PaimonAttachment[];
+  onAttachmentsChange: (attachments: PaimonAttachment[]) => void;
 }
 
 interface PaimonModelAsset {
@@ -238,27 +239,27 @@ async function loadModelContext(
 export function PaimonChat({
   params,
   onApplyParams,
-  queuedAttachment,
+  attachments,
+  onAttachmentsChange,
 }: PaimonChatProps) {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([INTRO_MESSAGE]);
-  const [attachments, setAttachments] = useState<PaimonAttachment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const seenAttachmentIds = useRef<Set<string>>(new Set());
+  const previousAttachmentIds = useRef(
+    new Set(attachments.map((attachment) => attachment.id))
+  );
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!queuedAttachment || seenAttachmentIds.current.has(queuedAttachment.id)) {
-      return;
-    }
+    const hasNewAttachment = attachments.some(
+      (attachment) => !previousAttachmentIds.current.has(attachment.id)
+    );
+    if (hasNewAttachment) setOpen(true);
+    previousAttachmentIds.current = new Set(attachments.map(({ id }) => id));
 
-    seenAttachmentIds.current.add(queuedAttachment.id);
-    setOpen(true);
-    setAttachments((current) => [queuedAttachment, ...current].slice(0, 6));
-  }, [queuedAttachment]);
-
+  }, [attachments]);
   useEffect(() => {
     scrollRef.current?.scrollTo({
       top: scrollRef.current.scrollHeight,
@@ -299,7 +300,10 @@ export function PaimonChat({
           body: JSON.stringify({
             currentParams: params,
             modelContext,
-            attachments,
+            attachments: attachments.map((attachment, index) => ({
+              ...attachment,
+              referenceId: `참조${index + 1}`,
+            })),
             messages: [...compactMessages, userMessage].map(
               ({ role, content }) => ({ role, content })
             ),
@@ -342,19 +346,17 @@ export function PaimonChat({
   );
 
   const removeAttachment = useCallback((attachmentId: string) => {
-    seenAttachmentIds.current.delete(attachmentId);
-    setAttachments((current) =>
-      current.filter((attachment) => attachment.id !== attachmentId)
+    onAttachmentsChange(
+      attachments.filter((attachment) => attachment.id !== attachmentId)
     );
-  }, []);
+  }, [attachments, onAttachmentsChange]);
 
   const resetChat = useCallback(() => {
-    seenAttachmentIds.current.clear();
     setMessages([INTRO_MESSAGE]);
-    setAttachments([]);
+    onAttachmentsChange([]);
     setInput("");
     setError("");
-  }, []);
+  }, [onAttachmentsChange]);
 
   const handlePaste = useCallback(
     async (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
@@ -377,7 +379,7 @@ export function PaimonChat({
           url,
         };
 
-        setAttachments((current) => [attachment, ...current].slice(0, 6));
+        onAttachmentsChange([...attachments, attachment].slice(-6));
         setMessages((current) => [
           ...current,
           {
@@ -392,7 +394,7 @@ export function PaimonChat({
         setLoading(false);
       }
     },
-    []
+    [attachments, onAttachmentsChange]
   );
 
   return (
@@ -437,14 +439,20 @@ export function PaimonChat({
 
           {attachments.length > 0 && (
             <div className="flex gap-2 overflow-x-auto border-b border-border px-3 py-2">
-              {attachments.map((attachment) => (
+              <span className="shrink-0 self-center text-[10px] text-muted-foreground">
+                대화에서 참조1, 참조2로 지칭
+              </span>
+              {attachments.map((attachment, index) => (
                 <div
                   key={attachment.id}
                   className="flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-secondary px-2 py-1 text-[11px]"
                   title={attachment.url || attachment.metadata?.filename || ""}
                 >
                   <ImagePlus className="size-3" />
-                  <span>{attachment.label}</span>
+                  <span className="font-medium">참조{index + 1}</span>
+                  <span className="max-w-32 truncate text-muted-foreground">
+                    {attachment.metadata?.filename || attachment.label}
+                  </span>
                   <button
                     type="button"
                     className="ml-0.5 rounded-sm p-0.5 text-muted-foreground hover:bg-background hover:text-foreground"

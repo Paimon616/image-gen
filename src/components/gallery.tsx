@@ -54,6 +54,7 @@ interface GalleryCardProps {
   img: GeneratedImage;
   scrapped: boolean;
   scrapping: boolean;
+  sentToPaimon: boolean;
   onOpen: (img: GeneratedImage) => void;
   onReuse: (img: GeneratedImage) => void;
   onScrap: (img: GeneratedImage) => void;
@@ -66,6 +67,7 @@ const GalleryCard = memo(function GalleryCard({
   img,
   scrapped,
   scrapping,
+  sentToPaimon,
   onOpen,
   onReuse,
   onScrap,
@@ -390,6 +392,23 @@ const GalleryCard = memo(function GalleryCard({
         </div>
       )}
       {hasImage && !isPending && (
+        <>
+      {sentToPaimon && onSendToPaimon && (
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="outline"
+          className="absolute right-2 top-2 z-20 border-cyan-300 bg-cyan-400 text-slate-950 shadow-[0_0_18px_rgba(34,211,238,.95)] animate-pulse hover:bg-cyan-300"
+          onClick={() => onSendToPaimon(img)}
+          aria-label="Remove image reference from Paimon"
+          aria-pressed="true"
+          title="파이몬 참조에서 제거"
+        >
+          <BotMessageSquare />
+          <Sparkles className="absolute -right-1 -top-1 size-3 animate-ping text-white" />
+        </Button>
+      )}
+
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent opacity-0 transition-opacity group-hover:opacity-100">
         <div className="absolute left-2 right-2 top-2 flex gap-1.5">
           <Button
@@ -402,7 +421,7 @@ const GalleryCard = memo(function GalleryCard({
             <CopyPlus />
             가져오기
           </Button>
-          {onSendToPaimon && (
+          {onSendToPaimon && !sentToPaimon && (
             <Button
               type="button"
               size="icon-sm"
@@ -482,6 +501,7 @@ const GalleryCard = memo(function GalleryCard({
           </p>
         </div>
       </div>
+        </>
       )}
     </div>
     {civitaiOrigin && (
@@ -499,12 +519,14 @@ const GalleryCard = memo(function GalleryCard({
 interface GalleryProps {
   onCancelGeneration?: (img: GeneratedImage) => void;
   onSendToPaimon?: (img: GeneratedImage) => void;
+  paimonImageIds?: ReadonlySet<string>;
   thumbnailWidth?: number;
 }
 
 export function Gallery({
   onCancelGeneration,
   onSendToPaimon,
+  paimonImageIds,
   thumbnailWidth = 240,
 }: GalleryProps) {
   const images = useStore((state) => state.images);
@@ -714,6 +736,7 @@ export function Gallery({
             img={img}
             scrapped={scrappedImageIds.has(img.id)}
             scrapping={scrappingIds.has(img.id)}
+            sentToPaimon={paimonImageIds?.has(img.id) ?? false}
             onOpen={handleOpen}
             onReuse={handleReuse}
             onScrap={handleScrap}

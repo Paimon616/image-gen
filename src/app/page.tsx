@@ -127,8 +127,8 @@ export default function Home() {
   const [generationQueue, setGenerationQueue] = useState<GenerationQueueItem[]>([]);
   const [activeGeneration, setActiveGeneration] =
     useState<GenerationQueueItem | null>(null);
-  const [paimonAttachment, setPaimonAttachment] =
-    useState<PaimonAttachment | null>(null);
+  const [paimonAttachments, setPaimonAttachments] =
+    useState<PaimonAttachment[]>([]);
   const activePromptIdRef = useRef("");
   const generationAbortControllerRef = useRef<AbortController | null>(null);
   const activeGenerationRef = useRef<GenerationQueueItem | null>(null);
@@ -433,24 +433,45 @@ export default function Home() {
     setStatus({ state: "idle", progress: 0, message: "" });
   }, [addImage, generationModeError, params, setStatus]);
 
-  const sendImageToPaimon = useCallback((image: GeneratedImage) => {
-    setPaimonAttachment({
-      id: crypto.randomUUID(),
-      kind: "gallery_image",
-      label: "갤러리 이미지",
-      url: image.url || (image.filename ? `/api/images/${image.filename}` : ""),
-      metadata: {
-        id: image.id,
-        url: image.url,
-        thumbnailUrl: image.thumbnailUrl,
-        filename: image.filename,
-        timestamp: image.timestamp,
-        sizeSemantics: image.sizeSemantics,
-        params: image.params,
-        civitaiOrigin: image.civitaiOrigin,
-      },
+  const toggleImageInPaimon = useCallback((image: GeneratedImage) => {
+    setPaimonAttachments((current) => {
+      const attachmentId = `gallery:${image.id}`;
+      if (current.some((attachment) => attachment.id === attachmentId)) {
+        return current.filter((attachment) => attachment.id !== attachmentId);
+      }
+
+      const attachment: PaimonAttachment = {
+        id: attachmentId,
+        kind: "gallery_image",
+        label: "갤러리 이미지",
+        url:
+          image.url ||
+          (image.filename ? `/api/images/${image.filename}` : ""),
+        metadata: {
+          id: image.id,
+          url: image.url,
+          thumbnailUrl: image.thumbnailUrl,
+          filename: image.filename,
+          timestamp: image.timestamp,
+          sizeSemantics: image.sizeSemantics,
+          params: image.params,
+          civitaiOrigin: image.civitaiOrigin,
+        },
+      };
+
+      return [...current, attachment].slice(-6);
     });
   }, []);
+  const paimonImageIds = useMemo(
+    () =>
+      new Set(
+        paimonAttachments
+          .map((attachment) => attachment.metadata?.id)
+          .filter((id): id is string => typeof id === "string")
+      ),
+    [paimonAttachments]
+  );
+
 
   const cancelGeneration = useCallback((imageId?: string) => {
     const targetId = imageId ?? activeGeneration?.id;
@@ -988,7 +1009,8 @@ export default function Home() {
         </div>
         <Gallery
           onCancelGeneration={(image) => cancelGeneration(image.id)}
-          onSendToPaimon={sendImageToPaimon}
+          onSendToPaimon={toggleImageInPaimon}
+          paimonImageIds={paimonImageIds}
           thumbnailWidth={thumbnailWidth}
         />
       </main>
@@ -996,7 +1018,8 @@ export default function Home() {
       <PaimonChat
         params={params}
         onApplyParams={setParams}
-        queuedAttachment={paimonAttachment}
+        attachments={paimonAttachments}
+        onAttachmentsChange={setPaimonAttachments}
       />
 
       {/* Image Viewer Dialog */}
