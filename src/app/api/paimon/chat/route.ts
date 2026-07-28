@@ -23,6 +23,24 @@ const PAIMON_SYSTEM_PROMPT = [
   "- Put quality tags and score tags at the front, not as a trailing afterthought.",
   "- Remove generic suffixes like 'pony style' when converting to Pony format.",
   "- Example safe structure: score_9, score_8_up, score_7_up, score_6_up, score_5_up, score_4_up, rating_safe, 1girl, solo, beautiful woman, looking at viewer, smile, long wavy hair, brown hair, elegant dress, soft lighting, bokeh, depth of field, simple background, studio portrait.",
+  "",
+  "General model-family prompt rules:",
+  "- Always adapt BOTH prompt and negative_prompt to the current checkpoint family. Do not only edit the positive prompt.",
+  "- Infer model family from currentParams.model_name, modelContext.currentCheckpoint.base_model, checkpoint file name, and the user's requested checkpoint.",
+  "- Pony/PDXL: booru tags, score tags first, rating_* tag early, concise comma tags; negatives should use low score tags and artifact/anatomy tags, not long prose.",
+  "- Illustrious/NoobAI/Anima anime SDXL: comma-separated anime/booru tags with quality tags such as masterpiece, best quality, very aesthetic, absurdres/highres when appropriate; negatives should include worst quality, low quality, lowres, bad anatomy, bad hands, jpeg artifacts, watermark/text.",
+  "- SDXL realistic/semi-realistic: natural language plus concise photographic tags; use camera, lighting, lens, composition, skin/detail descriptors; negatives should target plastic skin, overprocessed, bad anatomy, extra fingers, watermark/text.",
+  "- SD 1.5 realistic/anime: shorter comma tags, avoid excessive SDXL/Pony score tags; keep resolution/detail tags moderate; negatives should include anatomy/artifact terms and embeddings only if present in currentParams.",
+  "- Flux/Krea 2: prefer clean natural-language prompt sentences or short descriptive phrases; avoid Pony score tags and excessive booru syntax unless the checkpoint metadata clearly says otherwise.",
+  "- If model catalog tags contain POS:/NEG: examples for the selected checkpoint, use them as style guidance while preserving the user's concept.",
+  "",
+  "Checkpoint and LoRA rules:",
+  "- When changing checkpoint/model_name, also reconsider loras. Existing loras that do not match the new checkpoint family should be removed unless the user explicitly asks to keep them.",
+  "- Choose LoRAs only from modelContext.compatibleLoras or existing currentParams.loras. Do not invent LoRA paths.",
+  "- Prefer LoRAs whose name/tags/path match the user's requested subject, style, character, outfit, pose, or quality goal.",
+  "- If no compatible LoRA clearly matches the request, return an empty loras array or keep only compatible existing LoRAs. Do not pick random LoRAs.",
+  "- Use conservative LoRA scale defaults: style/detail 0.45-0.8, character/concept 0.65-0.95, slider LoRAs according to their apparent purpose.",
+  "- If the user asks to change checkpoint but not a specific file, pick a checkpoint only from modelContext.checkpoints. Match requested family/style and explain the choice in reply.",
 ].join("\n");
 
 interface PaimonMessage {
@@ -36,10 +54,25 @@ interface PaimonAttachment {
   metadata?: Partial<GeneratedImage>;
 }
 
+interface PaimonModelAsset {
+  path: string;
+  name: string;
+  version?: string;
+  base_model?: string;
+  tags?: string[];
+}
+
+interface PaimonModelContext {
+  currentCheckpoint?: PaimonModelAsset;
+  compatibleLoras?: PaimonModelAsset[];
+  checkpoints?: PaimonModelAsset[];
+}
+
 interface PaimonRequest {
   messages?: PaimonMessage[];
   currentParams?: GenerationParams;
   attachments?: PaimonAttachment[];
+  modelContext?: PaimonModelContext;
 }
 
 function parseJsonObject(text: string) {
@@ -98,6 +131,7 @@ export async function POST(req: NextRequest) {
             content: JSON.stringify({
               currentParams: body.currentParams,
               attachments: body.attachments ?? [],
+              modelContext: body.modelContext ?? null,
               conversation: messages,
             }),
           },

@@ -28,6 +28,20 @@ interface PaimonChatProps {
   queuedAttachment: PaimonAttachment | null;
 }
 
+interface PaimonModelAsset {
+  path: string;
+  name: string;
+  version?: string;
+  base_model?: string;
+  tags?: string[];
+}
+
+interface PaimonModelContext {
+  currentCheckpoint?: PaimonModelAsset;
+  compatibleLoras: PaimonModelAsset[];
+  checkpoints: PaimonModelAsset[];
+}
+
 const EDITABLE_PARAM_KEYS = new Set<keyof GenerationParams>([
   "backend",
   "model",
@@ -108,6 +122,104 @@ function sanitizePatch(value: unknown): Partial<GenerationParams> {
   return patch;
 }
 
+function compactAsset(asset: unknown): PaimonModelAsset | null {
+  if (!asset || typeof asset !== "object" || Array.isArray(asset)) {
+    return null;
+  }
+
+  const record = asset as Record<string, unknown>;
+  if (typeof record.path !== "string" || typeof record.name !== "string") {
+    return null;
+  }
+
+  return {
+    path: record.path,
+    name: record.name,
+    version: typeof record.version === "string" ? record.version : "",
+    base_model:
+      typeof record.base_model === "string" ? record.base_model : "",
+    tags: Array.isArray(record.tags)
+      ? record.tags.filter((tag): tag is string => typeof tag === "string")
+      : [],
+  };
+}
+
+function isPaimonModelAsset(
+  asset: PaimonModelAsset | null
+): asset is PaimonModelAsset {
+  return Boolean(asset);
+}
+
+function normalizeFamily(value: string | undefined) {
+  const lower = (value ?? "").toLowerCase();
+
+  if (/pony|pdxl/.test(lower)) return "pony";
+  if (/illustrious|ilxl/.test(lower)) return "illustrious";
+  if (/noob/.test(lower)) return "noobai";
+  if (/anima/.test(lower)) return "anima";
+  if (/flux/.test(lower)) return "flux";
+  if (/krea/.test(lower)) return "krea";
+  if (/sdxl|xl/.test(lower)) return "sdxl";
+  if (/sd\s*1\.?5|sd15|1\.5/.test(lower)) return "sd15";
+
+  return lower.trim();
+}
+
+function sameFamily(left: string | undefined, right: string | undefined) {
+  const leftFamily = normalizeFamily(left);
+  const rightFamily = normalizeFamily(right);
+
+  if (!leftFamily || !rightFamily) return false;
+  if (leftFamily === rightFamily) return true;
+
+  return (
+    (leftFamily === "illustrious" && rightFamily === "noobai") ||
+    (leftFamily === "noobai" && rightFamily === "illustrious")
+  );
+}
+
+async function loadModelContext(
+  params: GenerationParams
+): Promise<PaimonModelContext> {
+  try {
+    const res = await fetch("/api/models", { cache: "no-store" });
+    const data = await res.json();
+    const checkpointAssets: unknown[] = Array.isArray(data.checkpointAssets)
+      ? data.checkpointAssets
+      : [];
+    const loraAssets: unknown[] = Array.isArray(data.loraAssets)
+      ? data.loraAssets
+      : [];
+    const checkpoints = checkpointAssets
+      .map(compactAsset)
+      .filter(isPaimonModelAsset);
+    const loras = loraAssets
+      .map(compactAsset)
+      .filter(isPaimonModelAsset);
+    const currentCheckpoint = checkpoints.find(
+      (asset) => asset.path === params.model_name
+    );
+    const currentFamily =
+      currentCheckpoint?.base_model ||
+      currentCheckpoint?.path ||
+      params.model_name;
+    const compatibleLoras = loras
+      .filter((asset) => sameFamily(currentFamily, asset.base_model || asset.path))
+      .slice(0, 40);
+
+    return {
+      currentCheckpoint,
+      compatibleLoras,
+      checkpoints: checkpoints.slice(0, 80),
+    };
+  } catch {
+    return {
+      compatibleLoras: [],
+      checkpoints: [],
+    };
+  }
+}
+
 export function PaimonChat({
   params,
   onApplyParams,
@@ -172,11 +284,13 @@ export function PaimonChat({
       setError("");
 
       try {
+        const modelContext = await loadModelContext(params);
         const res = await fetch("/api/paimon/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             currentParams: params,
+            modelContext,
             attachments,
             messages: [...compactMessages, userMessage].map(
               ({ role, content }) => ({ role, content })
