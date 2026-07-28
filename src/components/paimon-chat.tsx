@@ -1,7 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bot, ImagePlus, Loader2, MessageCircle, Send, X } from "lucide-react";
+import {
+  Bot,
+  ImagePlus,
+  Loader2,
+  MessageCircle,
+  RotateCcw,
+  Send,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { GeneratedImage, GenerationParams } from "@/lib/types";
@@ -41,6 +49,13 @@ interface PaimonModelContext {
   compatibleLoras: PaimonModelAsset[];
   checkpoints: PaimonModelAsset[];
 }
+
+const INTRO_MESSAGE: ChatMessage = {
+  id: "intro",
+  role: "assistant",
+  content:
+    "파이몬이에요. 현재 입력값을 읽고 프롬프트, 모델 설정, LoRA, 업스케일, 참조 이미지를 바로 고쳐드릴게요.",
+};
 
 const EDITABLE_PARAM_KEYS = new Set<keyof GenerationParams>([
   "backend",
@@ -227,14 +242,7 @@ export function PaimonChat({
 }: PaimonChatProps) {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: "intro",
-      role: "assistant",
-      content:
-        "파이몬이에요. 현재 입력값을 읽고 프롬프트, 모델 설정, LoRA, 업스케일, 참조 이미지를 바로 고쳐드릴게요.",
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([INTRO_MESSAGE]);
   const [attachments, setAttachments] = useState<PaimonAttachment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -333,6 +341,21 @@ export function PaimonChat({
     [attachments, compactMessages, loading, onApplyParams, params]
   );
 
+  const removeAttachment = useCallback((attachmentId: string) => {
+    seenAttachmentIds.current.delete(attachmentId);
+    setAttachments((current) =>
+      current.filter((attachment) => attachment.id !== attachmentId)
+    );
+  }, []);
+
+  const resetChat = useCallback(() => {
+    seenAttachmentIds.current.clear();
+    setMessages([INTRO_MESSAGE]);
+    setAttachments([]);
+    setInput("");
+    setError("");
+  }, []);
+
   const handlePaste = useCallback(
     async (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
       const imageItem = Array.from(event.clipboardData.items).find((item) =>
@@ -388,15 +411,28 @@ export function PaimonChat({
                 </p>
               </div>
             </div>
-            <Button
-              type="button"
-              size="icon-sm"
-              variant="ghost"
-              onClick={() => setOpen(false)}
-              aria-label="Close Paimon"
-            >
-              <X />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                onClick={resetChat}
+                disabled={loading}
+                aria-label="Reset Paimon chat"
+                title="채팅 초기화"
+              >
+                <RotateCcw />
+              </Button>
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                onClick={() => setOpen(false)}
+                aria-label="Close Paimon"
+              >
+                <X />
+              </Button>
+            </div>
           </header>
 
           {attachments.length > 0 && (
@@ -408,7 +444,16 @@ export function PaimonChat({
                   title={attachment.url || attachment.metadata?.filename || ""}
                 >
                   <ImagePlus className="size-3" />
-                  {attachment.label}
+                  <span>{attachment.label}</span>
+                  <button
+                    type="button"
+                    className="ml-0.5 rounded-sm p-0.5 text-muted-foreground hover:bg-background hover:text-foreground"
+                    onClick={() => removeAttachment(attachment.id)}
+                    aria-label={`${attachment.label} 제거`}
+                    title="첨부 제거"
+                  >
+                    <X className="size-3" />
+                  </button>
                 </div>
               ))}
             </div>
