@@ -30,6 +30,7 @@
 /output/
 /uploads/
 /data/history/
+/data/workspaces.json
 
 # model weights
 *.safetensors

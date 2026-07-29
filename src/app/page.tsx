@@ -18,6 +18,7 @@ import { ModelSelector } from "@/components/model-selector";
 import { CivitaiImport } from "@/components/civitai-import";
 import { MetadataImport } from "@/components/metadata-import";
 import { Gallery } from "@/components/gallery";
+import { WorkspaceBar } from "@/components/workspace-bar";
 import { ImageViewer } from "@/components/image-viewer";
 import { AppSidebar } from "@/components/app-sidebar";
 import { EditorSection } from "@/components/editor-section";
@@ -97,6 +98,7 @@ interface GenerationQueueItem {
   id: string;
   params: GenerationParamsType;
   civitaiOrigin?: CivitaiOrigin;
+  workspaceId?: string;
 }
 
 function cloneGenerationParams(params: GenerationParamsType) {
@@ -240,7 +242,7 @@ export default function Home() {
   ]);
 
   const runGenerationJob = useCallback(async (job: GenerationQueueItem) => {
-    const { id, params: jobParams, civitaiOrigin } = job;
+    const { id, params: jobParams, civitaiOrigin, workspaceId } = job;
 
     const abortController = new AbortController();
     activePromptIdRef.current = "";
@@ -257,7 +259,7 @@ export default function Home() {
       const res = await fetch("/api/generate/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...jobParams, civitaiOrigin }),
+        body: JSON.stringify({ ...jobParams, civitaiOrigin, workspaceId }),
         signal: abortController.signal,
       });
 
@@ -345,6 +347,11 @@ export default function Home() {
               );
             }
 
+            // Refresh workspace image counts after auto-registering the result.
+            if (workspaceId) {
+              void useStore.getState().fetchWorkspaces();
+            }
+
             completed = true;
           }
 
@@ -415,6 +422,7 @@ export default function Home() {
     }
     const id = crypto.randomUUID();
     const civitaiOrigin = useStore.getState().civitaiReference ?? undefined;
+    const workspaceId = useStore.getState().activeWorkspaceId ?? undefined;
 
     addImage({
       id,
@@ -423,13 +431,17 @@ export default function Home() {
       params: jobParams,
       timestamp: Date.now(),
       civitaiOrigin,
+      workspaces: workspaceId ? [workspaceId] : [],
       generation: {
         state: "queued",
         progress: 0,
         message: "Queued",
       },
     });
-    setGenerationQueue((queue) => [...queue, { id, params: jobParams, civitaiOrigin }]);
+    setGenerationQueue((queue) => [
+      ...queue,
+      { id, params: jobParams, civitaiOrigin, workspaceId },
+    ]);
     setStatus({ state: "idle", progress: 0, message: "" });
   }, [addImage, generationModeError, params, setStatus]);
 
@@ -1007,6 +1019,7 @@ export default function Home() {
             {images.length} images
           </span>
         </div>
+        <WorkspaceBar />
         <Gallery
           onCancelGeneration={(image) => cancelGeneration(image.id)}
           onSendToPaimon={toggleImageInPaimon}

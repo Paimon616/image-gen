@@ -1,6 +1,11 @@
 import { mkdir, readFile, readdir, stat, unlink, writeFile } from "fs/promises";
 import { join } from "path";
 import type { GeneratedImage } from "@/lib/types";
+import {
+  getAssignments,
+  getWorkspaceFilenames,
+  removeImageAssignments,
+} from "@/lib/workspaces";
 
 export const OUTPUT_DIR = join(process.cwd(), "output");
 export const THUMBNAIL_DIR = join(OUTPUT_DIR, ".thumbnails");
@@ -50,8 +55,10 @@ export function parseImageListQuery(searchParams: URLSearchParams) {
     parsePositiveInt(searchParams.get("limit"), DEFAULT_IMAGE_LIMIT)
   );
   const cursor = Math.max(0, parsePositiveInt(searchParams.get("cursor"), 0));
+  const workspaceIdParam = searchParams.get("workspaceId");
+  const workspaceId = workspaceIdParam?.trim() ? workspaceIdParam.trim() : null;
 
-  return { cursor, limit };
+  return { cursor, limit, workspaceId };
 }
 
 async function readImageFileInfo(filename: string): Promise<ImageFileInfo | null> {
@@ -108,19 +115,35 @@ export function toResponseBody(buffer: Buffer) {
 export async function listGeneratedImages({
   cursor,
   limit,
+  workspaceId = null,
 }: {
   cursor: number;
   limit: number;
+  workspaceId?: string | null;
 }) {
   const files = await readdir(OUTPUT_DIR).catch(() => [] as string[]);
-  const imageFiles = files.filter(isValidImageFilename);
+  let imageFiles = files.filter(isValidImageFilename);
+
+  // Filtering by workspace is cheap: membership lives in a single central file,
+  // so we can narrow the file list before stat/sort/paginate.
+  if (workspaceId) {
+    const members = await getWorkspaceFilenames(workspaceId);
+    imageFiles = imageFiles.filter((filename) => members.has(filename));
+  }
+
   const fileInfos = (await Promise.all(imageFiles.map(readImageFileInfo)))
     .filter((info): info is ImageFileInfo => Boolean(info))
     .sort((a, b) => b.timestamp - a.timestamp);
 
   const start = Math.min(cursor, fileInfos.length);
   const end = Math.min(start + limit, fileInfos.length);
-  const images = await Promise.all(fileInfos.slice(start, end).map(readImageMeta));
+  const assignments = await getAssignments();
+  const images = await Promise.all(
+    fileInfos.slice(start, end).map(async (info) => {
+      const image = await readImageMeta(info);
+      return { ...image, workspaces: assignments[info.filename] ?? [] };
+    })
+  );
 
   return {
     images,
@@ -216,6 +239,7 @@ export async function deleteGeneratedImage(filename: string) {
   await unlink(filepath);
   await unlink(filepath.replace(/\.\w+$/, ".json")).catch(() => {});
   await unlink(join(THUMBNAIL_DIR, thumbnailFilename(filename))).catch(() => {});
+  await removeImageAssignments(filename).catch(() => {});
 
   return true;
 }

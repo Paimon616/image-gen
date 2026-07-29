@@ -120,6 +120,17 @@ export interface GeneratedImage {
   sizeSemantics?: "base" | "final";
   generation?: ImageGenerationStatus;
   civitaiOrigin?: CivitaiOrigin;
+  workspaces?: string[];
+}
+
+export interface Workspace {
+  id: string;
+  name: string;
+  createdAt: number;
+}
+
+export interface WorkspaceSummary extends Workspace {
+  count: number;
 }
 
 export interface ImageGenerationStatus {

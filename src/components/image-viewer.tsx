@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { CivitaiOriginModal } from "@/components/civitai-origin-modal";
+import { WorkspacePicker } from "@/components/workspace-picker";
 import { CopyLinkButton } from "@/components/copy-link-button";
 import { ModelMediaThumbnail } from "@/components/model-media-thumbnail";
 import {
@@ -742,6 +743,11 @@ export function ImageViewer() {
                 )}
                 Scrap
               </Button>
+              <WorkspacePicker
+                image={selectedImage}
+                align="left"
+                triggerVariant="outline"
+              />
               <div className="relative">
                 <Button
                   size="sm"

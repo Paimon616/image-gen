@@ -15,6 +15,7 @@ import type { GeneratedImage, HistoryEntry } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CivitaiOriginModal } from "@/components/civitai-origin-modal";
+import { WorkspacePicker } from "@/components/workspace-picker";
 import {
   AlertCircle,
   BookmarkCheck,
@@ -453,6 +454,7 @@ const GalleryCard = memo(function GalleryCard({
               <BookmarkPlus />
             )}
           </Button>
+          <WorkspacePicker image={img} align="right" />
           <Button
             type="button"
             size="icon-sm"
@@ -530,6 +532,9 @@ export function Gallery({
   thumbnailWidth = 240,
 }: GalleryProps) {
   const images = useStore((state) => state.images);
+  const activeWorkspaceId = useStore((state) => state.activeWorkspaceId);
+  const workspaces = useStore((state) => state.workspaces);
+  const language = useStore((state) => state.language);
   const setSelectedImage = useStore((state) => state.setSelectedImage);
   const loadParamsFromImage = useStore((state) => state.loadParamsFromImage);
   const removeImage = useStore((state) => state.removeImage);
@@ -695,6 +700,11 @@ export function Gallery({
   );
 
   if (images.length === 0) {
+    const ko = language === "ko";
+    const activeWorkspace = activeWorkspaceId
+      ? workspaces.find((workspace) => workspace.id === activeWorkspaceId)
+      : null;
+
     return (
       <div className="flex-1 flex items-center justify-center text-muted-foreground">
         <div className="text-center">
@@ -711,10 +721,27 @@ export function Gallery({
               d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z"
             />
           </svg>
-          <p className="text-sm">No images yet</p>
-          <p className="text-xs mt-1">
-            Generate your first image to get started
-          </p>
+          {activeWorkspace ? (
+            <>
+              <p className="text-sm">
+                {ko
+                  ? `'${activeWorkspace.name}' 워크스페이스가 비어 있습니다`
+                  : `'${activeWorkspace.name}' workspace is empty`}
+              </p>
+              <p className="text-xs mt-1">
+                {ko
+                  ? "이 워크스페이스를 선택한 채로 이미지를 생성하거나, 기존 이미지를 이 워크스페이스에 추가하세요"
+                  : "Generate an image while this workspace is selected, or add existing images to it"}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm">No images yet</p>
+              <p className="text-xs mt-1">
+                Generate your first image to get started
+              </p>
+            </>
+          )}
         </div>
       </div>
     );

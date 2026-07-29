@@ -21,7 +21,9 @@ guides: [ComfyUI](docs/comfyui-setup.md), [A1111](docs/a1111-setup.md),
 [Forge](docs/forge-setup.md), and
 [Civitai metadata reproduction](docs/civitai-metadata-reproduction.md). For the
 current editor, Hires/ADetailer behavior, and gallery controls, see
-[Image generation UI](docs/image-generation-ui.md).
+[Image generation UI](docs/image-generation-ui.md). For the gallery workspace
+feature, fresh-clone/upgrade steps, and pull-conflict handling, see
+[Gallery workspaces](docs/gallery-workspaces.md).
 
 ### Backends
 

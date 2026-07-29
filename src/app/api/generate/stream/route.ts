@@ -18,6 +18,7 @@ import type { CivitaiOrigin, GenerationParams } from "@/lib/types";
 import { imageUrl, OUTPUT_DIR, thumbnailUrl } from "@/lib/server-images";
 import { buildGenerationResources } from "@/lib/generation-resource-links";
 import { generateWithA1111, interruptA1111 } from "@/lib/a1111";
+import { toggleImageWorkspace, workspaceExists } from "@/lib/workspaces";
 
 interface ComfyWsMessage {
   type?: string;
@@ -42,11 +43,13 @@ async function saveBufferedImages({
   params,
   endpoint,
   civitaiOrigin,
+  workspaceId,
 }: {
   images: ComfyGeneratedImage[];
   params: GenerationParams;
   endpoint: string;
   civitaiOrigin?: CivitaiOrigin;
+  workspaceId?: string;
 }) {
   await ensureOutputDir();
 
@@ -79,6 +82,12 @@ async function saveBufferedImages({
         )
       );
 
+      // Auto-register the fresh image into the active workspace so it shows up
+      // in that workspace's filtered gallery view immediately.
+      const workspaces = workspaceId
+        ? await toggleImageWorkspace(filename, workspaceId, true).catch(() => [])
+        : [];
+
       return {
         id,
         url: imageUrl(filename),
@@ -88,6 +97,7 @@ async function saveBufferedImages({
         sizeSemantics: "final" as const,
         timestamp,
         civitaiOrigin,
+        workspaces,
       };
     })
   );
@@ -127,8 +137,13 @@ function sse(event: string, data: unknown) {
 
 export async function POST(req: NextRequest) {
   const encoder = new TextEncoder();
-  const { civitaiOrigin, ...rawBody } = (await req.json()) as GenerationParams & {
+  const {
+    civitaiOrigin,
+    workspaceId: rawWorkspaceId,
+    ...rawBody
+  } = (await req.json()) as GenerationParams & {
     civitaiOrigin?: CivitaiOrigin;
+    workspaceId?: string;
   };
   const body: GenerationParams = {
     ...rawBody,
@@ -137,6 +152,12 @@ export async function POST(req: NextRequest) {
     seed: normalizeGenerationSeed(rawBody.seed),
   };
   const modelConfig = getModelConfig(body.model);
+  // Only honor a workspace target that still exists, so a stale id from the
+  // client can't create dangling assignments.
+  const workspaceId =
+    rawWorkspaceId && (await workspaceExists(rawWorkspaceId))
+      ? rawWorkspaceId
+      : undefined;
 
   if (
     body.generation_mode === "pose_reference" &&
@@ -238,6 +259,7 @@ export async function POST(req: NextRequest) {
             params: body,
             endpoint: `${body.backend}/local`,
             civitaiOrigin,
+            workspaceId,
           });
           send("progress", { progress: 100, message: "Done" });
           send("complete", { images: savedImages });
@@ -289,6 +311,7 @@ export async function POST(req: NextRequest) {
           params: body,
           endpoint: modelConfig.id,
           civitaiOrigin,
+          workspaceId,
         });
 
         send("progress", { progress: 100, message: "Done" });
