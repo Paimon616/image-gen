@@ -2,6 +2,7 @@ import { create } from "zustand";
 import {
   DEFAULT_PARAMS,
   normalizeImageDimension,
+  UNGROUPED_WORKSPACE_ID,
   type CivitaiOrigin,
   type GeneratedImage,
   type GenerationParams,
@@ -42,6 +43,7 @@ interface AppState {
   civitaiImport: CivitaiImportState;
   workspaces: WorkspaceSummary[];
   activeWorkspaceId: string | null;
+  ungroupedCount: number;
 
   setParams: (update: Partial<GenerationParams>) => void;
   setStatus: (status: Partial<GenerationStatus>) => void;
@@ -62,6 +64,10 @@ interface AppState {
     image: GeneratedImage,
     workspaceId: string,
     assigned: boolean
+  ) => Promise<void>;
+  setImageWorkspaces: (
+    image: GeneratedImage,
+    workspaceIds: string[]
   ) => Promise<void>;
   setLanguage: (language: AppLanguage) => void;
   setCivitaiReference: (origin: CivitaiOrigin | null) => void;
@@ -104,7 +110,11 @@ export function imageMatchesWorkspace(
   image: GeneratedImage,
   workspaceId: string | null
 ) {
-  return workspaceId === null || (image.workspaces ?? []).includes(workspaceId);
+  if (workspaceId === null) return true;
+  if (workspaceId === UNGROUPED_WORKSPACE_ID) {
+    return (image.workspaces ?? []).length === 0;
+  }
+  return (image.workspaces ?? []).includes(workspaceId);
 }
 
 function imageIdentityKeys(image: GeneratedImage) {
@@ -177,6 +187,7 @@ export const useStore = create<AppState>((set) => ({
   civitaiImport: EMPTY_CIVITAI_IMPORT,
   workspaces: [],
   activeWorkspaceId: null,
+  ungroupedCount: 0,
 
   setParams: (update) =>
     set((s) => ({ params: { ...s.params, ...update } })),
@@ -370,6 +381,8 @@ export const useStore = create<AppState>((set) => ({
         workspaces: Array.isArray(data.workspaces)
           ? (data.workspaces as WorkspaceSummary[])
           : [],
+        ungroupedCount:
+          typeof data.ungroupedCount === "number" ? data.ungroupedCount : 0,
       });
     } catch {
       // Leave the previous workspace list in place on a transient failure.
@@ -487,10 +500,55 @@ export const useStore = create<AppState>((set) => ({
         : [];
 
       set((s) => {
-        const active = s.activeWorkspaceId;
-        // When filtering by a workspace, an image removed from it should leave
-        // the current grid immediately.
-        const dropFromView = Boolean(active && !workspaces.includes(active));
+        // When a filter is active, an image that no longer matches it should
+        // leave the current grid immediately (covers real workspaces and the
+        // "ungrouped" filter).
+        const dropFromView =
+          s.activeWorkspaceId !== null &&
+          !imageMatchesWorkspace({ ...image, workspaces }, s.activeWorkspaceId);
+
+        return {
+          images: dropFromView
+            ? s.images.filter((img) => img.id !== image.id)
+            : s.images.map((img) =>
+                img.id === image.id ? { ...img, workspaces } : img
+              ),
+          selectedImage:
+            s.selectedImage?.id === image.id
+              ? { ...s.selectedImage, workspaces }
+              : s.selectedImage,
+        };
+      });
+    } catch {
+      return;
+    }
+
+    void useStore.getState().fetchWorkspaces();
+  },
+
+  setImageWorkspaces: async (image, workspaceIds) => {
+    if (!image.filename) return;
+
+    try {
+      const response = await fetch(
+        `/api/images/${image.filename}/workspaces`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ workspaceIds }),
+        }
+      );
+      if (!response.ok) return;
+
+      const data = await response.json();
+      const workspaces = Array.isArray(data.workspaces)
+        ? (data.workspaces as string[])
+        : [];
+
+      set((s) => {
+        const dropFromView =
+          s.activeWorkspaceId !== null &&
+          !imageMatchesWorkspace({ ...image, workspaces }, s.activeWorkspaceId);
 
         return {
           images: dropFromView

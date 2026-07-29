@@ -34,6 +34,7 @@ import { getModelConfig, randomGenerationSeed } from "@/lib/types";
 import {
   GripVertical,
   FolderMinus,
+  FolderX,
   FolderPlus,
   ImageIcon,
   ImageUp,
@@ -124,6 +125,7 @@ export default function Home() {
     activeWorkspaceId,
     removeImage,
     setImageWorkspace,
+    setImageWorkspaces,
   } = useStore();
   const ko = language === "ko";
   const [localControlnets, setLocalControlnets] = useState<string[]>([]);
@@ -313,6 +315,20 @@ export default function Home() {
     },
     [selectedBatchWorkspaceId, selectedPersistedGalleryImages, setImageWorkspace]
   );
+
+  const clearSelectedGalleryWorkspaces = useCallback(async () => {
+    if (selectedPersistedGalleryImages.length === 0 || batchActionBusy) return;
+
+    setBatchActionBusy(true);
+    try {
+      for (const image of selectedPersistedGalleryImages) {
+        await setImageWorkspaces(image, []);
+      }
+      setSelectedGalleryImageIds(new Set());
+    } finally {
+      setBatchActionBusy(false);
+    }
+  }, [batchActionBusy, selectedPersistedGalleryImages, setImageWorkspaces]);
 
   const generationModeError = useMemo(() => {
     if (params.generation_mode === "image_to_image" && !params.source_image) {
@@ -1167,6 +1183,22 @@ export default function Home() {
                 >
                   <FolderMinus className="h-3.5 w-3.5" />
                   {ko ? "제거" : "Remove"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5"
+                  onClick={() => void clearSelectedGalleryWorkspaces()}
+                  disabled={batchActionBusy || selectedPersistedGalleryCount === 0}
+                  title={
+                    ko
+                      ? "선택한 이미지를 모든 워크스페이스에서 제외합니다"
+                      : "Remove selected images from every workspace"
+                  }
+                >
+                  <FolderX className="h-3.5 w-3.5" />
+                  {ko ? "워크스페이스 비우기" : "Clear workspaces"}
                 </Button>
                 <Button
                   type="button"

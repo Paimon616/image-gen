@@ -1,6 +1,6 @@
 import { mkdir, readFile, readdir, stat, unlink, writeFile } from "fs/promises";
 import { join } from "path";
-import type { GeneratedImage } from "@/lib/types";
+import { UNGROUPED_WORKSPACE_ID, type GeneratedImage } from "@/lib/types";
 import {
   getAssignments,
   getWorkspaceFilenames,
@@ -112,6 +112,13 @@ export function toResponseBody(buffer: Buffer) {
   ) as ArrayBuffer;
 }
 
+// Cheap listing of valid image filenames (no stat / metadata read). Used to
+// compute the ungrouped count without paying for a full listing.
+export async function listImageFilenames(): Promise<string[]> {
+  const files = await readdir(OUTPUT_DIR).catch(() => [] as string[]);
+  return files.filter(isValidImageFilename);
+}
+
 export async function listGeneratedImages({
   cursor,
   limit,
@@ -126,7 +133,12 @@ export async function listGeneratedImages({
 
   // Filtering by workspace is cheap: membership lives in a single central file,
   // so we can narrow the file list before stat/sort/paginate.
-  if (workspaceId) {
+  if (workspaceId === UNGROUPED_WORKSPACE_ID) {
+    const assignments = await getAssignments();
+    imageFiles = imageFiles.filter(
+      (filename) => !(assignments[filename]?.length)
+    );
+  } else if (workspaceId) {
     const members = await getWorkspaceFilenames(workspaceId);
     imageFiles = imageFiles.filter((filename) => members.has(filename));
   }

@@ -1,15 +1,27 @@
 import { type NextRequest, NextResponse } from "next/server";
 import {
   createWorkspace,
+  getAssignments,
   listWorkspaceSummaries,
   normalizeWorkspaceName,
 } from "@/lib/workspaces";
+import { listImageFilenames } from "@/lib/server-images";
 
 export async function GET() {
   try {
-    return NextResponse.json({ workspaces: await listWorkspaceSummaries() });
+    const [workspaces, filenames, assignments] = await Promise.all([
+      listWorkspaceSummaries(),
+      listImageFilenames(),
+      getAssignments(),
+    ]);
+    // An image is "ungrouped" when it exists on disk but has no assignment.
+    const ungroupedCount = filenames.filter(
+      (filename) => !(assignments[filename]?.length)
+    ).length;
+
+    return NextResponse.json({ workspaces, ungroupedCount });
   } catch {
-    return NextResponse.json({ workspaces: [] });
+    return NextResponse.json({ workspaces: [], ungroupedCount: 0 });
   }
 }
 

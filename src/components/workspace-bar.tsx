@@ -1,8 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
+import { createPortal } from "react-dom";
 import {
   Check,
+  FolderX,
   FolderPlus,
   Layers,
   MoreHorizontal,
@@ -11,7 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
-import type { WorkspaceSummary } from "@/lib/types";
+import { UNGROUPED_WORKSPACE_ID, type WorkspaceSummary } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 
 // A Korean/Japanese/Chinese IME fires a confirming Enter (isComposing / keyCode
@@ -40,27 +48,58 @@ function WorkspaceChip({
   const [renaming, setRenaming] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [draftName, setDraftName] = useState(workspace.name);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-
-    const handlePointerDown = (event: MouseEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) {
-        setMenuOpen(false);
-        setRenaming(false);
-        setConfirmingDelete(false);
-      }
-    };
-    window.addEventListener("mousedown", handlePointerDown);
-    return () => window.removeEventListener("mousedown", handlePointerDown);
-  }, [menuOpen]);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(
+    null
+  );
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const closeMenu = () => {
     setMenuOpen(false);
     setRenaming(false);
     setConfirmingDelete(false);
   };
+
+  // The bar is overflow-x-auto (which also clips the y axis), so the menu is
+  // rendered in a portal on document.body anchored to the trigger button.
+  useLayoutEffect(() => {
+    if (!menuOpen) return;
+
+    const updatePosition = () => {
+      const rect = triggerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const width = 224; // w-56
+      const left = Math.min(
+        Math.max(8, rect.left),
+        window.innerWidth - width - 8
+      );
+      setMenuPos({ top: rect.bottom + 6, left });
+    };
+
+    updatePosition();
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        !triggerRef.current?.contains(target) &&
+        !menuRef.current?.contains(target)
+      ) {
+        closeMenu();
+      }
+    };
+    window.addEventListener("mousedown", handlePointerDown);
+    return () => window.removeEventListener("mousedown", handlePointerDown);
+  }, [menuOpen]);
 
   const submitRename = () => {
     const name = draftName.trim();
@@ -69,7 +108,7 @@ function WorkspaceChip({
   };
 
   return (
-    <div ref={containerRef} className="relative shrink-0">
+    <div className="relative shrink-0">
       <div
         className={`group flex items-center gap-1 rounded-full border px-1 py-0.5 pl-3 text-xs transition-colors ${
           active
@@ -95,6 +134,7 @@ function WorkspaceChip({
           </span>
         </button>
         <button
+          ref={triggerRef}
           type="button"
           onClick={() => {
             setDraftName(workspace.name);
@@ -108,14 +148,25 @@ function WorkspaceChip({
               : "text-muted-foreground hover:bg-muted"
           }`}
           aria-label={ko ? "워크스페이스 관리 (이름 변경·삭제)" : "Manage workspace (rename / delete)"}
+          aria-expanded={menuOpen}
           title={ko ? "이름 변경·삭제" : "Rename / delete"}
         >
           <MoreHorizontal className="h-3.5 w-3.5" />
         </button>
       </div>
 
-      {menuOpen && (
-        <div className="absolute left-0 top-9 z-40 w-56 rounded-md border border-border bg-popover p-2 text-foreground shadow-xl">
+      {menuOpen &&
+        typeof document !== "undefined" &&
+        createPortal(
+        <div
+          ref={menuRef}
+          className="fixed z-[200] w-56 rounded-md border border-border bg-popover p-2 text-foreground shadow-xl"
+          style={{
+            top: menuPos?.top ?? -9999,
+            left: menuPos?.left ?? -9999,
+            visibility: menuPos ? "visible" : "hidden",
+          }}
+        >
           {renaming ? (
             <div className="flex items-center gap-1">
               <input
@@ -198,7 +249,8 @@ function WorkspaceChip({
               </button>
             </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -206,6 +258,7 @@ function WorkspaceChip({
 
 export function WorkspaceBar() {
   const workspaces = useStore((state) => state.workspaces);
+  const ungroupedCount = useStore((state) => state.ungroupedCount);
   const activeWorkspaceId = useStore((state) => state.activeWorkspaceId);
   const fetchWorkspaces = useStore((state) => state.fetchWorkspaces);
   const setActiveWorkspace = useStore((state) => state.setActiveWorkspace);
@@ -266,6 +319,33 @@ export function WorkspaceBar() {
         }`}
       >
         {ko ? "전체 보기" : "All images"}
+      </button>
+
+      <button
+        type="button"
+        onClick={() => setActiveWorkspace(UNGROUPED_WORKSPACE_ID)}
+        className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+          activeWorkspaceId === UNGROUPED_WORKSPACE_ID
+            ? "border-primary bg-primary text-primary-foreground"
+            : "border-border bg-card text-foreground hover:border-primary/50"
+        }`}
+        title={
+          ko
+            ? "어떤 워크스페이스에도 속하지 않은 이미지"
+            : "Images not in any workspace"
+        }
+      >
+        <FolderX className="h-3.5 w-3.5" />
+        {ko ? "그룹없음" : "Ungrouped"}
+        <span
+          className={`rounded-full px-1.5 text-[10px] tabular-nums ${
+            activeWorkspaceId === UNGROUPED_WORKSPACE_ID
+              ? "bg-primary-foreground/20 text-primary-foreground"
+              : "bg-muted text-muted-foreground"
+          }`}
+        >
+          {ungroupedCount}
+        </span>
       </button>
 
       {workspaces.map((workspace) => (

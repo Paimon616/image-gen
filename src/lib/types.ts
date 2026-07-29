@@ -123,6 +123,10 @@ export interface GeneratedImage {
   workspaces?: string[];
 }
 
+// Sentinel filter id for images that belong to no workspace. Not a real
+// workspace — used as an activeWorkspaceId value and image-list query param.
+export const UNGROUPED_WORKSPACE_ID = "__ungrouped__";
+
 export interface Workspace {
   id: string;
   name: string;
