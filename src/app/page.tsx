@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { useStore } from "@/lib/store";
+import { imageMatchesWorkspace, useStore } from "@/lib/store";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -33,11 +33,14 @@ import type {
 import { getModelConfig, randomGenerationSeed } from "@/lib/types";
 import {
   GripVertical,
+  FolderMinus,
+  FolderPlus,
   ImageIcon,
   ImageUp,
   PanelLeftClose,
   PanelLeftOpen,
   ScanLine,
+  Trash2,
   X,
 } from "lucide-react";
 
@@ -115,7 +118,12 @@ export default function Home() {
     addImages,
     updateImage,
     images,
+    pendingImages,
     language,
+    workspaces,
+    activeWorkspaceId,
+    removeImage,
+    setImageWorkspace,
   } = useStore();
   const ko = language === "ko";
   const [localControlnets, setLocalControlnets] = useState<string[]>([]);
@@ -125,6 +133,12 @@ export default function Home() {
   const [thumbnailWidth, setThumbnailWidth] = useState(240);
   const [editorWidth, setEditorWidth] = useState(720);
   const [editorOpen, setEditorOpen] = useState(true);
+  const [gallerySelectionMode, setGallerySelectionMode] = useState(false);
+  const [selectedGalleryImageIds, setSelectedGalleryImageIds] = useState<Set<string>>(
+    new Set()
+  );
+  const [batchWorkspaceId, setBatchWorkspaceId] = useState("");
+  const [batchActionBusy, setBatchActionBusy] = useState(false);
   const layoutRef = useRef<HTMLDivElement | null>(null);
   const [generationQueue, setGenerationQueue] = useState<GenerationQueueItem[]>([]);
   const [activeGeneration, setActiveGeneration] =
@@ -217,6 +231,89 @@ export default function Home() {
 
   const currentModel = getModelConfig(params.model);
   const supportsPoseReference = currentModel.provider === "comfyui";
+  const galleryBatchImages = useMemo(() => {
+    const visiblePending = pendingImages.filter((image) =>
+      imageMatchesWorkspace(image, activeWorkspaceId)
+    );
+    const pendingIds = new Set(visiblePending.map((image) => image.id));
+
+    return [
+      ...visiblePending,
+      ...images.filter((image) => !pendingIds.has(image.id)),
+    ];
+  }, [activeWorkspaceId, images, pendingImages]);
+  const selectedGalleryImages = useMemo(
+    () =>
+      galleryBatchImages.filter((image) =>
+        selectedGalleryImageIds.has(image.id)
+      ),
+    [galleryBatchImages, selectedGalleryImageIds]
+  );
+  const selectedPersistedGalleryImages = useMemo(
+    () => selectedGalleryImages.filter((image) => Boolean(image.filename)),
+    [selectedGalleryImages]
+  );
+  const selectedGalleryCount = selectedGalleryImages.length;
+  const selectedPersistedGalleryCount = selectedPersistedGalleryImages.length;
+  const selectedBatchWorkspaceId = batchWorkspaceId || workspaces[0]?.id || "";
+
+  const toggleGallerySelectionMode = useCallback(() => {
+    setGallerySelectionMode((enabled) => {
+      if (enabled) {
+        setSelectedGalleryImageIds(new Set());
+      }
+      return !enabled;
+    });
+  }, []);
+
+  const toggleGalleryImageSelection = useCallback((image: GeneratedImage) => {
+    setSelectedGalleryImageIds((current) => {
+      const next = new Set(current);
+      if (next.has(image.id)) {
+        next.delete(image.id);
+      } else {
+        next.add(image.id);
+      }
+      return next;
+    });
+  }, []);
+
+  const deleteSelectedGalleryImages = useCallback(async () => {
+    if (selectedGalleryImages.length === 0 || batchActionBusy) return;
+
+    setBatchActionBusy(true);
+    try {
+      for (const image of selectedGalleryImages) {
+        if (image.filename) {
+          await fetch(`/api/images/${image.filename}`, { method: "DELETE" });
+        }
+        removeImage(image.id);
+      }
+      setSelectedGalleryImageIds(new Set());
+    } finally {
+      setBatchActionBusy(false);
+    }
+  }, [batchActionBusy, removeImage, selectedGalleryImages]);
+
+  const updateSelectedGalleryWorkspace = useCallback(
+    async (assigned: boolean) => {
+      if (!selectedBatchWorkspaceId || selectedPersistedGalleryImages.length === 0) {
+        return;
+      }
+
+      setBatchActionBusy(true);
+      try {
+        for (const image of selectedPersistedGalleryImages) {
+          await setImageWorkspace(image, selectedBatchWorkspaceId, assigned);
+        }
+        setSelectedGalleryImageIds(new Set());
+      } finally {
+        setBatchActionBusy(false);
+      }
+    },
+    [selectedBatchWorkspaceId, selectedPersistedGalleryImages, setImageWorkspace]
+  );
+
   const generationModeError = useMemo(() => {
     if (params.generation_mode === "image_to_image" && !params.source_image) {
       return "Add a source image before generating.";
@@ -997,6 +1094,93 @@ export default function Home() {
               {editorOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
             </Button>
             <h2 className="text-sm font-medium">{ko ? "갤러리" : "Gallery"}</h2>
+            <Button
+              type="button"
+              size="sm"
+              variant={gallerySelectionMode ? "default" : "outline"}
+              onClick={toggleGallerySelectionMode}
+              className="h-8"
+            >
+              {gallerySelectionMode
+                ? ko ? "선택 종료" : "Done"
+                : ko ? "다중선택" : "Multi-select"}
+            </Button>
+            {gallerySelectionMode && (
+              <div className="flex items-center gap-2">
+                <span className="whitespace-nowrap rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
+                  {ko
+                    ? `${selectedGalleryCount}개 선택`
+                    : `${selectedGalleryCount} selected`}
+                </span>
+                <select
+                  value={selectedBatchWorkspaceId}
+                  onChange={(event) => setBatchWorkspaceId(event.target.value)}
+                  className="h-8 max-w-44 rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
+                  disabled={workspaces.length === 0 || batchActionBusy}
+                  aria-label={ko ? "일괄 작업 워크스페이스" : "Batch workspace"}
+                >
+                  {workspaces.length === 0 ? (
+                    <option value="">
+                      {ko ? "워크스페이스 없음" : "No workspace"}
+                    </option>
+                  ) : (
+                    workspaces.map((workspace) => (
+                      <option key={workspace.id} value={workspace.id}>
+                        {workspace.name}
+                      </option>
+                    ))
+                  )}
+                </select>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5"
+                  onClick={() => void updateSelectedGalleryWorkspace(true)}
+                  disabled={
+                    batchActionBusy ||
+                    !selectedBatchWorkspaceId ||
+                    selectedPersistedGalleryCount === 0
+                  }
+                  title={
+                    selectedPersistedGalleryCount === 0
+                      ? ko
+                        ? "저장된 이미지만 워크스페이스에 추가할 수 있습니다"
+                        : "Only saved images can be assigned to workspaces"
+                      : undefined
+                  }
+                >
+                  <FolderPlus className="h-3.5 w-3.5" />
+                  {ko ? "추가" : "Add"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5"
+                  onClick={() => void updateSelectedGalleryWorkspace(false)}
+                  disabled={
+                    batchActionBusy ||
+                    !selectedBatchWorkspaceId ||
+                    selectedPersistedGalleryCount === 0
+                  }
+                >
+                  <FolderMinus className="h-3.5 w-3.5" />
+                  {ko ? "제거" : "Remove"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="destructive"
+                  className="h-8 gap-1.5"
+                  onClick={() => void deleteSelectedGalleryImages()}
+                  disabled={batchActionBusy || selectedGalleryCount === 0}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  {ko ? "삭제" : "Delete"}
+                </Button>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <span className="whitespace-nowrap text-xs text-muted-foreground">{ko ? "썸네일 너비" : "Thumbnail width"}</span>
               <Slider
@@ -1025,6 +1209,9 @@ export default function Home() {
           onSendToPaimon={toggleImageInPaimon}
           paimonImageIds={paimonImageIds}
           thumbnailWidth={thumbnailWidth}
+          selectionMode={gallerySelectionMode}
+          selectedImageIds={selectedGalleryImageIds}
+          onToggleImageSelection={toggleGalleryImageSelection}
         />
       </main>
 

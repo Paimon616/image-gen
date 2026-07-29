@@ -56,7 +56,10 @@ interface GalleryCardProps {
   scrapped: boolean;
   scrapping: boolean;
   sentToPaimon: boolean;
+  selectionMode: boolean;
+  selected: boolean;
   onOpen: (img: GeneratedImage) => void;
+  onToggleSelect: (img: GeneratedImage) => void;
   onReuse: (img: GeneratedImage) => void;
   onScrap: (img: GeneratedImage) => void;
   onDelete: (img: GeneratedImage) => void;
@@ -69,7 +72,10 @@ const GalleryCard = memo(function GalleryCard({
   scrapped,
   scrapping,
   sentToPaimon,
+  selectionMode,
+  selected,
   onOpen,
+  onToggleSelect,
   onReuse,
   onScrap,
   onDelete,
@@ -160,14 +166,34 @@ const GalleryCard = memo(function GalleryCard({
     <>
     <div
       ref={cardRef}
-      className="group relative overflow-hidden rounded-lg border border-border transition-colors [contain-intrinsic-size:320px_420px] [content-visibility:auto] hover:border-primary/50"
+      className={`group relative overflow-hidden rounded-lg border transition-colors [contain-intrinsic-size:320px_420px] [content-visibility:auto] ${
+        selected
+          ? "border-primary ring-2 ring-primary/50"
+          : "border-border hover:border-primary/50"
+      } ${selectionMode ? "cursor-pointer" : ""}`}
+      onClick={(event) => {
+        if (!selectionMode) return;
 
+        const target = event.target as HTMLElement;
+        if (target.closest("button,a,input,select,textarea")) return;
+
+        onToggleSelect(img);
+      }}
     >
       {hasImage ? (
         <button
           type="button"
           className="block h-full w-full cursor-pointer overflow-hidden"
-          onClick={() => onOpen(img)}
+          onClick={(event) => {
+            if (selectionMode) {
+              event.preventDefault();
+              event.stopPropagation();
+              onToggleSelect(img);
+              return;
+            }
+
+            onOpen(img);
+          }}
           aria-label="Open image details"
         >
           <img
@@ -329,6 +355,11 @@ const GalleryCard = memo(function GalleryCard({
           </div>
         </div>
       )}
+      {selectionMode && (
+        <div className="pointer-events-none absolute left-2 top-2 z-30 flex h-7 w-7 items-center justify-center rounded-md border border-white/70 bg-black/55 text-white shadow-sm">
+          {selected && <Check className="h-4 w-4" />}
+        </div>
+      )}
       {!hasImage &&
         (displayState === "error" || displayState === "canceled") &&
         confirmingDelete && (
@@ -363,7 +394,7 @@ const GalleryCard = memo(function GalleryCard({
           </div>
         </div>
       )}
-      {scrapped && (
+      {scrapped && !selectionMode && (
         <Badge className="pointer-events-none absolute left-2 top-2 z-10 rounded-md bg-primary/95 text-primary-foreground shadow-sm">
           <Check className="h-3 w-3" />
           스크랩됨
@@ -415,7 +446,7 @@ const GalleryCard = memo(function GalleryCard({
           )}
         </div>
       )}
-      {hasImage && !isPending && (
+      {hasImage && !isPending && !selectionMode && (
         <>
       {sentToPaimon && onSendToPaimon && (
         <Button
@@ -546,6 +577,9 @@ interface GalleryProps {
   onSendToPaimon?: (img: GeneratedImage) => void;
   paimonImageIds?: ReadonlySet<string>;
   thumbnailWidth?: number;
+  selectionMode?: boolean;
+  selectedImageIds?: ReadonlySet<string>;
+  onToggleImageSelection?: (img: GeneratedImage) => void;
 }
 
 export function Gallery({
@@ -553,6 +587,9 @@ export function Gallery({
   onSendToPaimon,
   paimonImageIds,
   thumbnailWidth = 240,
+  selectionMode = false,
+  selectedImageIds,
+  onToggleImageSelection,
 }: GalleryProps) {
   const images = useStore((state) => state.images);
   const pendingImages = useStore((state) => state.pendingImages);
@@ -805,7 +842,10 @@ export function Gallery({
             scrapped={scrappedImageIds.has(img.id)}
             scrapping={scrappingIds.has(img.id)}
             sentToPaimon={paimonImageIds?.has(img.id) ?? false}
+            selectionMode={selectionMode}
+            selected={selectedImageIds?.has(img.id) ?? false}
             onOpen={handleOpen}
+            onToggleSelect={(image) => onToggleImageSelection?.(image)}
             onReuse={handleReuse}
             onScrap={handleScrap}
             onDelete={handleDelete}
