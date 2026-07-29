@@ -28,6 +28,11 @@ interface AppState {
   params: GenerationParams;
   status: GenerationStatus;
   images: GeneratedImage[];
+  // Client-only generation cards (queued / generating / just-failed) that have
+  // not been persisted to disk yet. Kept separate from `images` so switching
+  // workspaces — which clears and refetches `images` — never drops an in-flight
+  // generation. The gallery merges these back in, filtered by workspace.
+  pendingImages: GeneratedImage[];
   imagesNextCursor: number | null;
   imagesTotal: number;
   isLoadingMoreImages: boolean;
@@ -95,6 +100,13 @@ function sortImagesNewestFirst(images: GeneratedImage[]) {
   return [...images].sort((a, b) => b.timestamp - a.timestamp);
 }
 
+export function imageMatchesWorkspace(
+  image: GeneratedImage,
+  workspaceId: string | null
+) {
+  return workspaceId === null || (image.workspaces ?? []).includes(workspaceId);
+}
+
 function imageIdentityKeys(image: GeneratedImage) {
   return [
     image.filename,
@@ -155,6 +167,7 @@ export const useStore = create<AppState>((set) => ({
   params: DEFAULT_PARAMS,
   status: { state: "idle", progress: 0, message: "" },
   images: [],
+  pendingImages: [],
   imagesNextCursor: null,
   imagesTotal: 0,
   isLoadingMoreImages: false,
@@ -172,10 +185,33 @@ export const useStore = create<AppState>((set) => ({
     set((s) => ({ status: { ...s.status, ...status } })),
 
   addImage: (image) =>
-    set((s) => ({ images: mergeImages(s.images, [image]) })),
+    set((s) => {
+      // A card without a filename is a client-only generation placeholder.
+      if (!image.filename) {
+        const exists = s.pendingImages.some((p) => p.id === image.id);
+        return {
+          pendingImages: exists
+            ? s.pendingImages.map((p) =>
+                p.id === image.id ? { ...p, ...image } : p
+              )
+            : [image, ...s.pendingImages],
+        };
+      }
+
+      // A persisted image only enters the current view if it matches the filter.
+      if (!imageMatchesWorkspace(image, s.activeWorkspaceId)) return {};
+      return { images: mergeImages(s.images, [image]) };
+    }),
 
   addImages: (images) =>
-    set((s) => ({ images: mergeImages(s.images, images) })),
+    set((s) => {
+      const matching = images.filter((image) =>
+        imageMatchesWorkspace(image, s.activeWorkspaceId)
+      );
+      return matching.length
+        ? { images: mergeImages(s.images, matching) }
+        : {};
+    }),
 
   fetchImagePage: async (cursor) => {
     if (useStore.getState().isLoadingMoreImages) return;
@@ -216,13 +252,41 @@ export const useStore = create<AppState>((set) => ({
 
   updateImage: (id, update) =>
     set((s) => {
-      const updatedImages = s.images.map((image) =>
-        image.id === id ? { ...image, ...update } : image
-      );
       const selectedImage =
         s.selectedImage?.id === id
           ? { ...s.selectedImage, ...update }
           : s.selectedImage;
+
+      const pendingIndex = s.pendingImages.findIndex((p) => p.id === id);
+
+      if (pendingIndex >= 0) {
+        const merged = { ...s.pendingImages[pendingIndex], ...update };
+
+        // Once the generation produces a saved file the card graduates from the
+        // pending list into the persisted view — but only if it matches the
+        // active workspace filter (a result for workspace A shouldn't pop into
+        // workspace B's view).
+        if (merged.filename) {
+          return {
+            pendingImages: s.pendingImages.filter((p) => p.id !== id),
+            images: imageMatchesWorkspace(merged, s.activeWorkspaceId)
+              ? mergeImages(s.images, [merged])
+              : s.images,
+            selectedImage,
+          };
+        }
+
+        return {
+          pendingImages: s.pendingImages.map((p) =>
+            p.id === id ? merged : p
+          ),
+          selectedImage,
+        };
+      }
+
+      const updatedImages = s.images.map((image) =>
+        image.id === id ? { ...image, ...update } : image
+      );
 
       return {
         images: mergeImages(updatedImages, []),
@@ -232,6 +296,7 @@ export const useStore = create<AppState>((set) => ({
 
   removeImage: (id) =>
     set((s) => ({
+      pendingImages: s.pendingImages.filter((p) => p.id !== id),
       images: s.images.filter((img) => img.id !== id),
       selectedImage: s.selectedImage?.id === id ? null : s.selectedImage,
     })),
@@ -314,7 +379,10 @@ export const useStore = create<AppState>((set) => ({
   setActiveWorkspace: (workspaceId) => {
     if (useStore.getState().activeWorkspaceId === workspaceId) return;
 
-    // Reset the paginated view so the next fetch rebuilds it for the new filter.
+    // Reset only the paginated (server-backed) view so the next fetch rebuilds
+    // it for the new filter. `pendingImages` is intentionally left alone so
+    // in-flight generations survive the switch and reappear in every view they
+    // belong to.
     set({
       activeWorkspaceId: workspaceId,
       images: [],
@@ -383,14 +451,16 @@ export const useStore = create<AppState>((set) => ({
     }
 
     const wasActive = useStore.getState().activeWorkspaceId === workspaceId;
+    const stripWorkspace = (image: GeneratedImage) => ({
+      ...image,
+      workspaces: image.workspaces?.filter((id) => id !== workspaceId),
+    });
     set((s) => ({
       workspaces: s.workspaces.filter(
         (workspace) => workspace.id !== workspaceId
       ),
-      images: s.images.map((image) => ({
-        ...image,
-        workspaces: image.workspaces?.filter((id) => id !== workspaceId),
-      })),
+      images: s.images.map(stripWorkspace),
+      pendingImages: s.pendingImages.map(stripWorkspace),
     }));
 
     // Deleting the workspace you are viewing falls back to the "all" view.

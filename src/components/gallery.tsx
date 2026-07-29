@@ -10,7 +10,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useStore } from "@/lib/store";
+import { imageMatchesWorkspace, useStore } from "@/lib/store";
 import type { GeneratedImage, HistoryEntry } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -532,6 +532,7 @@ export function Gallery({
   thumbnailWidth = 240,
 }: GalleryProps) {
   const images = useStore((state) => state.images);
+  const pendingImages = useStore((state) => state.pendingImages);
   const activeWorkspaceId = useStore((state) => state.activeWorkspaceId);
   const workspaces = useStore((state) => state.workspaces);
   const language = useStore((state) => state.language);
@@ -547,7 +548,24 @@ export function Gallery({
     new Map()
   );
 
-  const visibleImages = images;
+  // In-flight generation cards live in `pendingImages` so they survive workspace
+  // switches; merge the ones that belong to the current view ahead of the
+  // server-backed images (which are already filtered by workspace server-side).
+  const visibleImages = useMemo(() => {
+    const visiblePending = pendingImages.filter((image) =>
+      imageMatchesWorkspace(image, activeWorkspaceId)
+    );
+
+    if (visiblePending.length === 0) return images;
+
+    const pendingIds = new Set(visiblePending.map((image) => image.id));
+    const rest = images.filter((image) => !pendingIds.has(image.id));
+
+    return [...visiblePending, ...rest].sort(
+      (a, b) => b.timestamp - a.timestamp
+    );
+  }, [pendingImages, images, activeWorkspaceId]);
+
   const scrappedImageIds = useMemo(() => {
     const ids = new Set<string>();
 
@@ -699,7 +717,7 @@ export function Gallery({
     [handleLoadMore]
   );
 
-  if (images.length === 0) {
+  if (visibleImages.length === 0) {
     const ko = language === "ko";
     const activeWorkspace = activeWorkspaceId
       ? workspaces.find((workspace) => workspace.id === activeWorkspaceId)
