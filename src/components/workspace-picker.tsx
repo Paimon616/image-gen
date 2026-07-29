@@ -194,6 +194,11 @@ export function WorkspacePicker({
                 onChange={(event) => setNewName(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
+                    // Ignore the IME composition-confirm Enter so a Korean/JP/CN
+                    // name doesn't create-and-assign twice.
+                    if (event.nativeEvent.isComposing || event.keyCode === 229) {
+                      return;
+                    }
                     event.preventDefault();
                     void handleCreateAndAssign();
                   }

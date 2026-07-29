@@ -1,10 +1,25 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Check, FolderPlus, Layers, Pencil, Trash2, X } from "lucide-react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import {
+  Check,
+  FolderPlus,
+  Layers,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useStore } from "@/lib/store";
 import type { WorkspaceSummary } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+
+// A Korean/Japanese/Chinese IME fires a confirming Enter (isComposing / keyCode
+// 229) before the real submit Enter. Treating both as submit double-fires the
+// handler, so ignore the composition-confirm keystroke.
+function isImeConfirmEnter(event: KeyboardEvent) {
+  return event.nativeEvent.isComposing || event.keyCode === 229;
+}
 
 function WorkspaceChip({
   workspace,
@@ -92,9 +107,10 @@ function WorkspaceChip({
               ? "hover:bg-primary-foreground/20"
               : "text-muted-foreground hover:bg-muted"
           }`}
-          aria-label={ko ? "워크스페이스 관리" : "Manage workspace"}
+          aria-label={ko ? "워크스페이스 관리 (이름 변경·삭제)" : "Manage workspace (rename / delete)"}
+          title={ko ? "이름 변경·삭제" : "Rename / delete"}
         >
-          <Pencil className="h-3 w-3" />
+          <MoreHorizontal className="h-3.5 w-3.5" />
         </button>
       </div>
 
@@ -108,6 +124,7 @@ function WorkspaceChip({
                 onChange={(event) => setDraftName(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
+                    if (isImeConfirmEnter(event)) return;
                     event.preventDefault();
                     submitRename();
                   }
@@ -201,6 +218,7 @@ export function WorkspaceBar() {
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const createRef = useRef<HTMLDivElement>(null);
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     void fetchWorkspaces();
@@ -221,12 +239,17 @@ export function WorkspaceBar() {
 
   const submitCreate = async () => {
     const name = newName.trim();
-    if (!name) return;
+    if (!name || submittingRef.current) return;
 
-    const workspace = await createWorkspace(name);
+    submittingRef.current = true;
     setNewName("");
     setCreating(false);
-    if (workspace) setActiveWorkspace(workspace.id);
+    try {
+      const workspace = await createWorkspace(name);
+      if (workspace) setActiveWorkspace(workspace.id);
+    } finally {
+      submittingRef.current = false;
+    }
   };
 
   return (
@@ -266,6 +289,7 @@ export function WorkspaceBar() {
               onChange={(event) => setNewName(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
+                  if (isImeConfirmEnter(event)) return;
                   event.preventDefault();
                   void submitCreate();
                 }
