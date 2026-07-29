@@ -286,7 +286,7 @@ const GalleryCard = memo(function GalleryCard({
                 </Button>
               </div>
             ) : (
-              <div className={`grid gap-1.5 pt-1 ${isPending && onCancelGeneration ? "grid-cols-2" : "grid-cols-1"}`}>
+              <div className={`grid gap-1.5 pt-1 ${(isPending && onCancelGeneration) || displayState === "canceled" ? "grid-cols-2" : "grid-cols-1"}`}>
                 <Button
                   type="button"
                   size="sm"
@@ -311,15 +311,36 @@ const GalleryCard = memo(function GalleryCard({
                     {language === "ko" ? "생성 취소" : "Cancel"}
                   </Button>
                 )}
+                {displayState === "canceled" && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="destructive"
+                    className="h-8 min-w-0 px-1 text-[11px]"
+                    onClick={() => setConfirmingDelete(true)}
+                    title={language === "ko" ? "취소된 카드를 삭제합니다" : "Remove this canceled card"}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    {language === "ko" ? "삭제" : "Delete"}
+                  </Button>
+                )}
               </div>
             )}
           </div>
         </div>
       )}
-      {!hasImage && displayState === "error" && confirmingDelete && (
-        <div className="absolute inset-x-3 bottom-3 z-30 rounded-md border border-red-200 bg-white p-2.5 shadow-xl">
-          <p className="text-[11px] font-medium text-red-950">
-            {language === "ko" ? "이 오류 카드를 제거할까요?" : "Remove this error card?"}
+      {!hasImage &&
+        (displayState === "error" || displayState === "canceled") &&
+        confirmingDelete && (
+        <div className="absolute inset-x-3 bottom-3 z-30 rounded-md border border-border bg-popover p-2.5 shadow-xl">
+          <p className="text-[11px] font-medium text-popover-foreground">
+            {displayState === "error"
+              ? language === "ko"
+                ? "이 오류 카드를 제거할까요?"
+                : "Remove this error card?"
+              : language === "ko"
+                ? "이 취소된 카드를 삭제할까요?"
+                : "Delete this canceled card?"}
           </p>
           <div className="mt-2 flex gap-1.5">
             <Button
@@ -332,7 +353,9 @@ const GalleryCard = memo(function GalleryCard({
                 onDelete(img);
               }}
             >
-              {language === "ko" ? "제거" : "Remove"}
+              {displayState === "error"
+                ? language === "ko" ? "제거" : "Remove"
+                : language === "ko" ? "삭제" : "Delete"}
             </Button>
             <Button type="button" size="sm" variant="outline" className="h-7 flex-1 text-[11px]" onClick={() => setConfirmingDelete(false)}>
               {language === "ko" ? "취소" : "Cancel"}
