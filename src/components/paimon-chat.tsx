@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { ChatMarkdown } from "@/components/chat-markdown";
 import type { GeneratedImage, GenerationParams } from "@/lib/types";
 
 type ChatRole = "user" | "assistant";
@@ -519,15 +520,15 @@ export function PaimonChat({
                   message.role === "user" ? "justify-end" : "justify-start"
                 }`}
               >
-                <p
-                  className={`max-w-[85%] whitespace-pre-wrap rounded-lg px-3 py-2 text-sm leading-5 ${
-                    message.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-secondary-foreground"
-                  }`}
-                >
-                  {message.content}
-                </p>
+                {message.role === "user" ? (
+                  <p className="max-w-[85%] whitespace-pre-wrap rounded-lg bg-primary px-3 py-2 text-sm leading-5 text-primary-foreground">
+                    {message.content}
+                  </p>
+                ) : (
+                  <div className="max-w-[85%] rounded-lg bg-secondary px-3 py-2 text-sm leading-5 text-secondary-foreground">
+                    <ChatMarkdown content={message.content} />
+                  </div>
+                )}
               </div>
             ))}
             {loading && (
