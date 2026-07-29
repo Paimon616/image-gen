@@ -138,6 +138,59 @@ function parseJsonObject(text: string) {
   return JSON.parse(raw.slice(start, end + 1)) as unknown;
 }
 
+const JSON_ESCAPES: Record<string, string> = {
+  n: "\n",
+  t: "\t",
+  r: "\r",
+  b: "\b",
+  f: "\f",
+  '"': '"',
+  "\\": "\\",
+  "/": "/",
+};
+
+// Pull the decoded value of the `reply` string out of a still-streaming JSON
+// buffer. Returns as much of the reply as has arrived (monotonically growing),
+// or null before the `reply` key appears. Tolerates an incomplete trailing
+// escape by stopping short until the next chunk completes it.
+function extractPartialReply(buffer: string): string | null {
+  const keyMatch = buffer.match(/"reply"\s*:\s*"/);
+  if (!keyMatch || keyMatch.index === undefined) return null;
+
+  let i = keyMatch.index + keyMatch[0].length;
+  let out = "";
+
+  while (i < buffer.length) {
+    const ch = buffer[i];
+
+    if (ch === "\\") {
+      const next = buffer[i + 1];
+      if (next === undefined) break; // incomplete escape at buffer end
+      if (next === "u") {
+        const hex = buffer.slice(i + 2, i + 6);
+        if (hex.length < 4) break; // incomplete unicode escape
+        out += String.fromCharCode(parseInt(hex, 16));
+        i += 6;
+        continue;
+      }
+      out += JSON_ESCAPES[next] ?? next;
+      i += 2;
+      continue;
+    }
+
+    if (ch === '"') return out; // closing quote → reply is complete
+
+    out += ch;
+    i += 1;
+  }
+
+  return out;
+}
+
+function sse(event: string, data: unknown) {
+  return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+}
+
 export async function POST(req: NextRequest) {
   const apiKey = process.env.OPENROUTER_API_KEY;
 
@@ -159,7 +212,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const response = await fetch(OPENROUTER_URL, {
+    const upstream = await fetch(OPENROUTER_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -170,6 +223,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         model: PAIMON_MODEL,
         temperature: 0.2,
+        stream: true,
         response_format: { type: "json_object" },
         messages: [
           {
@@ -189,20 +243,103 @@ export async function POST(req: NextRequest) {
       }),
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
+    if (!upstream.ok || !upstream.body) {
+      const errorData = await upstream.json().catch(() => null);
       return NextResponse.json(
-        { error: data?.error?.message ?? "OpenRouter request failed." },
-        { status: response.status }
+        { error: errorData?.error?.message ?? "OpenRouter request failed." },
+        { status: upstream.ok ? 502 : upstream.status }
       );
     }
 
-    const content = String(data?.choices?.[0]?.message?.content ?? "");
-    const result = parseJsonObject(content);
+    const encoder = new TextEncoder();
+    const upstreamBody = upstream.body;
 
-    return NextResponse.json(result, {
-      headers: { "Cache-Control": "no-store" },
+    const stream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        const send = (event: string, data: unknown) =>
+          controller.enqueue(encoder.encode(sse(event, data)));
+
+        const reader = upstreamBody.getReader();
+        const decoder = new TextDecoder();
+        let sseBuffer = "";
+        let contentBuffer = "";
+        let sentLength = 0;
+
+        try {
+          send("status", { message: "답변을 작성하는 중" });
+
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            sseBuffer += decoder.decode(value, { stream: true });
+            const lines = sseBuffer.split("\n");
+            sseBuffer = lines.pop() ?? "";
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed.startsWith("data:")) continue;
+
+              const payload = trimmed.slice("data:".length).trim();
+              if (!payload || payload === "[DONE]") continue;
+
+              try {
+                const chunk = JSON.parse(payload);
+                const delta = chunk?.choices?.[0]?.delta?.content;
+                if (typeof delta !== "string" || !delta) continue;
+
+                contentBuffer += delta;
+                const reply = extractPartialReply(contentBuffer);
+                if (reply !== null && reply.length > sentLength) {
+                  send("delta", { text: reply.slice(sentLength) });
+                  sentLength = reply.length;
+                }
+              } catch {
+                // Ignore keep-alive comments / non-JSON lines from OpenRouter.
+              }
+            }
+          }
+
+          // Authoritatively parse the completed JSON for the patch and final
+          // reply; fall back to the streamed reply text if parsing fails.
+          let reply = "";
+          let paramsPatch: unknown = {};
+          let attachmentNotice = "";
+          let shouldGenerate = false;
+
+          try {
+            const result = parseJsonObject(contentBuffer) as Record<
+              string,
+              unknown
+            >;
+            reply = typeof result.reply === "string" ? result.reply : "";
+            paramsPatch = result.paramsPatch ?? {};
+            attachmentNotice =
+              typeof result.attachmentNotice === "string"
+                ? result.attachmentNotice
+                : "";
+            shouldGenerate = Boolean(result.shouldGenerate);
+          } catch {
+            reply = extractPartialReply(contentBuffer) ?? "";
+          }
+
+          send("done", { reply, paramsPatch, attachmentNotice, shouldGenerate });
+        } catch (error) {
+          send("error", {
+            error: error instanceof Error ? error.message : "Paimon failed.",
+          });
+        } finally {
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-store",
+        Connection: "keep-alive",
+      },
     });
   } catch (error) {
     return NextResponse.json(

@@ -331,6 +331,35 @@ export function PaimonChat({
       setLoading(true);
       setError("");
 
+      const assistantId = crypto.randomUUID();
+      let placeholderAdded = false;
+      const ensurePlaceholder = () => {
+        if (placeholderAdded) return;
+        placeholderAdded = true;
+        setMessages((current) => [
+          ...current,
+          { id: assistantId, role: "assistant", content: "" },
+        ]);
+      };
+      const appendToAssistant = (text: string) => {
+        ensurePlaceholder();
+        setMessages((current) =>
+          current.map((message) =>
+            message.id === assistantId
+              ? { ...message, content: message.content + text }
+              : message
+          )
+        );
+      };
+      const setAssistantContent = (text: string) => {
+        ensurePlaceholder();
+        setMessages((current) =>
+          current.map((message) =>
+            message.id === assistantId ? { ...message, content: text } : message
+          )
+        );
+      };
+
       try {
         const modelContext = await loadModelContext(params);
         const res = await fetch("/api/paimon/chat", {
@@ -348,34 +377,83 @@ export function PaimonChat({
             ),
           }),
         });
-        const data = (await res.json()) as {
+
+        const contentType = res.headers.get("Content-Type") ?? "";
+
+        // Non-streaming error responses (missing key, upstream failure) come
+        // back as JSON.
+        if (!res.ok || !res.body || !contentType.includes("text/event-stream")) {
+          const data = await res.json().catch(() => null);
+          throw new Error(data?.error || "파이몬 호출에 실패했습니다.");
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let streamedText = "";
+        let done: {
           reply?: string;
           paramsPatch?: unknown;
           attachmentNotice?: string;
-          error?: string;
-        };
+        } | null = null;
+        let streamError = "";
 
-        if (!res.ok) {
-          throw new Error(data.error || "파이몬 호출에 실패했습니다.");
+        while (true) {
+          const { value, done: readerDone } = await reader.read();
+          if (readerDone) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split("\n\n");
+          buffer = events.pop() ?? "";
+
+          for (const rawEvent of events) {
+            if (!rawEvent.trim()) continue;
+
+            const eventLine = rawEvent
+              .split("\n")
+              .find((line) => line.startsWith("event:"));
+            const dataLine = rawEvent
+              .split("\n")
+              .find((line) => line.startsWith("data:"));
+            const event = eventLine?.slice("event:".length).trim() ?? "message";
+            const payload = dataLine
+              ? JSON.parse(dataLine.slice("data:".length).trim())
+              : null;
+
+            if (event === "delta" && typeof payload?.text === "string") {
+              streamedText += payload.text;
+              appendToAssistant(payload.text);
+            } else if (event === "done") {
+              done = payload;
+            } else if (event === "error") {
+              streamError = payload?.error || "파이몬 오류";
+            }
+          }
         }
 
-        const patch = sanitizePatch(data.paramsPatch);
+        if (streamError) throw new Error(streamError);
+
+        const patch = sanitizePatch(done?.paramsPatch);
         if (Object.keys(patch).length > 0) {
           onApplyParams(patch);
         }
 
-        setMessages((current) => [
-          ...current,
-          {
-            id: crypto.randomUUID(),
-            role: "assistant",
-            content:
-              data.reply ||
-              data.attachmentNotice ||
-              "요청을 반영해서 현재 생성 정보를 수정했어요.",
-          },
-        ]);
+        const finalContent =
+          done?.reply ||
+          streamedText ||
+          done?.attachmentNotice ||
+          "요청을 반영해서 현재 생성 정보를 수정했어요.";
+        setAssistantContent(finalContent);
       } catch (err) {
+        // Drop an empty placeholder so a failed turn doesn't leave a blank bubble.
+        if (placeholderAdded) {
+          setMessages((current) =>
+            current.filter(
+              (message) =>
+                !(message.id === assistantId && message.content === "")
+            )
+          );
+        }
         setError(err instanceof Error ? err.message : "파이몬 오류");
       } finally {
         setLoading(false);
@@ -435,6 +513,12 @@ export function PaimonChat({
     },
     [attachments, onAttachmentsChange]
   );
+
+  const lastMessage = messages[messages.length - 1];
+  const isAssistantStreaming =
+    loading &&
+    lastMessage?.role === "assistant" &&
+    lastMessage.content.length > 0;
 
   return (
     <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-3">
@@ -513,28 +597,39 @@ export function PaimonChat({
           )}
 
           <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-3">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${
-                  message.role === "user" ? "justify-end" : "justify-start"
-                }`}
-              >
-                {message.role === "user" ? (
-                  <p className="max-w-[85%] whitespace-pre-wrap rounded-lg bg-primary px-3 py-2 text-sm leading-5 text-primary-foreground">
-                    {message.content}
-                  </p>
-                ) : (
-                  <div className="max-w-[85%] rounded-lg bg-secondary px-3 py-2 text-sm leading-5 text-secondary-foreground">
-                    <ChatMarkdown content={message.content} />
-                  </div>
-                )}
-              </div>
-            ))}
-            {loading && (
+            {messages.map((message, index) => {
+              const isStreaming =
+                loading &&
+                message.role === "assistant" &&
+                index === messages.length - 1 &&
+                message.content.length > 0;
+
+              return (
+                <div
+                  key={message.id}
+                  className={`flex ${
+                    message.role === "user" ? "justify-end" : "justify-start"
+                  }`}
+                >
+                  {message.role === "user" ? (
+                    <p className="max-w-[85%] whitespace-pre-wrap rounded-lg bg-primary px-3 py-2 text-sm leading-5 text-primary-foreground">
+                      {message.content}
+                    </p>
+                  ) : (
+                    <div className="max-w-[85%] rounded-lg bg-secondary px-3 py-2 text-sm leading-5 text-secondary-foreground">
+                      <ChatMarkdown content={message.content} />
+                      {isStreaming && (
+                        <span className="ml-0.5 inline-block h-3.5 w-1.5 translate-y-0.5 animate-pulse rounded-sm bg-current align-middle" />
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {loading && !isAssistantStreaming && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Loader2 className="size-3 animate-spin" />
-                파이몬이 수정안을 만드는 중
+                파이몬이 생각하는 중
               </div>
             )}
             {error && <p className="text-xs text-destructive">{error}</p>}
