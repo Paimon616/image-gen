@@ -243,6 +243,7 @@ export function PaimonChat({
   onAttachmentsChange,
 }: PaimonChatProps) {
   const [open, setOpen] = useState(false);
+  const [renderPanel, setRenderPanel] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([INTRO_MESSAGE]);
   const [loading, setLoading] = useState(false);
@@ -251,15 +252,52 @@ export function PaimonChat({
     new Set(attachments.map((attachment) => attachment.id))
   );
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const closeTimeoutRef = useRef<number | null>(null);
+
+  const openPanel = useCallback(() => {
+    if (closeTimeoutRef.current !== null) {
+      window.clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+    setRenderPanel(true);
+    setOpen(true);
+  }, []);
+
+  const closePanel = useCallback(() => {
+    setOpen(false);
+    if (closeTimeoutRef.current !== null) {
+      window.clearTimeout(closeTimeoutRef.current);
+    }
+    closeTimeoutRef.current = window.setTimeout(() => {
+      setRenderPanel(false);
+      closeTimeoutRef.current = null;
+    }, 180);
+  }, []);
+
+  const togglePanel = useCallback(() => {
+    if (open) {
+      closePanel();
+      return;
+    }
+    openPanel();
+  }, [closePanel, open, openPanel]);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current !== null) {
+        window.clearTimeout(closeTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const hasNewAttachment = attachments.some(
       (attachment) => !previousAttachmentIds.current.has(attachment.id)
     );
-    if (hasNewAttachment) setOpen(true);
+    if (hasNewAttachment) openPanel();
     previousAttachmentIds.current = new Set(attachments.map(({ id }) => id));
 
-  }, [attachments]);
+  }, [attachments, openPanel]);
   useEffect(() => {
     scrollRef.current?.scrollTo({
       top: scrollRef.current.scrollHeight,
@@ -399,8 +437,14 @@ export function PaimonChat({
 
   return (
     <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-3">
-      {open && (
-        <section className="flex h-[min(76vh,620px)] w-[min(calc(100vw-2rem),420px)] flex-col overflow-hidden rounded-lg border border-border bg-card shadow-2xl">
+      {renderPanel && (
+        <section
+          className={`flex h-[min(76vh,620px)] w-[min(calc(100vw-2rem),420px)] origin-bottom-right flex-col overflow-hidden rounded-lg border border-border bg-card shadow-2xl transition-[opacity,transform,filter] duration-[180ms] ease-out ${
+            open
+              ? "translate-y-0 scale-100 opacity-100 blur-0"
+              : "pointer-events-none translate-y-3 scale-95 opacity-0 blur-[1px]"
+          } motion-reduce:translate-y-0 motion-reduce:scale-100 motion-reduce:blur-0 motion-reduce:transition-none`}
+        >
           <header className="flex h-12 items-center justify-between border-b border-border px-3">
             <div className="flex min-w-0 items-center gap-2">
               <span className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
@@ -429,7 +473,7 @@ export function PaimonChat({
                 type="button"
                 size="icon-sm"
                 variant="ghost"
-                onClick={() => setOpen(false)}
+                onClick={closePanel}
                 aria-label="Close Paimon"
               >
                 <X />
@@ -532,12 +576,20 @@ export function PaimonChat({
       <Button
         type="button"
         size="icon-lg"
-        className="size-12 rounded-full shadow-xl"
-        onClick={() => setOpen((current) => !current)}
+        className={`size-12 rounded-full shadow-xl transition-[transform,background-color,box-shadow] duration-200 ease-out hover:scale-105 ${
+          open
+            ? "rotate-3 shadow-2xl ring-2 ring-primary/25"
+            : "rotate-0"
+        } motion-reduce:transform-none motion-reduce:transition-none`}
+        onClick={togglePanel}
         aria-label="Open Paimon"
         title="Paimon 파이몬"
       >
-        <MessageCircle className="size-5" />
+        <MessageCircle
+          className={`size-5 transition-transform duration-200 ${
+            open ? "scale-90" : "scale-100"
+          } motion-reduce:transform-none`}
+        />
       </Button>
     </div>
   );
