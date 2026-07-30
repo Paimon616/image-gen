@@ -136,6 +136,15 @@ ComfyUI/models/upscale_models/
 ComfyUI/models/controlnet/
 ```
 
+`setup:comfyui` creates these folders but downloads **no** weights, so several
+editor dropdowns start empty until you add files. In particular the **Upscaler**
+dropdown reads `upscale_models/` directly — if it is empty, either run
+`npm run setup:a1111` once (it fetches `4x-UltraSharp.pth` into this shared
+folder) or drop an ESRGAN upscaler in manually (e.g. `4x-UltraSharp.pth`,
+`remacri_original.safetensors`). Then click **Refresh** in the Models panel or
+reload the page. See [Image upscalers](image-backends-setup.md#image-upscalers-the-upscaler-dropdown)
+for download sources.
+
 Model metadata is shared via `data/model-catalog.json` (a custom git merge driver
 keeps your local entries during `git pull` — run `npm run setup:git-merge` once
 per clone). The connection URL and models directory are configured through

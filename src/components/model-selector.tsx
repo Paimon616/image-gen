@@ -483,7 +483,9 @@ export function ModelSelector() {
             size="sm"
             variant="ghost"
             className="h-6 px-2 text-xs"
-            onClick={refreshLocalModels}
+            onClick={() =>
+              window.dispatchEvent(new Event("local-models-changed"))
+            }
           >
             Refresh
           </Button>

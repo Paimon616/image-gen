@@ -116,18 +116,28 @@ export function GenerationParams({ section = "output" }: {
   }>({ upscalers: [], adetailerModels: [] });
 
   useEffect(() => {
-    fetch("/api/models")
-      .then((res) => res.json())
-      .then((data) =>
-        setLocalModels({
-          vaes: data.vaes ?? [],
-          checkpointModels: data.checkpointAssets ?? [],
-          loraModels: data.loraAssets ?? [],
-          upscaleModels: data.upscale_models ?? [],
-          controlnets: data.controlnets ?? [],
-        })
-      )
-      .catch(() => {});
+    const loadLocalModels = () => {
+      fetch("/api/models", { cache: "no-store" })
+        .then((res) => res.json())
+        .then((data) =>
+          setLocalModels({
+            vaes: data.vaes ?? [],
+            checkpointModels: data.checkpointAssets ?? [],
+            loraModels: data.loraAssets ?? [],
+            upscaleModels: data.upscale_models ?? [],
+            controlnets: data.controlnets ?? [],
+          })
+        )
+        .catch(() => {});
+    };
+
+    loadLocalModels();
+    // Refresh when the Models panel's Refresh button (or a finished download)
+    // signals that local model files changed — keeps the upscaler / VAE /
+    // ControlNet dropdowns in sync without a full page reload.
+    window.addEventListener("local-models-changed", loadLocalModels);
+    return () =>
+      window.removeEventListener("local-models-changed", loadLocalModels);
   }, []);
 
   useEffect(() => {

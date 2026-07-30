@@ -72,6 +72,31 @@ A1111 and Forge receive these paths through launch arguments. Do not duplicate
 checkpoints in each runtime. Restart a backend after adding a model if refresh
 does not discover it.
 
+### Image upscalers (the Upscaler dropdown)
+
+The **Upscaler** model list in the editor is read directly from
+`ComfyUI/models/upscale_models/` (i.e. `COMFYUI_MODELS_DIR/upscale_models`). A
+fresh clone has **no upscalers**, so the dropdown is empty until you add files —
+`npm run setup:comfyui` only creates the empty folder, it does not download any
+upscaler. Populate it one of two ways:
+
+- **Run the A1111 or Forge setup once** (`npm run setup:a1111` / `:win`, or the
+  Forge equivalent). It downloads `4x-UltraSharp.pth` into the shared
+  `upscale_models/` folder that ComfyUI also reads — even if you only generate
+  with ComfyUI.
+- **Or download upscalers manually** into `ComfyUI/models/upscale_models/`:
+
+  | Filename | Source |
+  | --- | --- |
+  | `4x-UltraSharp.pth` | [huggingface.co/shiertier/upscale_models](https://huggingface.co/shiertier/upscale_models/resolve/b73626f248084e9af7108621ace5651e1447af44/4x-UltraSharp.pth) |
+  | `remacri_original.safetensors` | [Civitai — Remacri](https://civitai.com/models/147759/remacri?modelVersionId=164821) |
+
+After adding files, click **Refresh** in the editor's Models panel (or reload
+the page). The list reads the folder from disk, so ComfyUI does not need to be
+running just to populate the dropdown — but ComfyUI must be running to actually
+apply the upscaler during a Hires generation. The Upscaler only runs when Hires
+fix is enabled (`hires_upscale > 1`).
+
 The A1111 setup installs and verifies `4x-UltraSharp.pth`. Civitai's
 `4x-UltraSharp` and the filename refer to the same model; image-gen resolves the
 backend-specific name automatically.
