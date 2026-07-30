@@ -33,11 +33,13 @@ import type {
 import { getModelConfig, randomGenerationSeed } from "@/lib/types";
 import {
   GripVertical,
+  Download,
   FolderMinus,
   FolderX,
   FolderPlus,
   ImageIcon,
   ImageUp,
+  Loader2,
   PanelLeftClose,
   PanelLeftOpen,
   ScanLine,
@@ -141,6 +143,7 @@ export default function Home() {
   );
   const [batchWorkspaceId, setBatchWorkspaceId] = useState("");
   const [batchActionBusy, setBatchActionBusy] = useState(false);
+  const [batchDownloadBusy, setBatchDownloadBusy] = useState(false);
   const layoutRef = useRef<HTMLDivElement | null>(null);
   const [generationQueue, setGenerationQueue] = useState<GenerationQueueItem[]>([]);
   const [activeGeneration, setActiveGeneration] =
@@ -329,6 +332,62 @@ export default function Home() {
       setBatchActionBusy(false);
     }
   }, [batchActionBusy, selectedPersistedGalleryImages, setImageWorkspaces]);
+
+  const downloadSelectedGalleryImages = useCallback(async () => {
+    if (
+      selectedPersistedGalleryImages.length === 0 ||
+      batchActionBusy ||
+      batchDownloadBusy
+    ) {
+      return;
+    }
+
+    setBatchDownloadBusy(true);
+    try {
+      const filenames = selectedPersistedGalleryImages
+        .map((image) => image.filename)
+        .filter((filename): filename is string => Boolean(filename));
+
+      // A single saved image downloads directly (no zip round-trip needed);
+      // multiple images are bundled server-side into one zip.
+      if (filenames.length === 1) {
+        const a = document.createElement("a");
+        a.href = `/api/images/${filenames[0]}`;
+        a.download = filenames[0];
+        a.click();
+        return;
+      }
+
+      const res = await fetch("/api/images/zip", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filenames }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Failed to build zip archive");
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `images-${Date.now()}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    } catch (error) {
+      setStatus({
+        state: "error",
+        progress: 0,
+        message: error instanceof Error ? error.message : "Download failed",
+      });
+    } finally {
+      setBatchDownloadBusy(false);
+    }
+  }, [batchActionBusy, batchDownloadBusy, selectedPersistedGalleryImages, setStatus]);
 
   const generationModeError = useMemo(() => {
     if (params.generation_mode === "image_to_image" && !params.source_image) {
@@ -1199,6 +1258,36 @@ export default function Home() {
                 >
                   <FolderX className="h-3.5 w-3.5" />
                   {ko ? "워크스페이스 비우기" : "Clear workspaces"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5"
+                  onClick={() => void downloadSelectedGalleryImages()}
+                  disabled={
+                    batchActionBusy ||
+                    batchDownloadBusy ||
+                    selectedPersistedGalleryCount === 0
+                  }
+                  title={
+                    selectedPersistedGalleryCount === 0
+                      ? ko
+                        ? "저장된 이미지만 다운로드할 수 있습니다"
+                        : "Only saved images can be downloaded"
+                      : selectedPersistedGalleryCount > 1
+                        ? ko
+                          ? "선택한 이미지를 zip으로 묶어 다운로드합니다"
+                          : "Bundles the selected images into a zip download"
+                        : undefined
+                  }
+                >
+                  {batchDownloadBusy ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Download className="h-3.5 w-3.5" />
+                  )}
+                  {ko ? "다운로드" : "Download"}
                 </Button>
                 <Button
                   type="button"
