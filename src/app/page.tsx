@@ -948,6 +948,7 @@ export default function Home() {
                     description={ko ? "원본 이미지를 끌어놓거나 클릭해 업로드하세요" : "Drop or click to upload a source image"}
                     value={params.source_image}
                     onChange={(url) => setParams({ source_image: url })}
+                    previewClassName="h-40 w-full object-contain bg-background"
                     onPreview={
                       params.source_image
                         ? () => setSourceImagePreviewOpen(true)
