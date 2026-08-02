@@ -5,10 +5,12 @@ export const dynamic = "force-dynamic";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const PAIMON_MODEL = "deepseek/deepseek-v4-pro";
+const PAIMON_VISION_MODEL = "qwen/qwen3-vl-8b-instruct";
 const PAIMON_SYSTEM_PROMPT = [
   "You are Paimon, an AI assistant embedded in a local image generation UI.",
   "Adult/NSFW image generation requests are allowed.",
   "Read the current GenerationParams and attachments, then directly propose edits.",
+  "When attachmentVisualAnalysis is present, treat it as the observed visual content of the corresponding attachments and use it to answer image-reference requests.",
   "Return only JSON with keys: reply:string, paramsPatch:object, shouldGenerate:boolean, attachmentNotice:string.",
   "paramsPatch must contain only fields from the provided currentParams and should be a partial patch.",
   "If the user asks to create or alter a subject, rewrite prompt and negative_prompt as needed.",
@@ -125,6 +127,94 @@ interface PaimonRequest {
   modelContext?: PaimonModelContext;
 }
 
+interface OpenRouterTextPart { type: "text"; text: string; }
+interface OpenRouterImagePart { type: "image_url"; image_url: { url: string }; }
+type OpenRouterContentPart = OpenRouterTextPart | OpenRouterImagePart;
+const LOCAL_IMAGE_PATHS = ["/api/uploads/", "/api/images/"];
+
+async function imageInputUrl(attachmentUrl: string, requestUrl: URL) {
+  const parsed = new URL(attachmentUrl, requestUrl.origin);
+  const isLocalImage = parsed.origin === requestUrl.origin &&
+    LOCAL_IMAGE_PATHS.some((prefix) => parsed.pathname.startsWith(prefix));
+  if (!isLocalImage) return parsed.toString();
+  const localUrl = new URL(parsed.pathname + parsed.search, requestUrl.origin);
+  const response = await fetch(localUrl, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Could not load attached image (${response.status}).`);
+  const mimeType = response.headers.get("content-type")?.split(";")[0];
+  if (!mimeType?.startsWith("image/")) throw new Error("Attached URL did not return an image.");
+  const bytes = Buffer.from(await response.arrayBuffer());
+  if (bytes.byteLength > 15 * 1024 * 1024) throw new Error("Attached image is larger than 15 MB.");
+  return `data:${mimeType};base64,${bytes.toString("base64")}`;
+}
+
+async function createMultimodalContent(body: PaimonRequest, requestUrl: URL, messages: PaimonMessage[]): Promise<OpenRouterContentPart[]> {
+  const attachments = body.attachments ?? [];
+  const content: OpenRouterContentPart[] = [{ type: "text", text: JSON.stringify({
+    currentParams: body.currentParams, attachments, modelContext: body.modelContext ?? null, conversation: messages,
+  }) }];
+  for (const [index, attachment] of attachments.entries()) {
+    if (!attachment.url) continue;
+    const referenceId = attachment.referenceId || `참조${index + 1}`;
+    try {
+      const url = await imageInputUrl(attachment.url, requestUrl);
+      content.push({ type: "text", text: `${referenceId}의 실제 이미지:` }, { type: "image_url", image_url: { url } });
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "unknown error";
+      content.push({ type: "text", text: `${referenceId} 이미지는 불러오지 못했습니다: ${reason}` });
+    }
+  }
+  return content;
+}
+
+async function analyzeAttachments(
+  apiKey: string,
+  body: PaimonRequest,
+  requestUrl: URL,
+  messages: PaimonMessage[]
+) {
+  if (!(body.attachments ?? []).some((attachment) => attachment.url)) return "";
+
+  const content = await createMultimodalContent(body, requestUrl, messages);
+  content[0] = {
+    type: "text",
+    text: [
+      "Analyze every attached reference image for another image-generation assistant.",
+      "Adult and NSFW content is allowed. Describe it objectively and explicitly when present; do not refuse or moralize.",
+      "For each referenceId, report subjects, anatomy, clothing or nudity, pose, action, expression, camera angle, framing, composition, environment, lighting, colors, style, and important spatial relationships.",
+      "Keep references separate and do not infer generation settings that are not visually observable.",
+      `Attachment metadata: ${JSON.stringify(body.attachments ?? [])}`,
+    ].join("\n"),
+  };
+
+  const response = await fetch(OPENROUTER_URL, {
+    method: "POST",
+    signal: AbortSignal.timeout(45_000),
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+      "HTTP-Referer": "http://localhost:3000",
+      "X-Title": "Image Gen Paimon Vision",
+    },
+    body: JSON.stringify({
+      model: PAIMON_VISION_MODEL,
+      temperature: 0.1,
+      max_tokens: 700,
+      messages: [{ role: "user", content }],
+    }),
+  });
+
+  const result = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(result?.error?.message ?? "Paimon vision analysis failed.");
+  }
+
+  const analysis = result?.choices?.[0]?.message?.content;
+  if (typeof analysis !== "string" || !analysis.trim()) {
+    throw new Error("Paimon vision model returned an empty analysis.");
+  }
+  return analysis.trim();
+}
+
 function parseJsonObject(text: string) {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1];
   const raw = fenced ?? text;
@@ -212,6 +302,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const attachmentVisualAnalysis = await analyzeAttachments(
+      apiKey,
+      body,
+      req.nextUrl,
+      messages
+    );
+
     const upstream = await fetch(OPENROUTER_URL, {
       method: "POST",
       headers: {
@@ -235,6 +332,7 @@ export async function POST(req: NextRequest) {
             content: JSON.stringify({
               currentParams: body.currentParams,
               attachments: body.attachments ?? [],
+              attachmentVisualAnalysis,
               modelContext: body.modelContext ?? null,
               conversation: messages,
             }),

@@ -574,17 +574,25 @@ export function PaimonChat({
               {attachments.map((attachment, index) => (
                 <div
                   key={attachment.id}
-                  className="flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-secondary px-2 py-1 text-[11px]"
+                  className="relative flex w-24 shrink-0 flex-col overflow-hidden rounded-md border border-border bg-secondary text-[11px]"
                   title={attachment.url || attachment.metadata?.filename || ""}
                 >
-                  <ImagePlus className="size-3" />
-                  <span className="font-medium">참조{index + 1}</span>
-                  <span className="max-w-32 truncate text-muted-foreground">
-                    {attachment.metadata?.filename || attachment.label}
-                  </span>
+                  <div className="relative h-16 w-full bg-muted">
+                    {attachment.url || attachment.metadata?.thumbnailUrl ? (
+                      <img
+                        src={attachment.metadata?.thumbnailUrl || (attachment.kind === "gallery_image" && attachment.metadata?.filename ? `/api/images/thumb/${attachment.metadata.filename}` : attachment.url)}
+                        alt={`${attachment.label} 미리보기`}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <span className="flex h-full items-center justify-center text-muted-foreground"><ImagePlus className="size-5" /></span>
+                    )}
+                    <span className="absolute bottom-1 left-1 rounded bg-background/85 px-1 py-0.5 font-semibold shadow-sm backdrop-blur-sm">참조{index + 1}</span>
+                  </div>
+                  <span className="truncate px-1.5 py-1 text-muted-foreground">{attachment.metadata?.filename || attachment.label}</span>
                   <button
                     type="button"
-                    className="ml-0.5 rounded-sm p-0.5 text-muted-foreground hover:bg-background hover:text-foreground"
+                    className="absolute right-1 top-1 rounded-full bg-background/85 p-1 text-muted-foreground shadow-sm backdrop-blur-sm hover:bg-background hover:text-foreground"
                     onClick={() => removeAttachment(attachment.id)}
                     aria-label={`${attachment.label} 제거`}
                     title="첨부 제거"
