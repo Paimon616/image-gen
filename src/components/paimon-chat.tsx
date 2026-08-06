@@ -56,7 +56,7 @@ const INTRO_MESSAGE: ChatMessage = {
   id: "intro",
   role: "assistant",
   content:
-    "파이몬이에요. 현재 입력값을 읽고 프롬프트, 모델 설정, LoRA, 업스케일, 참조 이미지를 바로 고쳐드릴게요.",
+    "파이몬이에요. 현재 입력값과 참조 이미지를 읽고 이미지·영상 프롬프트, 모델 설정, LoRA, 업스케일을 바로 고쳐드릴게요.",
 };
 
 const EDITABLE_PARAM_KEYS = new Set<keyof GenerationParams>([
