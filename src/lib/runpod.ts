@@ -28,14 +28,14 @@ function extractSshCommand(value: string) {
     .replace(/\r/g, "")
     .split("\n")
     .map((line) => line.trim().replace(/^\$\s*/, ""))
-    .find((line) => line.includes("@ssh.runpod.io") || line.startsWith("ssh "));
+    .find((line) => line.includes("@") || line.startsWith("ssh "));
 
   if (!normalized) return "";
 
   const sshIndex = normalized.indexOf("ssh ");
   if (sshIndex >= 0) return normalized.slice(sshIndex).trim();
 
-  if (normalized.includes("@ssh.runpod.io")) {
+  if (normalized.includes("@")) {
     return `ssh ${normalized}`;
   }
 
@@ -87,7 +87,9 @@ function splitShellWords(value: string) {
 function normalizedSshCommand(value: string) {
   const words = splitShellWords(value);
   const args = words[0] === "ssh" ? words.slice(1) : words;
-  const destinationIndex = args.findIndex((arg) => /@ssh\.runpod\.io$/i.test(arg));
+  const destinationIndex = args.findIndex((arg) =>
+    /^[^@\s]+@[^@\s]+$/i.test(arg)
+  );
 
   if (destinationIndex < 0) return "";
 
@@ -121,7 +123,7 @@ function remoteCommand(ssh: string, command: string) {
 
   const safeSsh = normalizedSshCommand(extracted);
   if (!safeSsh) {
-    throw new Error("RunPod SSH command must include a user@ssh.runpod.io address.");
+    throw new Error("RunPod SSH command must include a user@host address.");
   }
 
   return `${safeSsh} ${shellQuote(command)}`;
