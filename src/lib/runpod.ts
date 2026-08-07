@@ -320,7 +320,10 @@ async function resolvedSshCommand(pod: RunpodPodSettings) {
   let safeSsh = normalizedSshCommand(extracted);
   const endpoint = await fetchRunpodSshEndpoint(pod);
   if (endpoint) {
-    const destination = `${parsed.user}@${endpoint.host}`;
+    const destinationUser = /(?:^|\.)ssh\.runpod\.io$/i.test(parsed.host)
+      ? "root"
+      : parsed.user;
+    const destination = `${destinationUser}@${endpoint.host}`;
     safeSsh = [
       "ssh",
       "-o",
