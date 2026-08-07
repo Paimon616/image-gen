@@ -168,6 +168,10 @@ function importedResourceFallbackPath(resource: ImportedCivitaiResource) {
   const withSafetensorsExtension = (value: string) =>
     /\.(ckpt|pt|pth|safetensors)$/i.test(value) ? value : `${value}.safetensors`;
 
+  if (resource.fileName) {
+    return resource.fileName;
+  }
+
   if (resource.type === "embedding") {
     const source = resource.versionName || resource.name;
     const lazyToken = source.match(/\b(lazypos|lazyneg|lazyhand)\b/i)?.[1];

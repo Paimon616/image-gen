@@ -7621,5 +7621,24 @@
     "civitai_url": "https://civitai.red/models/2775340/krea2-textfusion-refusal-reduction-lora?modelVersionId=3125118",
     "source_url": "https://civitai.red/models/2775340/krea2-textfusion-refusal-reduction-lora?modelVersionId=3125118",
     "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/1b36ccbb-d3de-4fbc-85e4-631f2e8c7732/original=true/136629949.jpeg"
+  },
+  "embeddings/lazyhand.safetensors": {
+    "name": "✨ Lazy Embeddings for ALL illustrious NoobAI Pony SDXL models LazyPositive LazyNegative (Positive and Negative plus more!)",
+    "version": "lazyhand v1.0",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/1302719/lazy-embeddings-for-all-illustrious-noobai-pony-sdxl-models-lazypositive-lazynegative-positive-and-negative-plus-more?modelVersionId=1550840",
+    "source_url": "https://civitai.red/models/1302719/lazy-embeddings-for-all-illustrious-noobai-pony-sdxl-models-lazypositive-lazynegative-positive-and-negative-plus-more?modelVersionId=1550840",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/7439cbab-a426-4262-9dc9-17bf0e268012/original=true/64342103.jpeg",
+    "tags": [
+      "lazyhand"
+    ]
+  },
+  "checkpoints/uncannyValley_Noob3dV2.safetensors": {
+    "name": "Uncanny valley",
+    "version": "UncannyValley noob 3d V2",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/507472/uncanny-valley?modelVersionId=1880913",
+    "source_url": "https://civitai.red/models/507472/uncanny-valley?modelVersionId=1880913",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/f9019fba-9b84-499a-ac7e-e4b1f3c60d47/original=true/81101435.jpeg"
   }
 }
