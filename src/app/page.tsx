@@ -89,6 +89,15 @@ interface RunpodDownloadProgress {
   downloadedBytes: number;
   totalBytes: number;
   filePercent: number;
+  files: Record<
+    string,
+    {
+      downloadedBytes: number;
+      totalBytes: number;
+      filePercent: number;
+      done: boolean;
+    }
+  >;
 }
 
 function formatBytes(bytes: number) {
@@ -939,6 +948,50 @@ export default function Home() {
             return;
           }
 
+          const initialFileProgress = Object.fromEntries(
+            downloadable.map((item) => [
+              item.path,
+              { downloadedBytes: 0, totalBytes: 0, filePercent: 0, done: false },
+            ])
+          );
+          const updateDownloadProgress = (
+            path: string,
+            patch: Partial<RunpodDownloadProgress["files"][string]>
+          ) => {
+            setRunpodDownloadProgress((current) => {
+              const files = {
+                ...(current?.files ?? initialFileProgress),
+                [path]: {
+                  ...(current?.files[path] ?? {
+                    downloadedBytes: 0,
+                    totalBytes: 0,
+                    filePercent: 0,
+                    done: false,
+                  }),
+                  ...patch,
+                },
+              };
+              const values = Object.values(files);
+              const downloadedBytes = values.reduce(
+                (sum, file) => sum + file.downloadedBytes,
+                0
+              );
+              const totalBytes = values.reduce((sum, file) => sum + file.totalBytes, 0);
+              const completed = values.filter((file) => file.done).length;
+              return {
+                total: downloadable.length,
+                completed,
+                currentPath: path,
+                downloadedBytes,
+                totalBytes,
+                filePercent: totalBytes > 0
+                  ? Math.min(100, Math.round((downloadedBytes / totalBytes) * 100))
+                  : Math.max(...values.map((file) => file.filePercent), 0),
+                files,
+              };
+            });
+          };
+
           setRunpodDownloadProgress({
             total: downloadable.length,
             completed: 0,
@@ -946,16 +999,16 @@ export default function Home() {
             downloadedBytes: 0,
             totalBytes: 0,
             filePercent: 0,
+            files: initialFileProgress,
           });
 
-          for (const [index, item] of downloadable.entries()) {
-            setRunpodDownloadProgress({
-              total: downloadable.length,
-              completed: index,
-              currentPath: item.path,
+          const downloadOne = async (index: number) => {
+            const item = downloadable[index];
+            updateDownloadProgress(item.path, {
               downloadedBytes: 0,
               totalBytes: 0,
               filePercent: 0,
+              done: false,
             });
             setRunpodStatus(
               ko
@@ -1001,37 +1054,37 @@ export default function Home() {
                 if (payload.type === "progress" || payload.type === "status") {
                   const downloadedBytes = Number(payload.downloaded ?? 0);
                   const totalBytes = Number(payload.total ?? 0);
-                  setRunpodDownloadProgress({
-                    total: downloadable.length,
-                    completed: index,
-                    currentPath: item.path,
+                  updateDownloadProgress(item.path, {
                     downloadedBytes,
                     totalBytes,
                     filePercent: Number(payload.percent ?? 0),
                   });
                 }
                 if (payload.type === "complete") {
-                  setRunpodDownloadProgress({
-                    total: downloadable.length,
-                    completed: index,
-                    currentPath: item.path,
-                    downloadedBytes: Number(payload.total ?? 0),
-                    totalBytes: Number(payload.total ?? 0),
+                  updateDownloadProgress(item.path, {
                     filePercent: 100,
                   });
                 }
               }
             }
             if (streamError) throw new Error(streamError);
-            setRunpodDownloadProgress({
-              total: downloadable.length,
-              completed: index + 1,
-              currentPath: item.path,
-              downloadedBytes: 0,
-              totalBytes: 0,
+            updateDownloadProgress(item.path, {
               filePercent: 100,
+              done: true,
             });
-          }
+          };
+
+          let nextDownloadIndex = 0;
+          const workerCount = Math.min(3, downloadable.length);
+          await Promise.all(
+            Array.from({ length: workerCount }, async () => {
+              while (nextDownloadIndex < downloadable.length) {
+                const index = nextDownloadIndex;
+                nextDownloadIndex += 1;
+                await downloadOne(index);
+              }
+            })
+          );
           setRunpodStatus(
             ko
               ? `${downloadable.length}개 파일을 RunPod에 다운로드했습니다.`
