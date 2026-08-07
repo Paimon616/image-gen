@@ -19,6 +19,32 @@ const RESOURCE_FOLDERS: Partial<Record<ImportedCivitaiResource["type"], string>>
   upscaler: "upscale_models",
 };
 
+const RUNPOD_BASE_ASSETS = [
+  {
+    path: "/workspace/ComfyUI/models/upscale_models/4x-UltraSharp.pth",
+    url: "https://huggingface.co/shiertier/upscale_models/resolve/b73626f248084e9af7108621ace5651e1447af44/4x-UltraSharp.pth",
+  },
+  {
+    path: "/workspace/ComfyUI/models/upscale_models/remacri_original.safetensors",
+    url: "https://civitai.com/api/download/models/164821",
+  },
+  {
+    path: "/workspace/ComfyUI/models/ultralytics/bbox/face_yolov8n_v2.pt",
+    url: "https://huggingface.co/Bingsu/adetailer/resolve/main/face_yolov8n_v2.pt",
+  },
+  {
+    path: "/workspace/ComfyUI/models/ultralytics/bbox/face_yolov8m.pt",
+    url: "https://huggingface.co/Bingsu/adetailer/resolve/main/face_yolov8m.pt",
+  },
+] as const;
+
+function runpodBaseAssetForPath(path: string) {
+  const normalized = path.replace(/^\/workspace\/ComfyUI\/models\//, "");
+  return RUNPOD_BASE_ASSETS.find((asset) =>
+    asset.path.endsWith(`/models/${normalized}`)
+  );
+}
+
 function shellQuote(value: string) {
   return `'${value.replace(/'/g, `'\\''`)}'`;
 }
@@ -391,6 +417,14 @@ export async function fetchRunpodStatus(pod: RunpodPodSettings) {
 }
 
 export async function setupRunpodPod(pod: RunpodPodSettings) {
+  const settings = await readSettings();
+  const civitaiToken = settings.civitaiApiKey || process.env.CIVITAI_API_TOKEN?.trim() || "";
+  const baseAssetDownloads = RUNPOD_BASE_ASSETS.map((asset) => {
+    const token = asset.url.includes("civitai.com") ? civitaiToken : "";
+    return [
+      `download_asset ${shellQuote(asset.path)} ${shellQuote(asset.url)} ${shellQuote(token)}`,
+    ].join("\n");
+  }).join("\n");
   const script = [
     "set -euo pipefail",
     'COMFYUI_DIR="${COMFYUI_DIR:-/workspace/ComfyUI}"',
@@ -402,7 +436,25 @@ export async function setupRunpodPod(pod: RunpodPodSettings) {
     "fi",
     'cd "$COMFYUI_DIR"',
     "python3 -m pip install -r requirements.txt",
-    "mkdir -p models/checkpoints models/loras models/embeddings models/vae models/upscale_models models/controlnet models/clip_vision models/ipadapter",
+    "mkdir -p models/checkpoints models/loras models/embeddings models/vae models/upscale_models models/controlnet models/clip_vision models/ipadapter models/ultralytics/bbox models/ultralytics/segm",
+    "download_asset() {",
+    "  target=\"$1\"",
+    "  url=\"$2\"",
+    "  token=\"${3:-}\"",
+    "  if [ -f \"$target\" ]; then",
+    "    echo \"exists: $target\"",
+    "    return 0",
+    "  fi",
+    "  mkdir -p \"$(dirname \"$target\")\"",
+    "  echo \"downloading: $target\"",
+    "  if [ -n \"$token\" ]; then",
+    "    curl -L --fail --retry 3 --continue-at - -H \"Authorization: Bearer $token\" -o \"$target.download\" \"$url\"",
+    "  else",
+    "    curl -L --fail --retry 3 --continue-at - -o \"$target.download\" \"$url\"",
+    "  fi",
+    "  mv \"$target.download\" \"$target\"",
+    "}",
+    baseAssetDownloads,
     'if ! curl -fsS --max-time 5 "http://127.0.0.1:$COMFYUI_PORT/system_stats" >/dev/null 2>&1; then',
     '  nohup python3 main.py --listen 0.0.0.0 --port "$COMFYUI_PORT" --enable-cors-header > /workspace/comfyui.log 2>&1 &',
     "fi",
@@ -443,7 +495,8 @@ function resourceFromCatalog(
   filename: string
 ) {
   const metadata = catalog[`${folder}/${filename}`] ?? catalog[filename];
-  const url = metadata?.civitai_url || metadata?.source_url || "";
+  const baseAsset = runpodBaseAssetForPath(`${folder}/${filename}`);
+  const url = metadata?.civitai_url || metadata?.source_url || baseAsset?.url || "";
   const ids = parseCivitaiUrlIds(url);
   return {
     type,
@@ -488,6 +541,21 @@ async function namesForParams(params: GenerationParams) {
   }
   if (params.upscale_model_name.trim()) {
     push("upscaler", "upscale_models", params.upscale_model_name.trim());
+  }
+  if (params.adetailer_enabled) {
+    const requestedModel = params.adetailer_model.trim();
+    const normalizedDetectorModel = requestedModel.startsWith("bbox/")
+      ? requestedModel
+      : requestedModel
+        ? `bbox/${requestedModel}`
+        : "bbox/face_yolov8n_v2.pt";
+    const detectorModel = [
+      "bbox/face_yolov8n_v2.pt",
+      "bbox/face_yolov8m.pt",
+    ].includes(normalizedDetectorModel)
+      ? normalizedDetectorModel
+      : "bbox/face_yolov8n_v2.pt";
+    push("other", "ultralytics", detectorModel);
   }
   return names;
 }
@@ -537,30 +605,50 @@ export async function downloadRunpodResource(
 
   const settings = await readSettings();
   const token = settings.civitaiApiKey || process.env.CIVITAI_API_TOKEN?.trim();
-  if (!token) throw new Error("Civitai API key is not configured.");
 
   const folder = RESOURCE_FOLDERS[resource.type];
-  if (!folder || !resource.modelVersionId) {
+  const baseAsset = targetPath ? runpodBaseAssetForPath(targetPath) : undefined;
+  if (!folder && !baseAsset) {
     throw new Error("This resource cannot be downloaded automatically.");
   }
 
+  if (!baseAsset && !resource.modelVersionId) {
+    throw new Error("This resource cannot be downloaded automatically.");
+  }
+
+  if (!baseAsset && !token) throw new Error("Civitai API key is not configured.");
+
   const filename = targetPath ? basename(targetPath) : fallbackFilename(resource);
-  const targetDir = `/workspace/ComfyUI/models/${folder}`;
-  const targetFile = `${targetDir}/${filename}`;
+  const targetDir = baseAsset
+    ? baseAsset.path.slice(0, baseAsset.path.lastIndexOf("/"))
+    : `/workspace/ComfyUI/models/${folder}`;
+  const targetFile = baseAsset ? baseAsset.path : `${targetDir}/${filename}`;
+  const downloadUrl = baseAsset?.url ??
+    `https://civitai.com/api/download/models/${resource.modelVersionId}`;
+  const tokenValue = !baseAsset && token ? token : "";
   const script = `
 set -euo pipefail
 TARGET_DIR=${shellQuote(targetDir)}
 TARGET_FILE=${shellQuote(targetFile)}
+DOWNLOAD_URL=${shellQuote(downloadUrl)}
+TOKEN=${shellQuote(tokenValue)}
 mkdir -p "$TARGET_DIR"
 if [ -f "$TARGET_FILE" ]; then
   echo "$TARGET_FILE"
   exit 0
 fi
-curl -L --fail --retry 3 --continue-at - \
-  -H ${shellQuote(`Authorization: Bearer ${token}`)} \
-  -H ${shellQuote("User-Agent: image-gen-runpod-download/1.0")} \
-  -o "$TARGET_FILE.download" \
-  ${shellQuote(`https://civitai.com/api/download/models/${resource.modelVersionId}`)}
+if [ -n "$TOKEN" ]; then
+  curl -L --fail --retry 3 --continue-at - \\
+    -H "Authorization: Bearer $TOKEN" \\
+    -H ${shellQuote("User-Agent: image-gen-runpod-download/1.0")} \\
+    -o "$TARGET_FILE.download" \\
+    "$DOWNLOAD_URL"
+else
+  curl -L --fail --retry 3 --continue-at - \\
+    -H ${shellQuote("User-Agent: image-gen-runpod-download/1.0")} \\
+    -o "$TARGET_FILE.download" \\
+    "$DOWNLOAD_URL"
+fi
 mv "$TARGET_FILE.download" "$TARGET_FILE"
 echo "$TARGET_FILE"
 `;

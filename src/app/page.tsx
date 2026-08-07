@@ -81,6 +81,12 @@ interface RunpodConnectionStatus {
   sshError: string;
 }
 
+interface RunpodDownloadProgress {
+  total: number;
+  completed: number;
+  currentPath: string;
+}
+
 const EDITOR_MIN_WIDTH = 320;
 const GALLERY_MIN_WIDTH = 320;
 const THUMBNAIL_MIN_WIDTH = 140;
@@ -147,6 +153,17 @@ function cloneGenerationParams(params: GenerationParamsType) {
   return JSON.parse(JSON.stringify(params)) as GenerationParamsType;
 }
 
+function canDownloadRunpodMissingFile(item: RunpodMissingFile) {
+  return Boolean(
+    item.resource.url &&
+      (item.resource.modelVersionId ||
+        item.path === "upscale_models/4x-UltraSharp.pth" ||
+        item.path === "upscale_models/remacri_original.safetensors" ||
+        item.path === "ultralytics/bbox/face_yolov8n_v2.pt" ||
+        item.path === "ultralytics/bbox/face_yolov8m.pt")
+  );
+}
+
 export default function Home() {
   const {
     params,
@@ -188,6 +205,8 @@ export default function Home() {
   const [runpodStatus, setRunpodStatus] = useState("");
   const [runpodBusy, setRunpodBusy] = useState<"" | "start" | "status" | "setup" | "check" | "download">("");
   const [runpodMissingFiles, setRunpodMissingFiles] = useState<RunpodMissingFile[]>([]);
+  const [runpodDownloadProgress, setRunpodDownloadProgress] =
+    useState<RunpodDownloadProgress | null>(null);
   const [runpodConnection, setRunpodConnection] = useState<RunpodConnectionStatus>({
     checked: false,
     comfyReachable: false,
@@ -871,9 +890,34 @@ export default function Home() {
 
         if (action === "download") {
           const downloadable = runpodMissingFiles.filter(
-            (item) => item.resource.url && item.resource.modelVersionId
+            (item) => canDownloadRunpodMissingFile(item)
           );
-          for (const item of downloadable) {
+          if (downloadable.length === 0) {
+            setRunpodStatus(
+              ko
+                ? "자동 다운로드 가능한 누락 파일이 없습니다."
+                : "No missing files can be downloaded automatically."
+            );
+            return;
+          }
+
+          setRunpodDownloadProgress({
+            total: downloadable.length,
+            completed: 0,
+            currentPath: downloadable[0]?.path ?? "",
+          });
+
+          for (const [index, item] of downloadable.entries()) {
+            setRunpodDownloadProgress({
+              total: downloadable.length,
+              completed: index,
+              currentPath: item.path,
+            });
+            setRunpodStatus(
+              ko
+                ? `RunPod 다운로드 중 ${index + 1}/${downloadable.length}: ${item.path}`
+                : `Downloading to RunPod ${index + 1}/${downloadable.length}: ${item.path}`
+            );
             const response = await fetch(`/api/runpod/pods/${selectedRunpodPodId}/download`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -881,6 +925,11 @@ export default function Home() {
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || "RunPod download failed");
+            setRunpodDownloadProgress({
+              total: downloadable.length,
+              completed: index + 1,
+              currentPath: item.path,
+            });
           }
           setRunpodStatus(
             ko
@@ -888,13 +937,16 @@ export default function Home() {
               : `Downloaded ${downloadable.length} file(s) to RunPod.`
           );
           setRunpodMissingFiles((items) =>
-            items.filter((item) => !item.resource.url || !item.resource.modelVersionId)
+            items.filter((item) => !canDownloadRunpodMissingFile(item))
           );
           setRunpodFilesChecked(false);
         }
       } catch (error) {
         setRunpodStatus(error instanceof Error ? error.message : "RunPod action failed");
       } finally {
+        if (action === "download") {
+          setRunpodDownloadProgress(null);
+        }
         setRunpodBusy("");
       }
     },
@@ -1228,7 +1280,7 @@ export default function Home() {
                         disabled={
                           Boolean(runpodBusy) ||
                           !runpodMissingFiles.some(
-                            (item) => item.resource.url && item.resource.modelVersionId
+                            (item) => canDownloadRunpodMissingFile(item)
                           )
                         }
                         onClick={() => void runRunpodAction("download")}
@@ -1248,16 +1300,43 @@ export default function Home() {
                           className="rounded bg-background/80 px-2 py-1 text-xs"
                         >
                           <div className="truncate font-medium">{item.path}</div>
-                          {!item.resource.modelVersionId && (
+                          {!canDownloadRunpodMissingFile(item) && (
                             <div className="text-[11px] text-muted-foreground">
                               {ko
-                                ? "Civitai modelVersionId가 없어 자동 다운로드할 수 없습니다."
-                                : "No Civitai modelVersionId; automatic download is unavailable."}
+                                ? "다운로드 출처가 없어 자동 다운로드할 수 없습니다."
+                                : "No download source is available."}
                             </div>
                           )}
                         </div>
                       ))}
                     </div>
+                    {runpodDownloadProgress && (
+                      <div className="space-y-1 rounded bg-background/80 px-2 py-2 text-xs">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate text-muted-foreground">
+                            {ko ? "다운로드 진행" : "Download progress"}
+                            {runpodDownloadProgress.currentPath
+                              ? ` · ${runpodDownloadProgress.currentPath}`
+                              : ""}
+                          </span>
+                          <span className="shrink-0 tabular-nums">
+                            {runpodDownloadProgress.completed}/{runpodDownloadProgress.total}
+                          </span>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-muted">
+                          <div
+                            className="h-full rounded-full bg-primary transition-all"
+                            style={{
+                              width: `${Math.round(
+                                (runpodDownloadProgress.completed /
+                                  Math.max(runpodDownloadProgress.total, 1)) *
+                                  100
+                              )}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
                 {runpodStatus && (
