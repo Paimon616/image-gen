@@ -1,13 +1,17 @@
 import "server-only";
 
 import { execFile, spawn } from "child_process";
-import { readFile } from "fs/promises";
+import { mkdir, readFile, writeFile } from "fs/promises";
 import { homedir } from "os";
 import { basename, dirname } from "path";
 import { promisify } from "util";
 import type { GenerationParams, ImportedCivitaiResource } from "@/lib/types";
 import { getRunpodPod, readSettings, type RunpodPodSettings } from "@/lib/settings";
 import { parseCivitaiUrlIds } from "@/lib/civitai-url";
+import {
+  RESOURCE_CATALOG_FOLDERS,
+  searchCivitaiResourceByFilename,
+} from "@/lib/civitai-resource-search";
 import {
   KREA2_CLIP_NAME,
   KREA2_VAE_NAME,
@@ -918,6 +922,30 @@ async function readModelCatalog() {
   }
 }
 
+async function writeModelCatalog(catalog: Record<string, CatalogEntry>) {
+  await mkdir("data", { recursive: true });
+  await writeFile("data/model-catalog.json", JSON.stringify(catalog, null, 2));
+}
+
+async function upsertCatalogResource(
+  catalog: Record<string, CatalogEntry>,
+  folder: string,
+  filename: string,
+  resource: ImportedCivitaiResource
+) {
+  const key = `${folder}/${filename}`;
+  const existing = catalog[key] ?? {};
+  catalog[key] = {
+    ...existing,
+    name: resource.name || existing.name || filename,
+    version: resource.versionName || existing.version || "",
+    base_model: resource.baseModel || existing.base_model || "",
+    civitai_url: resource.url || existing.civitai_url || null,
+    source_url: resource.url || existing.source_url || null,
+  };
+  await writeModelCatalog(catalog);
+}
+
 function resourceFromCatalog(
   catalog: Record<string, CatalogEntry>,
   type: ImportedCivitaiResource["type"],
@@ -941,6 +969,7 @@ function resourceFromCatalog(
 
 function importedResourceCandidateNames(resource: ImportedCivitaiResource) {
   const candidates = [
+    resource.fileName ?? "",
     resource.name,
     resource.versionName ?? "",
     [resource.name, resource.versionName].filter(Boolean).join(" "),
@@ -1066,9 +1095,36 @@ export async function checkRunpodGenerationFiles(
       )
     : new Set<string>();
 
-  return resources
+  const missing = resources
     .filter(({ folder, name }) => !present.has(`${folder}/${name}`))
     .map(({ folder, name, resource }) => ({ folder, path: `${folder}/${name}`, resource }));
+
+  if (missing.length === 0) return [];
+
+  const catalog = await readModelCatalog();
+  const enriched = await Promise.all(
+    missing.map(async (item) => {
+      if (item.resource.url && item.resource.modelVersionId) return item;
+      const catalogFolder = RESOURCE_CATALOG_FOLDERS[item.resource.type];
+      if (!catalogFolder || catalogFolder !== item.folder) return item;
+
+      const found = await searchCivitaiResourceByFilename(
+        item.resource.type,
+        basename(item.path)
+      );
+      if (!found) return item;
+      const foundResource = found as ImportedCivitaiResource;
+
+      await upsertCatalogResource(catalog, item.folder, basename(item.path), foundResource);
+      const resource: ImportedCivitaiResource = {
+        ...item.resource,
+        ...foundResource,
+      };
+      return { ...item, resource };
+    })
+  );
+
+  return enriched;
 }
 
 function sleep(ms: number) {

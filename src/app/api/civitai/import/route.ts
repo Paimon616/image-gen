@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { mkdir, readFile, writeFile } from "fs/promises";
 import {
   IMAGE_SIZE_CONSTRAINTS,
   type CivitaiImportResult,
@@ -10,11 +11,13 @@ import {
   buildCivitaiMetadataAdvice,
   recommendedCivitaiBackend,
 } from "@/lib/civitai-metadata-advice";
+import { isKrea2CheckpointName } from "@/lib/comfyui-model-files";
 
 const CIVITAI_IMAGE_URL_PATTERN =
   /(?:https?:\/\/)?(?:www\.)?(civitai\.(?:com|red))\/images\/(\d+)/i;
 const DEFAULT_CIVITAI_ORIGIN = "https://civitai.com";
 const CIVITAI_LINK_ORIGIN = "https://civitai.red";
+const MODEL_CATALOG_PATH = "data/model-catalog.json";
 
 interface CivitaiImageItem {
   id: number;
@@ -50,6 +53,20 @@ interface CivitaiPageResource {
   versionName?: unknown;
   baseModel?: unknown;
   strength?: unknown;
+}
+
+interface CatalogEntry {
+  name?: string;
+  version?: string;
+  base_model?: string;
+  civitai_url?: string | null;
+  source_url?: string | null;
+}
+
+interface CivitaiVersionFile {
+  name?: string;
+  primary?: boolean;
+  type?: string;
 }
 
 interface CivitaiPageGenerationData {
@@ -469,8 +486,140 @@ function embeddingResourceName(resource: ImportedCivitaiResource) {
 }
 
 function embeddingResourcePath(resource: ImportedCivitaiResource) {
-  const name = embeddingResourceName(resource);
+  const name = resource.fileName || embeddingResourceName(resource);
   return /\.(ckpt|pt|pth|safetensors)$/i.test(name) ? name : `${name}.safetensors`;
+}
+
+async function fetchVersionPrimaryFileName(modelVersionId: number) {
+  const response = await fetch(
+    `https://civitai.com/api/v1/model-versions/${modelVersionId}`,
+    {
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "image-gen-civitai-import/1.0",
+      },
+    }
+  );
+  if (!response.ok) return "";
+
+  const data = (await response.json()) as { files?: CivitaiVersionFile[] };
+  const files = (data.files ?? []).filter((file) => file.name?.trim());
+  const primary =
+    files.find((file) => file.primary) ??
+    files.find((file) => /model/i.test(file.type ?? "")) ??
+    files[0];
+
+  return primary?.name?.trim() ?? "";
+}
+
+async function enrichResourcesWithFileNames(resources: ImportedCivitaiResource[]) {
+  return Promise.all(
+    resources.map(async (resource) => {
+      if (!resource.modelVersionId || resource.fileName) return resource;
+      if (!["checkpoint", "lora", "embedding", "vae", "upscaler"].includes(resource.type)) {
+        return resource;
+      }
+      const fileName = await fetchVersionPrimaryFileName(resource.modelVersionId);
+      return fileName ? { ...resource, fileName } : resource;
+    })
+  );
+}
+
+async function readCatalog() {
+  try {
+    return JSON.parse(await readFile(MODEL_CATALOG_PATH, "utf8")) as Record<
+      string,
+      CatalogEntry
+    >;
+  } catch {
+    return {};
+  }
+}
+
+async function writeCatalog(catalog: Record<string, CatalogEntry>) {
+  await mkdir("data", { recursive: true });
+  await writeFile(MODEL_CATALOG_PATH, JSON.stringify(catalog, null, 2));
+}
+
+function resourceCatalogPath(resource: ImportedCivitaiResource) {
+  if (resource.type === "checkpoint") {
+    const name = resource.fileName || resource.name;
+    const folder = isKrea2CheckpointName(resource.name)
+      ? "diffusion_models"
+      : "checkpoints";
+    return `${folder}/${name}`;
+  }
+  if (resource.type === "lora") return `loras/${resource.fileName || resource.name}`;
+  if (resource.type === "embedding") return `embeddings/${embeddingResourcePath(resource)}`;
+  if (resource.type === "vae") return `vae/${resource.name}`;
+  if (resource.type === "upscaler") return `upscale_models/${resource.name}`;
+  return "";
+}
+
+async function upsertImportedResourcesCatalog(
+  resources: ImportedCivitaiResource[],
+  params: Partial<GenerationParams>
+) {
+  const downloadable = resources.filter(
+    (resource) => resource.url && resource.modelVersionId
+  );
+  if (downloadable.length === 0) return;
+
+  const catalog = await readCatalog();
+  let changed = false;
+
+  const explicitKeys = new Map<ImportedCivitaiResource, string>();
+  const checkpoint = downloadable.find((resource) => resource.type === "checkpoint");
+  if (checkpoint && params.model_name) {
+    explicitKeys.set(
+      checkpoint,
+      `${isKrea2CheckpointName(params.model_name) ? "diffusion_models" : "checkpoints"}/${params.model_name}`
+    );
+  }
+
+  const loraResources = downloadable.filter((resource) => resource.type === "lora");
+  (params.loras ?? []).forEach((lora, index) => {
+    const resource = loraResources[index];
+    if (resource && lora.path) explicitKeys.set(resource, `loras/${lora.path}`);
+  });
+
+  const embeddingResources = downloadable.filter(
+    (resource) => resource.type === "embedding"
+  );
+  (params.embeddings ?? []).forEach((embedding, index) => {
+    const resource = embeddingResources[index];
+    if (resource && embedding.path) {
+      explicitKeys.set(resource, `embeddings/${embedding.path}`);
+    }
+  });
+
+  const vae = downloadable.find((resource) => resource.type === "vae");
+  if (vae && params.vae_name) explicitKeys.set(vae, `vae/${params.vae_name}`);
+
+  const upscaler = downloadable.find((resource) => resource.type === "upscaler");
+  if (upscaler && params.upscale_model_name) {
+    explicitKeys.set(upscaler, `upscale_models/${params.upscale_model_name}`);
+  }
+
+  for (const resource of downloadable) {
+    const key = explicitKeys.get(resource) ?? resourceCatalogPath(resource);
+    if (!key) continue;
+
+    const filename = key.split("/").pop() || resource.name;
+    const existing = catalog[key] ?? {};
+    catalog[key] = {
+      ...existing,
+      name: resource.name || existing.name || filename,
+      version: resource.versionName || existing.version || "",
+      base_model: resource.baseModel || existing.base_model || "",
+      civitai_url: resource.url || existing.civitai_url || null,
+      source_url: resource.url || existing.source_url || null,
+    };
+    changed = true;
+  }
+
+  if (changed) await writeCatalog(catalog);
 }
 
 function resourceNamesMatch(resource: ImportedCivitaiResource, pageResource: CivitaiPageResource) {
@@ -787,10 +936,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const resources = enrichResourcesWithPageData(
+  const resources = await enrichResourcesWithFileNames(enrichResourcesWithPageData(
     meta ? parseResources(meta) : [],
     pageResources
-  );
+  ));
   const importedTags = normalizeImportedTags(
     item?.tags,
     item?.tagNames,
@@ -815,7 +964,7 @@ export async function POST(req: NextRequest) {
   const loras = resources
     .filter((resource) => resource.type === "lora")
     .map((resource, index) => ({
-      path: resource.name,
+      path: resource.fileName || resource.name,
       scale: Number.isFinite(promptLoraWeights[index])
         ? promptLoraWeights[index]
         : resource.weight ?? 0.8,
@@ -838,12 +987,12 @@ export async function POST(req: NextRequest) {
     params.backend = "a1111";
   }
 
-  if (checkpoint) params.model_name = checkpoint.name;
+  if (checkpoint) params.model_name = checkpoint.fileName || checkpoint.name;
   if (loras.length > 0) params.loras = loras;
   if (embeddings.length > 0) params.embeddings = embeddings;
-  if (vae && !params.vae_name) params.vae_name = vae.name;
+  if (vae && !params.vae_name) params.vae_name = vae.fileName || vae.name;
   if (upscaler && !params.upscale_model_name) {
-    params.upscale_model_name = upscaler.name;
+    params.upscale_model_name = upscaler.fileName || upscaler.name;
   }
 
   const advice = buildCivitaiMetadataAdvice({
@@ -854,6 +1003,8 @@ export async function POST(req: NextRequest) {
     metadataHidden: !meta,
     baseModel: checkpoint?.baseModel,
   });
+
+  await upsertImportedResourcesCatalog(resources, params);
 
   return NextResponse.json({
     imageId: itemForParsing.id,

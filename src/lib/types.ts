@@ -207,6 +207,7 @@ export interface ImportedCivitaiResource {
   baseModel?: string;
   weight?: number;
   hash?: string;
+  fileName?: string;
   modelId?: number;
   modelVersionId?: number;
   url: string;
