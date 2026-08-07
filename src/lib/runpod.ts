@@ -362,7 +362,10 @@ async function resolvedSshCommand(pod: RunpodPodSettings) {
   }
 
   let safeSsh = normalizedSshCommand(extracted);
-  const endpoint = await fetchRunpodSshEndpoint(pod);
+  // Prefer a direct TCP endpoint (22/tcp exposed) when RunPod offers one — it is
+  // faster and supports the full SSH feature set. Many templates only expose the
+  // ssh.runpod.io proxy though; a lookup failure must NOT block setup.
+  const endpoint = await fetchRunpodSshEndpoint(pod).catch(() => null);
   if (endpoint) {
     const destinationUser = /(?:^|\.)ssh\.runpod\.io$/i.test(parsed.host)
       ? "root"
@@ -383,11 +386,10 @@ async function resolvedSshCommand(pod: RunpodPodSettings) {
     ]
       .map(shellQuote)
       .join(" ");
-  } else if (/(?:^|\.)ssh\.runpod\.io$/i.test(parsed.host)) {
-    throw new Error(
-      "RunPod SSH public port is not exposed yet. Add 22/tcp to the pod ports, wait for the runtime endpoint, then retry Helper 연결."
-    );
   }
+  // Otherwise fall back to the pasted command as-is (the ssh.runpod.io proxy).
+  // RunPod's SSH proxy supports remote command execution — only SCP/SFTP is
+  // unsupported — which is exactly how runpod-video runs its remote commands.
 
   if (!safeSsh) {
     throw new Error("RunPod SSH command must include a user@host address.");
@@ -614,8 +616,16 @@ export async function stopRunpodPod(podId: string) {
 
 export async function fetchRunpodStatus(pod: RunpodPodSettings) {
   const podSummary = pod.podId ? await fetchRunpodPodSummary(pod.podId) : null;
+  const desiredStatus =
+    podSummary && "desiredStatus" in podSummary ? podSummary.desiredStatus ?? "" : "";
+  // RunPod REST API reports the pod is up (like runpod-video's desiredStatus check).
+  // While it is RUNNING, unreachable ComfyUI/helper endpoints mean "still booting",
+  // not a hard failure — the proxy answers before the service binds its port.
+  const podRunning = desiredStatus.toUpperCase() === "RUNNING";
+
   const comfyUrl = pod.comfyUrl.replace(/\/$/, "");
   let comfyReachable = false;
+  let comfyInitializing = false;
   let comfyError = "";
 
   if (comfyUrl) {
@@ -625,13 +635,20 @@ export async function fetchRunpodStatus(pod: RunpodPodSettings) {
         signal: AbortSignal.timeout(5_000),
       });
       comfyReachable = response.ok;
-      if (!response.ok) comfyError = `ComfyUI HTTP ${response.status}`;
+      if (!response.ok) {
+        comfyError = `ComfyUI HTTP ${response.status}`;
+        // 502/503/504 from the RunPod proxy = proxy is up, ComfyUI not ready yet.
+        if ([502, 503, 504].includes(response.status)) comfyInitializing = true;
+      }
     } catch (error) {
       comfyError = error instanceof Error ? error.message : "ComfyUI is not reachable.";
+      if (podRunning) comfyInitializing = true;
     }
   }
+  if (!comfyReachable && podRunning) comfyInitializing = true;
 
   let helperReachable = false;
+  let helperInitializing = false;
   let helperError = "";
   try {
     const helper = await fetchRunpodHelper(pod, "/api/runpod/helper/status", {
@@ -640,18 +657,27 @@ export async function fetchRunpodStatus(pod: RunpodPodSettings) {
     helperReachable = Boolean(helper.ok);
   } catch (error) {
     const message = error instanceof Error ? error.message : "RunPod helper is not reachable.";
-    helperError =
-      message.includes("Unexpected token") || message.includes("<!DOCTYPE")
-        ? "RunPod helper HTTP endpoint is not serving helper JSON yet."
-        : message;
+    if (message.includes("Unexpected token") || message.includes("<!DOCTYPE")) {
+      // Proxy returns RunPod's HTML loading page until the helper starts serving JSON.
+      helperError = "RunPod helper HTTP endpoint is not serving helper JSON yet.";
+      helperInitializing = true;
+    } else if (/HTTP 50[234]\b/.test(message)) {
+      helperError = message;
+      helperInitializing = true;
+    } else {
+      helperError = message;
+      if (podRunning) helperInitializing = true;
+    }
   }
 
   return {
     comfyReachable,
+    comfyInitializing: comfyInitializing && !comfyReachable,
     comfyError,
     helperReachable,
+    helperInitializing: helperInitializing && !helperReachable,
     helperError,
-    podDesiredStatus: podSummary && "desiredStatus" in podSummary ? podSummary.desiredStatus : "",
+    podDesiredStatus: desiredStatus,
     podHostId: podSummary && "podHostId" in podSummary ? podSummary.podHostId : "",
     configuredPorts:
       podSummary && "configuredPorts" in podSummary ? podSummary.configuredPorts : [],

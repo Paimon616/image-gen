@@ -131,7 +131,9 @@ interface RunpodPodOption {
 interface RunpodConnectionStatus {
   checked: boolean;
   comfyReachable: boolean;
+  comfyInitializing: boolean;
   helperReachable: boolean;
+  helperInitializing: boolean;
   comfyError: string;
   helperError: string;
 }
@@ -781,7 +783,9 @@ export default function VideoPage() {
   const [runpodConnection, setRunpodConnection] = useState<RunpodConnectionStatus>({
     checked: false,
     comfyReachable: false,
+    comfyInitializing: false,
     helperReachable: false,
+    helperInitializing: false,
     comfyError: "",
     helperError: "",
   });
@@ -789,6 +793,7 @@ export default function VideoPage() {
   const [paimonOpen, setPaimonOpen] = useState(false);
   const activePromptIdRef = useRef("");
   const autoRunpodCheckKeyRef = useRef("");
+  const runpodPollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const generationAbortControllerRef = useRef<AbortController | null>(null);
 
   const startEditorResize = useCallback(
@@ -885,34 +890,52 @@ export default function VideoPage() {
     setRunpodConnection({
       checked: false,
       comfyReachable: false,
+      comfyInitializing: false,
       helperReachable: false,
+      helperInitializing: false,
       comfyError: "",
       helperError: "",
     });
   }, []);
 
-  const checkRunpodConnection = useCallback(async () => {
-    if (!selectedRunpodPodId || runpodBusy) return;
-
-    setRunpodBusy(true);
-    setRunpodStatus("");
-    try {
-      const response = await fetch(
-        `/api/runpod/pods/${selectedRunpodPodId}/status?ensure=1`,
-        { cache: "no-store" }
-      );
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "RunPod status failed.");
-      }
+  const applyRunpodStatus = useCallback(
+    (data: Record<string, unknown>) => {
+      const comfyReachable = Boolean(data.comfyReachable);
+      const helperReachable = Boolean(data.helperReachable);
+      const comfyInitializing = !comfyReachable && Boolean(data.comfyInitializing);
+      const helperInitializing = !helperReachable && Boolean(data.helperInitializing);
+      const comfyError = String(data.comfyError || "");
+      const helperError = String(data.helperError || "");
 
       setRunpodConnection({
         checked: true,
-        comfyReachable: Boolean(data.comfyReachable),
-        helperReachable: Boolean(data.helperReachable),
-        comfyError: String(data.comfyError || ""),
-        helperError: String(data.helperError || ""),
+        comfyReachable,
+        comfyInitializing,
+        helperReachable,
+        helperInitializing,
+        comfyError,
+        helperError,
       });
+
+      const serviceLine = (
+        reachable: boolean,
+        initializing: boolean,
+        okLabel: string,
+        name: string,
+        detail: string
+      ) => {
+        if (reachable) return okLabel;
+        const suffix = detail ? `: ${detail}` : "";
+        if (initializing) {
+          return language === "ko"
+            ? `${name} 초기화 중${suffix}`
+            : `${name} initializing${suffix}`;
+        }
+        return language === "ko"
+          ? `${name} 미연결${suffix}`
+          : `${name} unreachable${suffix}`;
+      };
+
       setRunpodStatus(
         [
           data.podDesiredStatus
@@ -928,16 +951,18 @@ export default function VideoPage() {
               ? `시작 요청 실패: ${data.startError}`
               : `Start failed: ${data.startError}`
             : "",
-          data.comfyReachable
-            ? "ComfyUI OK"
-            : language === "ko"
-              ? `ComfyUI 미연결${data.comfyError ? `: ${data.comfyError}` : ""}`
-              : `ComfyUI unreachable${data.comfyError ? `: ${data.comfyError}` : ""}`,
-          data.helperReachable
-            ? "Helper OK"
-            : language === "ko"
-              ? `Helper 미연결${data.helperError ? `: ${data.helperError}` : ""}`
-              : `Helper unreachable${data.helperError ? `: ${data.helperError}` : ""}`,
+          data.setupError
+            ? language === "ko"
+              ? `Helper 설치 실패: ${data.setupError}`
+              : `Helper setup failed: ${data.setupError}`
+            : "",
+          data.portExposeError
+            ? language === "ko"
+              ? `포트 노출 실패: ${data.portExposeError}`
+              : `Port expose failed: ${data.portExposeError}`
+            : "",
+          serviceLine(comfyReachable, comfyInitializing, "ComfyUI OK", "ComfyUI", comfyError),
+          serviceLine(helperReachable, helperInitializing, "Helper OK", "Helper", helperError),
           Array.isArray(data.runtimePorts) && data.runtimePorts.length > 0
             ? `ports ${data.runtimePorts.length}`
             : "",
@@ -945,12 +970,33 @@ export default function VideoPage() {
           .filter(Boolean)
           .join(" · ")
       );
+    },
+    [language]
+  );
+
+  const checkRunpodConnection = useCallback(async () => {
+    if (!selectedRunpodPodId || runpodBusy) return;
+
+    setRunpodBusy(true);
+    setRunpodStatus("");
+    try {
+      const response = await fetch(
+        `/api/runpod/pods/${selectedRunpodPodId}/status?ensure=1`,
+        { cache: "no-store" }
+      );
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "RunPod status failed.");
+      }
+      applyRunpodStatus(data);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to check RunPod.";
       setRunpodConnection({
         checked: true,
         comfyReachable: false,
+        comfyInitializing: false,
         helperReachable: false,
+        helperInitializing: false,
         comfyError: message,
         helperError: "",
       });
@@ -958,7 +1004,24 @@ export default function VideoPage() {
     } finally {
       setRunpodBusy(false);
     }
-  }, [language, runpodBusy, selectedRunpodPodId]);
+  }, [applyRunpodStatus, runpodBusy, selectedRunpodPodId]);
+
+  // Lightweight status refresh (no ensure/start/setup side effects) used for polling
+  // while ComfyUI/helper are still booting, so the badges flip to OK on their own.
+  const refreshRunpodStatus = useCallback(async () => {
+    if (!selectedRunpodPodId) return;
+    try {
+      const response = await fetch(
+        `/api/runpod/pods/${selectedRunpodPodId}/status`,
+        { cache: "no-store" }
+      );
+      const data = await response.json();
+      if (!response.ok) return;
+      applyRunpodStatus(data);
+    } catch {
+      // Keep the last known status; the next poll will retry.
+    }
+  }, [applyRunpodStatus, selectedRunpodPodId]);
 
   useEffect(() => {
     if (generationTarget !== "runpod" || !selectedRunpodPodId || isGenerating) return;
@@ -967,6 +1030,45 @@ export default function VideoPage() {
     autoRunpodCheckKeyRef.current = key;
     void checkRunpodConnection();
   }, [checkRunpodConnection, generationTarget, isGenerating, selectedRunpodPodId]);
+
+  // Auto re-check while a service is still initializing, then stop once it is
+  // ready (or the target/pod changes). This mirrors runpod-video's live polling.
+  useEffect(() => {
+    if (runpodPollRef.current) {
+      clearTimeout(runpodPollRef.current);
+      runpodPollRef.current = null;
+    }
+    if (
+      generationTarget !== "runpod" ||
+      !selectedRunpodPodId ||
+      isGenerating ||
+      runpodBusy ||
+      !runpodConnection.checked
+    ) {
+      return;
+    }
+    if (!runpodConnection.comfyInitializing && !runpodConnection.helperInitializing) {
+      return;
+    }
+    runpodPollRef.current = setTimeout(() => {
+      void refreshRunpodStatus();
+    }, 6_000);
+    return () => {
+      if (runpodPollRef.current) {
+        clearTimeout(runpodPollRef.current);
+        runpodPollRef.current = null;
+      }
+    };
+  }, [
+    generationTarget,
+    isGenerating,
+    refreshRunpodStatus,
+    runpodBusy,
+    runpodConnection.checked,
+    runpodConnection.comfyInitializing,
+    runpodConnection.helperInitializing,
+    selectedRunpodPodId,
+  ]);
 
   const setupRunpodHelper = useCallback(async () => {
     if (!selectedRunpodPodId || runpodSetupBusy || isGenerating) return;
@@ -983,8 +1085,8 @@ export default function VideoPage() {
       }
       setRunpodStatus(
         language === "ko"
-          ? "Helper 시작 요청을 보냈습니다. 잠시 후 연결 확인을 다시 실행합니다."
-          : "Helper start requested. Checking connection shortly."
+          ? "Helper 시작 요청을 보냈습니다. 잠시 후 상태를 다시 확인합니다."
+          : "Helper start requested. Rechecking status shortly."
       );
       window.setTimeout(() => {
         void checkRunpodConnection();
@@ -1523,47 +1625,67 @@ export default function VideoPage() {
               <div className="flex flex-wrap gap-1.5">
                 <span
                   className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold ${
-                    runpodConnection.checked && runpodConnection.comfyReachable
-                      ? "bg-green-500/15 text-green-600"
-                      : runpodConnection.checked
-                        ? "bg-destructive/15 text-destructive"
-                        : "bg-muted text-muted-foreground"
+                    !runpodConnection.checked
+                      ? "bg-muted text-muted-foreground"
+                      : runpodConnection.comfyReachable
+                        ? "bg-green-500/15 text-green-600"
+                        : runpodConnection.comfyInitializing
+                          ? "bg-yellow-500/15 text-yellow-600"
+                          : "bg-destructive/15 text-destructive"
                   }`}
                 >
-                  {runpodConnection.checked && runpodConnection.comfyReachable ? (
+                  {!runpodConnection.checked ? (
+                    <AlertTriangle className="h-3 w-3" />
+                  ) : runpodConnection.comfyReachable ? (
                     <CheckCircle2 className="h-3 w-3" />
+                  ) : runpodConnection.comfyInitializing ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
                   ) : (
                     <AlertTriangle className="h-3 w-3" />
                   )}
-                  {runpodConnection.checked && runpodConnection.comfyReachable
-                    ? "ComfyUI OK"
-                    : runpodConnection.checked
-                      ? "ComfyUI ?"
-                      : language === "ko"
-                        ? "ComfyUI 미확인"
-                        : "ComfyUI unchecked"}
+                  {!runpodConnection.checked
+                    ? language === "ko"
+                      ? "ComfyUI 미확인"
+                      : "ComfyUI unchecked"
+                    : runpodConnection.comfyReachable
+                      ? "ComfyUI OK"
+                      : runpodConnection.comfyInitializing
+                        ? language === "ko"
+                          ? "ComfyUI 초기화 중"
+                          : "ComfyUI initializing"
+                        : "ComfyUI ?"}
                 </span>
                 <span
                   className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold ${
-                    runpodConnection.checked && runpodConnection.helperReachable
-                      ? "bg-green-500/15 text-green-600"
-                      : runpodConnection.checked
-                        ? "bg-yellow-500/15 text-yellow-600"
-                        : "bg-muted text-muted-foreground"
+                    !runpodConnection.checked
+                      ? "bg-muted text-muted-foreground"
+                      : runpodConnection.helperReachable
+                        ? "bg-green-500/15 text-green-600"
+                        : runpodConnection.helperInitializing
+                          ? "bg-yellow-500/15 text-yellow-600"
+                          : "bg-destructive/15 text-destructive"
                   }`}
                 >
-                  {runpodConnection.checked && runpodConnection.helperReachable ? (
+                  {!runpodConnection.checked ? (
+                    <AlertTriangle className="h-3 w-3" />
+                  ) : runpodConnection.helperReachable ? (
                     <CheckCircle2 className="h-3 w-3" />
+                  ) : runpodConnection.helperInitializing ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
                   ) : (
                     <AlertTriangle className="h-3 w-3" />
                   )}
-                  {runpodConnection.checked && runpodConnection.helperReachable
-                    ? "Helper OK"
-                    : runpodConnection.checked
-                      ? "Helper ?"
-                      : language === "ko"
-                        ? "Helper 미확인"
-                        : "Helper unchecked"}
+                  {!runpodConnection.checked
+                    ? language === "ko"
+                      ? "Helper 미확인"
+                      : "Helper unchecked"
+                    : runpodConnection.helperReachable
+                      ? "Helper OK"
+                      : runpodConnection.helperInitializing
+                        ? language === "ko"
+                          ? "Helper 초기화 중"
+                          : "Helper initializing"
+                        : "Helper ?"}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -1595,14 +1717,14 @@ export default function VideoPage() {
                   ) : (
                     <RefreshCcw className="h-3.5 w-3.5" />
                   )}
-                  {language === "ko" ? "연결 확인" : "Check"}
+                  {language === "ko" ? "다시 시도" : "Retry"}
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
                 {runpodStatus ||
                   (language === "ko"
-                    ? "선택한 pod의 ComfyUI와 Helper 연결 상태를 확인할 수 있습니다."
-                    : "Check whether the selected pod can reach ComfyUI and the helper.")}
+                    ? "pod를 선택하면 상태를 자동으로 확인합니다. 막히면 '다시 시도'로 pod 시작·포트 노출·helper 설치를 다시 실행하세요."
+                    : "Selecting a pod checks its status automatically. If it stalls, use Retry to re-run pod start, port expose, and helper setup.")}
               </p>
             </section>
           )}
