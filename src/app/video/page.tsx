@@ -880,6 +880,7 @@ export default function VideoPage() {
   );
 
   const resetRunpodConnection = useCallback(() => {
+    autoRunpodCheckKeyRef.current = "";
     setRunpodStatus("");
     setRunpodConnection({
       checked: false,
@@ -914,6 +915,9 @@ export default function VideoPage() {
       });
       setRunpodStatus(
         [
+          data.podDesiredStatus
+            ? `RunPod ${String(data.podDesiredStatus).toLowerCase()}`
+            : "",
           data.startRequested
             ? language === "ko"
               ? "RunPod 시작 요청됨"
@@ -927,8 +931,11 @@ export default function VideoPage() {
           data.helperReachable
             ? "Helper OK"
             : language === "ko"
-              ? "Helper 미연결"
-              : "Helper unreachable",
+              ? `Helper 미연결${data.helperError ? `: ${data.helperError}` : ""}`
+              : `Helper unreachable${data.helperError ? `: ${data.helperError}` : ""}`,
+          Array.isArray(data.runtimePorts) && data.runtimePorts.length > 0
+            ? `ports ${data.runtimePorts.length}`
+            : "",
         ]
           .filter(Boolean)
           .join(" · ")

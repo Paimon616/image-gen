@@ -308,6 +308,46 @@ async function fetchRunpodSshEndpoint(pod: RunpodPodSettings) {
   return { host: sshPort.ip, port: String(sshPort.publicPort) };
 }
 
+async function fetchRunpodPodSummary(podId: string) {
+  const settings = await readSettings();
+  if (!settings.runpodApiKey) return null;
+
+  const response = await fetch(
+    `https://rest.runpod.io/v1/pods/${encodeURIComponent(podId)}`,
+    {
+      headers: { Authorization: `Bearer ${settings.runpodApiKey}` },
+      cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
+    }
+  );
+  const text = await response.text();
+  if (!response.ok) {
+    return { error: `RunPod API HTTP ${response.status} ${text}` };
+  }
+
+  const data = JSON.parse(text) as {
+    desiredStatus?: string;
+    machine?: { podHostId?: string };
+    runtime?: {
+      ports?: Array<{
+        ip?: string;
+        isIpPublic?: boolean;
+        privatePort?: number;
+        publicPort?: number;
+        type?: string;
+      }>;
+    };
+    ports?: string[];
+  };
+
+  return {
+    desiredStatus: data.desiredStatus ?? "",
+    podHostId: data.machine?.podHostId ?? "",
+    configuredPorts: Array.isArray(data.ports) ? data.ports : [],
+    runtimePorts: Array.isArray(data.runtime?.ports) ? data.runtime.ports : [],
+  };
+}
+
 async function resolvedSshCommand(pod: RunpodPodSettings) {
   const extracted = extractSshCommand(pod.ssh);
   if (!extracted) {
@@ -573,6 +613,7 @@ export async function stopRunpodPod(podId: string) {
 }
 
 export async function fetchRunpodStatus(pod: RunpodPodSettings) {
+  const podSummary = pod.podId ? await fetchRunpodPodSummary(pod.podId) : null;
   const comfyUrl = pod.comfyUrl.replace(/\/$/, "");
   let comfyReachable = false;
   let comfyError = "";
@@ -598,10 +639,25 @@ export async function fetchRunpodStatus(pod: RunpodPodSettings) {
     });
     helperReachable = Boolean(helper.ok);
   } catch (error) {
-    helperError = error instanceof Error ? error.message : "RunPod helper is not reachable.";
+    const message = error instanceof Error ? error.message : "RunPod helper is not reachable.";
+    helperError =
+      message.includes("Unexpected token") || message.includes("<!DOCTYPE")
+        ? "RunPod helper HTTP endpoint is not serving helper JSON yet."
+        : message;
   }
 
-  return { comfyReachable, comfyError, helperReachable, helperError };
+  return {
+    comfyReachable,
+    comfyError,
+    helperReachable,
+    helperError,
+    podDesiredStatus: podSummary && "desiredStatus" in podSummary ? podSummary.desiredStatus : "",
+    podHostId: podSummary && "podHostId" in podSummary ? podSummary.podHostId : "",
+    configuredPorts:
+      podSummary && "configuredPorts" in podSummary ? podSummary.configuredPorts : [],
+    runtimePorts: podSummary && "runtimePorts" in podSummary ? podSummary.runtimePorts : [],
+    runpodApiError: podSummary && "error" in podSummary ? podSummary.error : "",
+  };
 }
 
 export async function ensureRunpodStatus(pod: RunpodPodSettings) {
