@@ -16,17 +16,24 @@ import {
   DEFAULT_VIDEO_PARAMS,
   normalizeGenerationSeed,
   normalizeImageDimension,
+  type VideoModelPreset,
   type VideoGenerationParams,
 } from "@/lib/types";
+import { getRunpodPod } from "@/lib/settings";
+import {
+  defaultVideoPipelineId,
+  resolveVideoPipeline,
+  resolveVideoWorkflowPath,
+} from "@/lib/video-pipelines";
 
 const VIDEO_OUTPUT_DIR = join(process.cwd(), "output", "videos");
 const AUDIO_OUTPUT_DIR = join(process.cwd(), "output", "audios");
 
-const VIDEO_WORKFLOW_PATHS = {
-  "wan-smoothmix": "workflows/wan22-i2v-smoothmix-api.json",
-  "wan-base": "workflows/wan22-i2v-base-api.json",
-  "ltx-10eros": "workflows/ltx23-10eros-t2v-api.json",
-} as const;
+const VIDEO_MODEL_PRESETS = new Set<VideoModelPreset>([
+  "wan-smoothmix",
+  "wan-base",
+  "ltx-10eros",
+]);
 
 interface ComfyWsMessage {
   type?: string;
@@ -102,8 +109,8 @@ function clampNumber(value: unknown, fallback: number, min: number, max: number)
 }
 
 function normalizeVideoParams(rawBody: Partial<VideoGenerationParams>) {
-  const videoModel = Object.hasOwn(VIDEO_WORKFLOW_PATHS, rawBody.video_model ?? "")
-    ? (rawBody.video_model as keyof typeof VIDEO_WORKFLOW_PATHS)
+  const videoModel = VIDEO_MODEL_PRESETS.has(rawBody.video_model as VideoModelPreset)
+    ? (rawBody.video_model as VideoModelPreset)
     : DEFAULT_VIDEO_PARAMS.video_model;
   const fps = Math.round(clampNumber(rawBody.fps, DEFAULT_VIDEO_PARAMS.fps, 1, 60));
   const durationSeconds = clampNumber(
@@ -141,6 +148,9 @@ function normalizeVideoParams(rawBody: Partial<VideoGenerationParams>) {
     ...DEFAULT_VIDEO_PARAMS,
     ...rawBody,
     video_model: videoModel,
+    video_pipeline: String(
+      rawBody.video_pipeline || rawBody.video_model || defaultVideoPipelineId()
+    ).trim(),
     prompt: String(rawBody.prompt ?? "").trim(),
     negative_prompt: String(
       rawBody.negative_prompt ?? DEFAULT_VIDEO_PARAMS.negative_prompt
@@ -185,19 +195,21 @@ function normalizeVideoParams(rawBody: Partial<VideoGenerationParams>) {
   } satisfies VideoGenerationParams;
 }
 
-async function selectedVideoWorkflowPath(model: keyof typeof VIDEO_WORKFLOW_PATHS) {
-  return join(process.cwd(), VIDEO_WORKFLOW_PATHS[model]);
+async function selectedVideoWorkflowPath(params: VideoGenerationParams) {
+  return (await resolveVideoWorkflowPath(params.video_pipeline || params.video_model))
+    .absolutePath;
 }
 
-async function assertVideoWorkflowConfigured(model: keyof typeof VIDEO_WORKFLOW_PATHS) {
-  await access(await selectedVideoWorkflowPath(model));
+async function assertVideoWorkflowConfigured(params: VideoGenerationParams) {
+  await access(await selectedVideoWorkflowPath(params));
 }
 
-async function configuredVideoWorkflowRequiresSourceImage(model: keyof typeof VIDEO_WORKFLOW_PATHS) {
+async function configuredVideoWorkflowRequiresSourceImage(params: VideoGenerationParams) {
+  const pipeline = await resolveVideoPipeline(params.video_pipeline || params.video_model);
   const rawWorkflow = JSON.parse(
-    await readFile(await selectedVideoWorkflowPath(model), "utf-8")
+    await readFile(await selectedVideoWorkflowPath(params), "utf-8")
   ) as unknown;
-  return JSON.stringify(rawWorkflow).includes("{{source_image}}");
+  return pipeline.mode === "i2v" || JSON.stringify(rawWorkflow).includes("{{source_image}}");
 }
 
 async function assertAudioWorkflowConfigured() {
@@ -321,17 +333,17 @@ async function saveBufferedVideos({
   );
 }
 
-function comfyWebSocketUrl(clientId: string) {
-  const url = new URL(COMFYUI_BASE_URL);
+function comfyWebSocketUrl(clientId: string, baseUrl = COMFYUI_BASE_URL) {
+  const url = new URL(baseUrl.replace(/\/$/, ""));
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   url.pathname = "/ws";
   url.searchParams.set("clientId", clientId);
   return url.toString();
 }
 
-function openComfyWebSocket(clientId: string) {
+function openComfyWebSocket(clientId: string, baseUrl = COMFYUI_BASE_URL) {
   return new Promise<WebSocket>((resolve, reject) => {
-    const ws = new WebSocket(comfyWebSocketUrl(clientId));
+    const ws = new WebSocket(comfyWebSocketUrl(clientId, baseUrl));
     const timeout = setTimeout(() => {
       ws.close();
       reject(new Error("Timed out connecting to ComfyUI progress stream"));
@@ -372,13 +384,19 @@ function nodeLabel(prompt: Record<string, unknown>, nodeId: string | null | unde
 
 export async function POST(req: NextRequest) {
   const encoder = new TextEncoder();
-  const body = normalizeVideoParams((await req.json()) as Partial<VideoGenerationParams>);
+  const rawBody = (await req.json()) as Partial<VideoGenerationParams> & {
+    generationTarget?: "local" | "runpod";
+    runpodPodId?: string;
+  };
+  const body = normalizeVideoParams(rawBody);
+  const generationTarget = rawBody.generationTarget === "runpod" ? "runpod" : "local";
+  let comfyBaseUrl = COMFYUI_BASE_URL;
 
   if (!body.prompt) {
     return Response.json({ error: "Prompt is required." }, { status: 400 });
   }
 
-  const requiresSourceImage = await configuredVideoWorkflowRequiresSourceImage(body.video_model);
+  const requiresSourceImage = await configuredVideoWorkflowRequiresSourceImage(body);
 
   if (requiresSourceImage && !body.source_image) {
     return Response.json(
@@ -388,9 +406,27 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    await assertVideoWorkflowConfigured(body.video_model);
+    await assertVideoWorkflowConfigured(body);
     if (body.enable_sound) {
       await assertAudioWorkflowConfigured();
+    }
+
+    if (generationTarget === "runpod") {
+      const runpodPodId = String(rawBody.runpodPodId ?? "").trim();
+      const pod = runpodPodId ? await getRunpodPod(runpodPodId) : null;
+
+      if (!pod) {
+        return Response.json({ error: "RunPod target is not configured." }, { status: 400 });
+      }
+
+      if (!pod.comfyUrl) {
+        return Response.json(
+          { error: "Selected RunPod pod has no ComfyUI URL configured." },
+          { status: 400 }
+        );
+      }
+
+      comfyBaseUrl = pod.comfyUrl.replace(/\/$/, "");
     }
   } catch (error) {
     return Response.json(
@@ -416,7 +452,7 @@ export async function POST(req: NextRequest) {
     ws?.close();
 
     if (promptId) {
-      void cancelComfyPrompt(promptId).catch(() => {});
+      void cancelComfyPrompt(promptId, { baseUrl: comfyBaseUrl }).catch(() => {});
     }
   };
 
@@ -431,7 +467,7 @@ export async function POST(req: NextRequest) {
 
       try {
         const clientId = randomUUID();
-        ws = await openComfyWebSocket(clientId);
+        ws = await openComfyWebSocket(clientId, comfyBaseUrl);
         let queuedPrompt: Record<string, unknown> = {};
         let startedAt = Date.now();
         let lastNodeId = "";
@@ -497,7 +533,7 @@ export async function POST(req: NextRequest) {
           message: "Queued...",
           elapsed_ms: 0,
         });
-        const queued = await queueComfyVideoPrompt(body, clientId);
+        const queued = await queueComfyVideoPrompt(body, clientId, { baseUrl: comfyBaseUrl });
         promptId = queued.prompt_id;
         queuedPrompt = (queued as { prompt?: Record<string, unknown> }).prompt ?? {};
         startedAt = Date.now();
@@ -511,6 +547,7 @@ export async function POST(req: NextRequest) {
         });
 
         const videoRefs = await waitForComfyVideoRefs(promptId, {
+          baseUrl: comfyBaseUrl,
           signal: abortController.signal,
           getLastActivityAt: () => lastComfyActivityAt,
         });
@@ -519,7 +556,7 @@ export async function POST(req: NextRequest) {
           message: "Fetching generated video from ComfyUI...",
           elapsed_ms: Date.now() - startedAt,
         });
-        const videos = await fetchComfyMedia(videoRefs);
+        const videos = await fetchComfyMedia(videoRefs, { baseUrl: comfyBaseUrl });
         send("detail", {
           stage: "saving" satisfies VideoStage,
           message: "Saving video locally...",
@@ -534,7 +571,9 @@ export async function POST(req: NextRequest) {
             elapsed_ms: Date.now() - startedAt,
           });
 
-          const audioQueued = await queueComfyAudioPrompt(body, clientId);
+          const audioQueued = await queueComfyAudioPrompt(body, clientId, {
+            baseUrl: comfyBaseUrl,
+          });
           promptId = audioQueued.prompt_id;
           queuedPrompt = (audioQueued as { prompt?: Record<string, unknown> }).prompt ?? {};
           lastNodeId = "";
@@ -546,6 +585,7 @@ export async function POST(req: NextRequest) {
           });
 
           const audioRefs = await waitForComfyAudioRefs(promptId, {
+            baseUrl: comfyBaseUrl,
             signal: abortController.signal,
             getLastActivityAt: () => lastComfyActivityAt,
           });
@@ -554,7 +594,7 @@ export async function POST(req: NextRequest) {
             message: "Fetching generated sound from ComfyUI...",
             elapsed_ms: Date.now() - startedAt,
           });
-          const audios = await fetchComfyMedia(audioRefs);
+          const audios = await fetchComfyMedia(audioRefs, { baseUrl: comfyBaseUrl });
           send("detail", {
             stage: "saving" satisfies VideoStage,
             message: "Saving sound locally...",

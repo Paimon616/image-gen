@@ -139,8 +139,8 @@ export default function SettingsPage() {
               </div>
               <p className="text-xs text-muted-foreground">
                 {ko
-                  ? "SSH는 RunPod가 복사해주는 전체 명령 그대로 붙여넣으세요. 이미지 생성에는 Port 8188 HTTP service의 ComfyUI URL을 사용합니다."
-                  : "Paste the full SSH command copied from RunPod. Generation uses the Port 8188 HTTP service ComfyUI URL."}
+                  ? "ComfyUI URL만 필수입니다. SSH 명령은 상태 체크에서 Port 3000 Image Gen을 설치/시작할 때만 선택적으로 사용합니다."
+                  : "Only the ComfyUI URL is required. The SSH command is optional and only used to install/start Port 3000 Image Gen from status checks."}
               </p>
             </div>
             <div className="space-y-2">
@@ -197,17 +197,6 @@ export default function SettingsPage() {
                       placeholder="Pod ID"
                     />
                     <Input
-                      value={pod.ssh}
-                      onChange={(event) =>
-                        setRunpodPods((pods) =>
-                          pods.map((item) =>
-                            item.id === pod.id ? { ...item, ssh: event.target.value } : item
-                          )
-                        )
-                      }
-                      placeholder="ssh pod-user@ssh.runpod.io -i ~/.ssh/id_ed25519"
-                    />
-                    <Input
                       value={pod.comfyUrl}
                       onChange={(event) =>
                         setRunpodPods((pods) =>
@@ -217,6 +206,17 @@ export default function SettingsPage() {
                         )
                       }
                       placeholder="ComfyUI URL, e.g. https://..."
+                    />
+                    <Input
+                      value={pod.ssh}
+                      onChange={(event) =>
+                        setRunpodPods((pods) =>
+                          pods.map((item) =>
+                            item.id === pod.id ? { ...item, ssh: event.target.value } : item
+                          )
+                        )
+                      }
+                      placeholder={ko ? "선택 SSH 명령, e.g. ssh ... -i ~/.ssh/id_ed25519" : "Optional SSH command, e.g. ssh ... -i ~/.ssh/id_ed25519"}
                     />
                   </div>
                 </div>

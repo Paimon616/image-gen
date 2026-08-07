@@ -18,6 +18,7 @@ import {
   isKrea2CheckpointName,
 } from "./comfyui-model-files";
 import { normalizeGenerationSeed } from "./types";
+import { resolveVideoWorkflowPath } from "./video-pipelines";
 
 const DEFAULT_COMFYUI_URL = "http://127.0.0.1:8188";
 export const COMFYUI_BASE_URL =
@@ -1700,6 +1701,80 @@ function replaceWorkflowPlaceholders(value: unknown, params: VideoGenerationPara
   return value;
 }
 
+function applyVideoParamsToWorkflow(
+  workflow: Record<string, unknown>,
+  params: VideoGenerationParams
+) {
+  const sourceImage = params.source_image ?? "";
+  let patchedPositiveText = false;
+  let patchedNegativeText = false;
+
+  for (const node of Object.values(workflow)) {
+    if (!node || typeof node !== "object" || Array.isArray(node)) continue;
+
+    const record = node as {
+      class_type?: unknown;
+      inputs?: Record<string, unknown>;
+      _meta?: { title?: unknown };
+    };
+    const classType = String(record.class_type ?? "");
+    const title = String(record._meta?.title ?? "");
+    const inputs = record.inputs;
+    if (!inputs) continue;
+
+    if (classType === "PrimitiveStringMultiline" && /prompt/i.test(title)) {
+      inputs.value = params.prompt;
+      patchedPositiveText = true;
+      continue;
+    }
+
+    if (classType === "CLIPTextEncode" && typeof inputs.text === "string") {
+      const text = String(inputs.text);
+      const looksNegative =
+        /negative|bad quality|watermark|subtitles|ugly|cartoon|still image/i.test(text);
+      if (looksNegative && !patchedNegativeText) {
+        inputs.text = params.negative_prompt;
+        patchedNegativeText = true;
+        continue;
+      }
+      if (!looksNegative && !patchedPositiveText) {
+        inputs.text = params.prompt;
+        patchedPositiveText = true;
+        continue;
+      }
+    }
+
+    if (classType === "LoadImage" && sourceImage) {
+      inputs.image = sourceImage;
+      continue;
+    }
+
+    if (classType === "LTXVScheduler" && typeof inputs.steps === "number") {
+      inputs.steps = params.num_inference_steps;
+    }
+
+    if (classType === "KSampler" && typeof inputs.steps === "number") {
+      inputs.steps = params.num_inference_steps;
+    }
+
+    if (classType === "LTXVConditioning" && typeof inputs.frame_rate === "number") {
+      inputs.frame_rate = params.fps;
+    }
+
+    if (classType === "CreateVideo" && typeof inputs.fps === "number") {
+      inputs.fps = params.fps;
+    }
+
+    if (classType === "EmptyLTXVLatentVideo") {
+      if (typeof inputs.width === "number") inputs.width = params.width;
+      if (typeof inputs.height === "number") inputs.height = params.height;
+      if (typeof inputs.length === "number") inputs.length = params.num_frames;
+    }
+  }
+
+  return workflow;
+}
+
 async function loadWorkflowFromEnv(
   envName: "COMFYUI_VIDEO_WORKFLOW_PATH" | "COMFYUI_AUDIO_WORKFLOW_PATH",
   params: VideoGenerationParams,
@@ -1730,20 +1805,20 @@ async function loadWorkflowFromEnv(
     throw new Error(`${envName} must point to a ComfyUI API workflow JSON object.`);
   }
 
-  return replaceWorkflowPlaceholders(workflow, resolvedParams) as Record<string, unknown>;
+  return applyVideoParamsToWorkflow(
+    replaceWorkflowPlaceholders(workflow, resolvedParams) as Record<string, unknown>,
+    resolvedParams
+  );
 }
 
-const VIDEO_WORKFLOW_PATHS = {
-  "wan-smoothmix": "workflows/wan22-i2v-smoothmix-api.json",
-  "wan-base": "workflows/wan22-i2v-base-api.json",
-  "ltx-10eros": "workflows/ltx23-10eros-t2v-api.json",
-} as const;
-
 async function loadVideoWorkflow(params: VideoGenerationParams) {
+  const { absolutePath } = await resolveVideoWorkflowPath(
+    params.video_pipeline || params.video_model
+  );
   return loadWorkflowFromEnv(
     "COMFYUI_VIDEO_WORKFLOW_PATH",
     params,
-    VIDEO_WORKFLOW_PATHS[params.video_model]
+    absolutePath
   );
 }
 
@@ -2004,19 +2079,21 @@ export async function interrogateImageWithComfyUI(
 
 export async function queueComfyVideoPrompt(
   params: VideoGenerationParams,
-  clientId = crypto.randomUUID()
+  clientId = crypto.randomUUID(),
+  options?: ComfyClientOptions
 ) {
   const prompt = await loadVideoWorkflow(params);
-  const queued = await queueComfyWorkflow(prompt, clientId);
+  const queued = await queueComfyWorkflow(prompt, clientId, options);
   return { ...queued, prompt };
 }
 
 export async function queueComfyAudioPrompt(
   params: VideoGenerationParams,
-  clientId = crypto.randomUUID()
+  clientId = crypto.randomUUID(),
+  options?: ComfyClientOptions
 ) {
   const prompt = await loadAudioWorkflow(params);
-  const queued = await queueComfyWorkflow(prompt, clientId);
+  const queued = await queueComfyWorkflow(prompt, clientId, options);
   return { ...queued, prompt };
 }
 
@@ -2082,11 +2159,14 @@ export async function fetchComfyImages(
   );
 }
 
-export async function fetchComfyMedia(mediaRefs: ComfyMediaRef[]) {
+export async function fetchComfyMedia(
+  mediaRefs: ComfyMediaRef[],
+  options?: ComfyClientOptions
+) {
   return Promise.all(
     mediaRefs.map(async (media) => {
-      const originalUrl = `${COMFYUI_BASE_URL}${viewPath(media)}`;
-      const response = await comfyFetch(viewPath(media));
+      const originalUrl = `${comfyBaseUrl(options)}${viewPath(media)}`;
+      const response = await comfyFetch(viewPath(media), undefined, options);
       const buffer = Buffer.from(await response.arrayBuffer());
 
       return {

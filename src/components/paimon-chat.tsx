@@ -28,6 +28,7 @@ export interface PaimonAttachment {
   kind: "clipboard_image" | "gallery_image";
   label: string;
   url?: string;
+  dataUrl?: string;
   metadata?: Partial<GeneratedImage>;
 }
 
@@ -121,6 +122,21 @@ async function uploadImageFile(file: File) {
   }
 
   return data.url;
+}
+
+function readImageDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+        return;
+      }
+      reject(new Error("Image read failed"));
+    };
+    reader.onerror = () => reject(new Error("Image read failed"));
+    reader.readAsDataURL(file);
+  });
 }
 
 function sanitizePatch(value: unknown): Partial<GenerationParams> {
@@ -488,12 +504,16 @@ export function PaimonChat({
       setLoading(true);
       setError("");
       try {
-        const url = await uploadImageFile(file);
+        const [url, dataUrl] = await Promise.all([
+          uploadImageFile(file),
+          readImageDataUrl(file),
+        ]);
         const attachment: PaimonAttachment = {
           id: crypto.randomUUID(),
           kind: "clipboard_image",
           label: "클립보드 이미지",
           url,
+          dataUrl,
         };
 
         onAttachmentsChange([...attachments, attachment].slice(-6));

@@ -147,6 +147,7 @@ export type VideoModelPreset = "wan-smoothmix" | "wan-base" | "ltx-10eros";
 
 export interface VideoGenerationParams {
   video_model: VideoModelPreset;
+  video_pipeline: string;
   prompt: string;
   negative_prompt: string;
   width: number;
@@ -340,6 +341,7 @@ export const DEFAULT_PARAMS: GenerationParams = {
 
 export const DEFAULT_VIDEO_PARAMS: VideoGenerationParams = {
   video_model: "wan-smoothmix",
+  video_pipeline: "sulphur-ltx23-i2v-base-high-quality",
   prompt: "",
   negative_prompt: "low quality, blurry, flicker, warped, distorted motion",
   width: 480,

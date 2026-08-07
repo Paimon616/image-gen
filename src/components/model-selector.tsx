@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useStore } from "@/lib/store";
 import { getModelConfig } from "@/lib/types";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -63,18 +62,24 @@ function AssetText({ asset }: { asset: LocalModelAsset }) {
 export function AssetChoiceButton({
   asset,
   placeholder,
+  fallbackLabel,
+  fallbackDescription,
   onClick,
 }: {
   asset: LocalModelAsset | undefined;
   placeholder: string;
+  fallbackLabel?: string;
+  fallbackDescription?: string;
   onClick: () => void;
 }) {
+  const hasFallback = Boolean(!asset && fallbackLabel?.trim());
+
   return (
     <button
       type="button"
       onClick={onClick}
       className={`flex w-full min-w-0 flex-1 items-center gap-3 rounded-md border p-2 text-left shadow-sm transition-colors ${
-        asset
+        asset || hasFallback
           ? "border-primary/25 bg-card hover:border-primary/50 hover:bg-secondary/45"
           : "border-dashed border-border bg-card/70 text-muted-foreground hover:border-primary/60 hover:bg-secondary/70"
       }`}
@@ -82,6 +87,15 @@ export function AssetChoiceButton({
       <AssetThumbnail asset={asset} className="h-12 w-12" />
       {asset ? (
         <AssetText asset={asset} />
+      ) : hasFallback ? (
+        <div className="min-w-0">
+          <div className="truncate text-sm font-medium text-primary">
+            {fallbackLabel}
+          </div>
+          <div className="truncate text-xs text-muted-foreground">
+            {fallbackDescription ?? "Imported resource"}
+          </div>
+        </div>
       ) : (
         <div className="min-w-0">
           <div className="text-sm font-medium">{placeholder}</div>
@@ -416,10 +430,14 @@ export function ModelSelector() {
     (/anima/i.test(params.model_name) ? localModels.animaMissingRequiredFiles : []);
 
   useEffect(() => {
-    if (localModels.checkpointAssets.length > 0 && !selectedCheckpoint) {
+    if (
+      localModels.checkpointAssets.length > 0 &&
+      !params.model_name &&
+      !selectedCheckpoint
+    ) {
       setParams({ model_name: localModels.checkpointAssets[0].path });
     }
-  }, [localModels.checkpointAssets, selectedCheckpoint, setParams]);
+  }, [localModels.checkpointAssets, params.model_name, selectedCheckpoint, setParams]);
 
   const pickerAssets =
     pickerTarget?.type === "checkpoint"
@@ -494,6 +512,8 @@ export function ModelSelector() {
           <AssetChoiceButton
             asset={selectedCheckpoint}
             placeholder="Select checkpoint"
+            fallbackLabel={params.model_name}
+            fallbackDescription="Imported checkpoint"
             onClick={() => setPickerTarget({ type: "checkpoint" })}
           />
         ) : (
@@ -548,6 +568,8 @@ export function ModelSelector() {
                       <AssetChoiceButton
                         asset={findAsset(localModels.loraAssets, lora.path)}
                         placeholder="Select LoRA"
+                        fallbackLabel={lora.path}
+                        fallbackDescription="Imported LoRA"
                         onClick={() => setPickerTarget({ type: "lora", index: i })}
                       />
                       <LoraScaleSlider
@@ -650,6 +672,12 @@ export function ModelSelector() {
                       <AssetChoiceButton
                         asset={findAsset(localModels.embeddingAssets, embedding.path)}
                         placeholder="Select embedding"
+                        fallbackLabel={embedding.path}
+                        fallbackDescription={
+                          embedding.tokens
+                            ? `Imported embedding · ${embedding.tokens}`
+                            : "Imported embedding"
+                        }
                         onClick={() =>
                           setPickerTarget({ type: "embedding", index: i })
                         }

@@ -29,6 +29,7 @@ import type {
   CivitaiOrigin,
   GeneratedImage,
   GenerationParams as GenerationParamsType,
+  ImportedCivitaiResource,
 } from "@/lib/types";
 import { getModelConfig, randomGenerationSeed } from "@/lib/types";
 import {
@@ -49,7 +50,6 @@ import {
   Server,
   Square,
   Trash2,
-  Wrench,
   X,
 } from "lucide-react";
 
@@ -77,9 +77,9 @@ interface RunpodMissingFile {
 interface RunpodConnectionStatus {
   checked: boolean;
   comfyReachable: boolean;
-  sshReachable: boolean;
+  helperReachable: boolean;
   comfyError: string;
-  sshError: string;
+  helperError: string;
 }
 
 interface RunpodDownloadProgress {
@@ -168,6 +168,7 @@ function imageFileFromClipboard(event: ClipboardEvent) {
 interface GenerationQueueItem {
   id: string;
   params: GenerationParamsType;
+  resources?: ImportedCivitaiResource[];
   civitaiOrigin?: CivitaiOrigin;
   workspaceId?: string;
   generationTarget: "local" | "runpod";
@@ -184,6 +185,8 @@ function canDownloadRunpodMissingFile(item: RunpodMissingFile) {
       (item.resource.modelVersionId ||
         item.path === "upscale_models/4x-UltraSharp.pth" ||
         item.path === "upscale_models/remacri_original.safetensors" ||
+        item.path === "text_encoders/qwen3vl_4b_fp8_scaled.safetensors" ||
+        item.path === "vae/qwen_image_vae.safetensors" ||
         item.path === "ultralytics/bbox/face_yolov8n_v2.pt" ||
         item.path === "ultralytics/bbox/face_yolov8m.pt")
   );
@@ -229,16 +232,16 @@ export default function Home() {
   const [selectedRunpodPodId, setSelectedRunpodPodId] = useState("");
   const [runpodStatus, setRunpodStatus] = useState("");
   const [runpodBusy, setRunpodBusy] =
-    useState<"" | "start" | "stop" | "status" | "setup" | "check" | "download">("");
+    useState<"" | "start" | "stop" | "status" | "check" | "download">("");
   const [runpodMissingFiles, setRunpodMissingFiles] = useState<RunpodMissingFile[]>([]);
   const [runpodDownloadProgress, setRunpodDownloadProgress] =
     useState<RunpodDownloadProgress | null>(null);
   const [runpodConnection, setRunpodConnection] = useState<RunpodConnectionStatus>({
     checked: false,
     comfyReachable: false,
-    sshReachable: false,
+    helperReachable: false,
     comfyError: "",
-    sshError: "",
+    helperError: "",
   });
   const [runpodFilesChecked, setRunpodFilesChecked] = useState(false);
   const [activeGeneration, setActiveGeneration] =
@@ -325,9 +328,9 @@ export default function Home() {
         setRunpodConnection({
           checked: true,
           comfyReachable: Boolean(data.comfyReachable),
-          sshReachable: Boolean(data.sshReachable),
+          helperReachable: Boolean(data.helperReachable),
           comfyError: String(data.comfyError || ""),
-          sshError: String(data.sshError || ""),
+          helperError: String(data.helperError || ""),
         });
       })
       .catch(() => {});
@@ -571,6 +574,7 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...jobParams,
+          resources: job.resources ?? [],
           civitaiOrigin,
           workspaceId,
           generationTarget: jobGenerationTarget,
@@ -728,10 +732,25 @@ export default function Home() {
   const checkRunpodFiles = useCallback(async () => {
     if (!selectedRunpodPodId) return null;
 
+    const importedResources = useStore
+      .getState()
+      .civitaiImport.missingResources.map(
+        (resource): ImportedCivitaiResource => ({
+          type: resource.type,
+          name: resource.name,
+          versionName: resource.versionName,
+          baseModel: resource.baseModel,
+          weight: resource.weight,
+          hash: resource.hash,
+          modelId: resource.modelId,
+          modelVersionId: resource.modelVersionId,
+          url: resource.url,
+        })
+      );
     const response = await fetch(`/api/runpod/pods/${selectedRunpodPodId}/check`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ params }),
+      body: JSON.stringify({ params, resources: importedResources }),
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "RunPod file check failed");
@@ -795,6 +814,21 @@ export default function Home() {
     }
     const id = crypto.randomUUID();
     const civitaiOrigin = useStore.getState().civitaiReference ?? undefined;
+    const importedResources = useStore
+      .getState()
+      .civitaiImport.missingResources.map(
+        (resource): ImportedCivitaiResource => ({
+          type: resource.type,
+          name: resource.name,
+          versionName: resource.versionName,
+          baseModel: resource.baseModel,
+          weight: resource.weight,
+          hash: resource.hash,
+          modelId: resource.modelId,
+          modelVersionId: resource.modelVersionId,
+          url: resource.url,
+        })
+      );
     const workspaceId = useStore.getState().activeWorkspaceId ?? undefined;
 
     addImage({
@@ -816,6 +850,7 @@ export default function Home() {
       {
         id,
         params: jobParams,
+        resources: importedResources,
         civitaiOrigin,
         workspaceId,
         generationTarget,
@@ -840,7 +875,7 @@ export default function Home() {
   );
 
   const runRunpodAction = useCallback(
-    async (action: "start" | "stop" | "status" | "setup" | "check" | "download") => {
+    async (action: "start" | "stop" | "status" | "check" | "download") => {
       if (!selectedRunpodPodId || runpodBusy) return;
 
       setRunpodBusy(action);
@@ -868,9 +903,9 @@ export default function Home() {
           setRunpodConnection({
             checked: true,
             comfyReachable: false,
-            sshReachable: false,
+            helperReachable: false,
             comfyError: "",
-            sshError: "",
+            helperError: "",
           });
           setRunpodFilesChecked(false);
           setRunpodStatus(
@@ -881,7 +916,7 @@ export default function Home() {
         }
 
         if (action === "status") {
-          const response = await fetch(`/api/runpod/pods/${selectedRunpodPodId}/status`, {
+          const response = await fetch(`/api/runpod/pods/${selectedRunpodPodId}/status?ensure=1`, {
             cache: "no-store",
           });
           const data = await response.json();
@@ -889,40 +924,37 @@ export default function Home() {
           setRunpodConnection({
             checked: true,
             comfyReachable: Boolean(data.comfyReachable),
-            sshReachable: Boolean(data.sshReachable),
+            helperReachable: Boolean(data.helperReachable),
             comfyError: String(data.comfyError || ""),
-            sshError: String(data.sshError || ""),
+            helperError: String(data.helperError || ""),
           });
           setRunpodStatus(
             [
+              data.startRequested
+                ? ko ? "RunPod 시작 요청됨" : "RunPod start requested"
+                : "",
+              data.portExposeRequested
+                ? ko ? "3000 포트 노출 추가됨" : "Port 3000 exposure added"
+                : "",
+              data.portExposeError
+                ? ko ? `3000 포트 노출 실패: ${data.portExposeError}` : `Port 3000 exposure failed: ${data.portExposeError}`
+                : "",
+              data.setupRequested
+                ? ko ? "SSH로 Image Gen 3000 시작 요청됨. 잠시 후 상태 체크를 다시 누르세요." : "Image Gen 3000 start requested via SSH. Check again shortly."
+                : "",
               data.comfyReachable
                 ? ko ? "ComfyUI 연결됨" : "ComfyUI reachable"
                 : ko ? `ComfyUI 미연결: ${data.comfyError || ""}` : `ComfyUI unreachable: ${data.comfyError || ""}`,
-              data.sshReachable
-                ? ko ? "SSH 연결됨" : "SSH reachable"
-                : ko ? `SSH 미연결: ${data.sshError || ""}` : `SSH unreachable: ${data.sshError || ""}`,
-            ].join(" · ")
-          );
-        }
-
-        if (action === "setup") {
-          const response = await fetch(`/api/runpod/pods/${selectedRunpodPodId}/setup`, {
-            method: "POST",
-          });
-          const data = await response.json();
-          if (!response.ok) throw new Error(data.error || "RunPod setup failed");
-          setRunpodConnection((current) => ({
-            ...current,
-            checked: true,
-            comfyReachable: true,
-            sshReachable: true,
-            comfyError: "",
-            sshError: "",
-          }));
-          setRunpodStatus(
-            ko
-              ? "RunPod 세팅 완료. 이제 파일 체크를 누르세요."
-              : "RunPod setup complete. Check files next."
+              data.helperReachable
+                ? ko ? "Helper 연결됨" : "Helper reachable"
+                : data.setupError
+                  ? ko
+                    ? `Helper 미연결: SSH 세팅 실패: ${data.setupError}`
+                    : `Helper unreachable: SSH setup failed: ${data.setupError}`
+                : ko
+                  ? `Helper 미연결: 3000 포트에서 Image Gen이 아직 준비 중입니다. 잠시 후 상태 체크를 다시 누르세요.`
+                  : `Helper unreachable: Image Gen is still preparing on port 3000. Check again shortly.`,
+            ].filter(Boolean).join(" · ")
           );
         }
 
@@ -1085,15 +1117,16 @@ export default function Home() {
               }
             })
           );
+          const missingAfterDownload = (await checkRunpodFiles()) ?? [];
           setRunpodStatus(
-            ko
-              ? `${downloadable.length}개 파일을 RunPod에 다운로드했습니다.`
-              : `Downloaded ${downloadable.length} file(s) to RunPod.`
+            missingAfterDownload.length === 0
+              ? ko
+                ? `${downloadable.length}개 파일을 RunPod에 다운로드했습니다. 생성 가능합니다.`
+                : `Downloaded ${downloadable.length} file(s) to RunPod. Ready to generate.`
+              : ko
+                ? `다운로드 후에도 누락 파일 ${missingAfterDownload.length}개가 있습니다.`
+                : `${missingAfterDownload.length} file(s) are still missing after download.`
           );
-          setRunpodMissingFiles((items) =>
-            items.filter((item) => !canDownloadRunpodMissingFile(item))
-          );
-          setRunpodFilesChecked(false);
         }
       } catch (error) {
         setRunpodStatus(error instanceof Error ? error.message : "RunPod action failed");
@@ -1273,9 +1306,9 @@ export default function Home() {
                   setRunpodConnection({
                     checked: false,
                     comfyReachable: false,
-                    sshReachable: false,
+                    helperReachable: false,
                     comfyError: "",
-                    sshError: "",
+                    helperError: "",
                   });
                   setRunpodFilesChecked(false);
                   setRunpodMissingFiles([]);
@@ -1331,14 +1364,14 @@ export default function Home() {
                   </span>
                   <span
                     className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${
-                      runpodConnection.checked && runpodConnection.sshReachable
+                      runpodConnection.checked && runpodConnection.helperReachable
                         ? "bg-green-500/15 text-green-600"
                         : "bg-muted text-muted-foreground"
                     }`}
                   >
-                    {runpodConnection.checked && runpodConnection.sshReachable
-                      ? "SSH OK"
-                      : "SSH ?"}
+                    {runpodConnection.checked && runpodConnection.helperReachable
+                      ? "Helper OK"
+                      : "Helper ?"}
                   </span>
                   <span
                     className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${
@@ -1356,7 +1389,7 @@ export default function Home() {
                         : ko ? "파일 미확인" : "Files unchecked"}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
+                <div className="grid grid-cols-2 gap-2 xl:grid-cols-3">
                   <Button
                     type="button"
                     size="sm"
@@ -1394,21 +1427,6 @@ export default function Home() {
                       <RefreshCw className="h-3.5 w-3.5" />
                     )}
                     {ko ? "상태 체크" : "Check"}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="gap-1.5"
-                    disabled={!selectedRunpodPodId || Boolean(runpodBusy)}
-                    onClick={() => void runRunpodAction("setup")}
-                  >
-                    {runpodBusy === "setup" ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Wrench className="h-3.5 w-3.5" />
-                    )}
-                    {ko ? "원격 세팅" : "Setup"}
                   </Button>
                   <Button
                     type="button"

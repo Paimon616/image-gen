@@ -1,0 +1,990 @@
+{
+  "274": {
+    "inputs": {
+      "audio": [
+        "550",
+        0
+      ],
+      "audio_vae": [
+        "617",
+        0
+      ]
+    },
+    "class_type": "LTXVAudioVAEEncode",
+    "_meta": {
+      "title": "LTXV 오디오 VAE 인코드"
+    }
+  },
+  "275": {
+    "inputs": {
+      "samples": [
+        "274",
+        0
+      ],
+      "mask": [
+        "630",
+        0
+      ]
+    },
+    "class_type": "SetLatentNoiseMask",
+    "_meta": {
+      "title": "잠재 데이터에 노이즈 마스크 설정"
+    }
+  },
+  "510": {
+    "inputs": {
+      "noise": [
+        "525",
+        0
+      ],
+      "guider": [
+        "653",
+        0
+      ],
+      "sampler": [
+        "520",
+        0
+      ],
+      "sigmas": [
+        "652",
+        0
+      ],
+      "latent_image": [
+        "548",
+        0
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "First Pass"
+    }
+  },
+  "511": {
+    "inputs": {
+      "value": 241
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "Length"
+    }
+  },
+  "517": {
+    "inputs": {
+      "lora_name": "ltx23/ltx-2.3-22b-distilled-lora-1.1_fro90_ceil72_condsafe.safetensors",
+      "strength_model": 0.9,
+      "model": [
+        "557",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "First Pass"
+    }
+  },
+  "518": {
+    "inputs": {
+      "lora_name": "ltx23/ltx-2.3-22b-distilled-lora-1.1_fro90_ceil72_condsafe.safetensors",
+      "strength_model": 0.48000000000000004,
+      "model": [
+        "557",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Second/Third Pass Distillation"
+    }
+  },
+  "520": {
+    "inputs": {
+      "sampler_name": "euler_ancestral_cfg_pp"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "KSampler (선택)"
+    }
+  },
+  "523": {
+    "inputs": {
+      "frame_rate": [
+        "542",
+        0
+      ],
+      "positive": [
+        "536",
+        0
+      ],
+      "negative": [
+        "537",
+        0
+      ]
+    },
+    "class_type": "LTXVConditioning",
+    "_meta": {
+      "title": "LTXV 조건 설정"
+    }
+  },
+  "524": {
+    "inputs": {
+      "seed": 622070869244955
+    },
+    "class_type": "Seed (rgthree)",
+    "_meta": {
+      "title": "Seed (rgthree)"
+    }
+  },
+  "525": {
+    "inputs": {
+      "noise_seed": [
+        "524",
+        0
+      ]
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "무작위 노이즈"
+    }
+  },
+  "527": {
+    "inputs": {
+      "sigmas": "1.0,0.99375,0.9875,0.98125,0.9550,0.8925,0.8120,0.7150,0.6030,0.4824,0.3618,0.2412,0.1206,0.0"
+    },
+    "class_type": "ManualSigmas",
+    "_meta": {
+      "title": "Sigmas First Pass"
+    }
+  },
+  "528": {
+    "inputs": {
+      "image": "your_image.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "이미지 로드"
+    }
+  },
+  "529": {
+    "inputs": {
+      "resize_type": "scale total pixels",
+      "resize_type.megapixels": 1.5,
+      "scale_method": "area",
+      "input": [
+        "528",
+        0
+      ]
+    },
+    "class_type": "ResizeImageMaskNode",
+    "_meta": {
+      "title": "Video Size (Megapixels)"
+    }
+  },
+  "530": {
+    "inputs": {
+      "resize_type": "scale longer dimension",
+      "resize_type.longer_size": 1536,
+      "scale_method": "lanczos",
+      "input": [
+        "663",
+        0
+      ]
+    },
+    "class_type": "ResizeImageMaskNode",
+    "_meta": {
+      "title": "이미지/마스크 크기 조정"
+    }
+  },
+  "531": {
+    "inputs": {
+      "width": 0,
+      "height": 0,
+      "upscale_method": "area",
+      "keep_proportion": "crop",
+      "pad_color": "0, 0, 0",
+      "crop_position": "center",
+      "divisible_by": 32,
+      "device": "cpu",
+      "image": [
+        "529",
+        0
+      ]
+    },
+    "class_type": "ImageResizeKJv2",
+    "_meta": {
+      "title": "Resize Image v2"
+    }
+  },
+  "532": {
+    "inputs": {
+      "resize_type": "scale by multiplier",
+      "resize_type.multiplier": 0.5,
+      "scale_method": "area",
+      "input": [
+        "531",
+        0
+      ]
+    },
+    "class_type": "ResizeImageMaskNode",
+    "_meta": {
+      "title": "이미지/마스크 크기 조정"
+    }
+  },
+  "533": {
+    "inputs": {
+      "image": [
+        "532",
+        0
+      ]
+    },
+    "class_type": "GetImageSize",
+    "_meta": {
+      "title": "이미지 크기 가져오기"
+    }
+  },
+  "534": {
+    "inputs": {
+      "width": [
+        "533",
+        0
+      ],
+      "height": [
+        "533",
+        1
+      ],
+      "length": [
+        "511",
+        0
+      ],
+      "batch_size": 1
+    },
+    "class_type": "EmptyLTXVLatentVideo",
+    "_meta": {
+      "title": "빈 잠재 비디오 (LTXV)"
+    }
+  },
+  "535": {
+    "inputs": {
+      "frames_number": [
+        "511",
+        0
+      ],
+      "frame_rate": [
+        "540",
+        0
+      ],
+      "batch_size": 1,
+      "audio_vae": [
+        "617",
+        0
+      ]
+    },
+    "class_type": "LTXVEmptyLatentAudio",
+    "_meta": {
+      "title": "LTXV 빈 latent 오디오"
+    }
+  },
+  "536": {
+    "inputs": {
+      "text": "The woman takes off her top",
+      "clip": [
+        "616",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP 텍스트 인코딩 (프롬프트)"
+    }
+  },
+  "537": {
+    "inputs": {
+      "text": "still image, bad quality, subtitles, text, watermark, overlay effects, pc game, yelling, console game, video game, cartoon, childish, ugly, text, blur, logo, wordmark, static, low quality, noise, white noise, bleep, censoring, censor, bleeping, beep, beeping, newscast, interview, podcast, non-english, foreign language, russian, chinese, japanese, mutant, horror, 70's, film grain, cinematic, comedy, stand-up ",
+      "clip": [
+        "616",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP 텍스트 인코딩 (프롬프트)"
+    }
+  },
+  "540": {
+    "inputs": {
+      "a": [
+        "542",
+        0
+      ]
+    },
+    "class_type": "CM_FloatToInt",
+    "_meta": {
+      "title": "FloatToInt"
+    }
+  },
+  "542": {
+    "inputs": {
+      "value": 24
+    },
+    "class_type": "PrimitiveFloat",
+    "_meta": {
+      "title": "Base Frame Rate"
+    }
+  },
+  "548": {
+    "inputs": {
+      "video_latent": [
+        "644",
+        2
+      ],
+      "audio_latent": [
+        "535",
+        0
+      ]
+    },
+    "class_type": "LTXVConcatAVLatent",
+    "_meta": {
+      "title": "LTXVConcatAVLatent"
+    }
+  },
+  "549": {
+    "inputs": {
+      "frame_rate": [
+        "542",
+        0
+      ],
+      "loop_count": 0,
+      "filename_prefix": "10E_firstpass",
+      "format": "video/h264-mp4",
+      "pix_fmt": "yuv420p",
+      "crf": 14,
+      "save_metadata": true,
+      "trim_to_audio": false,
+      "pingpong": false,
+      "save_output": false,
+      "images": [
+        "552",
+        0
+      ],
+      "audio": [
+        "550",
+        0
+      ]
+    },
+    "class_type": "VHS_VideoCombine",
+    "_meta": {
+      "title": "Video Combine 🎥🅥🅗🅢"
+    }
+  },
+  "550": {
+    "inputs": {
+      "samples": [
+        "556",
+        1
+      ],
+      "audio_vae": [
+        "617",
+        0
+      ]
+    },
+    "class_type": "LTXVAudioVAEDecode",
+    "_meta": {
+      "title": "LTXV 오디오 VAE 디코드"
+    }
+  },
+  "551": {
+    "inputs": {
+      "volume": -6,
+      "audio": [
+        "550",
+        0
+      ]
+    },
+    "class_type": "AudioAdjustVolume",
+    "_meta": {
+      "title": "오디오 볼륨 조절"
+    }
+  },
+  "552": {
+    "inputs": {
+      "samples": [
+        "645",
+        2
+      ],
+      "vae": [
+        "646",
+        2
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE 디코드"
+    }
+  },
+  "556": {
+    "inputs": {
+      "av_latent": [
+        "510",
+        0
+      ]
+    },
+    "class_type": "LTXVSeparateAVLatent",
+    "_meta": {
+      "title": "LTXVSeparateAVLatent"
+    }
+  },
+  "557": {
+    "inputs": {
+      "PowerLoraLoaderHeaderWidget": {
+        "type": "PowerLoraLoaderHeaderWidget"
+      },
+      "lora_1": {
+        "on": false,
+        "lora": "ltx23\\LTX2.3_reasoning_I2V_V3.safetensors",
+        "strength": 0.65
+      },
+      "lora_2": {
+        "on": false,
+        "lora": "ltx\\LTX2-i2v-SexyMove_test000006000.safetensors",
+        "strength": 0.85
+      },
+      "➕ Add Lora": "",
+      "model": [
+        "646",
+        0
+      ],
+      "clip": [
+        "616",
+        0
+      ]
+    },
+    "class_type": "Power Lora Loader (rgthree)",
+    "_meta": {
+      "title": "Power Lora Loader (rgthree)"
+    }
+  },
+  "578": {
+    "inputs": {
+      "seed": [
+        "524",
+        0
+      ],
+      "steps": 8,
+      "cfg": 1,
+      "sampler_name": "euler_ancestral_cfg_pp",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": [
+        "518",
+        0
+      ],
+      "positive": [
+        "645",
+        0
+      ],
+      "negative": [
+        "645",
+        1
+      ],
+      "latent_image": [
+        "649",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "Renoising Corrective Middle Sampler"
+    }
+  },
+  "581": {
+    "inputs": {
+      "noise": [
+        "525",
+        0
+      ],
+      "guider": [
+        "583",
+        0
+      ],
+      "sampler": [
+        "585",
+        0
+      ],
+      "sigmas": [
+        "582",
+        0
+      ],
+      "latent_image": [
+        "591",
+        0
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "Final Sampler"
+    }
+  },
+  "582": {
+    "inputs": {
+      "sigmas": "0.85, 0.7250, 0.4219, 0.0"
+    },
+    "class_type": "ManualSigmas",
+    "_meta": {
+      "title": "Sigmas Upscale"
+    }
+  },
+  "583": {
+    "inputs": {
+      "cfg": 1,
+      "model": [
+        "518",
+        0
+      ],
+      "positive": [
+        "523",
+        0
+      ],
+      "negative": [
+        "523",
+        1
+      ]
+    },
+    "class_type": "CFGGuider",
+    "_meta": {
+      "title": "CFG 가이드"
+    }
+  },
+  "585": {
+    "inputs": {
+      "sampler_name": "euler_ancestral_cfg_pp"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "KSampler (선택)"
+    }
+  },
+  "586": {
+    "inputs": {
+      "strength": 1,
+      "bypass": false,
+      "vae": [
+        "646",
+        2
+      ],
+      "image": [
+        "530",
+        0
+      ],
+      "latent": [
+        "588",
+        0
+      ]
+    },
+    "class_type": "LTXVImgToVideoConditionOnly",
+    "_meta": {
+      "title": "🅛🅣🅧 LTXV Img To Video Condition Only"
+    }
+  },
+  "587": {
+    "inputs": {
+      "model_name": "ltx-2.3-spatial-upscaler-x2-1.1.safetensors"
+    },
+    "class_type": "LatentUpscaleModelLoader",
+    "_meta": {
+      "title": "Latent 업스케일 모델 불러오기"
+    }
+  },
+  "588": {
+    "inputs": {
+      "samples": [
+        "650",
+        0
+      ],
+      "upscale_model": [
+        "587",
+        0
+      ],
+      "vae": [
+        "646",
+        2
+      ]
+    },
+    "class_type": "LTXVLatentUpsampler",
+    "_meta": {
+      "title": "spatial"
+    }
+  },
+  "591": {
+    "inputs": {
+      "video_latent": [
+        "637",
+        0
+      ],
+      "audio_latent": [
+        "650",
+        1
+      ]
+    },
+    "class_type": "LTXVConcatAVLatent",
+    "_meta": {
+      "title": "LTXVConcatAVLatent"
+    }
+  },
+  "593": {
+    "inputs": {
+      "samples": [
+        "596",
+        1
+      ],
+      "audio_vae": [
+        "617",
+        0
+      ]
+    },
+    "class_type": "LTXVAudioVAEDecode",
+    "_meta": {
+      "title": "LTXV 오디오 VAE 디코드"
+    }
+  },
+  "595": {
+    "inputs": {
+      "samples": [
+        "596",
+        0
+      ],
+      "vae": [
+        "646",
+        2
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE 디코드"
+    }
+  },
+  "596": {
+    "inputs": {
+      "av_latent": [
+        "581",
+        1
+      ]
+    },
+    "class_type": "LTXVSeparateAVLatent",
+    "_meta": {
+      "title": "LTXVSeparateAVLatent"
+    }
+  },
+  "597": {
+    "inputs": {
+      "frame_rate": [
+        "600",
+        0
+      ],
+      "loop_count": 0,
+      "filename_prefix": "10E_I2V_triplepass",
+      "format": "video/h264-mp4",
+      "pix_fmt": "yuv420p",
+      "crf": 14,
+      "save_metadata": true,
+      "trim_to_audio": false,
+      "pingpong": false,
+      "save_output": true,
+      "images": [
+        "595",
+        0
+      ],
+      "audio": [
+        "593",
+        0
+      ]
+    },
+    "class_type": "VHS_VideoCombine",
+    "_meta": {
+      "title": "Video Combine 🎥🅥🅗🅢"
+    }
+  },
+  "598": {
+    "inputs": {
+      "volume": -6,
+      "audio": [
+        "593",
+        0
+      ]
+    },
+    "class_type": "AudioAdjustVolume",
+    "_meta": {
+      "title": "오디오 볼륨 조절"
+    }
+  },
+  "600": {
+    "inputs": {
+      "value": 24
+    },
+    "class_type": "PrimitiveFloat",
+    "_meta": {
+      "title": "End Frame Rate"
+    }
+  },
+  "608": {
+    "inputs": {
+      "a": [
+        "600",
+        0
+      ]
+    },
+    "class_type": "CM_FloatToInt",
+    "_meta": {
+      "title": "FloatToInt"
+    }
+  },
+  "616": {
+    "inputs": {
+      "text_encoder": "gemma_3_12B_it_fp8_e4m3fn.safetensors",
+      "ckpt_name": "10Eros_v1_bf16.safetensors",
+      "device": "default"
+    },
+    "class_type": "LTXAVTextEncoderLoader",
+    "_meta": {
+      "title": "LTXV 오디오 텍스트 인코더 로더"
+    }
+  },
+  "617": {
+    "inputs": {
+      "ckpt_name": "10Eros_v1_bf16.safetensors"
+    },
+    "class_type": "LTXVAudioVAELoader",
+    "_meta": {
+      "title": "LTXV 오디오 VAE 로더"
+    }
+  },
+  "630": {
+    "inputs": {
+      "value": 0,
+      "width": [
+        "533",
+        0
+      ],
+      "height": [
+        "533",
+        1
+      ]
+    },
+    "class_type": "SolidMask",
+    "_meta": {
+      "title": "단색 마스크"
+    }
+  },
+  "637": {
+    "inputs": {
+      "base_sharpen": 0.04,
+      "motion_sharpen": 0.2,
+      "motion_thresh": 0,
+      "temporal_smooth_mask": false,
+      "latent": [
+        "586",
+        0
+      ]
+    },
+    "class_type": "LatentMotionSharpener",
+    "_meta": {
+      "title": "⚡ Latent Motion Sharpener"
+    }
+  },
+  "643": {
+    "inputs": {
+      "lora_name": "ltx23/ltx23_edit_anything_global_rank128_v1_9000steps_adamw.safetensors",
+      "strength_model": 1,
+      "model": [
+        "517",
+        0
+      ]
+    },
+    "class_type": "LTXICLoRALoaderModelOnly",
+    "_meta": {
+      "title": "🅛🅣🅧 IC-LoRA Loader Model Only"
+    }
+  },
+  "644": {
+    "inputs": {
+      "frame_idx": 0,
+      "strength": 0.65,
+      "latent_downscale_factor": [
+        "643",
+        1
+      ],
+      "crop": "center",
+      "use_tiled_encode": false,
+      "tile_size": 256,
+      "tile_overlap": 64,
+      "positive": [
+        "523",
+        0
+      ],
+      "negative": [
+        "523",
+        1
+      ],
+      "vae": [
+        "646",
+        2
+      ],
+      "latent": [
+        "534",
+        0
+      ],
+      "image": [
+        "530",
+        0
+      ]
+    },
+    "class_type": "LTXAddVideoICLoRAGuide",
+    "_meta": {
+      "title": "🅛🅣🅧 Add Video IC-LoRA Guide"
+    }
+  },
+  "645": {
+    "inputs": {
+      "positive": [
+        "644",
+        0
+      ],
+      "negative": [
+        "644",
+        1
+      ],
+      "latent": [
+        "556",
+        0
+      ]
+    },
+    "class_type": "LTXVCropGuides",
+    "_meta": {
+      "title": "LTXV 가이드 자르기"
+    }
+  },
+  "646": {
+    "inputs": {
+      "ckpt_name": "10Eros_v1_bf16.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "체크포인트 로드"
+    }
+  },
+  "647": {
+    "inputs": {
+      "anchor_sigma": 0.1,
+      "ghost_sigma": 0.35,
+      "score_gamma": 2,
+      "anchor_blend": 0.4,
+      "seed": [
+        "524",
+        0
+      ],
+      "debug_scores": false,
+      "latent": [
+        "645",
+        2
+      ]
+    },
+    "class_type": "LatentTemporalInpainter",
+    "_meta": {
+      "title": "👻 Latent Temporal Inpainter"
+    }
+  },
+  "649": {
+    "inputs": {
+      "video_latent": [
+        "647",
+        0
+      ],
+      "audio_latent": [
+        "275",
+        0
+      ]
+    },
+    "class_type": "LTXVConcatAVLatent",
+    "_meta": {
+      "title": "LTXVConcatAVLatent"
+    }
+  },
+  "650": {
+    "inputs": {
+      "av_latent": [
+        "578",
+        0
+      ]
+    },
+    "class_type": "LTXVSeparateAVLatent",
+    "_meta": {
+      "title": "LTXVSeparateAVLatent"
+    }
+  },
+  "652": {
+    "inputs": {
+      "easing_type": "cubic",
+      "easing_mode": "in_out",
+      "normalize_input": true,
+      "normalize_output": true,
+      "strength": 0.7,
+      "sigmas": [
+        "527",
+        0
+      ]
+    },
+    "class_type": "Sigmas Easing",
+    "_meta": {
+      "title": "Sigmas Easing (cubic, sine, quad) don't mess with this tbh"
+    }
+  },
+  "653": {
+    "inputs": {
+      "skip_steps_sigma_threshold": 1.001,
+      "cfg_star_rescale": true,
+      "sigmas": "1.0,0.99375,0.9875,0.98125,0.9550,0.8925,0.8120,0.7150,0.6030,0.4824,0.3618,0.2412,0.1206,0.0",
+      "cfg_values": "2,1.5,1,1,1,1,1,1,1,1,1,1,1",
+      "stg_scale_values": "1,1,1,1,1,1,1,1,1,1,1,1,1",
+      "stg_rescale_values": "1,1,1,1,1,1,1,1,1,1,1,1,1",
+      "stg_layers_indices": "[9999],[9999],[9999],[9999],[9999],[9999],[9999],[9999],[9999],[9999],[9999],[9999],[9999],[9999]",
+      "apply_apg": false,
+      "apg_cfg_scale": 1,
+      "eta": 1,
+      "norm_threshold": 1,
+      "model": [
+        "517",
+        0
+      ],
+      "positive": [
+        "644",
+        0
+      ],
+      "negative": [
+        "644",
+        1
+      ]
+    },
+    "class_type": "STGGuiderAdvanced",
+    "_meta": {
+      "title": "🅛🅣🅧 STG Guider Advanced"
+    }
+  },
+  "663": {
+    "inputs": {
+      "width": 0,
+      "height": 0,
+      "upscale_method": "area",
+      "keep_proportion": "crop",
+      "pad_color": "0, 0, 0",
+      "crop_position": "center",
+      "divisible_by": 32,
+      "device": "cpu",
+      "image": [
+        "528",
+        0
+      ]
+    },
+    "class_type": "ImageResizeKJv2",
+    "_meta": {
+      "title": "Resize Image v2"
+    }
+  }
+}

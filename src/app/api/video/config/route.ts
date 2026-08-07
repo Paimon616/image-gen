@@ -12,6 +12,7 @@ const DEFAULT_MODELS_DIR = join(
   "ComfyUI",
   "models"
 );
+const DEFAULT_VIDEO_WORKFLOW_PATH = "ltx23-10eros-t2v-api.json";
 
 function isInsideDirectory(parent: string, child: string) {
   const relativePath = relative(parent, child);
@@ -23,7 +24,9 @@ function isInsideDirectory(parent: string, child: string) {
 }
 
 function configuredWorkflowPath(envName: string) {
-  const workflowPath = process.env[envName]?.trim();
+  const workflowPath =
+    process.env[envName]?.trim() ||
+    (envName === "COMFYUI_VIDEO_WORKFLOW_PATH" ? DEFAULT_VIDEO_WORKFLOW_PATH : "");
 
   if (!workflowPath) return "";
 

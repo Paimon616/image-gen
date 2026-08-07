@@ -15,7 +15,6 @@ import { FieldHelp } from "@/components/field-help";
 import { CopyLinkButton } from "@/components/copy-link-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 const CIVITAI_IMAGES_URL = "https://civitai.red/images";
 
@@ -114,11 +113,7 @@ export function CivitaiImport() {
 
       const imported = importData as CivitaiImportResult;
       const modelsData = (await modelsResponse.json()) as LocalModelsResponse;
-      const { matched, missing } = reconcileImportedParams(
-        imported,
-        modelsData,
-        params
-      );
+      const { matched, missing } = reconcileImportedParams(imported, modelsData);
       setStoredImportResult({
         resetVersion: currentResetVersion,
         result: imported,

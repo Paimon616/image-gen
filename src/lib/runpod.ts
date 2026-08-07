@@ -3,11 +3,16 @@ import "server-only";
 import { execFile, spawn } from "child_process";
 import { readFile } from "fs/promises";
 import { homedir } from "os";
-import { basename } from "path";
+import { basename, dirname } from "path";
 import { promisify } from "util";
 import type { GenerationParams, ImportedCivitaiResource } from "@/lib/types";
 import { getRunpodPod, readSettings, type RunpodPodSettings } from "@/lib/settings";
 import { parseCivitaiUrlIds } from "@/lib/civitai-url";
+import {
+  KREA2_CLIP_NAME,
+  KREA2_VAE_NAME,
+  isKrea2CheckpointName,
+} from "@/lib/comfyui-model-files";
 
 const execFileAsync = promisify(execFile);
 
@@ -29,6 +34,14 @@ const RUNPOD_BASE_ASSETS = [
     url: "https://civitai.com/api/download/models/164821",
   },
   {
+    path: `/workspace/ComfyUI/models/text_encoders/${KREA2_CLIP_NAME}`,
+    url: `https://huggingface.co/Comfy-Org/Krea-2/resolve/main/text_encoders/${KREA2_CLIP_NAME}`,
+  },
+  {
+    path: `/workspace/ComfyUI/models/vae/${KREA2_VAE_NAME}`,
+    url: `https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/vae/${KREA2_VAE_NAME}`,
+  },
+  {
     path: "/workspace/ComfyUI/models/ultralytics/bbox/face_yolov8n_v2.pt",
     url: "https://huggingface.co/Bingsu/adetailer/resolve/main/face_yolov8n_v2.pt",
   },
@@ -38,39 +51,45 @@ const RUNPOD_BASE_ASSETS = [
   },
 ] as const;
 
-const RUNPOD_CUSTOM_NODES = [
-  {
-    name: "ComfyUI-WD14-Tagger",
-    repo: "https://github.com/pythongosssss/ComfyUI-WD14-Tagger.git",
-    ref: "9e0a6e700299182fc05c58b62e7ad9f72182a78b",
-  },
-  {
-    name: "ComfyUI-Custom-Scripts",
-    repo: "https://github.com/pythongosssss/ComfyUI-Custom-Scripts.git",
-    ref: "609f3afaa74b2f88ef9ce8d939626065e3247469",
-  },
-  {
-    name: "ComfyUI-Florence2",
-    repo: "https://github.com/kijai/ComfyUI-Florence2.git",
-    ref: "9ece3de914214c5f581d725167bc9d0eeb0d1120",
-  },
-  {
-    name: "ComfyUI-Impact-Pack",
-    repo: "https://github.com/ltdrdata/ComfyUI-Impact-Pack.git",
-    ref: "429d0159ad429e64d2b3916e6e7be9c22d025c3c",
-  },
-  {
-    name: "ComfyUI-Impact-Subpack",
-    repo: "https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git",
-    ref: "50c7b71a6a224734cc9b21963c6d1926816a97f1",
-  },
-] as const;
-
 function runpodBaseAssetForPath(path: string) {
   const normalized = path.replace(/^\/workspace\/ComfyUI\/models\//, "");
   return RUNPOD_BASE_ASSETS.find((asset) =>
     asset.path.endsWith(`/models/${normalized}`)
   );
+}
+
+function deriveHelperUrl(pod: RunpodPodSettings) {
+  if (!pod.comfyUrl) return "";
+  return pod.comfyUrl
+    .replace(/\/$/, "")
+    .replace(/-8188\.proxy\.runpod\.net/i, "-3000.proxy.runpod.net")
+    .replace(/:8188\b/, ":3000");
+}
+
+async function fetchRunpodHelper(
+  pod: RunpodPodSettings,
+  path: string,
+  init?: RequestInit
+) {
+  const helperUrl = deriveHelperUrl(pod);
+  if (!helperUrl) {
+    throw new Error("RunPod Image Gen helper URL is not configured.");
+  }
+
+  const response = await fetch(`${helperUrl}${path}`, {
+    ...init,
+    cache: "no-store",
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {}),
+    },
+  });
+  const text = await response.text();
+  const data = text ? JSON.parse(text) as Record<string, unknown> : {};
+  if (!response.ok) {
+    throw new Error(String(data.error || `RunPod helper HTTP ${response.status}`));
+  }
+  return data;
 }
 
 function shellQuote(value: string) {
@@ -301,9 +320,7 @@ async function resolvedSshCommand(pod: RunpodPodSettings) {
   let safeSsh = normalizedSshCommand(extracted);
   const endpoint = await fetchRunpodSshEndpoint(pod);
   if (endpoint) {
-    const shouldUseRoot =
-      parsed.user === "root" || /(?:^|\.)ssh\.runpod\.io$/i.test(parsed.host);
-    const destination = `${shouldUseRoot ? "root" : parsed.user}@${endpoint.host}`;
+    const destination = `${parsed.user}@${endpoint.host}`;
     safeSsh = [
       "ssh",
       "-o",
@@ -319,6 +336,10 @@ async function resolvedSshCommand(pod: RunpodPodSettings) {
     ]
       .map(shellQuote)
       .join(" ");
+  } else if (/(?:^|\.)ssh\.runpod\.io$/i.test(parsed.host)) {
+    throw new Error(
+      "RunPod SSH public port is not exposed yet. Add 22/tcp to the pod ports, wait for the runtime endpoint, then retry Helper 연결."
+    );
   }
 
   if (!safeSsh) {
@@ -349,6 +370,12 @@ function identityFileFromSsh(value: string) {
 
 function friendlySshError(pod: RunpodPodSettings, error: unknown) {
   const message = error instanceof Error ? error.message : "SSH failed.";
+  if (/Connection refused/i.test(message)) {
+    return "RunPod SSH endpoint is not accepting connections yet. Wait for the pod runtime port to finish attaching, then retry Helper 연결.";
+  }
+  if (/Operation timed out|Connection timed out/i.test(message)) {
+    return "RunPod SSH endpoint timed out. Check that the pod is running and its 22/tcp port is exposed, then retry Helper 연결.";
+  }
   if (!/Permission denied \(publickey,password\)/i.test(message)) {
     return message;
   }
@@ -452,6 +479,69 @@ export async function startRunpodPod(podId: string) {
   return text;
 }
 
+export async function ensureRunpodPort(
+  podId: string,
+  port: number,
+  protocol: "http" | "tcp" = "http"
+) {
+  const settings = await readSettings();
+  if (!settings.runpodApiKey) {
+    throw new Error("RunPod API key is not configured.");
+  }
+
+  const podResponse = await fetch(
+    `https://rest.runpod.io/v1/pods/${encodeURIComponent(podId)}`,
+    {
+      headers: { Authorization: `Bearer ${settings.runpodApiKey}` },
+      cache: "no-store",
+      signal: AbortSignal.timeout(15_000),
+    }
+  );
+  const podText = await podResponse.text();
+  if (!podResponse.ok) {
+    throw new Error(`RunPod pod lookup failed: ${podResponse.status} ${podText}`);
+  }
+
+  const podData = JSON.parse(podText) as { ports?: unknown };
+  const currentPorts = Array.isArray(podData.ports)
+    ? podData.ports.filter((value): value is string => typeof value === "string")
+    : [];
+  const portSpec = `${port}/${protocol}`;
+
+  if (currentPorts.includes(portSpec)) {
+    return { changed: false, ports: currentPorts };
+  }
+
+  const ports = [...currentPorts, portSpec];
+  const patchResponse = await fetch(
+    `https://rest.runpod.io/v1/pods/${encodeURIComponent(podId)}`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${settings.runpodApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ ports }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(15_000),
+    }
+  );
+  const patchText = await patchResponse.text();
+  if (!patchResponse.ok) {
+    throw new Error(`RunPod port update failed: ${patchResponse.status} ${patchText}`);
+  }
+
+  return { changed: true, ports };
+}
+
+export async function ensureRunpodHttpPort(podId: string, port: number) {
+  return ensureRunpodPort(podId, port, "http");
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export async function stopRunpodPod(podId: string) {
   const settings = await readSettings();
   if (!settings.runpodApiKey) {
@@ -493,106 +583,320 @@ export async function fetchRunpodStatus(pod: RunpodPodSettings) {
     }
   }
 
-  let sshReachable = false;
-  let sshError = "";
+  let helperReachable = false;
+  let helperError = "";
   try {
-    await runSsh(pod, "printf ok", { timeoutMs: 15_000 });
-    sshReachable = true;
+    const helper = await fetchRunpodHelper(pod, "/api/runpod/helper/status", {
+      signal: AbortSignal.timeout(5_000),
+    });
+    helperReachable = Boolean(helper.ok);
   } catch (error) {
-    sshError = friendlySshError(pod, error);
+    helperError = error instanceof Error ? error.message : "RunPod helper is not reachable.";
   }
 
-  return { comfyReachable, comfyError, sshReachable, sshError };
+  return { comfyReachable, comfyError, helperReachable, helperError };
+}
+
+export async function ensureRunpodStatus(pod: RunpodPodSettings) {
+  let status = await fetchRunpodStatus(pod);
+  let startRequested = false;
+  let portExposeRequested = false;
+  let portExposeError = "";
+  let setupRequested = false;
+  let setupError = "";
+
+  if (!status.helperReachable && pod.podId) {
+    try {
+      const result = await ensureRunpodHttpPort(pod.podId, 3000);
+      portExposeRequested = result.changed;
+    } catch (error) {
+      portExposeError = error instanceof Error ? error.message : "RunPod port update failed.";
+    }
+  }
+
+  if (!status.comfyReachable && !status.helperReachable && pod.podId) {
+    await startRunpodPod(pod.podId);
+    startRequested = true;
+  }
+
+  if (startRequested) {
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      await wait(5_000);
+      status = await fetchRunpodStatus(pod);
+      if (status.comfyReachable && status.helperReachable) break;
+    }
+  }
+
+  if (!status.helperReachable && pod.ssh.trim()) {
+    try {
+      await setupRunpodPod(pod);
+      setupRequested = true;
+      await wait(5_000);
+      status = await fetchRunpodStatus(pod);
+    } catch (error) {
+      setupError = error instanceof Error ? error.message : "RunPod helper setup failed.";
+    }
+  }
+
+  return { ...status, startRequested, portExposeRequested, portExposeError, setupRequested, setupError };
 }
 
 export async function setupRunpodPod(pod: RunpodPodSettings) {
-  const settings = await readSettings();
-  const civitaiToken = settings.civitaiApiKey || process.env.CIVITAI_API_TOKEN?.trim() || "";
-  const baseAssetDownloads = RUNPOD_BASE_ASSETS.map((asset) => {
-    const token = asset.url.includes("civitai.com") ? civitaiToken : "";
-    return [
-      `download_asset ${shellQuote(asset.path)} ${shellQuote(asset.url)} ${shellQuote(token)}`,
-    ].join("\n");
-  }).join("\n");
-  const customNodeInstalls = RUNPOD_CUSTOM_NODES.map((node) =>
-    `install_custom_node ${shellQuote(node.name)} ${shellQuote(node.repo)} ${shellQuote(node.ref)}`
-  ).join("\n");
+  const helperServer = String.raw`
+import json
+import os
+import shutil
+import subprocess
+import sys
+import urllib.error
+import urllib.request
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+
+PORT = int(os.environ.get("IMAGE_GEN_HELPER_PORT", "3000"))
+HOST = os.environ.get("IMAGE_GEN_HELPER_HOST", "0.0.0.0")
+COMFYUI_HOST = os.environ.get("COMFYUI_HOST", "0.0.0.0")
+COMFYUI_PORT = int(os.environ.get("COMFYUI_PORT", "8188"))
+
+def detect_comfyui_dir():
+    env_dir = Path(os.environ.get("COMFYUI_DIR", "")).resolve() if os.environ.get("COMFYUI_DIR") else None
+    candidates = [
+        env_dir,
+        Path("/workspace/ComfyUI"),
+        Path("/workspace/runpod-slim/ComfyUI"),
+        Path("/opt/comfyui-baked"),
+    ]
+    proc = Path("/proc")
+    if proc.exists():
+        for item in proc.iterdir():
+            if not item.name.isdigit():
+                continue
+            try:
+                cmdline = (item / "cmdline").read_bytes().decode("utf-8", "ignore")
+                if "main.py" not in cmdline:
+                    continue
+                cwd = (item / "cwd").resolve()
+                candidates.insert(0, cwd)
+            except Exception:
+                continue
+    for candidate in candidates:
+        if candidate and (candidate / "main.py").is_file():
+            return candidate.resolve()
+    return Path("/workspace/ComfyUI").resolve()
+
+COMFYUI_DIR = detect_comfyui_dir()
+MODELS_DIR = Path(os.environ.get("COMFYUI_MODELS_DIR", str(COMFYUI_DIR / "models"))).resolve()
+
+def migrate_legacy_models():
+    legacy = Path("/workspace/ComfyUI/models").resolve()
+    if legacy == MODELS_DIR or not legacy.exists():
+        return
+    for source in legacy.rglob("*"):
+        if not source.is_file():
+            continue
+        relative = source.relative_to(legacy)
+        target = MODELS_DIR / relative
+        if target.exists():
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            os.link(source, target)
+        except Exception:
+            shutil.copy2(source, target)
+
+migrate_legacy_models()
+
+def model_path(value):
+    raw = str(value or "").strip()
+    prefix = "/workspace/ComfyUI/models/"
+    rel = raw[len(prefix):] if raw.startswith(prefix) else raw.lstrip("/")
+    target = (MODELS_DIR / rel).resolve()
+    if target == MODELS_DIR or MODELS_DIR not in target.parents:
+        raise ValueError("Invalid model path.")
+    return target
+
+def read_json(handler):
+    length = int(handler.headers.get("Content-Length") or "0")
+    data = handler.rfile.read(length) if length > 0 else b"{}"
+    return json.loads(data.decode("utf-8") or "{}")
+
+def write_json(handler, status, data):
+    body = json.dumps(data).encode("utf-8")
+    handler.send_response(status)
+    handler.send_header("Cache-Control", "no-store")
+    handler.send_header("Content-Type", "application/json")
+    handler.send_header("Content-Length", str(len(body)))
+    handler.end_headers()
+    handler.wfile.write(body)
+
+def restart_comfyui():
+    main_py = COMFYUI_DIR / "main.py"
+    if not main_py.is_file():
+        raise RuntimeError("ComfyUI main.py was not found: " + str(main_py))
+
+    python = COMFYUI_DIR / "venv/bin/python"
+    python_cmd = str(python) if python.exists() else shutil.which("python3")
+    if not python_cmd:
+        raise RuntimeError("python3 was not found.")
+
+    os.system("pkill -f '/workspace/ComfyUI/main.py' >/dev/null 2>&1 || true")
+    os.system("fuser -k %d/tcp >/dev/null 2>&1 || true" % COMFYUI_PORT)
+
+    log = open("/workspace/image-gen-helper/comfyui-restart.log", "ab", buffering=0)
+    process = subprocess.Popen(
+        [
+            python_cmd,
+            str(main_py),
+            "--listen",
+            COMFYUI_HOST,
+            "--port",
+            str(COMFYUI_PORT),
+            "--enable-cors-header",
+        ],
+        cwd=str(COMFYUI_DIR),
+        env=dict(os.environ, COMFYUI_MODELS_DIR=str(MODELS_DIR)),
+        stdout=log,
+        stderr=subprocess.STDOUT,
+        stdin=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    with open("/workspace/image-gen-helper/comfyui.pid", "w") as pid_file:
+        pid_file.write(str(process.pid))
+    log.write(("ComfyUI restart requested, pid=%s\n" % process.pid).encode("utf-8"))
+    return process.pid
+
+def download_to_file(target, url, token="", progress=None):
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if target.is_file():
+        return str(target)
+    tmp = Path(str(target) + ".download")
+    existing = tmp.stat().st_size if tmp.exists() else 0
+    headers = {"User-Agent": "image-gen-runpod-download/1.0"}
+    if token:
+        headers["Authorization"] = "Bearer " + token
+    if existing > 0:
+        headers["Range"] = "bytes=%d-" % existing
+    if progress:
+        progress(existing, 0)
+
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, headers, newurl):
+            return None
+
+    opener = urllib.request.build_opener(NoRedirect)
+    response = None
+    for _ in range(5):
+        req = urllib.request.Request(url, headers=headers)
+        try:
+            response = opener.open(req, timeout=60)
+            break
+        except urllib.error.HTTPError as error:
+            if error.code not in (301, 302, 303, 307, 308):
+                raise
+            location = error.headers.get("Location")
+            if not location:
+                raise
+            url = urllib.request.urljoin(url, location)
+            headers.pop("Authorization", None)
+    else:
+        raise RuntimeError("Too many redirects.")
+
+    with response:
+        total = int(response.headers.get("Content-Length") or "0")
+        total = existing + total if total > 0 else 0
+        downloaded = existing
+        with open(tmp, "ab" if existing > 0 else "wb") as out:
+            while True:
+                chunk = response.read(1024 * 1024)
+                if not chunk:
+                    break
+                out.write(chunk)
+                downloaded += len(chunk)
+                if progress:
+                    progress(downloaded, total)
+    tmp.replace(target)
+    if progress:
+        progress(target.stat().st_size, target.stat().st_size)
+    return str(target)
+
+class Handler(BaseHTTPRequestHandler):
+    def log_message(self, fmt, *args):
+        sys.stdout.write(fmt % args + "\n")
+        sys.stdout.flush()
+
+    def do_GET(self):
+        if self.path == "/api/runpod/helper/status":
+            write_json(self, 200, {
+                "ok": True,
+                "message": "RunPod Image Gen helper ready",
+                "comfyModelsDir": str(MODELS_DIR),
+            })
+            return
+        write_json(self, 404, {"error": "Not found."})
+
+    def do_POST(self):
+        try:
+            if self.path == "/api/runpod/helper/files":
+                body = read_json(self)
+                files = [str(value) for value in body.get("files", [])] if isinstance(body.get("files"), list) else []
+                write_json(self, 200, {"files": [
+                    {"path": path, "exists": model_path(path).is_file()} for path in files
+                ]})
+                return
+            if self.path == "/api/runpod/helper/download":
+                body = read_json(self)
+                target = model_path(body.get("targetFile", ""))
+                url = str(body.get("downloadUrl", "")).strip()
+                if not url:
+                    raise ValueError("Download URL is required.")
+                write_json(self, 200, {"path": download_to_file(target, url, str(body.get("token", "")))})
+                return
+            if self.path == "/api/runpod/helper/download/stream":
+                body = read_json(self)
+                target = model_path(body.get("targetFile", ""))
+                url = str(body.get("downloadUrl", "")).strip()
+                if not url:
+                    raise ValueError("Download URL is required.")
+                self.send_response(200)
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("Content-Type", "text/event-stream")
+                self.end_headers()
+                def send(event):
+                    self.wfile.write(("data: " + json.dumps(event) + "\n\n").encode("utf-8"))
+                    self.wfile.flush()
+                download_to_file(target, url, str(body.get("token", "")), lambda downloaded, total: send({
+                    "type": "status" if total > 0 and downloaded >= total else "progress",
+                    "path": str(target),
+                    "downloaded": downloaded,
+                    "total": total,
+                    "percent": min(100, round(downloaded / total * 100)) if total > 0 else 0,
+                }))
+                send({"type": "complete", "path": str(target), "percent": 100})
+                return
+            if self.path == "/api/runpod/helper/restart-comfy":
+                pid = restart_comfyui()
+                write_json(self, 200, {"ok": True, "pid": pid})
+                return
+            write_json(self, 404, {"error": "Not found."})
+        except Exception as error:
+            write_json(self, 400, {"error": str(error)})
+
+ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
+`.trim();
+  const helperServerBase64 = Buffer.from(helperServer, "utf8").toString("base64");
+
   const script = [
     "set -euo pipefail",
-    'COMFYUI_DIR="${COMFYUI_DIR:-/workspace/ComfyUI}"',
-    'COMFYUI_PORT="${COMFYUI_PORT:-8188}"',
-    "mkdir -p /workspace",
-    'if [ ! -d "$COMFYUI_DIR/.git" ]; then',
-    '  rm -rf "$COMFYUI_DIR"',
-    '  git clone https://github.com/comfyanonymous/ComfyUI.git "$COMFYUI_DIR"',
-    "fi",
-    'cd "$COMFYUI_DIR"',
-    "python3 -m pip install -r requirements.txt",
-    "mkdir -p models/checkpoints models/loras models/embeddings models/vae models/upscale_models models/controlnet models/clip_vision models/ipadapter models/ultralytics/bbox models/ultralytics/segm",
-    'CUSTOM_NODES_DIR="$COMFYUI_DIR/custom_nodes"',
-    "mkdir -p \"$CUSTOM_NODES_DIR\"",
-    "install_custom_node() {",
-    "  name=\"$1\"",
-    "  repo=\"$2\"",
-    "  ref=\"$3\"",
-    "  node_dir=\"$CUSTOM_NODES_DIR/$name\"",
-    "  if [ -e \"$node_dir\" ] && [ ! -d \"$node_dir/.git\" ]; then",
-    "    echo \"$node_dir exists but is not a git checkout\" >&2",
-    "    return 1",
-    "  fi",
-    "  if [ ! -d \"$node_dir/.git\" ]; then",
-    "    echo \"cloning custom node: $name\"",
-    "    git clone \"$repo\" \"$node_dir\"",
-    "  fi",
-    "  git -C \"$node_dir\" fetch --quiet origin \"$ref\" 2>/dev/null || git -C \"$node_dir\" fetch --quiet --all",
-    "  git -C \"$node_dir\" checkout --quiet \"$ref\"",
-    "  if [ -f \"$node_dir/requirements.txt\" ]; then",
-    "    if ! python3 -m pip install -r \"$node_dir/requirements.txt\"; then",
-    "      echo \"requirements failed for $name; retrying without optional SAM2 dependencies\" >&2",
-    "      tmp_requirements=\"$(mktemp)\"",
-    "      grep -viE \"sam2|facebookresearch/sam2\" \"$node_dir/requirements.txt\" > \"$tmp_requirements\"",
-    "      python3 -m pip install -r \"$tmp_requirements\" || echo \"requirements still failed for $name; continuing\" >&2",
-    "      rm -f \"$tmp_requirements\"",
-    "    fi",
-    "  fi",
-    "  if [ -f \"$node_dir/install.py\" ]; then",
-    "    python3 \"$node_dir/install.py\" || true",
-    "  fi",
-    "}",
-    customNodeInstalls,
-    "download_asset() {",
-    "  target=\"$1\"",
-    "  url=\"$2\"",
-    "  token=\"${3:-}\"",
-    "  if [ -f \"$target\" ]; then",
-    "    echo \"exists: $target\"",
-    "    return 0",
-    "  fi",
-    "  mkdir -p \"$(dirname \"$target\")\"",
-    "  echo \"downloading: $target\"",
-    "  if [ -n \"$token\" ]; then",
-    "    curl -L --fail --retry 3 --continue-at - -H \"Authorization: Bearer $token\" -o \"$target.download\" \"$url\"",
-    "  else",
-    "    curl -L --fail --retry 3 --continue-at - -o \"$target.download\" \"$url\"",
-    "  fi",
-    "  mv \"$target.download\" \"$target\"",
-    "}",
-    baseAssetDownloads,
-    'pkill -f "main.py.*--port $COMFYUI_PORT" >/dev/null 2>&1 || true',
-    "sleep 2",
-    'nohup python3 main.py --listen 0.0.0.0 --port "$COMFYUI_PORT" --enable-cors-header > /workspace/comfyui.log 2>&1 &',
-    "for _ in $(seq 1 90); do",
-    '  if curl -fsS --max-time 5 "http://127.0.0.1:$COMFYUI_PORT/system_stats" >/dev/null 2>&1; then',
-    '    echo "ComfyUI ready"',
-    "    exit 0",
-    "  fi",
-    "  sleep 2",
-    "done",
-    'echo "ComfyUI did not become ready. See /workspace/comfyui.log" >&2',
-    "exit 1",
-  ].join("\n");
+    "command -v python3 >/dev/null 2>&1",
+    "mkdir -p /workspace/image-gen-helper",
+    "if [ -f /workspace/image-gen-helper/helper.pid ]; then kill \"$(cat /workspace/image-gen-helper/helper.pid)\" >/dev/null 2>&1 || true; fi",
+    "if command -v fuser >/dev/null 2>&1; then fuser -k 3000/tcp >/dev/null 2>&1 || true; fi",
+    `printf %s ${shellQuote(helperServerBase64)} | base64 -d > /workspace/image-gen-helper/server.py`,
+    "nohup python3 /workspace/image-gen-helper/server.py > /workspace/image-gen-helper.log 2>&1 < /dev/null & echo $! > /workspace/image-gen-helper/helper.pid",
+    "echo 'Image Gen helper start requested on port 3000.'",
+  ].join("; ");
 
-  return runSsh(pod, script);
+  return runSsh(pod, script, { timeoutMs: 30_000 });
 }
 
 interface CatalogEntry {
@@ -632,7 +936,48 @@ function resourceFromCatalog(
   } satisfies ImportedCivitaiResource;
 }
 
-async function namesForParams(params: GenerationParams) {
+function importedResourceCandidateNames(resource: ImportedCivitaiResource) {
+  const candidates = [
+    resource.name,
+    resource.versionName ?? "",
+    [resource.name, resource.versionName].filter(Boolean).join(" "),
+  ].filter(Boolean);
+
+  if (resource.type === "embedding") {
+    const source = resource.versionName || resource.name;
+    const lazyToken = source.match(/\b(lazypos|lazyneg|lazyhand)\b/i)?.[1];
+    if (lazyToken) candidates.push(lazyToken.toLowerCase());
+  }
+
+  return candidates.flatMap((candidate) => {
+    const trimmed = candidate.trim();
+    if (!trimmed) return [];
+    return /\.(ckpt|pt|pth|safetensors)$/i.test(trimmed)
+      ? [trimmed]
+      : [trimmed, `${trimmed}.safetensors`];
+  });
+}
+
+function resourceFromImportedResources(
+  resources: ImportedCivitaiResource[],
+  type: ImportedCivitaiResource["type"],
+  filename: string
+) {
+  const normalizedFilename = filename.trim().toLowerCase();
+  if (!normalizedFilename) return undefined;
+
+  return resources.find((resource) => {
+    if (resource.type !== type) return false;
+    return importedResourceCandidateNames(resource).some(
+      (candidate) => candidate.toLowerCase() === normalizedFilename
+    );
+  });
+}
+
+async function namesForParams(
+  params: GenerationParams,
+  importedResources: ImportedCivitaiResource[] = []
+) {
   const catalog = await readModelCatalog();
   const names: Array<{
     type: ImportedCivitaiResource["type"];
@@ -645,16 +990,27 @@ async function namesForParams(params: GenerationParams) {
       type,
       folder,
       name,
-      resource: resourceFromCatalog(catalog, type, folder, name),
+      resource:
+        resourceFromImportedResources(importedResources, type, name) ??
+        resourceFromCatalog(catalog, type, folder, name),
     });
   };
-  if (params.model_name.trim()) {
-    push("checkpoint", "checkpoints", params.model_name.trim());
+  const checkpointName = params.model_name.trim();
+  if (checkpointName) {
+    push(
+      "checkpoint",
+      isKrea2CheckpointName(checkpointName) ? "diffusion_models" : "checkpoints",
+      checkpointName
+    );
+    if (isKrea2CheckpointName(checkpointName)) {
+      push("other", "text_encoders", KREA2_CLIP_NAME);
+      push("vae", "vae", KREA2_VAE_NAME);
+    }
   }
-  params.loras.forEach((lora) => {
+  (params.loras ?? []).forEach((lora) => {
     if (lora.path.trim()) push("lora", "loras", lora.path.trim());
   });
-  params.embeddings.forEach((embedding) => {
+  (params.embeddings ?? []).forEach((embedding) => {
     if (embedding.path.trim()) {
       push("embedding", "embeddings", embedding.path.trim());
     }
@@ -685,30 +1041,141 @@ async function namesForParams(params: GenerationParams) {
 
 export async function checkRunpodGenerationFiles(
   pod: RunpodPodSettings,
-  params: GenerationParams
+  params: GenerationParams,
+  importedResources: ImportedCivitaiResource[] = []
 ) {
-  const resources = await namesForParams(params);
+  const resources = await namesForParams(params, importedResources);
   if (resources.length === 0) return [];
 
-  const checks = resources
-    .map((resource, index) => {
-      const path = `/workspace/ComfyUI/models/${resource.folder}/${resource.name}`;
-      return `if [ -f ${shellQuote(path)} ]; then echo ${index}:ok; else echo ${index}:missing; fi`;
-    })
-    .join("\n");
-  const { stdout } = await runSsh(pod, checks);
-  const statuses = new Map(
-    stdout
-      .trim()
-      .split(/\n+/)
-      .map((line) => line.split(":"))
-      .filter((parts) => parts.length === 2)
-      .map(([index, status]) => [Number(index), status])
-  );
+  const files = resources.map((resource) => `${resource.folder}/${resource.name}`);
+  const data = await fetchRunpodHelper(pod, "/api/runpod/helper/files", {
+    method: "POST",
+    body: JSON.stringify({ files }),
+  });
+  const present = Array.isArray(data.files)
+    ? new Set(
+        data.files
+          .filter((file): file is { path: string; exists: boolean } =>
+            Boolean(file) && typeof file === "object" && "path" in file
+          )
+          .filter((file) => file.exists)
+          .map((file) => file.path)
+      )
+    : new Set<string>();
 
   return resources
-    .filter((_, index) => statuses.get(index) !== "ok")
+    .filter(({ folder, name }) => !present.has(`${folder}/${name}`))
     .map(({ folder, name, resource }) => ({ folder, path: `${folder}/${name}`, resource }));
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function comfyObjectOptions(
+  pod: RunpodPodSettings,
+  classType: string,
+  inputName: string
+) {
+  if (!pod.comfyUrl) return [];
+
+  const response = await fetch(
+    `${pod.comfyUrl.replace(/\/$/, "")}/object_info/${encodeURIComponent(classType)}`,
+    { cache: "no-store", signal: AbortSignal.timeout(10_000) }
+  );
+  if (!response.ok) return [];
+
+  const data = (await response.json()) as Record<string, {
+    input?: { required?: Record<string, unknown> };
+  }>;
+  const input = data[classType]?.input?.required?.[inputName];
+  if (!Array.isArray(input)) return [];
+  if (Array.isArray(input[0])) {
+    return input[0].filter((item): item is string => typeof item === "string");
+  }
+  const comboOptions = input[1];
+  if (
+    comboOptions &&
+    typeof comboOptions === "object" &&
+    !Array.isArray(comboOptions) &&
+    Array.isArray((comboOptions as { options?: unknown }).options)
+  ) {
+    return (comboOptions as { options: unknown[] }).options.filter(
+      (item): item is string => typeof item === "string"
+    );
+  }
+  return [];
+}
+
+async function requiredComfyCatalogs(params: GenerationParams) {
+  const catalogs: Array<{
+    label: string;
+    classType: string;
+    inputName: string;
+  }> = [];
+
+  if (params.model_name?.trim()) {
+    catalogs.push({
+      label: "checkpoint",
+      classType: "CheckpointLoaderSimple",
+      inputName: "ckpt_name",
+    });
+  }
+  if ((params.loras ?? []).some((lora) => lora.path.trim())) {
+    catalogs.push({
+      label: "LoRA",
+      classType: "LoraLoader",
+      inputName: "lora_name",
+    });
+  }
+  if (params.hires_upscale > 1 && params.upscale_model_name?.trim()) {
+    catalogs.push({
+      label: "upscale model",
+      classType: "UpscaleModelLoader",
+      inputName: "model_name",
+    });
+  }
+
+  return catalogs;
+}
+
+export async function ensureRunpodComfyCatalogReady(
+  pod: RunpodPodSettings,
+  params: GenerationParams
+) {
+  const catalogs = await requiredComfyCatalogs(params);
+  if (catalogs.length === 0) return;
+
+  const emptyCatalogs = [];
+  for (const catalog of catalogs) {
+    const options = await comfyObjectOptions(pod, catalog.classType, catalog.inputName);
+    if (options.length === 0) emptyCatalogs.push(catalog.label);
+  }
+  if (emptyCatalogs.length === 0) return;
+
+  await fetchRunpodHelper(pod, "/api/runpod/helper/restart-comfy", {
+    method: "POST",
+    body: JSON.stringify({ reason: `empty ${emptyCatalogs.join(", ")} catalog` }),
+  });
+
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    await sleep(2_000);
+    const ready = await Promise.all(
+      catalogs.map(async (catalog) => {
+        const options = await comfyObjectOptions(
+          pod,
+          catalog.classType,
+          catalog.inputName
+        ).catch(() => []);
+        return options.length > 0;
+      })
+    );
+    if (ready.every(Boolean)) return;
+  }
+
+  throw new Error(
+    `ComfyUI model catalog is still empty after restart: ${emptyCatalogs.join(", ")}.`
+  );
 }
 
 function fallbackFilename(resource: ImportedCivitaiResource) {
@@ -738,11 +1205,22 @@ async function getRunpodDownloadPlan(
 
   if (!baseAsset && !token) throw new Error("Civitai API key is not configured.");
 
-  const filename = targetPath ? basename(targetPath) : fallbackFilename(resource);
+  const normalizedTargetPath = targetPath
+    ?.replace(/^\/workspace\/ComfyUI\/models\//, "")
+    .replace(/^\/+/, "");
+  const filename = normalizedTargetPath
+    ? basename(normalizedTargetPath)
+    : fallbackFilename(resource);
   const targetDir = baseAsset
     ? baseAsset.path.slice(0, baseAsset.path.lastIndexOf("/"))
-    : `/workspace/ComfyUI/models/${folder}`;
-  const targetFile = baseAsset ? baseAsset.path : `${targetDir}/${filename}`;
+    : normalizedTargetPath
+      ? `/workspace/ComfyUI/models/${dirname(normalizedTargetPath)}`
+      : `/workspace/ComfyUI/models/${folder}`;
+  const targetFile = baseAsset
+    ? baseAsset.path
+    : normalizedTargetPath
+      ? `/workspace/ComfyUI/models/${normalizedTargetPath}`
+      : `${targetDir}/${filename}`;
   const downloadUrl = baseAsset?.url ??
     `https://civitai.com/api/download/models/${resource.modelVersionId}`;
   const tokenValue = !baseAsset && token ? token : "";
@@ -758,36 +1236,13 @@ export async function downloadRunpodResource(
   const pod = await getRunpodPod(podId);
   if (!pod) throw new Error("RunPod target was not found.");
 
-  const { targetDir, targetFile, downloadUrl, tokenValue } =
+  const { targetFile, downloadUrl, tokenValue } =
     await getRunpodDownloadPlan(pod, resource, targetPath);
-  const script = `
-set -euo pipefail
-TARGET_DIR=${shellQuote(targetDir)}
-TARGET_FILE=${shellQuote(targetFile)}
-DOWNLOAD_URL=${shellQuote(downloadUrl)}
-TOKEN=${shellQuote(tokenValue)}
-mkdir -p "$TARGET_DIR"
-if [ -f "$TARGET_FILE" ]; then
-  echo "$TARGET_FILE"
-  exit 0
-fi
-if [ -n "$TOKEN" ]; then
-  curl -L --fail --retry 3 --continue-at - \\
-    -H "Authorization: Bearer $TOKEN" \\
-    -H ${shellQuote("User-Agent: image-gen-runpod-download/1.0")} \\
-    -o "$TARGET_FILE.download" \\
-    "$DOWNLOAD_URL"
-else
-  curl -L --fail --retry 3 --continue-at - \\
-    -H ${shellQuote("User-Agent: image-gen-runpod-download/1.0")} \\
-    -o "$TARGET_FILE.download" \\
-    "$DOWNLOAD_URL"
-fi
-mv "$TARGET_FILE.download" "$TARGET_FILE"
-echo "$TARGET_FILE"
-`;
-  const { stdout } = await runSsh(pod, script);
-  return stdout.trim().split(/\n/).pop() ?? "";
+  const data = await fetchRunpodHelper(pod, "/api/runpod/helper/download", {
+    method: "POST",
+    body: JSON.stringify({ targetFile, downloadUrl, token: tokenValue }),
+  });
+  return String(data.path || targetFile);
 }
 
 export async function streamRunpodResourceDownload(
@@ -806,85 +1261,91 @@ export async function streamRunpodResourceDownload(
   const pod = await getRunpodPod(podId);
   if (!pod) throw new Error("RunPod target was not found.");
 
-  const { targetDir, targetFile, downloadUrl, tokenValue } =
+  const { targetFile, downloadUrl, tokenValue } =
     await getRunpodDownloadPlan(pod, resource, targetPath);
-  const script = [
-    "set -euo pipefail",
-    `TARGET_DIR=${shellQuote(targetDir)}`,
-    `TARGET_FILE=${shellQuote(targetFile)}`,
-    `DOWNLOAD_URL=${shellQuote(downloadUrl)}`,
-    `TOKEN=${shellQuote(tokenValue)}`,
-    'mkdir -p "$TARGET_DIR"',
-    'if [ -f "$TARGET_FILE" ]; then',
-    '  size="$(wc -c < "$TARGET_FILE" | tr -d \' \')"',
-    '  echo "__RUNPOD_DL__ status $size $size"',
-    '  echo "__RUNPOD_DL__ complete $TARGET_FILE"',
-    "  exit 0",
-    "fi",
-    'tmp="$TARGET_FILE.download"',
-    "existing=0",
-    'if [ -f "$tmp" ]; then',
-    '  existing="$(wc -c < "$tmp" | tr -d \' \')"',
-    "fi",
-    'headers_file="$(mktemp)"',
-    'curl_args=(-L --fail --retry 3 --continue-at - --dump-header "$headers_file")',
-    'if [ -n "$TOKEN" ]; then',
-    '  curl_args+=(-H "Authorization: Bearer $TOKEN")',
-    "fi",
-    `curl_args+=(-H ${shellQuote("User-Agent: image-gen-runpod-download/1.0")})`,
-    'echo "__RUNPOD_DL__ status $existing 0"',
-    'curl "${curl_args[@]}" -o "$tmp" "$DOWNLOAD_URL" &',
-    'curl_pid="$!"',
-    "total=0",
-    'while kill -0 "$curl_pid" >/dev/null 2>&1; do',
-    '  if [ "$total" = "0" ] && [ -f "$headers_file" ]; then',
-    '    content_length="$(awk \'BEGIN{IGNORECASE=1} /^Content-Length:/ {gsub("\\r","",$2); v=$2} END{print v+0}\' "$headers_file")"',
-    '    if [ "${content_length:-0}" -gt 0 ]; then',
-    "      total=$((existing + content_length))",
-    "    fi",
-    "  fi",
-    "  current=0",
-    '  if [ -f "$tmp" ]; then',
-    '    current="$(wc -c < "$tmp" | tr -d \' \')"',
-    "  fi",
-    '  echo "__RUNPOD_DL__ progress $current $total"',
-    "  sleep 1",
-    "done",
-    'wait "$curl_pid"',
-    'rm -f "$headers_file"',
-    'final_size="$(wc -c < "$tmp" | tr -d \' \')"',
-    'echo "__RUNPOD_DL__ progress $final_size $final_size"',
-    'mv "$tmp" "$TARGET_FILE"',
-    'echo "__RUNPOD_DL__ complete $TARGET_FILE"',
-  ].join("\n");
 
-  let stdoutBuffer = "";
-  const handleChunk = (chunk: string) => {
-    stdoutBuffer += chunk;
-    const lines = stdoutBuffer.split(/\r?\n/);
-    stdoutBuffer = lines.pop() ?? "";
+  const helperUrl = deriveHelperUrl(pod);
+  if (!helperUrl) throw new Error("RunPod Image Gen helper URL is not configured.");
+
+  const response = await fetch(`${helperUrl}/api/runpod/helper/download/stream`, {
+    method: "POST",
+    cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ targetFile, downloadUrl, token: tokenValue }),
+  });
+  if (!response.ok || !response.body) {
+    const text = await response.text();
+    throw new Error(text || `RunPod helper HTTP ${response.status}`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let helperError = "";
+  let completed = false;
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split(/\r?\n/);
+    buffer = lines.pop() ?? "";
     for (const line of lines) {
-      if (!line.startsWith("__RUNPOD_DL__ ")) continue;
-      const parts = line.split(" ");
-      const kind = parts[1];
-      if (kind === "progress" || kind === "status") {
-        const downloaded = Number(parts[2] ?? 0);
-        const total = Number(parts[3] ?? 0);
-        onEvent({
-          type: kind,
-          path: targetFile,
-          downloaded,
-          total,
-          percent: total > 0 ? Math.min(100, Math.round((downloaded / total) * 100)) : 0,
-        });
+      if (!line.startsWith("data:")) continue;
+      const data = JSON.parse(line.slice(5).trim()) as {
+        type: "progress" | "status" | "complete";
+        path?: string;
+        downloaded?: number;
+        total?: number;
+        percent?: number;
+        message?: string;
+      };
+      if (data.type === "status" && data.message && /failed|error/i.test(data.message)) {
+        helperError = data.message;
       }
-      if (kind === "complete") {
-        onEvent({ type: "complete", path: parts.slice(2).join(" ") || targetFile, percent: 100 });
-      }
+      if (data.type === "complete") completed = true;
+      onEvent(data);
     }
-  };
+  }
+  if (buffer.startsWith("data:")) {
+    const data = JSON.parse(buffer.slice(5).trim()) as {
+      type: "progress" | "status" | "complete";
+      path?: string;
+      downloaded?: number;
+      total?: number;
+      percent?: number;
+      message?: string;
+    };
+    if (data.type === "status" && data.message && /failed|error/i.test(data.message)) {
+      helperError = data.message;
+    }
+    if (data.type === "complete") completed = true;
+    onEvent(data);
+  }
+  if (helperError) throw new Error(helperError);
 
-  await streamSsh(pod, script, { onStdout: handleChunk });
-  handleChunk("\n");
+  const checkPath = targetPath
+    ? targetPath.replace(/^\/workspace\/ComfyUI\/models\//, "")
+    : targetFile.replace(/^\/workspace\/ComfyUI\/models\//, "");
+  const check = await fetchRunpodHelper(pod, "/api/runpod/helper/files", {
+    method: "POST",
+    body: JSON.stringify({ files: [checkPath] }),
+  });
+  const exists = Array.isArray(check.files) &&
+    check.files.some((file) =>
+      Boolean(file) &&
+      typeof file === "object" &&
+      "path" in file &&
+      "exists" in file &&
+      file.path === checkPath &&
+      file.exists
+    );
+  if (!exists) {
+    throw new Error(
+      completed
+        ? `RunPod download finished but file was not found: ${checkPath}`
+        : `RunPod download did not complete: ${checkPath}`
+    );
+  }
+
   return targetFile;
 }

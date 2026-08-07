@@ -162,6 +162,27 @@ function isKrea2Resource(resource: ImportedCivitaiResource) {
   );
 }
 
+function importedResourceFallbackPath(resource: ImportedCivitaiResource) {
+  const withSafetensorsExtension = (value: string) =>
+    /\.(ckpt|pt|pth|safetensors)$/i.test(value) ? value : `${value}.safetensors`;
+
+  if (resource.type === "embedding") {
+    const source = resource.versionName || resource.name;
+    const lazyToken = source.match(/\b(lazypos|lazyneg|lazyhand)\b/i)?.[1];
+
+    return withSafetensorsExtension(lazyToken ? lazyToken.toLowerCase() : source);
+  }
+
+  return withSafetensorsExtension(resource.versionName || resource.name);
+}
+
+function importedResourceFallbackTokens(resource: ImportedCivitaiResource) {
+  if (resource.type !== "embedding") return resource.name;
+
+  const source = importedResourceFallbackPath(resource);
+  return source.replace(/\.(safetensors|ckpt|pt|pth)$/i, "");
+}
+
 function resourceBucket(
   models: LocalModelsResponse,
   type: ImportedCivitaiResource["type"]
@@ -202,8 +223,7 @@ export function findMissingCivitaiResources(
 
 export function reconcileImportedParams(
   imported: CivitaiImportResult,
-  models: LocalModelsResponse,
-  currentParams: GenerationParams
+  models: LocalModelsResponse
 ) {
   const matched: Partial<GenerationParams> = { ...imported.params };
   const missing: MissingResource[] = [];
@@ -226,6 +246,25 @@ export function reconcileImportedParams(
         ...resource,
         reason: "Local file not found",
       });
+
+      if (resource.type === "checkpoint" && !matchedCheckpoint) {
+        matched.model_name = importedResourceFallbackPath(resource);
+      }
+
+      if (resource.type === "lora") {
+        matchedLoras.push({
+          path: importedResourceFallbackPath(resource),
+          scale: resource.weight ?? 0.8,
+        });
+      }
+
+      if (resource.type === "embedding") {
+        matchedEmbeddings.push({
+          path: importedResourceFallbackPath(resource),
+          tokens: importedResourceFallbackTokens(resource),
+        });
+      }
+
       return;
     }
 
@@ -244,7 +283,7 @@ export function reconcileImportedParams(
     if (resource.type === "embedding") {
       matchedEmbeddings.push({
         path: match.path,
-        tokens: resource.name,
+        tokens: importedResourceFallbackTokens(resource),
       });
     }
 
@@ -279,7 +318,7 @@ export function reconcileImportedParams(
   if (!Object.hasOwn(imported.params, "prompt")) {
     matched.prompt = "";
   }
-  if (importedCheckpoint && !matchedCheckpoint) {
+  if (importedCheckpoint && !matchedCheckpoint && !matched.model_name) {
     matched.model_name = "";
   }
   if ((importedGenerationMetadata || importedVae) && !matched.vae_name) {

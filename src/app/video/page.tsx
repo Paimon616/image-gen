@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { AppSidebar } from "@/components/app-sidebar";
 import { CivitaiMissingResources } from "@/components/civitai-missing-resources";
 import { CopyLinkButton } from "@/components/copy-link-button";
+import { EditorSection } from "@/components/editor-section";
 import { ImageUpload } from "@/components/image-upload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,13 +36,21 @@ import {
 import {
   Film,
   GripVertical,
+  Bot,
+  CheckCircle2,
+  AlertTriangle,
   HelpCircle,
   LinkIcon,
   Loader2,
+  MessageCircle,
   PanelLeftClose,
   PanelLeftOpen,
   Play,
   RefreshCcw,
+  Server,
+  Send,
+  Wrench,
+  RotateCcw,
   Trash2,
   Volume2,
   X,
@@ -109,6 +118,31 @@ interface WorkflowConfigState {
 
 interface VideoConfigState extends WorkflowConfigState {
   audio: WorkflowConfigState;
+}
+
+interface RunpodPodOption {
+  id: string;
+  label: string;
+  podId: string;
+  ssh: string;
+  comfyUrl: string;
+}
+
+interface RunpodConnectionStatus {
+  checked: boolean;
+  comfyReachable: boolean;
+  helperReachable: boolean;
+  comfyError: string;
+  helperError: string;
+}
+
+interface VideoPipelineOption {
+  id: string;
+  label: string;
+  description: string;
+  workflowPath: string;
+  mode: "i2v" | "t2v";
+  experimental?: boolean;
 }
 
 interface GenerationDetail {
@@ -209,6 +243,280 @@ function clearStoredGenerationState() {
 
 function isGif(video: GeneratedVideo) {
   return video.contentType === "image/gif" || video.filename.toLowerCase().endsWith(".gif");
+}
+
+const VIDEO_PARAM_KEYS = new Set(Object.keys(DEFAULT_VIDEO_PARAMS));
+
+function sanitizeVideoParamsPatch(value: unknown): Partial<VideoGenerationParams> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+
+  const patch: Partial<VideoGenerationParams> = {};
+  Object.entries(value).forEach(([key, nextValue]) => {
+    if (VIDEO_PARAM_KEYS.has(key)) {
+      (patch as Record<string, unknown>)[key] = nextValue;
+    }
+  });
+  return patch;
+}
+
+function VideoPaimonPanel({
+  params,
+  language,
+  open,
+  onOpenChange,
+  onApplyParams,
+}: {
+  params: VideoGenerationParams;
+  language: AppLanguage;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onApplyParams: (patch: Partial<VideoGenerationParams>) => void;
+}) {
+  const [messages, setMessages] = useState<
+    { id: string; role: "user" | "assistant"; content: string }[]
+  >([
+    {
+      id: "intro",
+      role: "assistant",
+      content:
+        language === "ko"
+          ? "파이몬이에요. 현재 비디오 입력값을 보고 프롬프트, 모델, 사운드 설정을 다듬어드릴게요."
+          : "Paimon here. I can refine the current video prompt, model, and sound settings.",
+    },
+  ]);
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const resetChat = useCallback(() => {
+    setMessages([
+      {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content:
+          language === "ko"
+            ? "파이몬이에요. 현재 비디오 입력값을 보고 프롬프트, 모델, 사운드 설정을 다듬어드릴게요."
+            : "Paimon here. I can refine the current video prompt, model, and sound settings.",
+      },
+    ]);
+    setDraft("");
+    setError("");
+  }, [language]);
+
+  const askPaimon = useCallback(async () => {
+    const text = draft.trim();
+    if (!text || busy) return;
+
+    const userMessage = {
+      id: crypto.randomUUID(),
+      role: "user" as const,
+      content: text,
+    };
+    const assistantMessage = {
+      id: crypto.randomUUID(),
+      role: "assistant" as const,
+      content: "",
+    };
+    const nextMessages = [...messages, userMessage];
+
+    setMessages([...nextMessages, assistantMessage]);
+    setDraft("");
+    setBusy(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/paimon/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: nextMessages.map(({ role, content }) => ({ role, content })),
+          currentParams: params,
+          attachments: [],
+        }),
+      });
+      const contentType = response.headers.get("content-type") ?? "";
+      if (!response.ok || !response.body || !contentType.includes("text/event-stream")) {
+        const data = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(data?.error || "Paimon request failed.");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split("\n\n");
+        buffer = events.pop() ?? "";
+
+        for (const rawEvent of events) {
+          if (!rawEvent.trim()) continue;
+          const { event, data } = parseSseEvent(rawEvent);
+
+          if (event === "delta") {
+            const delta = String(data?.text ?? "");
+            setMessages((current) =>
+              current.map((message) =>
+                message.id === assistantMessage.id
+                  ? { ...message, content: message.content + delta }
+                  : message
+              )
+            );
+          }
+
+          if (event === "done") {
+            const reply = String(data?.reply ?? "");
+            const patch = sanitizeVideoParamsPatch(data?.paramsPatch);
+            if (Object.keys(patch).length > 0) onApplyParams(patch);
+            setMessages((current) =>
+              current.map((message) =>
+                message.id === assistantMessage.id
+                  ? { ...message, content: reply || message.content || "Done." }
+                  : message
+              )
+            );
+          }
+
+          if (event === "error") {
+            throw new Error(String(data?.error ?? "Paimon failed."));
+          }
+        }
+      }
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : "Paimon failed.";
+      setError(message);
+      setMessages((current) =>
+        current.map((item) =>
+          item.id === assistantMessage.id
+            ? { ...item, content: language === "ko" ? `오류: ${message}` : `Error: ${message}` }
+            : item
+        )
+      );
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, draft, language, messages, onApplyParams, params]);
+
+  return (
+    <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-3">
+      <section
+        className={`flex h-[min(76vh,620px)] w-[min(calc(100vw-2rem),420px)] origin-bottom-right flex-col overflow-hidden rounded-lg border border-border bg-card shadow-2xl transition-[opacity,transform,filter] duration-[180ms] ease-out ${
+          open
+            ? "translate-y-0 scale-100 opacity-100 blur-0"
+            : "pointer-events-none translate-y-3 scale-95 opacity-0 blur-[1px]"
+        } motion-reduce:translate-y-0 motion-reduce:scale-100 motion-reduce:blur-0 motion-reduce:transition-none`}
+      >
+        <header className="flex h-12 items-center justify-between border-b border-border px-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
+              <Bot className="size-4" />
+            </span>
+            <div className="min-w-0">
+              <h3 className="truncate text-sm font-semibold">Paimon 파이몬</h3>
+              <p className="truncate text-[11px] text-muted-foreground">
+                {language === "ko" ? "비디오 생성 정보를 수정합니다" : "Edits video generation settings"}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="ghost"
+              onClick={resetChat}
+              disabled={busy}
+              aria-label="Reset Paimon chat"
+              title={language === "ko" ? "채팅 초기화" : "Reset chat"}
+            >
+              <RotateCcw />
+            </Button>
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+              aria-label="Close Paimon"
+            >
+              <X />
+            </Button>
+          </div>
+        </header>
+        <div className="flex-1 space-y-3 overflow-y-auto p-3">
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`max-w-[85%] rounded-lg px-3 py-2 text-sm leading-5 ${
+                  message.role === "user"
+                    ? "ml-auto bg-primary text-primary-foreground"
+                    : "mr-auto bg-secondary text-secondary-foreground"
+                }`}
+              >
+                {message.content || (language === "ko" ? "작성 중..." : "Writing...")}
+              </div>
+            ))}
+            {busy && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="size-3 animate-spin" />
+                {language === "ko" ? "파이몬이 생각하는 중" : "Paimon is thinking"}
+              </div>
+            )}
+            {error && <p className="text-xs text-destructive">{error}</p>}
+        </div>
+        <form
+          className="border-t border-border p-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void askPaimon();
+          }}
+        >
+          <div className="grid grid-cols-[minmax(0,1fr)_2.25rem] gap-2">
+            <Textarea
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+                  event.preventDefault();
+                  void askPaimon();
+                }
+              }}
+              placeholder={
+                language === "ko"
+                  ? "예: 이 장면을 LTX용 자연스러운 카메라 움직임으로 정리해줘"
+                  : "Example: Rewrite this as a natural LTX camera-motion prompt"
+              }
+              className="max-h-28 min-h-10 resize-none text-sm"
+            />
+            <Button
+              type="submit"
+              size="icon-lg"
+              disabled={!draft.trim() || busy}
+              aria-label="Send to Paimon"
+            >
+              {busy ? <Loader2 className="animate-spin" /> : <Send />}
+            </Button>
+          </div>
+        </form>
+      </section>
+      <Button
+        type="button"
+        size="icon-lg"
+        className={`size-12 rounded-full shadow-xl transition-[transform,background-color,box-shadow] duration-200 ease-out hover:scale-105 ${
+          open ? "rotate-3 shadow-2xl ring-2 ring-primary/25" : "rotate-0"
+        } motion-reduce:transform-none motion-reduce:transition-none`}
+        onClick={() => onOpenChange(!open)}
+        aria-label="Open Paimon"
+        title="Paimon 파이몬"
+      >
+        <MessageCircle
+          className={`size-5 transition-transform duration-200 ${
+            open ? "scale-90" : "scale-100"
+          } motion-reduce:transform-none`}
+        />
+      </Button>
+    </div>
+  );
 }
 
 const VIDEO_EDITOR_MIN_WIDTH = 320;
@@ -431,6 +739,21 @@ export default function VideoPage() {
       message: "Set COMFYUI_AUDIO_WORKFLOW_PATH to enable Sound generation.",
     },
   });
+  const [generationTarget, setGenerationTarget] = useState<"local" | "runpod">("local");
+  const [runpodPods, setRunpodPods] = useState<RunpodPodOption[]>([]);
+  const [selectedRunpodPodId, setSelectedRunpodPodId] = useState("");
+  const [runpodBusy, setRunpodBusy] = useState(false);
+  const [runpodSetupBusy, setRunpodSetupBusy] = useState(false);
+  const [runpodStatus, setRunpodStatus] = useState("");
+  const [runpodConnection, setRunpodConnection] = useState<RunpodConnectionStatus>({
+    checked: false,
+    comfyReachable: false,
+    helperReachable: false,
+    comfyError: "",
+    helperError: "",
+  });
+  const [videoPipelines, setVideoPipelines] = useState<VideoPipelineOption[]>([]);
+  const [paimonOpen, setPaimonOpen] = useState(false);
   const activePromptIdRef = useRef("");
   const generationAbortControllerRef = useRef<AbortController | null>(null);
 
@@ -475,7 +798,25 @@ export default function VideoPage() {
   const isGenerating = status.state === "generating";
   const videoWorkflowReady =
     videoConfig.configured && videoConfig.exists && videoConfig.ready;
-  const videoRequiresSourceImage = params.video_model !== "ltx-10eros";
+  const selectedRunpodPod = useMemo(
+    () => runpodPods.find((pod) => pod.id === selectedRunpodPodId),
+    [runpodPods, selectedRunpodPodId]
+  );
+  const selectedVideoPipeline = useMemo(
+    () =>
+      videoPipelines.find((pipeline) => pipeline.id === params.video_pipeline) ??
+      videoPipelines.find((pipeline) => pipeline.id === params.video_model),
+    [params.video_model, params.video_pipeline, videoPipelines]
+  );
+  const runpodTargetReady =
+    generationTarget !== "runpod" || Boolean(selectedRunpodPod?.comfyUrl);
+  const videoWorkflowReadyForTarget =
+    generationTarget === "runpod"
+      ? videoConfig.configured && videoConfig.exists
+      : videoWorkflowReady;
+  const videoRequiresSourceImage =
+    selectedVideoPipeline?.mode === "i2v" ||
+    (!selectedVideoPipeline && params.video_model !== "ltx-10eros");
   const videoIncludesAudio = Boolean(videoConfig.includesAudio);
   const soundWorkflowReady =
     videoConfig.audio.configured && videoConfig.audio.exists && videoConfig.audio.ready;
@@ -484,7 +825,8 @@ export default function VideoPage() {
     (!videoRequiresSourceImage || Boolean(params.source_image)) &&
     (!params.enable_sound || soundWorkflowReady) &&
     !isGenerating &&
-    videoWorkflowReady;
+    videoWorkflowReadyForTarget &&
+    runpodTargetReady;
   const generateButtonProgress = isGenerating
     ? Math.max(buttonProgress, status.progress)
     : status.state === "completed"
@@ -494,6 +836,111 @@ export default function VideoPage() {
   const updateParams = useCallback((update: Partial<VideoGenerationParams>) => {
     setParams((current) => ({ ...current, ...update }));
   }, []);
+
+  const resetRunpodConnection = useCallback(() => {
+    setRunpodStatus("");
+    setRunpodConnection({
+      checked: false,
+      comfyReachable: false,
+      helperReachable: false,
+      comfyError: "",
+      helperError: "",
+    });
+  }, []);
+
+  const checkRunpodConnection = useCallback(async () => {
+    if (!selectedRunpodPodId || runpodBusy) return;
+
+    setRunpodBusy(true);
+    setRunpodStatus("");
+    try {
+      const response = await fetch(
+        `/api/runpod/pods/${selectedRunpodPodId}/status?ensure=1`,
+        { cache: "no-store" }
+      );
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "RunPod status failed.");
+      }
+
+      setRunpodConnection({
+        checked: true,
+        comfyReachable: Boolean(data.comfyReachable),
+        helperReachable: Boolean(data.helperReachable),
+        comfyError: String(data.comfyError || ""),
+        helperError: String(data.helperError || ""),
+      });
+      setRunpodStatus(
+        [
+          data.startRequested
+            ? language === "ko"
+              ? "RunPod 시작 요청됨"
+              : "RunPod start requested"
+            : "",
+          data.comfyReachable
+            ? "ComfyUI OK"
+            : language === "ko"
+              ? `ComfyUI 미연결${data.comfyError ? `: ${data.comfyError}` : ""}`
+              : `ComfyUI unreachable${data.comfyError ? `: ${data.comfyError}` : ""}`,
+          data.helperReachable
+            ? "Helper OK"
+            : language === "ko"
+              ? "Helper 미연결"
+              : "Helper unreachable",
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to check RunPod.";
+      setRunpodConnection({
+        checked: true,
+        comfyReachable: false,
+        helperReachable: false,
+        comfyError: message,
+        helperError: "",
+      });
+      setRunpodStatus(message);
+    } finally {
+      setRunpodBusy(false);
+    }
+  }, [language, runpodBusy, selectedRunpodPodId]);
+
+  const setupRunpodHelper = useCallback(async () => {
+    if (!selectedRunpodPodId || runpodSetupBusy || isGenerating) return;
+
+    setRunpodSetupBusy(true);
+    setRunpodStatus(language === "ko" ? "Helper 연결을 준비하는 중..." : "Setting up helper...");
+    try {
+      const response = await fetch(`/api/runpod/pods/${selectedRunpodPodId}/setup`, {
+        method: "POST",
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "RunPod helper setup failed.");
+      }
+      setRunpodStatus(
+        language === "ko"
+          ? "Helper 시작 요청을 보냈습니다. 잠시 후 연결 확인을 다시 실행합니다."
+          : "Helper start requested. Checking connection shortly."
+      );
+      window.setTimeout(() => {
+        void checkRunpodConnection();
+      }, 1500);
+    } catch (error) {
+      setRunpodStatus(
+        error instanceof Error ? error.message : "RunPod helper setup failed."
+      );
+    } finally {
+      setRunpodSetupBusy(false);
+    }
+  }, [
+    checkRunpodConnection,
+    isGenerating,
+    language,
+    runpodSetupBusy,
+    selectedRunpodPodId,
+  ]);
 
   const appendGenerationDetail = useCallback(
     (detail: Omit<GenerationDetail, "id">) => {
@@ -593,6 +1040,39 @@ export default function VideoPage() {
   }, [refreshVideos]);
 
   useEffect(() => {
+    fetch("/api/settings", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        const pods = Array.isArray(data.runpodPods)
+          ? (data.runpodPods as RunpodPodOption[])
+          : [];
+        setRunpodPods(pods);
+        setSelectedRunpodPodId((current) => current || pods[0]?.id || "");
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/video/pipelines", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        const pipelines = Array.isArray(data.pipelines)
+          ? (data.pipelines as VideoPipelineOption[])
+          : [];
+        setVideoPipelines(pipelines);
+        setParams((current) =>
+          current.video_pipeline
+            ? current
+            : {
+                ...current,
+                video_pipeline: pipelines[0]?.id || current.video_model,
+              }
+        );
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     const timeout = window.setTimeout(() => {
       const stored = readStoredGenerationState();
       if (!stored) return;
@@ -686,11 +1166,19 @@ export default function VideoPage() {
       });
       return;
     }
-    if (!videoWorkflowReady) {
+    if (!videoWorkflowReadyForTarget) {
       setStatus({
         state: "error",
         progress: 0,
         message: videoConfig.message || "Video workflow is not configured.",
+      });
+      return;
+    }
+    if (generationTarget === "runpod" && !selectedRunpodPod?.comfyUrl) {
+      setStatus({
+        state: "error",
+        progress: 0,
+        message: "Select a RunPod pod with a ComfyUI URL before generating video.",
       });
       return;
     }
@@ -719,7 +1207,11 @@ export default function VideoPage() {
       const res = await fetch("/api/video/generate/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(params),
+        body: JSON.stringify({
+          ...params,
+          generationTarget,
+          runpodPodId: generationTarget === "runpod" ? selectedRunpodPodId : undefined,
+        }),
         signal: abortController.signal,
       });
 
@@ -839,12 +1331,15 @@ export default function VideoPage() {
     }
   }, [
     appendGenerationDetail,
+    generationTarget,
     params,
+    selectedRunpodPod?.comfyUrl,
+    selectedRunpodPodId,
     soundWorkflowReady,
     videoConfig.audio.message,
     videoConfig.message,
     videoRequiresSourceImage,
-    videoWorkflowReady,
+    videoWorkflowReadyForTarget,
   ]);
 
   const cancelGeneration = useCallback(() => {
@@ -870,6 +1365,7 @@ export default function VideoPage() {
   }, [appendGenerationDetail]);
 
   return (
+    <>
     <div ref={layoutRef} className="flex h-screen bg-background">
       <AppSidebar />
 
@@ -878,14 +1374,169 @@ export default function VideoPage() {
           className="flex shrink-0 flex-col overflow-hidden"
           style={{ width: editorWidth }}
         >
-        <div className="border-b border-border px-4 py-3">
-          <h1 className="text-lg font-semibold">Video Generation</h1>
-          <p className="text-xs text-muted-foreground">
-            ComfyUI video workflow
-          </p>
+        <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
+          <div className="min-w-0">
+            <h1 className="text-lg font-semibold">Video Generation</h1>
+            <p className="text-xs text-muted-foreground">
+              {generationTarget === "runpod"
+                ? selectedRunpodPod?.label || selectedRunpodPod?.podId || "RunPod ComfyUI"
+                : "Local ComfyUI video workflow"}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <div className="grid grid-cols-2 gap-1 rounded-md border border-border bg-card/80 p-1">
+              {[
+                { value: "local" as const, label: language === "ko" ? "로컬" : "Local" },
+                { value: "runpod" as const, label: "RunPod" },
+              ].map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  onClick={() => {
+                    setGenerationTarget(item.value);
+                    resetRunpodConnection();
+                  }}
+                  disabled={isGenerating}
+                  className={`h-7 rounded px-2 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                    generationTarget === item.value
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            {generationTarget === "runpod" && (
+              <select
+                value={selectedRunpodPodId}
+                onChange={(event) => {
+                  setSelectedRunpodPodId(event.target.value);
+                  resetRunpodConnection();
+                }}
+                disabled={isGenerating}
+                className="h-9 max-w-44 rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60"
+                aria-label="RunPod target"
+              >
+                {runpodPods.length === 0 ? (
+                  <option value="">{language === "ko" ? "Pod 없음" : "No pod"}</option>
+                ) : (
+                  runpodPods.map((pod) => (
+                    <option key={pod.id} value={pod.id}>
+                      {pod.label || pod.podId || pod.id}
+                    </option>
+                  ))
+                )}
+              </select>
+            )}
+          </div>
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto p-4">
+          {generationTarget === "runpod" && (
+            <section className="space-y-3 rounded-md border border-border bg-card/85 p-3 shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+                    <Server className="h-4 w-4 shrink-0 text-primary" />
+                    <span className="truncate">RunPod</span>
+                  </div>
+                  <p className="mt-1 truncate text-xs text-muted-foreground">
+                    {selectedRunpodPod
+                      ? `${selectedRunpodPod.label || selectedRunpodPod.podId || selectedRunpodPod.id} · ${selectedRunpodPod.comfyUrl || "ComfyUI URL 없음"}`
+                      : language === "ko"
+                        ? "설정에서 RunPod pod를 추가하세요."
+                        : "Add a RunPod pod in Settings."}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                <span
+                  className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold ${
+                    runpodConnection.checked && runpodConnection.comfyReachable
+                      ? "bg-green-500/15 text-green-600"
+                      : runpodConnection.checked
+                        ? "bg-destructive/15 text-destructive"
+                        : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {runpodConnection.checked && runpodConnection.comfyReachable ? (
+                    <CheckCircle2 className="h-3 w-3" />
+                  ) : (
+                    <AlertTriangle className="h-3 w-3" />
+                  )}
+                  {runpodConnection.checked && runpodConnection.comfyReachable
+                    ? "ComfyUI OK"
+                    : runpodConnection.checked
+                      ? "ComfyUI ?"
+                      : language === "ko"
+                        ? "ComfyUI 미확인"
+                        : "ComfyUI unchecked"}
+                </span>
+                <span
+                  className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold ${
+                    runpodConnection.checked && runpodConnection.helperReachable
+                      ? "bg-green-500/15 text-green-600"
+                      : runpodConnection.checked
+                        ? "bg-yellow-500/15 text-yellow-600"
+                        : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {runpodConnection.checked && runpodConnection.helperReachable ? (
+                    <CheckCircle2 className="h-3 w-3" />
+                  ) : (
+                    <AlertTriangle className="h-3 w-3" />
+                  )}
+                  {runpodConnection.checked && runpodConnection.helperReachable
+                    ? "Helper OK"
+                    : runpodConnection.checked
+                      ? "Helper ?"
+                      : language === "ko"
+                        ? "Helper 미확인"
+                        : "Helper unchecked"}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5"
+                  onClick={() => void setupRunpodHelper()}
+                  disabled={!selectedRunpodPodId || runpodSetupBusy || isGenerating}
+                >
+                  {runpodSetupBusy ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Wrench className="h-3.5 w-3.5" />
+                  )}
+                  {language === "ko" ? "Helper 연결" : "Setup helper"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5"
+                  onClick={() => void checkRunpodConnection()}
+                  disabled={!selectedRunpodPodId || runpodBusy || isGenerating}
+                >
+                  {runpodBusy ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <RefreshCcw className="h-3.5 w-3.5" />
+                  )}
+                  {language === "ko" ? "연결 확인" : "Check"}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {runpodStatus ||
+                  (language === "ko"
+                    ? "선택한 pod의 ComfyUI와 Helper 연결 상태를 확인할 수 있습니다."
+                    : "Check whether the selected pod can reach ComfyUI and the helper.")}
+              </p>
+            </section>
+          )}
+
           <section className="rounded-md border border-border bg-card/85 p-3 shadow-sm">
             <div className="mb-2 flex items-center justify-between gap-2">
               <div>
@@ -964,26 +1615,65 @@ export default function VideoPage() {
             />
           </section>
 
-          <section className="space-y-3 rounded-md border border-border bg-card/85 p-3 shadow-sm">
-            <div>
-              <Label className="mb-1.5 block text-xs text-muted-foreground">
-                {language === "ko" ? "영상 모델" : "Video Model"}
-              </Label>
-              <select
-                value={params.video_model}
-                onChange={(event) =>
-                  updateParams({
-                    video_model: event.target.value as VideoGenerationParams["video_model"],
-                  })
-                }
-                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="wan-smoothmix">SmoothMix Wan 2.2 I2V</option>
-                <option value="wan-base">Wan 2.2 Base I2V</option>
-                <option value="ltx-10eros">LTX 2.3 10Eros T2V</option>
-              </select>
-              <p className="mt-1.5 text-xs text-muted-foreground">
-                {params.video_model === "ltx-10eros"
+          <EditorSection
+            title={language === "ko" ? "Pipeline" : "Pipeline"}
+            description={
+              language === "ko"
+                ? "RunPod Video 프로젝트의 ComfyUI workflow pipeline을 선택합니다."
+                : "Choose the ComfyUI workflow pipeline used by the RunPod video project."
+            }
+          >
+            <div className="grid gap-3">
+              <div>
+                <Label className="mb-1.5 block text-xs text-muted-foreground">
+                  {language === "ko" ? "Pipeline" : "Pipeline"}
+                </Label>
+                <select
+                  value={params.video_pipeline || params.video_model}
+                  onChange={(event) => {
+                    const pipeline = videoPipelines.find(
+                      (item) => item.id === event.target.value
+                    );
+                    const nextModel: VideoGenerationParams["video_model"] =
+                      event.target.value.includes("wan")
+                        ? event.target.value.includes("base")
+                          ? "wan-base"
+                          : "wan-smoothmix"
+                        : "ltx-10eros";
+                    updateParams({
+                      video_pipeline: event.target.value,
+                      video_model: nextModel,
+                    });
+                    if (pipeline?.mode === "t2v" && runpodPods.length > 0) {
+                      setGenerationTarget("runpod");
+                      setSelectedRunpodPodId((current) => current || runpodPods[0]?.id || "");
+                      resetRunpodConnection();
+                    }
+                  }}
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {videoPipelines.length === 0 ? (
+                    <option value={params.video_pipeline || params.video_model}>
+                      {language === "ko" ? "Pipeline 로딩 중" : "Loading pipelines"}
+                    </option>
+                  ) : (
+                    videoPipelines.map((pipeline) => (
+                      <option key={pipeline.id} value={pipeline.id}>
+                        {pipeline.label}
+                      </option>
+                    ))
+                  )}
+                </select>
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  {selectedVideoPipeline
+                    ? `${selectedVideoPipeline.mode.toUpperCase()} · ${selectedVideoPipeline.workflowPath}`
+                    : language === "ko"
+                      ? "로컬 workflows 폴더의 API workflow를 사용합니다."
+                      : "Uses an API workflow from the local workflows folder."}
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {selectedVideoPipeline?.mode === "t2v"
                   ? language === "ko"
                     ? "텍스트 기반 영상 모델이며 시작 이미지가 필요하지 않습니다."
                     : "Text-to-video preset; no start image is required."
@@ -1054,9 +1744,16 @@ export default function VideoPage() {
                 </div>
               </div>
             )}
-          </section>
+          </EditorSection>
 
-          <div className="grid gap-3">
+          <EditorSection
+            title="Prompt"
+            description={
+              language === "ko"
+                ? "장면, 움직임, 카메라, 마지막 프레임을 한 흐름으로 작성하세요."
+                : "Describe the shot, motion, camera, and ending frame as one flow."
+            }
+          >
             <div>
               <Label className="mb-2 block text-xs text-muted-foreground">
                 Prompt
@@ -1082,8 +1779,16 @@ export default function VideoPage() {
                 className="h-28 resize-none text-sm"
               />
             </div>
+          </EditorSection>
 
-            <section className="rounded-md border border-border bg-card/80 p-3 shadow-sm">
+          <EditorSection
+            title="Sound"
+            description={
+              language === "ko"
+                ? "별도 오디오 workflow가 준비된 경우 영상에 맞춘 사운드를 생성합니다."
+                : "Generate synchronized sound when a separate audio workflow is configured."
+            }
+          >
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <Label className="flex items-center gap-2 text-xs font-medium text-foreground">
@@ -1171,12 +1876,19 @@ export default function VideoPage() {
                   </div>
                 </div>
               )}
-            </section>
-          </div>
+          </EditorSection>
 
           <Separator />
 
-          <div className="grid gap-3 xl:grid-cols-2">
+          <EditorSection
+            title={language === "ko" ? "참조와 캔버스" : "Reference & Canvas"}
+            description={
+              language === "ko"
+                ? "I2V pipeline은 시작 이미지가 필요합니다."
+                : "I2V pipelines require a start image."
+            }
+          >
+            <div className="grid gap-3 xl:grid-cols-2">
             <div>
               <Label className="mb-2 block text-xs text-muted-foreground">
                 Reference Image
@@ -1271,11 +1983,16 @@ export default function VideoPage() {
 
               <p className="text-xs text-muted-foreground">{durationLabel}</p>
             </div>
-          </div>
+            </div>
+          </EditorSection>
 
           <Separator />
 
-          <div className="grid gap-3 xl:grid-cols-3">
+          <EditorSection
+            title={language === "ko" ? "생성" : "Generation"}
+            description={language === "ko" ? "Steps, CFG, seed를 설정합니다." : "Set steps, CFG, and seed."}
+          >
+            <div className="grid gap-3 xl:grid-cols-3">
             <div>
               <Label className="mb-1.5 block text-xs text-muted-foreground">
                 Steps
@@ -1333,11 +2050,20 @@ export default function VideoPage() {
                 }
               />
             </div>
-          </div>
+            </div>
+          </EditorSection>
 
           <Separator />
 
-          <section className="space-y-3">
+          <EditorSection
+            title="VAE"
+            description={
+              language === "ko"
+                ? "VAE decode tiling과 temporal chunk를 조정합니다."
+                : "Adjust VAE decode tiling and temporal chunks."
+            }
+            defaultOpen={false}
+          >
             <div>
               <div className="text-sm font-medium text-foreground">
                 VAE Decode Tiling
@@ -1400,7 +2126,7 @@ export default function VideoPage() {
                 />
               </div>
             </div>
-          </section>
+          </EditorSection>
         </div>
 
         <div className="border-t border-border p-4">
@@ -1451,12 +2177,17 @@ export default function VideoPage() {
           {status.state === "error" && (
             <p className="mb-2 text-xs text-destructive">{status.message}</p>
           )}
-          {!videoWorkflowReady && status.state !== "error" && (
+          {!videoWorkflowReadyForTarget && status.state !== "error" && (
             <p className="mb-2 text-xs text-yellow-500">
               {videoConfig.message || "Video workflow is not configured."}
             </p>
           )}
-          {videoWorkflowReady &&
+          {generationTarget === "runpod" && !runpodTargetReady && status.state !== "error" && (
+            <p className="mb-2 text-xs text-yellow-500">
+              Select a RunPod pod with a ComfyUI URL before generating video.
+            </p>
+          )}
+          {videoWorkflowReadyForTarget &&
             videoRequiresSourceImage &&
             !params.source_image &&
             status.state !== "error" && (
@@ -1617,5 +2348,13 @@ export default function VideoPage() {
         </div>
       </main>
     </div>
+    <VideoPaimonPanel
+      params={params}
+      language={language}
+      open={paimonOpen}
+      onOpenChange={setPaimonOpen}
+      onApplyParams={updateParams}
+    />
+    </>
   );
 }

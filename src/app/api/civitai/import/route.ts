@@ -460,6 +460,19 @@ function normalizeResourceName(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 
+function embeddingResourceName(resource: ImportedCivitaiResource) {
+  const versionName = stringValue(resource.versionName);
+  const source = versionName || resource.name;
+  const lazyToken = source.match(/\b(lazypos|lazyneg|lazyhand)\b/i)?.[1];
+
+  return lazyToken ? lazyToken.toLowerCase() : source;
+}
+
+function embeddingResourcePath(resource: ImportedCivitaiResource) {
+  const name = embeddingResourceName(resource);
+  return /\.(ckpt|pt|pth|safetensors)$/i.test(name) ? name : `${name}.safetensors`;
+}
+
 function resourceNamesMatch(resource: ImportedCivitaiResource, pageResource: CivitaiPageResource) {
   const resourceName = normalizeResourceName(resource.name);
   if (!resourceName) return false;
@@ -810,8 +823,8 @@ export async function POST(req: NextRequest) {
   const embeddings = resources
     .filter((resource) => resource.type === "embedding")
     .map((resource) => ({
-      path: resource.name,
-      tokens: resource.name,
+      path: embeddingResourcePath(resource),
+      tokens: embeddingResourceName(resource),
     }));
   const vae = resources.find((resource) => resource.type === "vae");
   const upscaler = resources.find((resource) => resource.type === "upscaler");

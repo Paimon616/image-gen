@@ -84,6 +84,18 @@ echo "  RunPod 시작: ComfyUI + Image Gen"
 echo "========================================="
 echo ""
 
+# --- Node.js 확인 / 설치 ---
+if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
+  echo "Node.js/npm이 없습니다. 설치합니다..."
+  if command -v apt-get >/dev/null 2>&1; then
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+    apt-get install -y nodejs
+  else
+    echo "ERROR: Node.js/npm을 찾을 수 없고 자동 설치를 지원하지 않는 환경입니다." >&2
+    exit 1
+  fi
+fi
+
 # --- ComfyUI 확인 및 시작 ---
 if port_listening "$COMFYUI_PORT"; then
   echo "✓ ComfyUI가 이미 실행 중입니다 (port $COMFYUI_PORT)."
@@ -122,13 +134,15 @@ fi
 
 echo ""
 
-# --- image-gen 빌드 확인 ---
+# --- image-gen 의존성 / 빌드 확인 ---
+if [ ! -d "$ROOT_DIR/node_modules" ]; then
+  echo "node_modules가 없습니다. npm install을 실행합니다..."
+  (cd "$ROOT_DIR" && npm install)
+fi
+
 if [ ! -d "$ROOT_DIR/.next" ]; then
   echo "Next.js 빌드가 없습니다. 빌드를 실행합니다..."
   (cd "$ROOT_DIR" && npm run build)
-elif [ ! -d "$ROOT_DIR/node_modules" ]; then
-  echo "node_modules가 없습니다. npm install을 실행합니다..."
-  (cd "$ROOT_DIR" && npm install)
 fi
 
 # --- image-gen 시작 ---

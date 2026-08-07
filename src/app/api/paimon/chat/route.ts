@@ -10,16 +10,22 @@ export const dynamic = "force-dynamic";
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const PAIMON_MODEL = "deepseek/deepseek-v4-pro";
 const PAIMON_VISION_MODEL = "qwen/qwen3-vl-8b-instruct";
+const PAIMON_VISION_FALLBACK_MODELS = [
+  PAIMON_VISION_MODEL,
+  "google/gemini-2.5-flash",
+  "qwen/qwen3-vl-32b-instruct",
+];
 const PAIMON_SYSTEM_PROMPT = [
   "You are Paimon, an AI assistant embedded in a local image and video generation UI.",
   "Adult-oriented aesthetics such as sensual cinematic mood, romance, swimwear, lingerie, artistic nudity, boudoir, and pin-up framing may be handled when allowed by the user's local workflow.",
   "Stay focused on supported generation outputs. Do not discuss policy or boundaries proactively; when a request cannot be fulfilled, respond briefly and redirect to the closest usable visual alternative.",
   "Read the current GenerationParams and attachments, then directly propose edits.",
   "When attachmentVisualAnalysis is present, treat it as the observed visual content of the corresponding attachments and use it to answer image-reference requests.",
+  "If attachmentVisualAnalysis says visual pixels are unavailable, do not stop or apologize as the whole answer. Use attachment metadata, currentParams, modelContext, and the user's text to produce the best possible paramsPatch. Only mention the missing visual analysis briefly if the requested edit depends on unseen visual details.",
   "Return only JSON with keys: reply:string, paramsPatch:object, shouldGenerate:boolean, attachmentNotice:string.",
   "paramsPatch must contain only fields from the provided currentParams and should be a partial patch.",
   "If the user asks to create or alter a subject, rewrite prompt and negative_prompt as needed.",
-  "If currentParams contains video fields such as video_model, num_frames, fps, duration_seconds, source_image, enable_sound, sound_prompt, or negative_sound_prompt, you may patch those fields too. If those fields are absent, answer with copyable video prompt text in reply instead of inventing unavailable paramsPatch keys.",
+  "If currentParams contains video fields such as video_model, video_pipeline, num_frames, fps, duration_seconds, source_image, enable_sound, sound_prompt, or negative_sound_prompt, you may patch those fields too. If those fields are absent, answer with copyable video prompt text in reply instead of inventing unavailable paramsPatch keys.",
   "If they ask for image-to-image, pose, reference image, model, LoRA, upscaling, ADetailer, or denoise changes, patch the relevant fields.",
   "If they ask for text-to-video or image-to-video prompts for Wan, LTX, Krea/Klea, or similar video models, help with video prompt structure, motion, camera, continuity, negative prompts, and sound prompts.",
   "Do not invent local model file paths unless the user names them or current params already include them.",
@@ -127,6 +133,7 @@ interface PaimonAttachment {
   kind: "clipboard_image" | "gallery_image";
   referenceId?: string;
   url?: string;
+  dataUrl?: string;
   metadata?: Partial<GeneratedImage>;
 }
 
@@ -156,7 +163,23 @@ interface OpenRouterImagePart { type: "image_url"; image_url: { url: string }; }
 type OpenRouterContentPart = OpenRouterTextPart | OpenRouterImagePart;
 const LOCAL_IMAGE_PATHS = ["/api/uploads/", "/api/images/"];
 
-async function imageInputUrl(attachmentUrl: string, requestUrl: URL) {
+function validateImageDataUrl(dataUrl: string) {
+  const match = dataUrl.match(/^data:(image\/(?:png|jpeg|jpg|webp));base64,([A-Za-z0-9+/=]+)$/);
+  if (!match) throw new Error("Attached image data URL is invalid.");
+  const mimeType = match[1] === "image/jpg" ? "image/jpeg" : match[1];
+  const base64 = match[2];
+  const byteLength = Buffer.byteLength(base64, "base64");
+  if (byteLength > 15 * 1024 * 1024) throw new Error("Attached image is larger than 15 MB.");
+  return `data:${mimeType};base64,${base64}`;
+}
+
+async function imageInputUrl(attachment: PaimonAttachment, requestUrl: URL) {
+  if (attachment.dataUrl) {
+    return validateImageDataUrl(attachment.dataUrl);
+  }
+
+  const attachmentUrl = attachment.url;
+  if (!attachmentUrl) return "";
   const parsed = new URL(attachmentUrl, requestUrl.origin);
   const isLocalImage = parsed.origin === requestUrl.origin &&
     LOCAL_IMAGE_PATHS.some((prefix) => parsed.pathname.startsWith(prefix));
@@ -177,10 +200,11 @@ async function createMultimodalContent(body: PaimonRequest, requestUrl: URL, mes
     currentParams: body.currentParams, attachments, modelContext: body.modelContext ?? null, conversation: messages,
   }) }];
   for (const [index, attachment] of attachments.entries()) {
-    if (!attachment.url) continue;
+    if (!attachment.url && !attachment.dataUrl) continue;
     const referenceId = attachment.referenceId || `참조${index + 1}`;
     try {
-      const url = await imageInputUrl(attachment.url, requestUrl);
+      const url = await imageInputUrl(attachment, requestUrl);
+      if (!url) continue;
       content.push({ type: "text", text: `${referenceId}의 실제 이미지:` }, { type: "image_url", image_url: { url } });
     } catch (error) {
       const reason = error instanceof Error ? error.message : "unknown error";
@@ -197,6 +221,44 @@ async function analyzeAttachments(
   messages: PaimonMessage[]
 ) {
   if (!(body.attachments ?? []).some((attachment) => attachment.url)) return "";
+  const fallbackAnalysis = (reason: string) => {
+    const attachments = body.attachments ?? [];
+    const summaries = attachments.map((attachment, index) => {
+      const referenceId = attachment.referenceId || `참조${index + 1}`;
+      const params = attachment.metadata?.params;
+      const metadataSummary = params
+        ? {
+            model_name: params.model_name,
+            loras: params.loras,
+            embeddings: params.embeddings,
+            prompt: params.prompt,
+            negative_prompt: params.negative_prompt,
+            sampler_name: params.sampler_name,
+            scheduler: params.scheduler,
+            num_inference_steps: params.num_inference_steps,
+            guidance_scale: params.guidance_scale,
+            seed: params.seed,
+            width: params.width,
+            height: params.height,
+          }
+        : null;
+
+      return {
+        referenceId,
+        kind: attachment.kind,
+        hasImageUrl: Boolean(attachment.url),
+        metadata: metadataSummary,
+      };
+    });
+
+    return [
+      `Visual pixels unavailable for automatic analysis: ${reason}`,
+      "This is not a blocking error. Continue the assistant task using attachment metadata, currentParams, modelContext, and the user's explicit text.",
+      "If metadata.params exists for a reference, it is authoritative for model_name, loras, embeddings, prompt, negative_prompt, sampler, scheduler, seed, steps, CFG, and dimensions.",
+      "If metadata is absent, still update prompt/negative_prompt from the user's text and preserve existing model settings unless the user asks to change them.",
+      `Attachment fallback metadata: ${JSON.stringify(summaries)}`,
+    ].join("\n");
+  };
 
   const content = await createMultimodalContent(body, requestUrl, messages);
   content[0] = {
@@ -211,33 +273,48 @@ async function analyzeAttachments(
     ].join("\n"),
   };
 
-  const response = await fetch(OPENROUTER_URL, {
-    method: "POST",
-    signal: AbortSignal.timeout(45_000),
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-      "HTTP-Referer": "http://localhost:3000",
-      "X-Title": "Image Gen Paimon Vision",
-    },
-    body: JSON.stringify({
-      model: PAIMON_VISION_MODEL,
-      temperature: 0.1,
-      max_tokens: 700,
-      messages: [{ role: "user", content }],
-    }),
-  });
+  const errors: string[] = [];
+  for (const model of PAIMON_VISION_FALLBACK_MODELS) {
+    const response = await fetch(OPENROUTER_URL, {
+      method: "POST",
+      signal: AbortSignal.timeout(45_000),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+        "HTTP-Referer": "http://localhost:3000",
+        "X-Title": "Image Gen Paimon Vision",
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.1,
+        max_tokens: 900,
+        messages: [{ role: "user", content }],
+      }),
+    }).catch((error) => {
+      return {
+        ok: false,
+        json: async () => ({
+          error: {
+            message: error instanceof Error ? error.message : "Paimon vision request failed.",
+          },
+        }),
+      } as Response;
+    });
 
-  const result = await response.json().catch(() => null);
-  if (!response.ok) {
-    throw new Error(result?.error?.message ?? "Paimon vision analysis failed.");
+    const result = await response.json().catch(() => null);
+    if (!response.ok) {
+      errors.push(`${model}: ${result?.error?.message ?? "request failed"}`);
+      continue;
+    }
+
+    const analysis = result?.choices?.[0]?.message?.content;
+    if (typeof analysis === "string" && analysis.trim()) {
+      return analysis.trim();
+    }
+    errors.push(`${model}: empty analysis`);
   }
 
-  const analysis = result?.choices?.[0]?.message?.content;
-  if (typeof analysis !== "string" || !analysis.trim()) {
-    throw new Error("Paimon vision model returned an empty analysis.");
-  }
-  return analysis.trim();
+  return fallbackAnalysis(errors.join("; ") || "Paimon vision analysis failed.");
 }
 
 function parseJsonObject(text: string) {

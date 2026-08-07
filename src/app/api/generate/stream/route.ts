@@ -20,7 +20,11 @@ import { buildGenerationResources } from "@/lib/generation-resource-links";
 import { generateWithA1111, interruptA1111 } from "@/lib/a1111";
 import { toggleImageWorkspace, workspaceExists } from "@/lib/workspaces";
 import { getRunpodPod } from "@/lib/settings";
-import { checkRunpodGenerationFiles } from "@/lib/runpod";
+import {
+  checkRunpodGenerationFiles,
+  ensureRunpodComfyCatalogReady,
+} from "@/lib/runpod";
+import type { ImportedCivitaiResource } from "@/lib/types";
 
 interface ComfyWsMessage {
   type?: string;
@@ -144,12 +148,14 @@ export async function POST(req: NextRequest) {
     workspaceId: rawWorkspaceId,
     generationTarget,
     runpodPodId,
+    resources,
     ...rawBody
   } = (await req.json()) as GenerationParams & {
     civitaiOrigin?: CivitaiOrigin;
     workspaceId?: string;
     generationTarget?: "local" | "runpod";
     runpodPodId?: string;
+    resources?: ImportedCivitaiResource[];
   };
   const body: GenerationParams = {
     ...rawBody,
@@ -185,7 +191,11 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    const missing = await checkRunpodGenerationFiles(runpodPod, body);
+    const missing = await checkRunpodGenerationFiles(
+      runpodPod,
+      body,
+      Array.isArray(resources) ? resources : []
+    );
     if (missing.length > 0) {
       return Response.json(
         {
@@ -195,6 +205,7 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+    await ensureRunpodComfyCatalogReady(runpodPod, body);
   }
   // Only honor a workspace target that still exists, so a stale id from the
   // client can't create dangling assignments.
