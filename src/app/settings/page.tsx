@@ -30,6 +30,8 @@ export default function SettingsPage() {
   const ko = language === "ko";
   const [civitaiApiKey, setCivitaiApiKey] = useState("");
   const [runpodApiKey, setRunpodApiKey] = useState("");
+  const [civitaiApiKeyConfigured, setCivitaiApiKeyConfigured] = useState(false);
+  const [runpodApiKeyConfigured, setRunpodApiKeyConfigured] = useState(false);
   const [runpodPods, setRunpodPods] = useState<RunpodPodForm[]>([]);
   const [status, setStatus] = useState("");
   const [saving, setSaving] = useState(false);
@@ -38,6 +40,8 @@ export default function SettingsPage() {
     fetch("/api/settings", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
+        setCivitaiApiKeyConfigured(Boolean(data.civitaiApiKeyConfigured));
+        setRunpodApiKeyConfigured(Boolean(data.runpodApiKeyConfigured));
         setRunpodPods(Array.isArray(data.runpodPods) ? data.runpodPods : []);
       })
       .catch(() => setStatus(ko ? "설정을 불러오지 못했습니다." : "Failed to load settings."));
@@ -53,6 +57,10 @@ export default function SettingsPage() {
         body: JSON.stringify({ civitaiApiKey, runpodApiKey, runpodPods }),
       });
       if (!response.ok) throw new Error("Save failed");
+      const data = await response.json();
+      setCivitaiApiKeyConfigured(Boolean(data.civitaiApiKeyConfigured));
+      setRunpodApiKeyConfigured(Boolean(data.runpodApiKeyConfigured));
+      setRunpodPods(Array.isArray(data.runpodPods) ? data.runpodPods : runpodPods);
       setCivitaiApiKey("");
       setRunpodApiKey("");
       setStatus(ko ? "저장했습니다." : "Saved.");
@@ -79,11 +87,24 @@ export default function SettingsPage() {
         <div className="max-w-3xl space-y-8 p-6">
           <section className="space-y-3">
             <div>
-              <h2 className="text-sm font-semibold">Civitai</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-semibold">Civitai</h2>
+                <span
+                  className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${
+                    civitaiApiKeyConfigured
+                      ? "bg-green-500/15 text-green-600"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {civitaiApiKeyConfigured
+                    ? ko ? "저장됨" : "Saved"
+                    : ko ? "미설정" : "Not set"}
+                </span>
+              </div>
               <p className="text-xs text-muted-foreground">
                 {ko
-                  ? "입력한 API key는 서버의 .local/settings.json에 저장됩니다. 빈칸은 기존 값을 유지합니다."
-                  : "The API key is stored in .local/settings.json on this server. Blank keeps the existing value."}
+                  ? "API key는 서버에 저장되며 화면에는 다시 표시하지 않습니다. 빈칸은 기존 값을 유지합니다."
+                  : "The API key is stored server-side and never shown again. Blank keeps the existing value."}
               </p>
             </div>
             <div className="space-y-2">
@@ -102,11 +123,24 @@ export default function SettingsPage() {
 
           <section className="space-y-4">
             <div>
-              <h2 className="text-sm font-semibold">RunPod</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-semibold">RunPod</h2>
+                <span
+                  className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${
+                    runpodApiKeyConfigured
+                      ? "bg-green-500/15 text-green-600"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {runpodApiKeyConfigured
+                    ? ko ? "API key 저장됨" : "API key saved"
+                    : ko ? "API key 미설정" : "API key not set"}
+                </span>
+              </div>
               <p className="text-xs text-muted-foreground">
                 {ko
-                  ? "Pod ID와 SSH 정보는 메모용이고, 이미지 생성에는 ComfyUI URL을 사용합니다."
-                  : "Pod ID and SSH are reference fields; generation uses the ComfyUI URL."}
+                  ? "Pod ID와 SSH 정보는 메모용이고, 이미지 생성에는 Port 8188 HTTP service의 ComfyUI URL을 사용합니다."
+                  : "Pod ID and SSH are reference fields; generation uses the Port 8188 HTTP service ComfyUI URL."}
               </p>
             </div>
             <div className="space-y-2">
