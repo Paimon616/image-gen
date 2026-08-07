@@ -98,6 +98,10 @@ export interface ComfyGeneratedMedia {
   filename: string;
 }
 
+export interface ComfyClientOptions {
+  baseUrl?: string;
+}
+
 type WorkflowControlNetConfig = ControlNetConfig & {
   preprocessor?: "openpose";
 };
@@ -1153,8 +1157,12 @@ async function buildDefaultWorkflow(params: GenerationParams) {
   return workflow;
 }
 
-async function comfyFetch(path: string, init?: RequestInit) {
-  const res = await fetch(`${COMFYUI_BASE_URL}${path}`, init);
+function comfyBaseUrl(options?: ComfyClientOptions) {
+  return options?.baseUrl?.replace(/\/$/, "") || COMFYUI_BASE_URL;
+}
+
+async function comfyFetch(path: string, init?: RequestInit, options?: ComfyClientOptions) {
+  const res = await fetch(`${comfyBaseUrl(options)}${path}`, init);
 
   if (!res.ok) {
     const text = await res.text();
@@ -1166,7 +1174,8 @@ async function comfyFetch(path: string, init?: RequestInit) {
 
 export async function queueComfyWorkflow(
   prompt: Record<string, unknown>,
-  clientId = crypto.randomUUID()
+  clientId = crypto.randomUUID(),
+  options?: ComfyClientOptions
 ) {
   const res = await comfyFetch("/prompt", {
     method: "POST",
@@ -1175,7 +1184,7 @@ export async function queueComfyWorkflow(
       client_id: clientId,
       prompt,
     }),
-  });
+  }, options);
 
   const queued = (await res.json()) as Omit<ComfyQueuedPrompt, "client_id">;
   return { ...queued, client_id: clientId };
@@ -1197,7 +1206,11 @@ async function releaseWebUiMemory() {
   );
 }
 
-export async function queueComfyPrompt(params: GenerationParams, clientId = crypto.randomUUID()) {
+export async function queueComfyPrompt(
+  params: GenerationParams,
+  clientId = crypto.randomUUID(),
+  options?: ComfyClientOptions
+) {
   const hiresScale = Number(params.hires_upscale);
   const baseWidth = generationDimension(params.width, hiresScale);
   const baseHeight = generationDimension(params.height, hiresScale);
@@ -1214,16 +1227,16 @@ export async function queueComfyPrompt(params: GenerationParams, clientId = cryp
   }
   await releaseWebUiMemory();
   const prompt = await buildDefaultWorkflow(params);
-  return queueComfyWorkflow(prompt, clientId);
+  return queueComfyWorkflow(prompt, clientId, options);
 }
 
-async function getHistory(promptId: string) {
-  const res = await comfyFetch(`/history/${encodeURIComponent(promptId)}`);
+async function getHistory(promptId: string, options?: ComfyClientOptions) {
+  const res = await comfyFetch(`/history/${encodeURIComponent(promptId)}`, undefined, options);
   return (await res.json()) as Record<string, ComfyHistoryItem>;
 }
 
-async function getQueue() {
-  const res = await comfyFetch("/queue");
+async function getQueue(options?: ComfyClientOptions) {
+  const res = await comfyFetch("/queue", undefined, options);
   return (await res.json()) as ComfyQueue;
 }
 
@@ -1310,8 +1323,8 @@ async function resolveAvailableUpscaleModelName(modelName: string) {
     return trimmed;
   }
 }
-async function isPromptActive(promptId: string) {
-  const queue = await getQueue();
+async function isPromptActive(promptId: string, options?: ComfyClientOptions) {
+  const queue = await getQueue(options);
   const queuedItems = [
     ...(queue.queue_running ?? []),
     ...(queue.queue_pending ?? []),
@@ -1415,13 +1428,14 @@ export async function waitForComfyImageRefs(
     idleTimeoutMs?: number;
     getLastActivityAt?: () => number;
     signal?: AbortSignal;
+    baseUrl?: string;
   } = {}
 ) {
   const idleTimeoutMs = options.idleTimeoutMs ?? COMFYUI_TIMEOUT_MS;
   let lastActivityAt = Date.now();
 
   while (!options.signal?.aborted) {
-    const history = await getHistory(promptId);
+    const history = await getHistory(promptId, options);
     const promptHistory = history[promptId];
     const images = imageRefsFromHistory(promptHistory);
 
@@ -1441,7 +1455,7 @@ export async function waitForComfyImageRefs(
     }
 
     try {
-      if (await isPromptActive(promptId)) {
+      if (await isPromptActive(promptId, options)) {
         lastActivityAt = Date.now();
       }
     } catch {
@@ -1464,13 +1478,14 @@ export async function waitForComfyVideoRefs(
     idleTimeoutMs?: number;
     getLastActivityAt?: () => number;
     signal?: AbortSignal;
+    baseUrl?: string;
   } = {}
 ) {
   const idleTimeoutMs = options.idleTimeoutMs ?? COMFYUI_TIMEOUT_MS;
   let lastActivityAt = Date.now();
 
   while (!options.signal?.aborted) {
-    const history = await getHistory(promptId);
+    const history = await getHistory(promptId, options);
     const promptHistory = history[promptId];
     const videos = videoRefsFromHistory(promptHistory);
 
@@ -1490,7 +1505,7 @@ export async function waitForComfyVideoRefs(
     }
 
     try {
-      if (await isPromptActive(promptId)) {
+      if (await isPromptActive(promptId, options)) {
         lastActivityAt = Date.now();
       }
     } catch {
@@ -1513,13 +1528,14 @@ export async function waitForComfyAudioRefs(
     idleTimeoutMs?: number;
     getLastActivityAt?: () => number;
     signal?: AbortSignal;
+    baseUrl?: string;
   } = {}
 ) {
   const idleTimeoutMs = options.idleTimeoutMs ?? COMFYUI_TIMEOUT_MS;
   let lastActivityAt = Date.now();
 
   while (!options.signal?.aborted) {
-    const history = await getHistory(promptId);
+    const history = await getHistory(promptId, options);
     const promptHistory = history[promptId];
     const audios = audioRefsFromHistory(promptHistory);
 
@@ -1539,7 +1555,7 @@ export async function waitForComfyAudioRefs(
     }
 
     try {
-      if (await isPromptActive(promptId)) {
+      if (await isPromptActive(promptId, options)) {
         lastActivityAt = Date.now();
       }
     } catch {
@@ -1556,7 +1572,7 @@ export async function waitForComfyAudioRefs(
   throw new Error("ComfyUI audio generation canceled");
 }
 
-export async function cancelComfyPrompt(promptId?: string) {
+export async function cancelComfyPrompt(promptId?: string, options?: ComfyClientOptions) {
   const errors: string[] = [];
   let canceled = false;
 
@@ -1566,7 +1582,7 @@ export async function cancelComfyPrompt(promptId?: string) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ delete: [promptId] }),
-      });
+      }, options);
       canceled = true;
     } catch (error) {
       errors.push(error instanceof Error ? error.message : "Failed to update queue");
@@ -1574,7 +1590,7 @@ export async function cancelComfyPrompt(promptId?: string) {
   }
 
   try {
-    await comfyFetch("/interrupt", { method: "POST" });
+    await comfyFetch("/interrupt", { method: "POST" }, options);
     canceled = true;
   } catch (error) {
     errors.push(error instanceof Error ? error.message : "Failed to interrupt ComfyUI");
@@ -2047,11 +2063,14 @@ export async function generateOpenPosePreview(imageUrl: string, resolution: numb
   return fetchComfyImages(imageRefs);
 }
 
-export async function fetchComfyImages(imageRefs: ComfyImageRef[]) {
+export async function fetchComfyImages(
+  imageRefs: ComfyImageRef[],
+  options?: ComfyClientOptions
+) {
   return Promise.all(
     imageRefs.map(async (image) => {
-      const originalUrl = `${COMFYUI_BASE_URL}${viewPath(image)}`;
-      const response = await comfyFetch(viewPath(image));
+      const originalUrl = `${comfyBaseUrl(options)}${viewPath(image)}`;
+      const response = await comfyFetch(viewPath(image), undefined, options);
       const buffer = Buffer.from(await response.arrayBuffer());
 
       return {

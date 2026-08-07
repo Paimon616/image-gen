@@ -47,6 +47,13 @@ import {
   X,
 } from "lucide-react";
 
+interface RunpodPodOption {
+  id: string;
+  label: string;
+  podId: string;
+  comfyUrl: string;
+}
+
 const EDITOR_MIN_WIDTH = 320;
 const GALLERY_MIN_WIDTH = 320;
 const THUMBNAIL_MIN_WIDTH = 140;
@@ -105,6 +112,8 @@ interface GenerationQueueItem {
   params: GenerationParamsType;
   civitaiOrigin?: CivitaiOrigin;
   workspaceId?: string;
+  generationTarget: "local" | "runpod";
+  runpodPodId?: string;
 }
 
 function cloneGenerationParams(params: GenerationParamsType) {
@@ -146,6 +155,9 @@ export default function Home() {
   const [batchDownloadBusy, setBatchDownloadBusy] = useState(false);
   const layoutRef = useRef<HTMLDivElement | null>(null);
   const [generationQueue, setGenerationQueue] = useState<GenerationQueueItem[]>([]);
+  const [generationTarget, setGenerationTarget] = useState<"local" | "runpod">("local");
+  const [runpodPods, setRunpodPods] = useState<RunpodPodOption[]>([]);
+  const [selectedRunpodPodId, setSelectedRunpodPodId] = useState("");
   const [activeGeneration, setActiveGeneration] =
     useState<GenerationQueueItem | null>(null);
   const [paimonAttachments, setPaimonAttachments] =
@@ -205,6 +217,19 @@ export default function Home() {
       })
       .catch(() => {});
   }, [params.pose_reference_model, setParams]);
+
+  useEffect(() => {
+    fetch("/api/settings", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        const pods = Array.isArray(data.runpodPods)
+          ? (data.runpodPods as RunpodPodOption[])
+          : [];
+        setRunpodPods(pods);
+        setSelectedRunpodPodId((current) => current || pods[0]?.id || "");
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (params.generation_mode !== "image_to_image") return;
@@ -414,7 +439,14 @@ export default function Home() {
   ]);
 
   const runGenerationJob = useCallback(async (job: GenerationQueueItem) => {
-    const { id, params: jobParams, civitaiOrigin, workspaceId } = job;
+    const {
+      id,
+      params: jobParams,
+      civitaiOrigin,
+      workspaceId,
+      generationTarget: jobGenerationTarget,
+      runpodPodId,
+    } = job;
 
     const abortController = new AbortController();
     activePromptIdRef.current = "";
@@ -431,7 +463,13 @@ export default function Home() {
       const res = await fetch("/api/generate/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...jobParams, civitaiOrigin, workspaceId }),
+        body: JSON.stringify({
+          ...jobParams,
+          civitaiOrigin,
+          workspaceId,
+          generationTarget: jobGenerationTarget,
+          runpodPodId,
+        }),
         signal: abortController.signal,
       });
 
@@ -587,6 +625,14 @@ export default function Home() {
       setStatus({ state: "error", progress: 0, message: generationModeError });
       return;
     }
+    if (generationTarget === "runpod" && !selectedRunpodPodId) {
+      setStatus({
+        state: "error",
+        progress: 0,
+        message: "RunPod target is not configured.",
+      });
+      return;
+    }
 
     const jobParams = cloneGenerationParams(params);
     if (jobParams.seed == null || jobParams.seed < 0) {
@@ -612,10 +658,24 @@ export default function Home() {
     });
     setGenerationQueue((queue) => [
       ...queue,
-      { id, params: jobParams, civitaiOrigin, workspaceId },
+      {
+        id,
+        params: jobParams,
+        civitaiOrigin,
+        workspaceId,
+        generationTarget,
+        runpodPodId: generationTarget === "runpod" ? selectedRunpodPodId : undefined,
+      },
     ]);
     setStatus({ state: "idle", progress: 0, message: "" });
-  }, [addImage, generationModeError, params, setStatus]);
+  }, [
+    addImage,
+    generationModeError,
+    generationTarget,
+    params,
+    selectedRunpodPodId,
+    setStatus,
+  ]);
 
   const toggleImageInPaimon = useCallback((image: GeneratedImage) => {
     setPaimonAttachments((current) => {
@@ -735,6 +795,7 @@ export default function Home() {
 
   const isGenerating = Boolean(activeGeneration);
   const queuedJobCount = generationQueue.length;
+  const runpodTargetMissing = generationTarget === "runpod" && !selectedRunpodPodId;
 
   return (
     <div ref={layoutRef} className="flex h-screen">
@@ -743,9 +804,50 @@ export default function Home() {
       {/* Left Sidebar - Controls */}
       {editorOpen && (
         <aside className="flex shrink-0 flex-col overflow-hidden" style={{ width: editorWidth }}>
-        <div className="px-4 py-3 border-b border-border">
-          <h1 className="text-lg font-semibold">{ko ? "이미지 생성" : "Image Generation"}</h1>
-          <p className="text-xs text-muted-foreground">{currentModel.name}</p>
+        <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
+          <div className="min-w-0">
+            <h1 className="text-lg font-semibold">{ko ? "이미지 생성" : "Image Generation"}</h1>
+            <p className="text-xs text-muted-foreground">{currentModel.name}</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <div className="grid grid-cols-2 gap-1 rounded-md border border-border bg-card/80 p-1">
+              {[
+                { value: "local" as const, label: ko ? "로컬" : "Local" },
+                { value: "runpod" as const, label: "RunPod" },
+              ].map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  onClick={() => setGenerationTarget(item.value)}
+                  className={`h-7 rounded px-2 text-xs font-semibold transition-colors ${
+                    generationTarget === item.value
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            {generationTarget === "runpod" && (
+              <select
+                value={selectedRunpodPodId}
+                onChange={(event) => setSelectedRunpodPodId(event.target.value)}
+                className="h-9 max-w-40 rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
+                aria-label="RunPod target"
+              >
+                {runpodPods.length === 0 ? (
+                  <option value="">{ko ? "Pod 없음" : "No pod"}</option>
+                ) : (
+                  runpodPods.map((pod) => (
+                    <option key={pod.id} value={pod.id}>
+                      {pod.label || pod.podId || pod.id}
+                    </option>
+                  ))
+                )}
+              </select>
+            )}
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
@@ -1119,7 +1221,11 @@ export default function Home() {
               className="relative w-full overflow-hidden"
               size="lg"
               onClick={generate}
-              disabled={!params.prompt.trim() || Boolean(generationModeError)}
+              disabled={
+                !params.prompt.trim() ||
+                Boolean(generationModeError) ||
+                runpodTargetMissing
+              }
             >
               <span className="relative z-10 drop-shadow-sm">
                 {isGenerating || queuedJobCount > 0 ? "Add to Queue" : "Generate"}

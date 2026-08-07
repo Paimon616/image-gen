@@ -1,9 +1,10 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { getCivitaiApiKey } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const token = process.env.CIVITAI_API_TOKEN?.trim();
+  const token = await getCivitaiApiKey();
 
   if (!token) {
     return NextResponse.json(

@@ -19,6 +19,7 @@ import { imageUrl, OUTPUT_DIR, thumbnailUrl } from "@/lib/server-images";
 import { buildGenerationResources } from "@/lib/generation-resource-links";
 import { generateWithA1111, interruptA1111 } from "@/lib/a1111";
 import { toggleImageWorkspace, workspaceExists } from "@/lib/workspaces";
+import { getRunpodPod } from "@/lib/settings";
 
 interface ComfyWsMessage {
   type?: string;
@@ -103,17 +104,17 @@ async function saveBufferedImages({
   );
 }
 
-function comfyWebSocketUrl(clientId: string) {
-  const url = new URL(COMFYUI_BASE_URL);
+function comfyWebSocketUrl(clientId: string, baseUrl = COMFYUI_BASE_URL) {
+  const url = new URL(baseUrl);
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   url.pathname = "/ws";
   url.searchParams.set("clientId", clientId);
   return url.toString();
 }
 
-function openComfyWebSocket(clientId: string) {
+function openComfyWebSocket(clientId: string, baseUrl?: string) {
   return new Promise<WebSocket>((resolve, reject) => {
-    const ws = new WebSocket(comfyWebSocketUrl(clientId));
+    const ws = new WebSocket(comfyWebSocketUrl(clientId, baseUrl));
     const timeout = setTimeout(() => {
       ws.close();
       reject(new Error("Timed out connecting to ComfyUI progress stream"));
@@ -140,10 +141,14 @@ export async function POST(req: NextRequest) {
   const {
     civitaiOrigin,
     workspaceId: rawWorkspaceId,
+    generationTarget,
+    runpodPodId,
     ...rawBody
   } = (await req.json()) as GenerationParams & {
     civitaiOrigin?: CivitaiOrigin;
     workspaceId?: string;
+    generationTarget?: "local" | "runpod";
+    runpodPodId?: string;
   };
   const body: GenerationParams = {
     ...rawBody,
@@ -152,6 +157,34 @@ export async function POST(req: NextRequest) {
     seed: normalizeGenerationSeed(rawBody.seed),
   };
   const modelConfig = getModelConfig(body.model);
+  const runpodPod =
+    generationTarget === "runpod" && runpodPodId
+      ? await getRunpodPod(runpodPodId)
+      : undefined;
+  const comfyOptions = runpodPod?.comfyUrl
+    ? { baseUrl: runpodPod.comfyUrl }
+    : undefined;
+
+  if (generationTarget === "runpod") {
+    if (!runpodPod) {
+      return Response.json(
+        { error: "Select a registered RunPod target first." },
+        { status: 400 }
+      );
+    }
+    if (!runpodPod.comfyUrl) {
+      return Response.json(
+        { error: "Selected RunPod target needs a ComfyUI URL." },
+        { status: 400 }
+      );
+    }
+    if (body.backend !== "comfyui") {
+      return Response.json(
+        { error: "RunPod generation currently supports ComfyUI backend only." },
+        { status: 400 }
+      );
+    }
+  }
   // Only honor a workspace target that still exists, so a stale id from the
   // client can't create dangling assignments.
   const workspaceId =
@@ -188,7 +221,7 @@ export async function POST(req: NextRequest) {
     ws?.close();
 
     if (promptId) {
-      void cancelComfyPrompt(promptId).catch(() => {});
+      void cancelComfyPrompt(promptId, comfyOptions).catch(() => {});
     }
 
     if (body.backend === "a1111" || body.backend === "forge") {
@@ -267,7 +300,7 @@ export async function POST(req: NextRequest) {
         }
 
         const clientId = randomUUID();
-        ws = await openComfyWebSocket(clientId);
+        ws = await openComfyWebSocket(clientId, comfyOptions?.baseUrl);
 
         ws.addEventListener("message", (event) => {
           if (typeof event.data !== "string") return;
@@ -295,7 +328,7 @@ export async function POST(req: NextRequest) {
         });
 
         send("progress", { progress: 1, message: "Queued..." });
-        const queued = await queueComfyPrompt(body, clientId);
+        const queued = await queueComfyPrompt(body, clientId, comfyOptions);
         promptId = queued.prompt_id;
         lastComfyActivityAt = Date.now();
         send("queued", { prompt_id: promptId });
@@ -304,12 +337,13 @@ export async function POST(req: NextRequest) {
         const imageRefs = await waitForComfyImageRefs(promptId, {
           signal: abortController.signal,
           getLastActivityAt: () => lastComfyActivityAt,
+          baseUrl: comfyOptions?.baseUrl,
         });
-        const images = await fetchComfyImages(imageRefs);
+        const images = await fetchComfyImages(imageRefs, comfyOptions);
         const savedImages = await saveBufferedImages({
           images,
           params: body,
-          endpoint: modelConfig.id,
+          endpoint: runpodPod ? `runpod/${runpodPod.label || runpodPod.podId}` : modelConfig.id,
           civitaiOrigin,
           workspaceId,
         });

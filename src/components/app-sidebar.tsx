@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
-import { Bookmark, BrainCircuit, Film, Images, Languages, Layers3, Search } from "lucide-react";
+import { Bookmark, BrainCircuit, Film, Images, Languages, Layers3, Search, Settings } from "lucide-react";
 import { useStore, type AppLanguage } from "@/lib/store";
 
 const NAV_ITEMS = [
@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { href: "/models", labels: { ko: "모델", en: "Models" }, icon: Layers3 },
   { href: "/lora-training", labels: { ko: "LoRA 훈련", en: "LoRA Training" }, icon: BrainCircuit },
   { href: "/scrap", labels: { ko: "스크랩", en: "Scrap" }, icon: Bookmark },
+  { href: "/settings", labels: { ko: "설정", en: "Settings" }, icon: Settings },
 ];
 
 const LANGUAGE_LABELS = {
