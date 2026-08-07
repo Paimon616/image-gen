@@ -414,6 +414,29 @@ export async function startRunpodPod(podId: string) {
   return text;
 }
 
+export async function stopRunpodPod(podId: string) {
+  const settings = await readSettings();
+  if (!settings.runpodApiKey) {
+    throw new Error("RunPod API key is not configured.");
+  }
+
+  const response = await fetch(
+    `https://rest.runpod.io/v1/pods/${encodeURIComponent(podId)}/stop`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${settings.runpodApiKey}` },
+      cache: "no-store",
+    }
+  );
+
+  const text = await response.text();
+  if (!response.ok) {
+    throw new Error(`RunPod stop failed: ${response.status} ${text}`);
+  }
+
+  return text;
+}
+
 export async function fetchRunpodStatus(pod: RunpodPodSettings) {
   const comfyUrl = pod.comfyUrl.replace(/\/$/, "");
   let comfyReachable = false;

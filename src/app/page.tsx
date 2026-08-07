@@ -47,6 +47,7 @@ import {
   RefreshCw,
   ScanLine,
   Server,
+  Square,
   Trash2,
   Wrench,
   X,
@@ -203,7 +204,8 @@ export default function Home() {
   const [runpodPods, setRunpodPods] = useState<RunpodPodOption[]>([]);
   const [selectedRunpodPodId, setSelectedRunpodPodId] = useState("");
   const [runpodStatus, setRunpodStatus] = useState("");
-  const [runpodBusy, setRunpodBusy] = useState<"" | "start" | "status" | "setup" | "check" | "download">("");
+  const [runpodBusy, setRunpodBusy] =
+    useState<"" | "start" | "stop" | "status" | "setup" | "check" | "download">("");
   const [runpodMissingFiles, setRunpodMissingFiles] = useState<RunpodMissingFile[]>([]);
   const [runpodDownloadProgress, setRunpodDownloadProgress] =
     useState<RunpodDownloadProgress | null>(null);
@@ -814,7 +816,7 @@ export default function Home() {
   );
 
   const runRunpodAction = useCallback(
-    async (action: "start" | "status" | "setup" | "check" | "download") => {
+    async (action: "start" | "stop" | "status" | "setup" | "check" | "download") => {
       if (!selectedRunpodPodId || runpodBusy) return;
 
       setRunpodBusy(action);
@@ -830,6 +832,27 @@ export default function Home() {
             ko
               ? "RunPod 시작 요청을 보냈습니다. 잠시 후 상태 체크를 누르세요."
               : "RunPod start requested. Check status again shortly."
+          );
+        }
+
+        if (action === "stop") {
+          const response = await fetch(`/api/runpod/pods/${selectedRunpodPodId}/stop`, {
+            method: "POST",
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || "RunPod stop failed");
+          setRunpodConnection({
+            checked: true,
+            comfyReachable: false,
+            sshReachable: false,
+            comfyError: "",
+            sshError: "",
+          });
+          setRunpodFilesChecked(false);
+          setRunpodStatus(
+            ko
+              ? "RunPod 중지 요청을 보냈습니다. 잠시 후 상태 체크를 누르세요."
+              : "RunPod stop requested. Check status again shortly."
           );
         }
 
@@ -1209,15 +1232,21 @@ export default function Home() {
                     variant={runpodConnection.checked && runpodConnection.comfyReachable ? "secondary" : "outline"}
                     className="gap-1.5"
                     disabled={!selectedRunpodPodId || Boolean(runpodBusy)}
-                    onClick={() => void runRunpodAction("start")}
+                    onClick={() =>
+                      void runRunpodAction(
+                        runpodConnection.checked && runpodConnection.comfyReachable ? "stop" : "start"
+                      )
+                    }
                   >
-                    {runpodBusy === "start" ? (
+                    {runpodBusy === "start" || runpodBusy === "stop" ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : runpodConnection.checked && runpodConnection.comfyReachable ? (
+                      <Square className="h-3.5 w-3.5" />
                     ) : (
                       <Play className="h-3.5 w-3.5" />
                     )}
                     {runpodConnection.checked && runpodConnection.comfyReachable
-                      ? ko ? "실행 중" : "Running"
+                      ? ko ? "중지하기" : "Stop pod"
                       : ko ? "팟 실행" : "Start pod"}
                   </Button>
                   <Button
