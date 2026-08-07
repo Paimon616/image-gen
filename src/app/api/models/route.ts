@@ -277,8 +277,43 @@ function buildModelAssets(
       tags: metadata?.tags ?? [],
       risk: metadata?.risk ?? null,
       license: metadata?.license ?? null,
+      exists: true,
     };
   });
+}
+
+function buildCatalogOnlyAssets(
+  folder: string,
+  existingPaths: string[],
+  catalog: Record<string, LocalModelMetadata>
+) {
+  const existing = new Set(existingPaths.map((path) => path.toLowerCase()));
+  return Object.entries(catalog)
+    .filter(([key]) => key.startsWith(`${folder}/`))
+    .map(([key, metadata]) => {
+      const path = key.slice(folder.length + 1);
+      if (!path || existing.has(path.toLowerCase()) || !hasModelExtension(path)) {
+        return null;
+      }
+      const fallback = humanizeFilename(path);
+
+      return {
+        path,
+        folder,
+        name: metadata.name ?? fallback.name,
+        version: metadata.version ?? fallback.version,
+        base_model: metadata.base_model ?? "",
+        thumbnail_url: metadata.thumbnail_url ?? null,
+        civitai_url: metadata.civitai_url ?? null,
+        source_url: metadata.source_url ?? metadata.civitai_url ?? null,
+        tags: metadata.tags ?? [],
+        risk: metadata.risk ?? null,
+        license: metadata.license ?? null,
+        missing_required_files: [],
+        exists: false,
+      };
+    })
+    .filter((asset): asset is NonNullable<typeof asset> => Boolean(asset));
 }
 
 async function listModelFiles(folder: string) {
@@ -308,14 +343,19 @@ async function listModelAssets(
           ).filter((path): path is string => Boolean(path))
         : files;
 
-    const assets = buildModelAssets(folder, supportedFiles, catalog);
+    const assets = [
+      ...buildModelAssets(folder, supportedFiles, catalog),
+      ...buildCatalogOnlyAssets(folder, supportedFiles, catalog),
+    ];
 
     const assetsWithRequirements =
       folder === "checkpoints"
         ? await Promise.all(
             assets.map(async (asset) => ({
               ...asset,
-              missing_required_files: await getMissingRequiredModelFiles(asset.path),
+              missing_required_files: asset.exists
+                ? await getMissingRequiredModelFiles(asset.path)
+                : [],
             }))
           )
         : assets.map((asset) => ({
@@ -359,11 +399,18 @@ async function listKrea2ImageAssets(
   ).filter((path) => isKrea2CheckpointName(path));
 
   const assets = buildModelAssets("diffusion_models", diffusionModelFiles, catalog);
+  const catalogOnlyAssets = buildCatalogOnlyAssets(
+    "diffusion_models",
+    diffusionModelFiles,
+    catalog
+  ).filter((asset) => isKrea2CheckpointName(asset.path));
 
   return Promise.all(
-    assets.map(async (asset) => ({
+    [...assets, ...catalogOnlyAssets].map(async (asset) => ({
       ...asset,
-      missing_required_files: await getMissingRequiredModelFiles(asset.path),
+      missing_required_files: asset.exists
+        ? await getMissingRequiredModelFiles(asset.path)
+        : [],
     }))
   );
 }

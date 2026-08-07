@@ -24,6 +24,7 @@ export interface LocalModelAsset {
   version: string;
   base_model: string;
   thumbnail_url: string | null;
+  exists?: boolean;
   missing_required_files?: string[];
   risk?: ModelRisk | null;
 }
@@ -53,7 +54,11 @@ function AssetText({ asset }: { asset: LocalModelAsset }) {
         <ModelRiskBadge risk={asset.risk} size={14} className="shrink-0" />
       </div>
       <div className="truncate text-xs text-muted-foreground">
-        {[asset.version, asset.base_model].filter(Boolean).join(" · ") || asset.path}
+        {[
+          asset.version,
+          asset.base_model,
+          asset.exists === false ? "현재 로컬에 없음" : "",
+        ].filter(Boolean).join(" · ") || asset.path}
       </div>
     </div>
   );
@@ -199,7 +204,9 @@ export function AssetPickerDialog({
                           fallbackClassName="text-3xl font-semibold"
                         />
                         <Badge className="absolute left-2 top-2 bg-background/80 text-foreground backdrop-blur">
-                          {asset.base_model || "Local"}
+                          {asset.exists === false
+                            ? "현재 로컬에 없음"
+                            : asset.base_model || "Local"}
                         </Badge>
                       </div>
                     </button>

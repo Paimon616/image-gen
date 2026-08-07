@@ -12,6 +12,7 @@ export interface LocalModelAsset {
   base_model?: string;
   civitai_url?: string | null;
   source_url?: string | null;
+  exists?: boolean;
 }
 
 export interface LocalModelsResponse {
@@ -149,6 +150,7 @@ function resolveLocalAssetName(name: string, assets: LocalModelAsset[]) {
 
 function findLocalAsset(assets: LocalModelAsset[], resource: ImportedCivitaiResource) {
   const ranked = assets
+    .filter((asset) => asset.exists !== false)
     .map((asset) => ({ asset, score: resourceMatchScore(asset, resource) }))
     .filter(({ score }) => score > 0)
     .sort((a, b) => b.score - a.score);
@@ -208,7 +210,11 @@ export function findMissingCivitaiResources(
     const match =
       findLocalAsset(bucket, resource) ??
       (resource.type === "checkpoint" && isKrea2Resource(resource)
-        ? bucket.find((asset) => /krea[-_ ]?2/i.test(`${asset.path} ${asset.name}`))
+        ? bucket.find(
+            (asset) =>
+              asset.exists !== false &&
+              /krea[-_ ]?2/i.test(`${asset.path} ${asset.name}`)
+          )
         : undefined);
     if (!match) {
       missing.push({
@@ -238,7 +244,11 @@ export function reconcileImportedParams(
     const match =
       findLocalAsset(bucket, resource) ??
       (resource.type === "checkpoint" && isKrea2Resource(resource)
-        ? bucket.find((asset) => /krea[-_ ]?2/i.test(`${asset.path} ${asset.name}`))
+        ? bucket.find(
+            (asset) =>
+              asset.exists !== false &&
+              /krea[-_ ]?2/i.test(`${asset.path} ${asset.name}`)
+          )
         : undefined);
 
     if (!match) {

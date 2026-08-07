@@ -92,14 +92,11 @@ export function CivitaiImport() {
     setCivitaiImport({ status: "Fetching Civitai metadata...", missingResources: [] });
 
     try {
-      const [importResponse, modelsResponse] = await Promise.all([
-        fetch("/api/civitai/import", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url }),
-        }),
-        fetch("/api/models", { cache: "no-store" }),
-      ]);
+      const importResponse = await fetch("/api/civitai/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
       const importData = await importResponse.json();
 
       if (
@@ -112,8 +109,10 @@ export function CivitaiImport() {
       }
 
       const imported = importData as CivitaiImportResult;
+      const modelsResponse = await fetch("/api/models", { cache: "no-store" });
       const modelsData = (await modelsResponse.json()) as LocalModelsResponse;
       const { matched, missing } = reconcileImportedParams(imported, modelsData);
+      window.dispatchEvent(new Event("local-models-changed"));
       setStoredImportResult({
         resetVersion: currentResetVersion,
         result: imported,

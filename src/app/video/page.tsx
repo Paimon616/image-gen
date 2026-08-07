@@ -923,6 +923,11 @@ export default function VideoPage() {
               ? "RunPod 시작 요청됨"
               : "RunPod start requested"
             : "",
+          data.startError
+            ? language === "ko"
+              ? `시작 요청 실패: ${data.startError}`
+              : `Start failed: ${data.startError}`
+            : "",
           data.comfyReachable
             ? "ComfyUI OK"
             : language === "ko"

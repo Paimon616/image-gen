@@ -665,6 +665,7 @@ export async function ensureRunpodStatus(pod: RunpodPodSettings) {
   let startRequested = false;
   let portExposeRequested = false;
   let portExposeError = "";
+  let startError = "";
   let setupRequested = false;
   let setupError = "";
 
@@ -678,8 +679,12 @@ export async function ensureRunpodStatus(pod: RunpodPodSettings) {
   }
 
   if (!status.comfyReachable && !status.helperReachable && pod.podId) {
-    await startRunpodPod(pod.podId);
-    startRequested = true;
+    try {
+      await startRunpodPod(pod.podId);
+      startRequested = true;
+    } catch (error) {
+      startError = error instanceof Error ? error.message : "RunPod start failed.";
+    }
   }
 
   if (startRequested) {
@@ -701,7 +706,15 @@ export async function ensureRunpodStatus(pod: RunpodPodSettings) {
     }
   }
 
-  return { ...status, startRequested, portExposeRequested, portExposeError, setupRequested, setupError };
+  return {
+    ...status,
+    startRequested,
+    startError,
+    portExposeRequested,
+    portExposeError,
+    setupRequested,
+    setupError,
+  };
 }
 
 export async function setupRunpodPod(pod: RunpodPodSettings) {
