@@ -22,13 +22,35 @@ function shellQuote(value: string) {
   return `'${value.replace(/'/g, `'\\''`)}'`;
 }
 
-function remoteCommand(ssh: string, command: string) {
-  const trimmed = ssh.trim().replace(/^\$\s*/, "");
-  if (!trimmed.startsWith("ssh ")) {
-    throw new Error("RunPod SSH must be the full command copied from RunPod.");
+function extractSshCommand(value: string) {
+  const normalized = value
+    .trim()
+    .replace(/\r/g, "")
+    .split("\n")
+    .map((line) => line.trim().replace(/^\$\s*/, ""))
+    .find((line) => line.includes("@ssh.runpod.io") || line.startsWith("ssh "));
+
+  if (!normalized) return "";
+
+  const sshIndex = normalized.indexOf("ssh ");
+  if (sshIndex >= 0) return normalized.slice(sshIndex).trim();
+
+  if (normalized.includes("@ssh.runpod.io")) {
+    return `ssh ${normalized}`;
   }
 
-  const safeSsh = trimmed.replace(
+  return "";
+}
+
+function remoteCommand(ssh: string, command: string) {
+  const extracted = extractSshCommand(ssh);
+  if (!extracted) {
+    throw new Error(
+      "RunPod SSH command was not recognized. Paste the SSH line from RunPod Connect."
+    );
+  }
+
+  const safeSsh = extracted.replace(
     /^ssh\s+/,
     "ssh -o StrictHostKeyChecking=accept-new -o BatchMode=yes "
   );
