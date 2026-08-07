@@ -61,12 +61,31 @@ interface CatalogEntry {
   base_model?: string;
   civitai_url?: string | null;
   source_url?: string | null;
+  thumbnail_url?: string | null;
+  tags?: string[];
 }
 
 interface CivitaiVersionFile {
   name?: string;
   primary?: boolean;
   type?: string;
+}
+
+interface CivitaiVersionImage {
+  url?: string;
+}
+
+interface CivitaiVersionModel {
+  tags?: string[];
+}
+
+interface CivitaiVersionDetails {
+  name?: string;
+  baseModel?: string;
+  trainedWords?: string[];
+  files?: CivitaiVersionFile[];
+  images?: CivitaiVersionImage[];
+  model?: CivitaiVersionModel;
 }
 
 interface CivitaiPageGenerationData {
@@ -490,7 +509,7 @@ function embeddingResourcePath(resource: ImportedCivitaiResource) {
   return /\.(ckpt|pt|pth|safetensors)$/i.test(name) ? name : `${name}.safetensors`;
 }
 
-async function fetchVersionPrimaryFileName(modelVersionId: number) {
+async function fetchVersionDetails(modelVersionId: number) {
   const response = await fetch(
     `https://civitai.com/api/v1/model-versions/${modelVersionId}`,
     {
@@ -501,27 +520,49 @@ async function fetchVersionPrimaryFileName(modelVersionId: number) {
       },
     }
   );
-  if (!response.ok) return "";
+  if (!response.ok) return null;
 
-  const data = (await response.json()) as { files?: CivitaiVersionFile[] };
+  const data = (await response.json()) as CivitaiVersionDetails;
   const files = (data.files ?? []).filter((file) => file.name?.trim());
   const primary =
     files.find((file) => file.primary) ??
     files.find((file) => /model/i.test(file.type ?? "")) ??
     files[0];
+  const thumbnailUrl = data.images?.find((image) => image.url?.trim())?.url?.trim();
+  const tags = normalizeImportedTags(data.model?.tags, data.trainedWords);
 
-  return primary?.name?.trim() ?? "";
+  return {
+    fileName: primary?.name?.trim() ?? "",
+    versionName: data.name?.trim() || undefined,
+    baseModel: data.baseModel?.trim() || undefined,
+    thumbnailUrl,
+    tags,
+  };
 }
 
 async function enrichResourcesWithFileNames(resources: ImportedCivitaiResource[]) {
   return Promise.all(
     resources.map(async (resource) => {
-      if (!resource.modelVersionId || resource.fileName) return resource;
+      if (!resource.modelVersionId) return resource;
       if (!["checkpoint", "lora", "embedding", "vae", "upscaler"].includes(resource.type)) {
         return resource;
       }
-      const fileName = await fetchVersionPrimaryFileName(resource.modelVersionId);
-      return fileName ? { ...resource, fileName } : resource;
+      const details = await fetchVersionDetails(resource.modelVersionId);
+      if (!details) return resource;
+
+      return {
+        ...resource,
+        fileName: resource.fileName || details.fileName || undefined,
+        versionName: resource.versionName || details.versionName,
+        baseModel: resource.baseModel || details.baseModel,
+        thumbnailUrl: resource.thumbnailUrl || details.thumbnailUrl,
+        tags:
+          resource.tags && resource.tags.length > 0
+            ? resource.tags
+            : details.tags.length > 0
+              ? details.tags
+              : undefined,
+      };
     })
   );
 }
@@ -608,13 +649,21 @@ async function upsertImportedResourcesCatalog(
 
     const filename = key.split("/").pop() || resource.name;
     const existing = catalog[key] ?? {};
+    const existingTags = Array.isArray(existing.tags) ? existing.tags : [];
     catalog[key] = {
       ...existing,
-      name: resource.name || existing.name || filename,
-      version: resource.versionName || existing.version || "",
-      base_model: resource.baseModel || existing.base_model || "",
-      civitai_url: resource.url || existing.civitai_url || null,
-      source_url: resource.url || existing.source_url || null,
+      name: existing.name || resource.name || filename,
+      version: existing.version || resource.versionName || "",
+      base_model: existing.base_model || resource.baseModel || "",
+      civitai_url: existing.civitai_url || resource.url || null,
+      source_url: existing.source_url || resource.url || null,
+      thumbnail_url: existing.thumbnail_url || resource.thumbnailUrl || null,
+      tags:
+        existingTags.length > 0
+          ? existingTags
+          : resource.tags && resource.tags.length > 0
+            ? resource.tags
+            : existing.tags,
     };
     changed = true;
   }

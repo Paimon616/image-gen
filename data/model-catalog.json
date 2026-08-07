@@ -7587,34 +7587,39 @@
     "version": "Krea 2 TURBO",
     "base_model": "Krea 2",
     "civitai_url": "https://civitai.red/models/2723583/krea2-turbo-fp8?modelVersionId=3060999",
-    "source_url": "https://civitai.red/models/2723583/krea2-turbo-fp8?modelVersionId=3060999"
+    "source_url": "https://civitai.red/models/2723583/krea2-turbo-fp8?modelVersionId=3060999",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/5513863c-49e7-4030-93cb-b005d4bba68b/original=true/134583021.jpeg"
   },
   "loras/bloomgirls-ultrarealism-krea2_4k.safetensors": {
     "name": "[Krea 2] BloomGirls UltraRealism",
     "version": "[Krea 2] Beta V0.1",
     "base_model": "Krea 2",
     "civitai_url": "https://civitai.red/models/2735553/krea-2-bloomgirls-ultrarealism?modelVersionId=3075850",
-    "source_url": "https://civitai.red/models/2735553/krea-2-bloomgirls-ultrarealism?modelVersionId=3075850"
+    "source_url": "https://civitai.red/models/2735553/krea-2-bloomgirls-ultrarealism?modelVersionId=3075850",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/2140c790-e23d-4b78-9a74-693db5169772/original=true/135057112.jpeg"
   },
   "loras/RealisticSnapshotKrea2.safetensors": {
     "name": "Realistic Snapshot (Z-Image-Turbo + Krea 2)",
     "version": "Krea2 (v0.5)",
     "base_model": "Krea 2",
     "civitai_url": "https://civitai.red/models/2268008/realistic-snapshot-z-image-turbo-krea-2?modelVersionId=3084537",
-    "source_url": "https://civitai.red/models/2268008/realistic-snapshot-z-image-turbo-krea-2?modelVersionId=3084537"
+    "source_url": "https://civitai.red/models/2268008/realistic-snapshot-z-image-turbo-krea-2?modelVersionId=3084537",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/0c7a64a2-9833-4207-82b9-ab5ead6981b1/original=true/135351239.jpeg"
   },
   "loras/realism_engine_krea2_v3.1.safetensors": {
     "name": "Realism Engine Ideogram 4 + Krea 2",
     "version": "Krea2 v3.0",
     "base_model": "Krea 2",
     "civitai_url": "https://civitai.red/models/2688234/realism-engine-ideogram-4-krea-2?modelVersionId=3109006",
-    "source_url": "https://civitai.red/models/2688234/realism-engine-ideogram-4-krea-2?modelVersionId=3109006"
+    "source_url": "https://civitai.red/models/2688234/realism-engine-ideogram-4-krea-2?modelVersionId=3109006",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/866d389f-c8df-4881-a59c-d7e322dae96d/original=true/136067861.jpeg"
   },
   "loras/Krea2_TextFusion_Refusal_Reduction.safetensors": {
     "name": "Krea2 TextFusion Refusal-Reduction LoRA",
     "version": "v1.0",
     "base_model": "Krea 2",
     "civitai_url": "https://civitai.red/models/2775340/krea2-textfusion-refusal-reduction-lora?modelVersionId=3125118",
-    "source_url": "https://civitai.red/models/2775340/krea2-textfusion-refusal-reduction-lora?modelVersionId=3125118"
+    "source_url": "https://civitai.red/models/2775340/krea2-textfusion-refusal-reduction-lora?modelVersionId=3125118",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/1b36ccbb-d3de-4fbc-85e4-631f2e8c7732/original=true/136629949.jpeg"
   }
 }

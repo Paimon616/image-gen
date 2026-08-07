@@ -117,6 +117,8 @@ const EDITOR_MIN_WIDTH = 320;
 const GALLERY_MIN_WIDTH = 320;
 const THUMBNAIL_MIN_WIDTH = 140;
 const THUMBNAIL_MAX_WIDTH = 420;
+const GENERATION_TARGET_STORAGE_KEY = "image-gen:generation-target";
+const SELECTED_RUNPOD_POD_STORAGE_KEY = "image-gen:selected-runpod-pod-id";
 
 function choosePoseControlNet(controlnets: string[]) {
   return (
@@ -228,7 +230,17 @@ export default function Home() {
   const [batchDownloadBusy, setBatchDownloadBusy] = useState(false);
   const layoutRef = useRef<HTMLDivElement | null>(null);
   const [generationQueue, setGenerationQueue] = useState<GenerationQueueItem[]>([]);
-  const [generationTarget, setGenerationTarget] = useState<"local" | "runpod">("local");
+  const [generationTarget, setGenerationTarget] = useState<"local" | "runpod">(() => {
+    if (typeof window === "undefined") return "local";
+    try {
+      const savedGenerationTarget = window.localStorage.getItem(
+        GENERATION_TARGET_STORAGE_KEY
+      );
+      return savedGenerationTarget === "runpod" ? "runpod" : "local";
+    } catch {
+      return "local";
+    }
+  });
   const [runpodPods, setRunpodPods] = useState<RunpodPodOption[]>([]);
   const [selectedRunpodPodId, setSelectedRunpodPodId] = useState("");
   const [runpodStatus, setRunpodStatus] = useState("");
@@ -314,7 +326,32 @@ export default function Home() {
           ? (data.runpodPods as RunpodPodOption[])
           : [];
         setRunpodPods(pods);
-        setSelectedRunpodPodId((current) => current || pods[0]?.id || "");
+        setSelectedRunpodPodId((current) => {
+          const savedPodId = (() => {
+            try {
+              return window.localStorage.getItem(SELECTED_RUNPOD_POD_STORAGE_KEY) ?? "";
+            } catch {
+              return "";
+            }
+          })();
+          const podExists = (id: string) => pods.some((pod) => pod.id === id);
+          const next =
+            current && podExists(current)
+              ? current
+              : savedPodId && podExists(savedPodId)
+                ? savedPodId
+                : pods[0]?.id || "";
+
+          try {
+            if (next) {
+              window.localStorage.setItem(SELECTED_RUNPOD_POD_STORAGE_KEY, next);
+            } else {
+              window.localStorage.removeItem(SELECTED_RUNPOD_POD_STORAGE_KEY);
+            }
+          } catch {}
+
+          return next;
+        });
       })
       .catch(() => {});
   }, []);
@@ -1289,7 +1326,15 @@ export default function Home() {
                 <button
                   key={item.value}
                   type="button"
-                  onClick={() => setGenerationTarget(item.value)}
+                  onClick={() => {
+                    setGenerationTarget(item.value);
+                    try {
+                      window.localStorage.setItem(
+                        GENERATION_TARGET_STORAGE_KEY,
+                        item.value
+                      );
+                    } catch {}
+                  }}
                   className={`h-7 rounded px-2 text-xs font-semibold transition-colors ${
                     generationTarget === item.value
                       ? "bg-primary text-primary-foreground"
@@ -1304,7 +1349,18 @@ export default function Home() {
               <select
                 value={selectedRunpodPodId}
                 onChange={(event) => {
-                  setSelectedRunpodPodId(event.target.value);
+                  const nextPodId = event.target.value;
+                  setSelectedRunpodPodId(nextPodId);
+                  try {
+                    if (nextPodId) {
+                      window.localStorage.setItem(
+                        SELECTED_RUNPOD_POD_STORAGE_KEY,
+                        nextPodId
+                      );
+                    } else {
+                      window.localStorage.removeItem(SELECTED_RUNPOD_POD_STORAGE_KEY);
+                    }
+                  } catch {}
                   setRunpodConnection({
                     checked: false,
                     comfyReachable: false,

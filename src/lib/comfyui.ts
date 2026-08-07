@@ -18,7 +18,7 @@ import {
   isKrea2CheckpointName,
 } from "./comfyui-model-files";
 import { normalizeGenerationSeed } from "./types";
-import { resolveVideoWorkflowPath } from "./video-pipelines";
+import { resolveVideoPipeline, resolveVideoWorkflowPath } from "./video-pipelines";
 
 const DEFAULT_COMFYUI_URL = "http://127.0.0.1:8188";
 export const COMFYUI_BASE_URL =
@@ -1775,6 +1775,32 @@ function applyVideoParamsToWorkflow(
   return workflow;
 }
 
+function applyVideoPipelineSettingsToWorkflow(
+  workflow: Record<string, unknown>,
+  params: VideoGenerationParams
+) {
+  const pipeline = resolveVideoPipeline(params.video_pipeline || params.video_model);
+  const settings = {
+    ...pipeline.defaults,
+    ...(params.video_pipeline_settings ?? {}),
+  };
+
+  for (const control of pipeline.controls) {
+    const value = settings[control.key];
+    if (value === undefined) continue;
+
+    for (const patch of control.patches) {
+      const node = workflow[patch.nodeId];
+      if (!node || typeof node !== "object" || Array.isArray(node)) continue;
+      const inputs = (node as { inputs?: Record<string, unknown> }).inputs;
+      if (!inputs) continue;
+      inputs[patch.input] = value;
+    }
+  }
+
+  return workflow;
+}
+
 async function loadWorkflowFromEnv(
   envName: "COMFYUI_VIDEO_WORKFLOW_PATH" | "COMFYUI_AUDIO_WORKFLOW_PATH",
   params: VideoGenerationParams,
@@ -1805,8 +1831,11 @@ async function loadWorkflowFromEnv(
     throw new Error(`${envName} must point to a ComfyUI API workflow JSON object.`);
   }
 
-  return applyVideoParamsToWorkflow(
-    replaceWorkflowPlaceholders(workflow, resolvedParams) as Record<string, unknown>,
+  return applyVideoPipelineSettingsToWorkflow(
+    applyVideoParamsToWorkflow(
+      replaceWorkflowPlaceholders(workflow, resolvedParams) as Record<string, unknown>,
+      resolvedParams
+    ),
     resolvedParams
   );
 }

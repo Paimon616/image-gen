@@ -148,6 +148,7 @@ export type VideoModelPreset = "wan-smoothmix" | "wan-base" | "ltx-10eros";
 export interface VideoGenerationParams {
   video_model: VideoModelPreset;
   video_pipeline: string;
+  video_pipeline_settings: Record<string, string | number | boolean>;
   prompt: string;
   negative_prompt: string;
   width: number;
@@ -205,6 +206,8 @@ export interface ImportedCivitaiResource {
   name: string;
   versionName?: string;
   baseModel?: string;
+  thumbnailUrl?: string;
+  tags?: string[];
   weight?: number;
   hash?: string;
   fileName?: string;
@@ -343,6 +346,7 @@ export const DEFAULT_PARAMS: GenerationParams = {
 export const DEFAULT_VIDEO_PARAMS: VideoGenerationParams = {
   video_model: "wan-smoothmix",
   video_pipeline: "sulphur-ltx23-i2v-base-high-quality",
+  video_pipeline_settings: {},
   prompt: "",
   negative_prompt: "low quality, blurry, flicker, warped, distorted motion",
   width: 480,

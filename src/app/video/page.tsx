@@ -143,6 +143,25 @@ interface VideoPipelineOption {
   workflowPath: string;
   mode: "i2v" | "t2v";
   experimental?: boolean;
+  defaults: Record<string, string | number | boolean>;
+  controls: VideoPipelineControlOption[];
+}
+
+interface VideoPipelineControlOption {
+  key: string;
+  label: string;
+  type: "number" | "text" | "select" | "boolean";
+  defaultValue: string | number | boolean;
+  min?: number;
+  max?: number;
+  step?: number;
+  options?: string[];
+  group: "core" | "sampling" | "conditioning" | "lora" | "resize" | "advanced";
+  help: string;
+  patches: Array<{
+    nodeId: string;
+    input: string;
+  }>;
 }
 
 interface GenerationDetail {
@@ -187,6 +206,20 @@ function parseSseEvent(rawEvent: string) {
 function numericValue(value: string, fallback: number) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function pipelineSettingValue(
+  params: VideoGenerationParams,
+  control: VideoPipelineControlOption
+) {
+  return params.video_pipeline_settings?.[control.key] ?? control.defaultValue;
+}
+
+function pipelineControlHelp(control: VideoPipelineControlOption) {
+  const nodes = control.patches
+    .map((patch) => `${patch.nodeId}.${patch.input}`)
+    .join(", ");
+  return `${control.help} 적용 node: ${nodes}.`;
 }
 
 function formatElapsed(ms: number | undefined) {
@@ -755,6 +788,7 @@ export default function VideoPage() {
   const [videoPipelines, setVideoPipelines] = useState<VideoPipelineOption[]>([]);
   const [paimonOpen, setPaimonOpen] = useState(false);
   const activePromptIdRef = useRef("");
+  const autoRunpodCheckKeyRef = useRef("");
   const generationAbortControllerRef = useRef<AbortController | null>(null);
 
   const startEditorResize = useCallback(
@@ -837,6 +871,14 @@ export default function VideoPage() {
     setParams((current) => ({ ...current, ...update }));
   }, []);
 
+  const settingsForPipeline = useCallback(
+    (pipeline: VideoPipelineOption | undefined, current: VideoGenerationParams) => ({
+      ...(pipeline?.defaults ?? {}),
+      ...(current.video_pipeline === pipeline?.id ? current.video_pipeline_settings : {}),
+    }),
+    []
+  );
+
   const resetRunpodConnection = useCallback(() => {
     setRunpodStatus("");
     setRunpodConnection({
@@ -905,6 +947,14 @@ export default function VideoPage() {
       setRunpodBusy(false);
     }
   }, [language, runpodBusy, selectedRunpodPodId]);
+
+  useEffect(() => {
+    if (generationTarget !== "runpod" || !selectedRunpodPodId || isGenerating) return;
+    const key = `${generationTarget}:${selectedRunpodPodId}`;
+    if (autoRunpodCheckKeyRef.current === key) return;
+    autoRunpodCheckKeyRef.current = key;
+    void checkRunpodConnection();
+  }, [checkRunpodConnection, generationTarget, isGenerating, selectedRunpodPodId]);
 
   const setupRunpodHelper = useCallback(async () => {
     if (!selectedRunpodPodId || runpodSetupBusy || isGenerating) return;
@@ -1062,10 +1112,18 @@ export default function VideoPage() {
         setVideoPipelines(pipelines);
         setParams((current) =>
           current.video_pipeline
-            ? current
+            ? {
+                ...current,
+                video_pipeline_settings: {
+                  ...(pipelines.find((pipeline) => pipeline.id === current.video_pipeline)
+                    ?.defaults ?? {}),
+                  ...(current.video_pipeline_settings ?? {}),
+                },
+              }
             : {
                 ...current,
                 video_pipeline: pipelines[0]?.id || current.video_model,
+                video_pipeline_settings: pipelines[0]?.defaults ?? {},
               }
         );
       })
@@ -1643,6 +1701,7 @@ export default function VideoPage() {
                     updateParams({
                       video_pipeline: event.target.value,
                       video_model: nextModel,
+                      video_pipeline_settings: settingsForPipeline(pipeline, params),
                     });
                     if (pipeline?.mode === "t2v" && runpodPods.length > 0) {
                       setGenerationTarget("runpod");
@@ -1683,67 +1742,105 @@ export default function VideoPage() {
               </p>
             </div>
 
-            {params.video_model === "wan-smoothmix" && (
-              <div className="space-y-2">
-                <div className="text-xs font-medium text-foreground">
-                  {language === "ko" ? "Wan LoRA 강도 (0 = 끔)" : "Wan LoRA strengths (0 = off)"}
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label className="mb-1 block text-[11px] text-muted-foreground">SmoothXXX High/Low</Label>
-                    <Input type="number" min={0} max={2} step={0.05}
-                      value={params.smooth_xxx_strength}
-                      onChange={(event) => updateParams({ smooth_xxx_strength: numericValue(event.target.value, params.smooth_xxx_strength) })}
-                    />
-                  </div>
-                  <div>
-                    <Label className="mb-1 block text-[11px] text-muted-foreground">Mating Press High/Low</Label>
-                    <Input type="number" min={0} max={2} step={0.05}
-                      value={params.mating_press_strength}
-                      onChange={(event) => updateParams({ mating_press_strength: numericValue(event.target.value, params.mating_press_strength) })}
-                    />
-                  </div>
-                  <div>
-                    <Label className="mb-1 block text-[11px] text-muted-foreground">LightX2V High</Label>
-                    <Input type="number" min={0} max={4} step={0.1}
-                      value={params.lightx2v_high_strength}
-                      onChange={(event) => updateParams({ lightx2v_high_strength: numericValue(event.target.value, params.lightx2v_high_strength) })}
-                    />
-                  </div>
-                  <div>
-                    <Label className="mb-1 block text-[11px] text-muted-foreground">LightX2V Low</Label>
-                    <Input type="number" min={0} max={4} step={0.1}
-                      value={params.lightx2v_low_strength}
-                      onChange={(event) => updateParams({ lightx2v_low_strength: numericValue(event.target.value, params.lightx2v_low_strength) })}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
+            {selectedVideoPipeline?.controls?.length ? (
+              <div className="space-y-3">
+                {(["core", "sampling", "conditioning", "lora", "resize", "advanced"] as const)
+                  .map((group) => {
+                    const controls = selectedVideoPipeline.controls.filter(
+                      (control) => control.group === group
+                    );
+                    if (controls.length === 0) return null;
+                    const groupLabel =
+                      group === "core"
+                        ? "Core"
+                        : group === "sampling"
+                          ? "Sampling"
+                          : group === "conditioning"
+                            ? "Conditioning"
+                            : group === "lora"
+                              ? "LoRA"
+                              : group === "resize"
+                                ? "Resize"
+                                : "Advanced";
 
-            {params.video_model === "ltx-10eros" && (
-              <div className="space-y-2">
-                <div className="text-xs font-medium text-foreground">
-                  {language === "ko" ? "LTX LoRA 강도 (0 = 끔)" : "LTX LoRA strengths (0 = off)"}
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label className="mb-1 block text-[11px] text-muted-foreground">DR34ML4Y LTXXX V2</Label>
-                    <Input type="number" min={0} max={2} step={0.05}
-                      value={params.ltx_dr34_strength}
-                      onChange={(event) => updateParams({ ltx_dr34_strength: numericValue(event.target.value, params.ltx_dr34_strength) })}
-                    />
-                  </div>
-                  <div>
-                    <Label className="mb-1 block text-[11px] text-muted-foreground">DaSiWa Body Physics</Label>
-                    <Input type="number" min={0} max={2} step={0.05}
-                      value={params.ltx_dasiwa_strength}
-                      onChange={(event) => updateParams({ ltx_dasiwa_strength: numericValue(event.target.value, params.ltx_dasiwa_strength) })}
-                    />
-                  </div>
-                </div>
+                    return (
+                      <div key={group} className="space-y-2">
+                        <div className="text-xs font-semibold text-foreground">
+                          {groupLabel}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {controls.map((control) => {
+                            const value = pipelineSettingValue(params, control);
+                            const setControlValue = (
+                              nextValue: string | number | boolean
+                            ) => {
+                              updateParams({
+                                video_pipeline_settings: {
+                                  ...(params.video_pipeline_settings ?? {}),
+                                  [control.key]: nextValue,
+                                },
+                              });
+                            };
+
+                            return (
+                              <div key={control.key} className="min-w-0">
+                                <div className="mb-1 flex items-center gap-1">
+                                  <Label className="min-w-0 truncate text-[11px] text-muted-foreground">
+                                    {control.label}
+                                  </Label>
+                                  <SettingHelpTooltip
+                                    language={language}
+                                    text={pipelineControlHelp(control)}
+                                  />
+                                </div>
+                                {control.type === "select" ? (
+                                  <select
+                                    value={String(value)}
+                                    onChange={(event) => setControlValue(event.target.value)}
+                                    className="h-9 w-full rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                  >
+                                    {(control.options ?? []).map((option) => (
+                                      <option key={option} value={option}>
+                                        {option}
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : control.type === "boolean" ? (
+                                  <div className="flex h-9 items-center rounded-md border border-input px-2">
+                                    <Switch
+                                      checked={Boolean(value)}
+                                      onCheckedChange={setControlValue}
+                                    />
+                                  </div>
+                                ) : (
+                                  <Input
+                                    type={control.type === "number" ? "number" : "text"}
+                                    min={control.min}
+                                    max={control.max}
+                                    step={control.step}
+                                    value={String(value)}
+                                    onChange={(event) =>
+                                      setControlValue(
+                                        control.type === "number"
+                                          ? numericValue(
+                                              event.target.value,
+                                              Number(control.defaultValue)
+                                            )
+                                          : event.target.value
+                                      )
+                                    }
+                                    className="h-9 text-xs"
+                                  />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
               </div>
-            )}
+            ) : null}
           </EditorSection>
 
           <EditorSection
