@@ -42,6 +42,75 @@ function extractSshCommand(value: string) {
   return "";
 }
 
+function splitShellWords(value: string) {
+  const words: string[] = [];
+  let current = "";
+  let quote: "'" | '"' | "" = "";
+  let escaping = false;
+
+  for (const char of value) {
+    if (escaping) {
+      current += char;
+      escaping = false;
+      continue;
+    }
+    if (char === "\\") {
+      escaping = true;
+      continue;
+    }
+    if (quote) {
+      if (char === quote) {
+        quote = "";
+      } else {
+        current += char;
+      }
+      continue;
+    }
+    if (char === "'" || char === '"') {
+      quote = char;
+      continue;
+    }
+    if (/\s/.test(char)) {
+      if (current) {
+        words.push(current);
+        current = "";
+      }
+      continue;
+    }
+    current += char;
+  }
+
+  if (current) words.push(current);
+  return words;
+}
+
+function normalizedSshCommand(value: string) {
+  const words = splitShellWords(value);
+  const args = words[0] === "ssh" ? words.slice(1) : words;
+  const destinationIndex = args.findIndex((arg) => /@ssh\.runpod\.io$/i.test(arg));
+
+  if (destinationIndex < 0) return "";
+
+  const destination = args[destinationIndex];
+  const beforeDestination = args.slice(0, destinationIndex);
+  const afterDestination = args.slice(destinationIndex + 1);
+  const optionArgs = [...beforeDestination, ...afterDestination];
+
+  return [
+    "ssh",
+    "-o",
+    "StrictHostKeyChecking=accept-new",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "ConnectTimeout=10",
+    ...optionArgs,
+    destination,
+  ]
+    .map(shellQuote)
+    .join(" ");
+}
+
 function remoteCommand(ssh: string, command: string) {
   const extracted = extractSshCommand(ssh);
   if (!extracted) {
@@ -50,15 +119,19 @@ function remoteCommand(ssh: string, command: string) {
     );
   }
 
-  const safeSsh = extracted.replace(
-    /^ssh\s+/,
-    "ssh -o StrictHostKeyChecking=accept-new -o BatchMode=yes "
-  );
+  const safeSsh = normalizedSshCommand(extracted);
+  if (!safeSsh) {
+    throw new Error("RunPod SSH command must include a user@ssh.runpod.io address.");
+  }
 
   return `${safeSsh} ${shellQuote(command)}`;
 }
 
-export async function runSsh(pod: RunpodPodSettings, command: string) {
+export async function runSsh(
+  pod: RunpodPodSettings,
+  command: string,
+  options: { timeoutMs?: number } = {}
+) {
   if (!pod.ssh.trim()) {
     throw new Error("RunPod SSH command is not configured.");
   }
@@ -67,7 +140,7 @@ export async function runSsh(pod: RunpodPodSettings, command: string) {
     "bash",
     ["-lc", remoteCommand(pod.ssh, command)],
     {
-      timeout: 30 * 60 * 1000,
+      timeout: options.timeoutMs ?? 30 * 60 * 1000,
       maxBuffer: 20 * 1024 * 1024,
     }
   );
@@ -119,7 +192,7 @@ export async function fetchRunpodStatus(pod: RunpodPodSettings) {
   let sshReachable = false;
   let sshError = "";
   try {
-    await runSsh(pod, "printf ok");
+    await runSsh(pod, "printf ok", { timeoutMs: 15_000 });
     sshReachable = true;
   } catch (error) {
     sshError = error instanceof Error ? error.message : "SSH failed.";
