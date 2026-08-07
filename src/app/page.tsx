@@ -34,6 +34,7 @@ import { getModelConfig, randomGenerationSeed } from "@/lib/types";
 import {
   GripVertical,
   Download,
+  DownloadCloud,
   FolderMinus,
   FolderX,
   FolderPlus,
@@ -42,8 +43,12 @@ import {
   Loader2,
   PanelLeftClose,
   PanelLeftOpen,
+  Play,
+  RefreshCw,
   ScanLine,
+  Server,
   Trash2,
+  Wrench,
   X,
 } from "lucide-react";
 
@@ -52,6 +57,20 @@ interface RunpodPodOption {
   label: string;
   podId: string;
   comfyUrl: string;
+}
+
+interface RunpodMissingFile {
+  folder: string;
+  path: string;
+  resource: {
+    type: "checkpoint" | "lora" | "embedding" | "vae" | "upscaler" | "other";
+    name: string;
+    versionName?: string;
+    baseModel?: string;
+    url: string;
+    modelId?: number;
+    modelVersionId?: number;
+  };
 }
 
 const EDITOR_MIN_WIDTH = 320;
@@ -158,6 +177,9 @@ export default function Home() {
   const [generationTarget, setGenerationTarget] = useState<"local" | "runpod">("local");
   const [runpodPods, setRunpodPods] = useState<RunpodPodOption[]>([]);
   const [selectedRunpodPodId, setSelectedRunpodPodId] = useState("");
+  const [runpodStatus, setRunpodStatus] = useState("");
+  const [runpodBusy, setRunpodBusy] = useState<"" | "start" | "status" | "setup" | "check" | "download">("");
+  const [runpodMissingFiles, setRunpodMissingFiles] = useState<RunpodMissingFile[]>([]);
   const [activeGeneration, setActiveGeneration] =
     useState<GenerationQueueItem | null>(null);
   const [paimonAttachments, setPaimonAttachments] =
@@ -677,6 +699,110 @@ export default function Home() {
     setStatus,
   ]);
 
+  const selectedRunpodPod = useMemo(
+    () => runpodPods.find((pod) => pod.id === selectedRunpodPodId),
+    [runpodPods, selectedRunpodPodId]
+  );
+
+  const runRunpodAction = useCallback(
+    async (action: "start" | "status" | "setup" | "check" | "download") => {
+      if (!selectedRunpodPodId || runpodBusy) return;
+
+      setRunpodBusy(action);
+      setRunpodStatus("");
+      try {
+        if (action === "start") {
+          const response = await fetch(`/api/runpod/pods/${selectedRunpodPodId}/start`, {
+            method: "POST",
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || "RunPod start failed");
+          setRunpodStatus(ko ? "RunPod 시작 요청을 보냈습니다." : "RunPod start requested.");
+        }
+
+        if (action === "status") {
+          const response = await fetch(`/api/runpod/pods/${selectedRunpodPodId}/status`, {
+            cache: "no-store",
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || "RunPod status failed");
+          setRunpodStatus(
+            [
+              data.comfyReachable
+                ? ko ? "ComfyUI 연결됨" : "ComfyUI reachable"
+                : ko ? `ComfyUI 미연결: ${data.comfyError || ""}` : `ComfyUI unreachable: ${data.comfyError || ""}`,
+              data.sshReachable
+                ? ko ? "SSH 연결됨" : "SSH reachable"
+                : ko ? `SSH 미연결: ${data.sshError || ""}` : `SSH unreachable: ${data.sshError || ""}`,
+            ].join(" · ")
+          );
+        }
+
+        if (action === "setup") {
+          const response = await fetch(`/api/runpod/pods/${selectedRunpodPodId}/setup`, {
+            method: "POST",
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || "RunPod setup failed");
+          setRunpodStatus(ko ? "RunPod 세팅이 완료됐습니다." : "RunPod setup complete.");
+        }
+
+        if (action === "check") {
+          const response = await fetch(`/api/runpod/pods/${selectedRunpodPodId}/check`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ params }),
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || "RunPod file check failed");
+          const missing = Array.isArray(data.missing)
+            ? (data.missing as RunpodMissingFile[])
+            : [];
+          setRunpodMissingFiles(missing);
+          setRunpodStatus(
+            missing.length === 0
+              ? ko ? "필요한 모델 파일이 모두 있습니다." : "All required files are present."
+              : ko ? `누락 파일 ${missing.length}개` : `${missing.length} missing file(s)`
+          );
+        }
+
+        if (action === "download") {
+          const downloadable = runpodMissingFiles.filter(
+            (item) => item.resource.url && item.resource.modelVersionId
+          );
+          for (const item of downloadable) {
+            const response = await fetch(`/api/runpod/pods/${selectedRunpodPodId}/download`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ resource: item.resource }),
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "RunPod download failed");
+          }
+          setRunpodStatus(
+            ko
+              ? `${downloadable.length}개 파일을 RunPod에 다운로드했습니다.`
+              : `Downloaded ${downloadable.length} file(s) to RunPod.`
+          );
+          setRunpodMissingFiles((items) =>
+            items.filter((item) => !item.resource.url || !item.resource.modelVersionId)
+          );
+        }
+      } catch (error) {
+        setRunpodStatus(error instanceof Error ? error.message : "RunPod action failed");
+      } finally {
+        setRunpodBusy("");
+      }
+    },
+    [
+      ko,
+      params,
+      runpodBusy,
+      runpodMissingFiles,
+      selectedRunpodPodId,
+    ]
+  );
+
   const toggleImageInPaimon = useCallback((image: GeneratedImage) => {
     setPaimonAttachments((current) => {
       const attachmentId = `gallery:${image.id}`;
@@ -851,6 +977,139 @@ export default function Home() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          {generationTarget === "runpod" && (
+            <EditorSection
+              title="RunPod"
+              description={
+                ko
+                  ? "팟을 시작하고 원격 ComfyUI와 모델 파일 상태를 관리합니다."
+                  : "Start the pod and manage remote ComfyUI and model files."
+              }
+            >
+              <div className="space-y-3 rounded-md border border-border bg-card/80 p-3">
+                <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+                  <Server className="h-4 w-4 shrink-0" />
+                  <span className="min-w-0 truncate">
+                    {selectedRunpodPod
+                      ? `${selectedRunpodPod.label || selectedRunpodPod.podId || selectedRunpodPod.id} · ${selectedRunpodPod.comfyUrl || "ComfyUI URL 없음"}`
+                      : ko ? "설정에서 RunPod pod를 추가하세요." : "Add a RunPod pod in Settings."}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5"
+                    disabled={!selectedRunpodPodId || Boolean(runpodBusy)}
+                    onClick={() => void runRunpodAction("start")}
+                  >
+                    {runpodBusy === "start" ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Play className="h-3.5 w-3.5" />
+                    )}
+                    {ko ? "팟 실행" : "Start pod"}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5"
+                    disabled={!selectedRunpodPodId || Boolean(runpodBusy)}
+                    onClick={() => void runRunpodAction("status")}
+                  >
+                    {runpodBusy === "status" ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-3.5 w-3.5" />
+                    )}
+                    {ko ? "상태 체크" : "Check"}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5"
+                    disabled={!selectedRunpodPodId || Boolean(runpodBusy)}
+                    onClick={() => void runRunpodAction("setup")}
+                  >
+                    {runpodBusy === "setup" ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Wrench className="h-3.5 w-3.5" />
+                    )}
+                    {ko ? "원격 세팅" : "Setup"}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5"
+                    disabled={!selectedRunpodPodId || Boolean(runpodBusy)}
+                    onClick={() => void runRunpodAction("check")}
+                  >
+                    {runpodBusy === "check" ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-3.5 w-3.5" />
+                    )}
+                    {ko ? "파일 체크" : "Files"}
+                  </Button>
+                </div>
+                {runpodMissingFiles.length > 0 && (
+                  <div className="space-y-2 rounded-md border border-dashed border-destructive/30 bg-destructive/10 p-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-semibold text-destructive">
+                        {ko ? "RunPod 누락 파일" : "Missing on RunPod"}
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 gap-1 px-2 text-[11px]"
+                        disabled={
+                          Boolean(runpodBusy) ||
+                          !runpodMissingFiles.some(
+                            (item) => item.resource.url && item.resource.modelVersionId
+                          )
+                        }
+                        onClick={() => void runRunpodAction("download")}
+                      >
+                        {runpodBusy === "download" ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <DownloadCloud className="h-3.5 w-3.5" />
+                        )}
+                        {ko ? "다운로드" : "Download"}
+                      </Button>
+                    </div>
+                    <div className="space-y-1">
+                      {runpodMissingFiles.map((item) => (
+                        <div
+                          key={item.path}
+                          className="rounded bg-background/80 px-2 py-1 text-xs"
+                        >
+                          <div className="truncate font-medium">{item.path}</div>
+                          {!item.resource.modelVersionId && (
+                            <div className="text-[11px] text-muted-foreground">
+                              {ko
+                                ? "Civitai modelVersionId가 없어 자동 다운로드할 수 없습니다."
+                                : "No Civitai modelVersionId; automatic download is unavailable."}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {runpodStatus && (
+                  <p className="text-xs text-muted-foreground">{runpodStatus}</p>
+                )}
+              </div>
+            </EditorSection>
+          )}
+
           <EditorSection title={ko ? "가져오기" : "Import"} description={ko ? "Civitai URL이나 이미지 메타데이터에서 프롬프트와 설정을 가져옵니다." : "Import prompts and settings from Civitai or image metadata."}>
           <CivitaiImport />
           <MetadataImport />

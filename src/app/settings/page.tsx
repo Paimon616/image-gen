@@ -139,8 +139,8 @@ export default function SettingsPage() {
               </div>
               <p className="text-xs text-muted-foreground">
                 {ko
-                  ? "Pod ID와 SSH 정보는 메모용이고, 이미지 생성에는 Port 8188 HTTP service의 ComfyUI URL을 사용합니다."
-                  : "Pod ID and SSH are reference fields; generation uses the Port 8188 HTTP service ComfyUI URL."}
+                  ? "SSH는 RunPod가 복사해주는 전체 명령 그대로 붙여넣으세요. 이미지 생성에는 Port 8188 HTTP service의 ComfyUI URL을 사용합니다."
+                  : "Paste the full SSH command copied from RunPod. Generation uses the Port 8188 HTTP service ComfyUI URL."}
               </p>
             </div>
             <div className="space-y-2">
@@ -205,7 +205,7 @@ export default function SettingsPage() {
                           )
                         )
                       }
-                      placeholder="SSH"
+                      placeholder="ssh pod-user@ssh.runpod.io -i ~/.ssh/id_ed25519"
                     />
                     <Input
                       value={pod.comfyUrl}
