@@ -2,6 +2,7 @@ import "server-only";
 
 import { execFile } from "child_process";
 import { readFile } from "fs/promises";
+import { homedir } from "os";
 import { basename } from "path";
 import { promisify } from "util";
 import type { GenerationParams, ImportedCivitaiResource } from "@/lib/types";
@@ -84,19 +85,79 @@ function splitShellWords(value: string) {
   return words;
 }
 
-function normalizedSshCommand(value: string) {
+function expandHomePath(value: string) {
+  if (value === "~") return homedir();
+  if (value.startsWith("~/")) return `${homedir()}${value.slice(1)}`;
+  return value;
+}
+
+function normalizeSshOptionArgs(args: string[]) {
+  return args.map((arg, index) => {
+    const previous = args[index - 1];
+
+    if (previous === "-i" || previous === "-F") {
+      return expandHomePath(arg);
+    }
+
+    if (/^IdentityFile=~(?:\/|$)/.test(arg)) {
+      return `IdentityFile=${expandHomePath(arg.slice("IdentityFile=".length))}`;
+    }
+
+    return arg;
+  });
+}
+
+interface ParsedSshCommand {
+  destination: string;
+  user: string;
+  host: string;
+  optionArgs: string[];
+}
+
+function parseSshCommand(value: string): ParsedSshCommand | null {
   const words = splitShellWords(value);
   const args = words[0] === "ssh" ? words.slice(1) : words;
   const destinationIndex = args.findIndex((arg) =>
     /^[^@\s]+@[^@\s]+$/i.test(arg)
   );
 
-  if (destinationIndex < 0) return "";
+  if (destinationIndex < 0) return null;
 
   const destination = args[destinationIndex];
+  const [user, host] = destination.split("@", 2);
   const beforeDestination = args.slice(0, destinationIndex);
   const afterDestination = args.slice(destinationIndex + 1);
-  const optionArgs = [...beforeDestination, ...afterDestination];
+
+  return {
+    destination,
+    user,
+    host,
+    optionArgs: normalizeSshOptionArgs([
+      ...beforeDestination,
+      ...afterDestination,
+    ]),
+  };
+}
+
+function optionArgsWithoutEndpoint(args: string[]) {
+  const result: string[] = [];
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "-p" || arg === "-l") {
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("-p") && arg.length > 2) continue;
+    if (arg.startsWith("-l") && arg.length > 2) continue;
+    if (/^(?:Port|HostName|User)=/i.test(arg)) continue;
+    result.push(arg);
+  }
+  return result;
+}
+
+function normalizedSshCommand(value: string) {
+  const parsed = parseSshCommand(value);
+  if (!parsed) return "";
 
   return [
     "ssh",
@@ -106,27 +167,145 @@ function normalizedSshCommand(value: string) {
     "BatchMode=yes",
     "-o",
     "ConnectTimeout=10",
-    ...optionArgs,
-    destination,
+    ...parsed.optionArgs,
+    parsed.destination,
   ]
     .map(shellQuote)
     .join(" ");
 }
 
-function remoteCommand(ssh: string, command: string) {
-  const extracted = extractSshCommand(ssh);
+async function fetchRunpodSshEndpoint(pod: RunpodPodSettings) {
+  if (!pod.podId) return null;
+
+  const settings = await readSettings();
+  if (!settings.runpodApiKey) return null;
+
+  const response = await fetch("https://api.runpod.io/graphql", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${settings.runpodApiKey}`,
+    },
+    body: JSON.stringify({
+      query:
+        "query PodRuntime($podId: String!) { pod(input: { podId: $podId }) { runtime { ports { ip isIpPublic privatePort publicPort } } } }",
+      variables: { podId: pod.podId },
+    }),
+    cache: "no-store",
+    signal: AbortSignal.timeout(10_000),
+  });
+
+  const text = await response.text();
+  if (!response.ok) {
+    throw new Error(`RunPod runtime lookup failed: HTTP ${response.status} ${text}`);
+  }
+
+  const data = JSON.parse(text) as {
+    errors?: Array<{ message?: string }>;
+    data?: {
+      pod?: {
+        runtime?: {
+          ports?: Array<{
+            ip?: string;
+            isIpPublic?: boolean;
+            privatePort?: number;
+            publicPort?: number;
+          }>;
+        };
+      };
+    };
+  };
+
+  if (data.errors?.length) {
+    throw new Error(
+      `RunPod runtime lookup failed: ${data.errors.map((error) => error.message).join(", ")}`
+    );
+  }
+
+  const sshPort = data.data?.pod?.runtime?.ports?.find(
+    (port) => port.privatePort === 22 && port.isIpPublic && port.ip && port.publicPort
+  );
+
+  if (!sshPort?.ip || !sshPort.publicPort) return null;
+
+  return { host: sshPort.ip, port: String(sshPort.publicPort) };
+}
+
+async function resolvedSshCommand(pod: RunpodPodSettings) {
+  const extracted = extractSshCommand(pod.ssh);
   if (!extracted) {
     throw new Error(
       "RunPod SSH command was not recognized. Paste the SSH line from RunPod Connect."
     );
   }
 
-  const safeSsh = normalizedSshCommand(extracted);
+  const parsed = parseSshCommand(extracted);
+  if (!parsed) {
+    throw new Error("RunPod SSH command must include a user@host address.");
+  }
+
+  let safeSsh = normalizedSshCommand(extracted);
+  const endpoint = await fetchRunpodSshEndpoint(pod);
+  if (endpoint) {
+    const shouldUseRoot =
+      parsed.user === "root" || /(?:^|\.)ssh\.runpod\.io$/i.test(parsed.host);
+    const destination = `${shouldUseRoot ? "root" : parsed.user}@${endpoint.host}`;
+    safeSsh = [
+      "ssh",
+      "-o",
+      "StrictHostKeyChecking=accept-new",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=10",
+      "-p",
+      endpoint.port,
+      ...optionArgsWithoutEndpoint(parsed.optionArgs),
+      destination,
+    ]
+      .map(shellQuote)
+      .join(" ");
+  }
+
   if (!safeSsh) {
     throw new Error("RunPod SSH command must include a user@host address.");
   }
 
-  return `${safeSsh} ${shellQuote(command)}`;
+  return safeSsh;
+}
+
+async function remoteCommand(pod: RunpodPodSettings, command: string) {
+  return `${await resolvedSshCommand(pod)} ${shellQuote(command)}`;
+}
+
+function identityFileFromSsh(value: string) {
+  const extracted = extractSshCommand(value);
+  if (!extracted) return "";
+  const parsed = parseSshCommand(extracted);
+  if (!parsed) return "";
+
+  const identityIndex = parsed.optionArgs.findIndex((arg) => arg === "-i");
+  if (identityIndex >= 0) return parsed.optionArgs[identityIndex + 1] ?? "";
+
+  const identityOption = parsed.optionArgs.find((arg) =>
+    /^IdentityFile=/i.test(arg)
+  );
+  return identityOption?.slice("IdentityFile=".length) ?? "";
+}
+
+function friendlySshError(pod: RunpodPodSettings, error: unknown) {
+  const message = error instanceof Error ? error.message : "SSH failed.";
+  if (!/Permission denied \(publickey,password\)/i.test(message)) {
+    return message;
+  }
+
+  const identityFile = identityFileFromSsh(pod.ssh);
+  const keyHint = identityFile ? ` (${identityFile})` : "";
+  return [
+    `RunPod가 SSH key를 거절했습니다${keyHint}.`,
+    "SSH 명령 형식은 맞지만, 이 private key가 해당 pod에서 허용되지 않습니다.",
+    "runpod-video는 전용 RunPod SSH key와 ssh_config를 사용했습니다. 같은 private key를 -i에 넣거나, 이 key의 .pub 파일을 RunPod에 등록한 뒤 pod를 다시 시작하세요.",
+  ].join(" ");
 }
 
 export async function runSsh(
@@ -138,14 +317,22 @@ export async function runSsh(
     throw new Error("RunPod SSH command is not configured.");
   }
 
-  const { stdout, stderr } = await execFileAsync(
-    "bash",
-    ["-lc", remoteCommand(pod.ssh, command)],
-    {
-      timeout: options.timeoutMs ?? 30 * 60 * 1000,
-      maxBuffer: 20 * 1024 * 1024,
-    }
-  );
+  let stdout = "";
+  let stderr = "";
+  try {
+    const result = await execFileAsync(
+      "bash",
+      ["-lc", await remoteCommand(pod, command)],
+      {
+        timeout: options.timeoutMs ?? 30 * 60 * 1000,
+        maxBuffer: 20 * 1024 * 1024,
+      }
+    );
+    stdout = result.stdout;
+    stderr = result.stderr;
+  } catch (error) {
+    throw new Error(friendlySshError(pod, error));
+  }
 
   return { stdout, stderr };
 }
@@ -197,7 +384,7 @@ export async function fetchRunpodStatus(pod: RunpodPodSettings) {
     await runSsh(pod, "printf ok", { timeoutMs: 15_000 });
     sshReachable = true;
   } catch (error) {
-    sshError = error instanceof Error ? error.message : "SSH failed.";
+    sshError = friendlySshError(pod, error);
   }
 
   return { comfyReachable, comfyError, sshReachable, sshError };
