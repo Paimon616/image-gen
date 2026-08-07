@@ -86,6 +86,21 @@ interface RunpodDownloadProgress {
   total: number;
   completed: number;
   currentPath: string;
+  downloadedBytes: number;
+  totalBytes: number;
+  filePercent: number;
+}
+
+function formatBytes(bytes: number) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let value = bytes;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+  return `${value >= 10 || unitIndex === 0 ? value.toFixed(0) : value.toFixed(1)} ${units[unitIndex]}`;
 }
 
 const EDITOR_MIN_WIDTH = 320;
@@ -928,6 +943,9 @@ export default function Home() {
             total: downloadable.length,
             completed: 0,
             currentPath: downloadable[0]?.path ?? "",
+            downloadedBytes: 0,
+            totalBytes: 0,
+            filePercent: 0,
           });
 
           for (const [index, item] of downloadable.entries()) {
@@ -935,23 +953,83 @@ export default function Home() {
               total: downloadable.length,
               completed: index,
               currentPath: item.path,
+              downloadedBytes: 0,
+              totalBytes: 0,
+              filePercent: 0,
             });
             setRunpodStatus(
               ko
                 ? `RunPod 다운로드 중 ${index + 1}/${downloadable.length}: ${item.path}`
                 : `Downloading to RunPod ${index + 1}/${downloadable.length}: ${item.path}`
             );
-            const response = await fetch(`/api/runpod/pods/${selectedRunpodPodId}/download`, {
+            const response = await fetch(`/api/runpod/pods/${selectedRunpodPodId}/download/stream`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ resource: item.resource, targetPath: item.path }),
             });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || "RunPod download failed");
+            if (!response.ok || !response.body) {
+              const data = await response.json().catch(() => ({}));
+              throw new Error(data.error || "RunPod download failed");
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = "";
+            let streamError = "";
+            while (true) {
+              const { value, done } = await reader.read();
+              if (done) break;
+              buffer += decoder.decode(value, { stream: true });
+              const events = buffer.split("\n\n");
+              buffer = events.pop() ?? "";
+              for (const event of events) {
+                const dataLine = event
+                  .split("\n")
+                  .find((line) => line.startsWith("data: "));
+                if (!dataLine) continue;
+                const payload = JSON.parse(dataLine.slice(6)) as {
+                  type?: string;
+                  path?: string;
+                  downloaded?: number;
+                  total?: number;
+                  percent?: number;
+                  message?: string;
+                };
+                if (payload.type === "error") {
+                  streamError = payload.message || "RunPod download failed";
+                }
+                if (payload.type === "progress" || payload.type === "status") {
+                  const downloadedBytes = Number(payload.downloaded ?? 0);
+                  const totalBytes = Number(payload.total ?? 0);
+                  setRunpodDownloadProgress({
+                    total: downloadable.length,
+                    completed: index,
+                    currentPath: item.path,
+                    downloadedBytes,
+                    totalBytes,
+                    filePercent: Number(payload.percent ?? 0),
+                  });
+                }
+                if (payload.type === "complete") {
+                  setRunpodDownloadProgress({
+                    total: downloadable.length,
+                    completed: index,
+                    currentPath: item.path,
+                    downloadedBytes: Number(payload.total ?? 0),
+                    totalBytes: Number(payload.total ?? 0),
+                    filePercent: 100,
+                  });
+                }
+              }
+            }
+            if (streamError) throw new Error(streamError);
             setRunpodDownloadProgress({
               total: downloadable.length,
               completed: index + 1,
               currentPath: item.path,
+              downloadedBytes: 0,
+              totalBytes: 0,
+              filePercent: 100,
             });
           }
           setRunpodStatus(
@@ -1361,6 +1439,24 @@ export default function Home() {
                                   Math.max(runpodDownloadProgress.total, 1)) *
                                   100
                               )}%`,
+                            }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between gap-2 text-muted-foreground">
+                          <span className="truncate">
+                            {runpodDownloadProgress.totalBytes > 0
+                              ? `${formatBytes(runpodDownloadProgress.downloadedBytes)} / ${formatBytes(runpodDownloadProgress.totalBytes)}`
+                              : formatBytes(runpodDownloadProgress.downloadedBytes)}
+                          </span>
+                          <span className="shrink-0 tabular-nums">
+                            {runpodDownloadProgress.filePercent}%
+                          </span>
+                        </div>
+                        <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                          <div
+                            className="h-full rounded-full bg-emerald-500 transition-all"
+                            style={{
+                              width: `${Math.max(0, Math.min(100, runpodDownloadProgress.filePercent))}%`,
                             }}
                           />
                         </div>

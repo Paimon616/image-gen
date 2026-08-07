@@ -1,6 +1,6 @@
 import "server-only";
 
-import { execFile } from "child_process";
+import { execFile, spawn } from "child_process";
 import { readFile } from "fs/promises";
 import { homedir } from "os";
 import { basename } from "path";
@@ -391,6 +391,44 @@ export async function runSsh(
   return { stdout, stderr };
 }
 
+export async function streamSsh(
+  pod: RunpodPodSettings,
+  command: string,
+  handlers: {
+    onStdout?: (chunk: string) => void;
+    onStderr?: (chunk: string) => void;
+  } = {}
+) {
+  if (!pod.ssh.trim()) {
+    throw new Error("RunPod SSH command is not configured.");
+  }
+
+  const shellCommand = await remoteCommand(pod, command);
+
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn("bash", ["-lc", shellCommand], {
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stderr = "";
+
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk: string) => handlers.onStdout?.(chunk));
+    child.stderr.on("data", (chunk: string) => {
+      stderr += chunk;
+      handlers.onStderr?.(chunk);
+    });
+    child.on("error", (error) => reject(new Error(friendlySshError(pod, error))));
+    child.on("close", (code) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+      reject(new Error(friendlySshError(pod, new Error(stderr || `SSH exited with code ${code}`))));
+    });
+  });
+}
+
 export async function startRunpodPod(podId: string) {
   const settings = await readSettings();
   if (!settings.runpodApiKey) {
@@ -680,14 +718,11 @@ function fallbackFilename(resource: ImportedCivitaiResource) {
   return /\.(ckpt|pt|pth|safetensors)$/i.test(safe) ? safe : `${safe}.safetensors`;
 }
 
-export async function downloadRunpodResource(
-  podId: string,
+async function getRunpodDownloadPlan(
+  pod: RunpodPodSettings,
   resource: ImportedCivitaiResource,
   targetPath?: string
 ) {
-  const pod = await getRunpodPod(podId);
-  if (!pod) throw new Error("RunPod target was not found.");
-
   const settings = await readSettings();
   const token = settings.civitaiApiKey || process.env.CIVITAI_API_TOKEN?.trim();
 
@@ -711,6 +746,20 @@ export async function downloadRunpodResource(
   const downloadUrl = baseAsset?.url ??
     `https://civitai.com/api/download/models/${resource.modelVersionId}`;
   const tokenValue = !baseAsset && token ? token : "";
+
+  return { pod, targetDir, targetFile, downloadUrl, tokenValue };
+}
+
+export async function downloadRunpodResource(
+  podId: string,
+  resource: ImportedCivitaiResource,
+  targetPath?: string
+) {
+  const pod = await getRunpodPod(podId);
+  if (!pod) throw new Error("RunPod target was not found.");
+
+  const { targetDir, targetFile, downloadUrl, tokenValue } =
+    await getRunpodDownloadPlan(pod, resource, targetPath);
   const script = `
 set -euo pipefail
 TARGET_DIR=${shellQuote(targetDir)}
@@ -739,4 +788,103 @@ echo "$TARGET_FILE"
 `;
   const { stdout } = await runSsh(pod, script);
   return stdout.trim().split(/\n/).pop() ?? "";
+}
+
+export async function streamRunpodResourceDownload(
+  podId: string,
+  resource: ImportedCivitaiResource,
+  targetPath: string | undefined,
+  onEvent: (event: {
+    type: "progress" | "status" | "complete";
+    path?: string;
+    downloaded?: number;
+    total?: number;
+    percent?: number;
+    message?: string;
+  }) => void
+) {
+  const pod = await getRunpodPod(podId);
+  if (!pod) throw new Error("RunPod target was not found.");
+
+  const { targetDir, targetFile, downloadUrl, tokenValue } =
+    await getRunpodDownloadPlan(pod, resource, targetPath);
+  const script = [
+    "set -euo pipefail",
+    `TARGET_DIR=${shellQuote(targetDir)}`,
+    `TARGET_FILE=${shellQuote(targetFile)}`,
+    `DOWNLOAD_URL=${shellQuote(downloadUrl)}`,
+    `TOKEN=${shellQuote(tokenValue)}`,
+    'mkdir -p "$TARGET_DIR"',
+    'if [ -f "$TARGET_FILE" ]; then',
+    '  size="$(wc -c < "$TARGET_FILE" | tr -d \' \')"',
+    '  echo "__RUNPOD_DL__ status $size $size"',
+    '  echo "__RUNPOD_DL__ complete $TARGET_FILE"',
+    "  exit 0",
+    "fi",
+    'tmp="$TARGET_FILE.download"',
+    "existing=0",
+    'if [ -f "$tmp" ]; then',
+    '  existing="$(wc -c < "$tmp" | tr -d \' \')"',
+    "fi",
+    'headers_file="$(mktemp)"',
+    'curl_args=(-L --fail --retry 3 --continue-at - --dump-header "$headers_file")',
+    'if [ -n "$TOKEN" ]; then',
+    '  curl_args+=(-H "Authorization: Bearer $TOKEN")',
+    "fi",
+    `curl_args+=(-H ${shellQuote("User-Agent: image-gen-runpod-download/1.0")})`,
+    'echo "__RUNPOD_DL__ status $existing 0"',
+    'curl "${curl_args[@]}" -o "$tmp" "$DOWNLOAD_URL" &',
+    'curl_pid="$!"',
+    "total=0",
+    'while kill -0 "$curl_pid" >/dev/null 2>&1; do',
+    '  if [ "$total" = "0" ] && [ -f "$headers_file" ]; then',
+    '    content_length="$(awk \'BEGIN{IGNORECASE=1} /^Content-Length:/ {gsub("\\r","",$2); v=$2} END{print v+0}\' "$headers_file")"',
+    '    if [ "${content_length:-0}" -gt 0 ]; then',
+    "      total=$((existing + content_length))",
+    "    fi",
+    "  fi",
+    "  current=0",
+    '  if [ -f "$tmp" ]; then',
+    '    current="$(wc -c < "$tmp" | tr -d \' \')"',
+    "  fi",
+    '  echo "__RUNPOD_DL__ progress $current $total"',
+    "  sleep 1",
+    "done",
+    'wait "$curl_pid"',
+    'rm -f "$headers_file"',
+    'final_size="$(wc -c < "$tmp" | tr -d \' \')"',
+    'echo "__RUNPOD_DL__ progress $final_size $final_size"',
+    'mv "$tmp" "$TARGET_FILE"',
+    'echo "__RUNPOD_DL__ complete $TARGET_FILE"',
+  ].join("\n");
+
+  let stdoutBuffer = "";
+  const handleChunk = (chunk: string) => {
+    stdoutBuffer += chunk;
+    const lines = stdoutBuffer.split(/\r?\n/);
+    stdoutBuffer = lines.pop() ?? "";
+    for (const line of lines) {
+      if (!line.startsWith("__RUNPOD_DL__ ")) continue;
+      const parts = line.split(" ");
+      const kind = parts[1];
+      if (kind === "progress" || kind === "status") {
+        const downloaded = Number(parts[2] ?? 0);
+        const total = Number(parts[3] ?? 0);
+        onEvent({
+          type: kind,
+          path: targetFile,
+          downloaded,
+          total,
+          percent: total > 0 ? Math.min(100, Math.round((downloaded / total) * 100)) : 0,
+        });
+      }
+      if (kind === "complete") {
+        onEvent({ type: "complete", path: parts.slice(2).join(" ") || targetFile, percent: 100 });
+      }
+    }
+  };
+
+  await streamSsh(pod, script, { onStdout: handleChunk });
+  handleChunk("\n");
+  return targetFile;
 }
