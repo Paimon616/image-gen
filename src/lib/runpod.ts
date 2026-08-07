@@ -38,6 +38,34 @@ const RUNPOD_BASE_ASSETS = [
   },
 ] as const;
 
+const RUNPOD_CUSTOM_NODES = [
+  {
+    name: "ComfyUI-WD14-Tagger",
+    repo: "https://github.com/pythongosssss/ComfyUI-WD14-Tagger.git",
+    ref: "9e0a6e700299182fc05c58b62e7ad9f72182a78b",
+  },
+  {
+    name: "ComfyUI-Custom-Scripts",
+    repo: "https://github.com/pythongosssss/ComfyUI-Custom-Scripts.git",
+    ref: "609f3afaa74b2f88ef9ce8d939626065e3247469",
+  },
+  {
+    name: "ComfyUI-Florence2",
+    repo: "https://github.com/kijai/ComfyUI-Florence2.git",
+    ref: "9ece3de914214c5f581d725167bc9d0eeb0d1120",
+  },
+  {
+    name: "ComfyUI-Impact-Pack",
+    repo: "https://github.com/ltdrdata/ComfyUI-Impact-Pack.git",
+    ref: "429d0159ad429e64d2b3916e6e7be9c22d025c3c",
+  },
+  {
+    name: "ComfyUI-Impact-Subpack",
+    repo: "https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git",
+    ref: "50c7b71a6a224734cc9b21963c6d1926816a97f1",
+  },
+] as const;
+
 function runpodBaseAssetForPath(path: string) {
   const normalized = path.replace(/^\/workspace\/ComfyUI\/models\//, "");
   return RUNPOD_BASE_ASSETS.find((asset) =>
@@ -425,6 +453,9 @@ export async function setupRunpodPod(pod: RunpodPodSettings) {
       `download_asset ${shellQuote(asset.path)} ${shellQuote(asset.url)} ${shellQuote(token)}`,
     ].join("\n");
   }).join("\n");
+  const customNodeInstalls = RUNPOD_CUSTOM_NODES.map((node) =>
+    `install_custom_node ${shellQuote(node.name)} ${shellQuote(node.repo)} ${shellQuote(node.ref)}`
+  ).join("\n");
   const script = [
     "set -euo pipefail",
     'COMFYUI_DIR="${COMFYUI_DIR:-/workspace/ComfyUI}"',
@@ -437,6 +468,37 @@ export async function setupRunpodPod(pod: RunpodPodSettings) {
     'cd "$COMFYUI_DIR"',
     "python3 -m pip install -r requirements.txt",
     "mkdir -p models/checkpoints models/loras models/embeddings models/vae models/upscale_models models/controlnet models/clip_vision models/ipadapter models/ultralytics/bbox models/ultralytics/segm",
+    'CUSTOM_NODES_DIR="$COMFYUI_DIR/custom_nodes"',
+    "mkdir -p \"$CUSTOM_NODES_DIR\"",
+    "install_custom_node() {",
+    "  name=\"$1\"",
+    "  repo=\"$2\"",
+    "  ref=\"$3\"",
+    "  node_dir=\"$CUSTOM_NODES_DIR/$name\"",
+    "  if [ -e \"$node_dir\" ] && [ ! -d \"$node_dir/.git\" ]; then",
+    "    echo \"$node_dir exists but is not a git checkout\" >&2",
+    "    return 1",
+    "  fi",
+    "  if [ ! -d \"$node_dir/.git\" ]; then",
+    "    echo \"cloning custom node: $name\"",
+    "    git clone \"$repo\" \"$node_dir\"",
+    "  fi",
+    "  git -C \"$node_dir\" fetch --quiet origin \"$ref\" 2>/dev/null || git -C \"$node_dir\" fetch --quiet --all",
+    "  git -C \"$node_dir\" checkout --quiet \"$ref\"",
+    "  if [ -f \"$node_dir/requirements.txt\" ]; then",
+    "    if ! python3 -m pip install -r \"$node_dir/requirements.txt\"; then",
+    "      echo \"requirements failed for $name; retrying without optional SAM2 dependencies\" >&2",
+    "      tmp_requirements=\"$(mktemp)\"",
+    "      grep -viE \"sam2|facebookresearch/sam2\" \"$node_dir/requirements.txt\" > \"$tmp_requirements\"",
+    "      python3 -m pip install -r \"$tmp_requirements\" || echo \"requirements still failed for $name; continuing\" >&2",
+    "      rm -f \"$tmp_requirements\"",
+    "    fi",
+    "  fi",
+    "  if [ -f \"$node_dir/install.py\" ]; then",
+    "    python3 \"$node_dir/install.py\" || true",
+    "  fi",
+    "}",
+    customNodeInstalls,
     "download_asset() {",
     "  target=\"$1\"",
     "  url=\"$2\"",
@@ -455,9 +517,9 @@ export async function setupRunpodPod(pod: RunpodPodSettings) {
     "  mv \"$target.download\" \"$target\"",
     "}",
     baseAssetDownloads,
-    'if ! curl -fsS --max-time 5 "http://127.0.0.1:$COMFYUI_PORT/system_stats" >/dev/null 2>&1; then',
-    '  nohup python3 main.py --listen 0.0.0.0 --port "$COMFYUI_PORT" --enable-cors-header > /workspace/comfyui.log 2>&1 &',
-    "fi",
+    'pkill -f "main.py.*--port $COMFYUI_PORT" >/dev/null 2>&1 || true',
+    "sleep 2",
+    'nohup python3 main.py --listen 0.0.0.0 --port "$COMFYUI_PORT" --enable-cors-header > /workspace/comfyui.log 2>&1 &',
     "for _ in $(seq 1 90); do",
     '  if curl -fsS --max-time 5 "http://127.0.0.1:$COMFYUI_PORT/system_stats" >/dev/null 2>&1; then',
     '    echo "ComfyUI ready"',
