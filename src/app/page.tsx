@@ -9,6 +9,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -233,6 +234,7 @@ export default function Home() {
   const [runpodStatus, setRunpodStatus] = useState("");
   const [runpodBusy, setRunpodBusy] =
     useState<"" | "start" | "stop" | "status" | "check" | "download">("");
+  const [runpodStopConfirmOpen, setRunpodStopConfirmOpen] = useState(false);
   const [runpodMissingFiles, setRunpodMissingFiles] = useState<RunpodMissingFile[]>([]);
   const [runpodDownloadProgress, setRunpodDownloadProgress] =
     useState<RunpodDownloadProgress | null>(null);
@@ -1396,11 +1398,13 @@ export default function Home() {
                     variant={runpodConnection.checked && runpodConnection.comfyReachable ? "secondary" : "outline"}
                     className="gap-1.5"
                     disabled={!selectedRunpodPodId || Boolean(runpodBusy)}
-                    onClick={() =>
-                      void runRunpodAction(
-                        runpodConnection.checked && runpodConnection.comfyReachable ? "stop" : "start"
-                      )
-                    }
+                    onClick={() => {
+                      if (runpodConnection.checked && runpodConnection.comfyReachable) {
+                        setRunpodStopConfirmOpen(true);
+                        return;
+                      }
+                      void runRunpodAction("start");
+                    }}
                   >
                     {runpodBusy === "start" || runpodBusy === "stop" ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -2143,6 +2147,46 @@ export default function Home() {
 
       {/* Image Viewer Dialog */}
       <ImageViewer />
+
+      <Dialog
+        open={runpodStopConfirmOpen}
+        onOpenChange={(open) => {
+          if (!runpodBusy) setRunpodStopConfirmOpen(open);
+        }}
+      >
+        <DialogContent className="border border-border bg-card shadow-xl sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{ko ? "RunPod를 중지할까요?" : "Stop RunPod?"}</DialogTitle>
+            <DialogDescription>
+              {ko
+                ? "현재 pod를 중지하면 진행 중인 생성, 모델 다운로드, ComfyUI 연결이 끊길 수 있습니다."
+                : "Stopping the pod can interrupt active generations, model downloads, and the ComfyUI connection."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={Boolean(runpodBusy)}
+              onClick={() => setRunpodStopConfirmOpen(false)}
+            >
+              {ko ? "취소" : "Cancel"}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={Boolean(runpodBusy)}
+              onClick={() => {
+                setRunpodStopConfirmOpen(false);
+                void runRunpodAction("stop");
+              }}
+            >
+              {runpodBusy === "stop" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {ko ? "중지하기" : "Stop pod"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={sourceImagePreviewOpen && Boolean(params.source_image)}
