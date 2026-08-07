@@ -2,6 +2,7 @@ import "server-only";
 
 import { execFile } from "child_process";
 import { readFile } from "fs/promises";
+import { basename } from "path";
 import { promisify } from "util";
 import type { GenerationParams, ImportedCivitaiResource } from "@/lib/types";
 import { getRunpodPod, readSettings, type RunpodPodSettings } from "@/lib/settings";
@@ -22,12 +23,17 @@ function shellQuote(value: string) {
 }
 
 function remoteCommand(ssh: string, command: string) {
-  const trimmed = ssh.trim();
+  const trimmed = ssh.trim().replace(/^\$\s*/, "");
   if (!trimmed.startsWith("ssh ")) {
     throw new Error("RunPod SSH must be the full command copied from RunPod.");
   }
 
-  return `${trimmed} ${shellQuote(command)}`;
+  const safeSsh = trimmed.replace(
+    /^ssh\s+/,
+    "ssh -o StrictHostKeyChecking=accept-new -o BatchMode=yes "
+  );
+
+  return `${safeSsh} ${shellQuote(command)}`;
 }
 
 export async function runSsh(pod: RunpodPodSettings, command: string) {
@@ -239,7 +245,8 @@ function fallbackFilename(resource: ImportedCivitaiResource) {
 
 export async function downloadRunpodResource(
   podId: string,
-  resource: ImportedCivitaiResource
+  resource: ImportedCivitaiResource,
+  targetPath?: string
 ) {
   const pod = await getRunpodPod(podId);
   if (!pod) throw new Error("RunPod target was not found.");
@@ -253,11 +260,13 @@ export async function downloadRunpodResource(
     throw new Error("This resource cannot be downloaded automatically.");
   }
 
-  const filename = fallbackFilename(resource);
+  const filename = targetPath ? basename(targetPath) : fallbackFilename(resource);
+  const targetDir = `/workspace/ComfyUI/models/${folder}`;
+  const targetFile = `${targetDir}/${filename}`;
   const script = `
 set -euo pipefail
-TARGET_DIR=${shellQuote(`/workspace/ComfyUI/models/${folder}`)}
-TARGET_FILE="$TARGET_DIR/${filename.replace(/"/g, '\\"')}"
+TARGET_DIR=${shellQuote(targetDir)}
+TARGET_FILE=${shellQuote(targetFile)}
 mkdir -p "$TARGET_DIR"
 if [ -f "$TARGET_FILE" ]; then
   echo "$TARGET_FILE"

@@ -20,6 +20,7 @@ import { buildGenerationResources } from "@/lib/generation-resource-links";
 import { generateWithA1111, interruptA1111 } from "@/lib/a1111";
 import { toggleImageWorkspace, workspaceExists } from "@/lib/workspaces";
 import { getRunpodPod } from "@/lib/settings";
+import { checkRunpodGenerationFiles } from "@/lib/runpod";
 
 interface ComfyWsMessage {
   type?: string;
@@ -181,6 +182,16 @@ export async function POST(req: NextRequest) {
     if (body.backend !== "comfyui") {
       return Response.json(
         { error: "RunPod generation currently supports ComfyUI backend only." },
+        { status: 400 }
+      );
+    }
+    const missing = await checkRunpodGenerationFiles(runpodPod, body);
+    if (missing.length > 0) {
+      return Response.json(
+        {
+          error: `RunPod is missing ${missing.length} required model file(s). Run file check/download before generating.`,
+          missing,
+        },
         { status: 400 }
       );
     }

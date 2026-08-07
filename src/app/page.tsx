@@ -73,6 +73,14 @@ interface RunpodMissingFile {
   };
 }
 
+interface RunpodConnectionStatus {
+  checked: boolean;
+  comfyReachable: boolean;
+  sshReachable: boolean;
+  comfyError: string;
+  sshError: string;
+}
+
 const EDITOR_MIN_WIDTH = 320;
 const GALLERY_MIN_WIDTH = 320;
 const THUMBNAIL_MIN_WIDTH = 140;
@@ -180,6 +188,14 @@ export default function Home() {
   const [runpodStatus, setRunpodStatus] = useState("");
   const [runpodBusy, setRunpodBusy] = useState<"" | "start" | "status" | "setup" | "check" | "download">("");
   const [runpodMissingFiles, setRunpodMissingFiles] = useState<RunpodMissingFile[]>([]);
+  const [runpodConnection, setRunpodConnection] = useState<RunpodConnectionStatus>({
+    checked: false,
+    comfyReachable: false,
+    sshReachable: false,
+    comfyError: "",
+    sshError: "",
+  });
+  const [runpodFilesChecked, setRunpodFilesChecked] = useState(false);
   const [activeGeneration, setActiveGeneration] =
     useState<GenerationQueueItem | null>(null);
   const [paimonAttachments, setPaimonAttachments] =
@@ -252,6 +268,29 @@ export default function Home() {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (generationTarget !== "runpod" || !selectedRunpodPodId) return;
+
+    let canceled = false;
+    fetch(`/api/runpod/pods/${selectedRunpodPodId}/status`, { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (canceled || data.error) return;
+        setRunpodConnection({
+          checked: true,
+          comfyReachable: Boolean(data.comfyReachable),
+          sshReachable: Boolean(data.sshReachable),
+          comfyError: String(data.comfyError || ""),
+          sshError: String(data.sshError || ""),
+        });
+      })
+      .catch(() => {});
+
+    return () => {
+      canceled = true;
+    };
+  }, [generationTarget, selectedRunpodPodId]);
 
   useEffect(() => {
     if (params.generation_mode !== "image_to_image") return;
@@ -641,7 +680,25 @@ export default function Home() {
     void runGenerationJob(nextJob);
   }, [activeGeneration, generationQueue, runGenerationJob]);
 
-  const generate = useCallback(() => {
+  const checkRunpodFiles = useCallback(async () => {
+    if (!selectedRunpodPodId) return null;
+
+    const response = await fetch(`/api/runpod/pods/${selectedRunpodPodId}/check`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ params }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "RunPod file check failed");
+    const missing = Array.isArray(data.missing)
+      ? (data.missing as RunpodMissingFile[])
+      : [];
+    setRunpodMissingFiles(missing);
+    setRunpodFilesChecked(true);
+    return missing;
+  }, [params, selectedRunpodPodId]);
+
+  const generate = useCallback(async () => {
     if (!params.prompt.trim()) return;
     if (generationModeError) {
       setStatus({ state: "error", progress: 0, message: generationModeError });
@@ -654,6 +711,37 @@ export default function Home() {
         message: "RunPod target is not configured.",
       });
       return;
+    }
+    if (generationTarget === "runpod") {
+      setRunpodBusy("check");
+      setRunpodStatus(ko ? "RunPod 파일을 확인 중입니다..." : "Checking RunPod files...");
+      try {
+        const missing = await checkRunpodFiles();
+        if (missing && missing.length > 0) {
+          setRunpodStatus(
+            ko
+              ? `RunPod에 누락 파일 ${missing.length}개가 있어 생성하지 않았습니다. 다운로드 후 다시 생성하세요.`
+              : `${missing.length} file(s) are missing on RunPod. Download them before generating.`
+          );
+          setStatus({
+            state: "error",
+            progress: 0,
+            message:
+              ko
+                ? `RunPod 누락 파일 ${missing.length}개`
+                : `${missing.length} RunPod file(s) missing`,
+          });
+          return;
+        }
+        setRunpodStatus(ko ? "RunPod 파일 준비 완료." : "RunPod files are ready.");
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "RunPod file check failed";
+        setRunpodStatus(message);
+        setStatus({ state: "error", progress: 0, message });
+        return;
+      } finally {
+        setRunpodBusy("");
+      }
     }
 
     const jobParams = cloneGenerationParams(params);
@@ -694,6 +782,8 @@ export default function Home() {
     addImage,
     generationModeError,
     generationTarget,
+    checkRunpodFiles,
+    ko,
     params,
     selectedRunpodPodId,
     setStatus,
@@ -717,7 +807,11 @@ export default function Home() {
           });
           const data = await response.json();
           if (!response.ok) throw new Error(data.error || "RunPod start failed");
-          setRunpodStatus(ko ? "RunPod 시작 요청을 보냈습니다." : "RunPod start requested.");
+          setRunpodStatus(
+            ko
+              ? "RunPod 시작 요청을 보냈습니다. 잠시 후 상태 체크를 누르세요."
+              : "RunPod start requested. Check status again shortly."
+          );
         }
 
         if (action === "status") {
@@ -726,6 +820,13 @@ export default function Home() {
           });
           const data = await response.json();
           if (!response.ok) throw new Error(data.error || "RunPod status failed");
+          setRunpodConnection({
+            checked: true,
+            comfyReachable: Boolean(data.comfyReachable),
+            sshReachable: Boolean(data.sshReachable),
+            comfyError: String(data.comfyError || ""),
+            sshError: String(data.sshError || ""),
+          });
           setRunpodStatus(
             [
               data.comfyReachable
@@ -744,25 +845,27 @@ export default function Home() {
           });
           const data = await response.json();
           if (!response.ok) throw new Error(data.error || "RunPod setup failed");
-          setRunpodStatus(ko ? "RunPod 세팅이 완료됐습니다." : "RunPod setup complete.");
+          setRunpodConnection((current) => ({
+            ...current,
+            checked: true,
+            comfyReachable: true,
+            sshReachable: true,
+            comfyError: "",
+            sshError: "",
+          }));
+          setRunpodStatus(
+            ko
+              ? "RunPod 세팅 완료. 이제 파일 체크를 누르세요."
+              : "RunPod setup complete. Check files next."
+          );
         }
 
         if (action === "check") {
-          const response = await fetch(`/api/runpod/pods/${selectedRunpodPodId}/check`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ params }),
-          });
-          const data = await response.json();
-          if (!response.ok) throw new Error(data.error || "RunPod file check failed");
-          const missing = Array.isArray(data.missing)
-            ? (data.missing as RunpodMissingFile[])
-            : [];
-          setRunpodMissingFiles(missing);
+          const missing = (await checkRunpodFiles()) ?? [];
           setRunpodStatus(
             missing.length === 0
-              ? ko ? "필요한 모델 파일이 모두 있습니다." : "All required files are present."
-              : ko ? `누락 파일 ${missing.length}개` : `${missing.length} missing file(s)`
+              ? ko ? "필요한 모델 파일이 모두 있습니다. 생성 가능합니다." : "All required files are present. Ready to generate."
+              : ko ? `누락 파일 ${missing.length}개. 다운로드 버튼을 누르세요.` : `${missing.length} missing file(s). Click Download.`
           );
         }
 
@@ -774,7 +877,7 @@ export default function Home() {
             const response = await fetch(`/api/runpod/pods/${selectedRunpodPodId}/download`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ resource: item.resource }),
+              body: JSON.stringify({ resource: item.resource, targetPath: item.path }),
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || "RunPod download failed");
@@ -787,6 +890,7 @@ export default function Home() {
           setRunpodMissingFiles((items) =>
             items.filter((item) => !item.resource.url || !item.resource.modelVersionId)
           );
+          setRunpodFilesChecked(false);
         }
       } catch (error) {
         setRunpodStatus(error instanceof Error ? error.message : "RunPod action failed");
@@ -795,8 +899,8 @@ export default function Home() {
       }
     },
     [
+      checkRunpodFiles,
       ko,
-      params,
       runpodBusy,
       runpodMissingFiles,
       selectedRunpodPodId,
@@ -958,7 +1062,19 @@ export default function Home() {
             {generationTarget === "runpod" && (
               <select
                 value={selectedRunpodPodId}
-                onChange={(event) => setSelectedRunpodPodId(event.target.value)}
+                onChange={(event) => {
+                  setSelectedRunpodPodId(event.target.value);
+                  setRunpodConnection({
+                    checked: false,
+                    comfyReachable: false,
+                    sshReachable: false,
+                    comfyError: "",
+                    sshError: "",
+                  });
+                  setRunpodFilesChecked(false);
+                  setRunpodMissingFiles([]);
+                  setRunpodStatus("");
+                }}
                 className="h-9 max-w-40 rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
                 aria-label="RunPod target"
               >
@@ -995,11 +1111,50 @@ export default function Home() {
                       : ko ? "설정에서 RunPod pod를 추가하세요." : "Add a RunPod pod in Settings."}
                   </span>
                 </div>
+                <div className="flex flex-wrap gap-1.5">
+                  <span
+                    className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${
+                      runpodConnection.checked && runpodConnection.comfyReachable
+                        ? "bg-green-500/15 text-green-600"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {runpodConnection.checked && runpodConnection.comfyReachable
+                      ? ko ? "팟 실행 중" : "Pod running"
+                      : ko ? "팟 상태 미확인" : "Pod unchecked"}
+                  </span>
+                  <span
+                    className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${
+                      runpodConnection.checked && runpodConnection.sshReachable
+                        ? "bg-green-500/15 text-green-600"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {runpodConnection.checked && runpodConnection.sshReachable
+                      ? "SSH OK"
+                      : "SSH ?"}
+                  </span>
+                  <span
+                    className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${
+                      runpodFilesChecked && runpodMissingFiles.length === 0
+                        ? "bg-green-500/15 text-green-600"
+                        : runpodMissingFiles.length > 0
+                          ? "bg-destructive/15 text-destructive"
+                          : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {runpodFilesChecked && runpodMissingFiles.length === 0
+                      ? ko ? "파일 준비됨" : "Files ready"
+                      : runpodMissingFiles.length > 0
+                        ? ko ? `누락 ${runpodMissingFiles.length}` : `${runpodMissingFiles.length} missing`
+                        : ko ? "파일 미확인" : "Files unchecked"}
+                  </span>
+                </div>
                 <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
                   <Button
                     type="button"
                     size="sm"
-                    variant="outline"
+                    variant={runpodConnection.checked && runpodConnection.comfyReachable ? "secondary" : "outline"}
                     className="gap-1.5"
                     disabled={!selectedRunpodPodId || Boolean(runpodBusy)}
                     onClick={() => void runRunpodAction("start")}
@@ -1009,7 +1164,9 @@ export default function Home() {
                     ) : (
                       <Play className="h-3.5 w-3.5" />
                     )}
-                    {ko ? "팟 실행" : "Start pod"}
+                    {runpodConnection.checked && runpodConnection.comfyReachable
+                      ? ko ? "실행 중" : "Running"
+                      : ko ? "팟 실행" : "Start pod"}
                   </Button>
                   <Button
                     type="button"

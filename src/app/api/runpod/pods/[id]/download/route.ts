@@ -6,14 +6,17 @@ export const runtime = "nodejs";
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
-  const body = (await req.json()) as { resource?: ImportedCivitaiResource };
+  const body = (await req.json()) as {
+    resource?: ImportedCivitaiResource;
+    targetPath?: string;
+  };
 
   if (!body.resource) {
     return Response.json({ error: "A Civitai resource is required." }, { status: 400 });
   }
 
   try {
-    const path = await downloadRunpodResource(id, body.resource);
+    const path = await downloadRunpodResource(id, body.resource, body.targetPath);
     return Response.json({ ok: true, path });
   } catch (error) {
     return Response.json(
