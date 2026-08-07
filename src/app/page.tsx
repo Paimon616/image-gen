@@ -230,17 +230,10 @@ export default function Home() {
   const [batchDownloadBusy, setBatchDownloadBusy] = useState(false);
   const layoutRef = useRef<HTMLDivElement | null>(null);
   const [generationQueue, setGenerationQueue] = useState<GenerationQueueItem[]>([]);
-  const [generationTarget, setGenerationTarget] = useState<"local" | "runpod">(() => {
-    if (typeof window === "undefined") return "local";
-    try {
-      const savedGenerationTarget = window.localStorage.getItem(
-        GENERATION_TARGET_STORAGE_KEY
-      );
-      return savedGenerationTarget === "runpod" ? "runpod" : "local";
-    } catch {
-      return "local";
-    }
-  });
+  // Always start with the deterministic default so the server-rendered HTML and
+  // the client's first render match. The persisted value is read after mount
+  // (see the useEffect below) to avoid a hydration mismatch.
+  const [generationTarget, setGenerationTarget] = useState<"local" | "runpod">("local");
   const [runpodPods, setRunpodPods] = useState<RunpodPodOption[]>([]);
   const [selectedRunpodPodId, setSelectedRunpodPodId] = useState("");
   const [runpodStatus, setRunpodStatus] = useState("");
@@ -317,6 +310,19 @@ export default function Home() {
       })
       .catch(() => {});
   }, [params.pose_reference_model, setParams]);
+
+  // Read the persisted generation target after mount to avoid a hydration
+  // mismatch (see the generationTarget useState above).
+  useEffect(() => {
+    try {
+      const savedGenerationTarget = window.localStorage.getItem(
+        GENERATION_TARGET_STORAGE_KEY
+      );
+      if (savedGenerationTarget === "runpod") {
+        setGenerationTarget("runpod");
+      }
+    } catch {}
+  }, []);
 
   useEffect(() => {
     fetch("/api/settings", { cache: "no-store" })
