@@ -14,7 +14,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 
   try {
     const url = new URL(_req.url);
-    const ensure = url.searchParams.get("ensure") === "1";
+    const auto = url.searchParams.get("auto") === "1";
+    const ensure = !auto && url.searchParams.get("ensure") === "1";
     return Response.json(await (ensure ? ensureRunpodStatus(pod) : fetchRunpodStatus(pod)), {
       headers: { "Cache-Control": "no-store" },
     });

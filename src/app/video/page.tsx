@@ -1012,7 +1012,7 @@ export default function VideoPage() {
     if (!selectedRunpodPodId) return;
     try {
       const response = await fetch(
-        `/api/runpod/pods/${selectedRunpodPodId}/status`,
+        `/api/runpod/pods/${selectedRunpodPodId}/status?auto=1`,
         { cache: "no-store" }
       );
       const data = await response.json();
@@ -1837,11 +1837,6 @@ export default function VideoPage() {
                       video_model: nextModel,
                       video_pipeline_settings: settingsForPipeline(pipeline, params),
                     });
-                    if (pipeline?.mode === "t2v" && runpodPods.length > 0) {
-                      setGenerationTarget("runpod");
-                      setSelectedRunpodPodId((current) => current || runpodPods[0]?.id || "");
-                      resetRunpodConnection();
-                    }
                   }}
                   className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
