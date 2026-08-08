@@ -1028,8 +1028,8 @@ export default function VideoPage() {
     const key = `${generationTarget}:${selectedRunpodPodId}`;
     if (autoRunpodCheckKeyRef.current === key) return;
     autoRunpodCheckKeyRef.current = key;
-    void checkRunpodConnection();
-  }, [checkRunpodConnection, generationTarget, isGenerating, selectedRunpodPodId]);
+    void refreshRunpodStatus();
+  }, [generationTarget, isGenerating, refreshRunpodStatus, selectedRunpodPodId]);
 
   // Auto re-check while a service is still initializing, then stop once it is
   // ready (or the target/pod changes). This mirrors runpod-video's live polling.
@@ -1723,8 +1723,8 @@ export default function VideoPage() {
               <p className="text-xs text-muted-foreground">
                 {runpodStatus ||
                   (language === "ko"
-                    ? "pod를 선택하면 상태를 자동으로 확인합니다. 막히면 '다시 시도'로 pod 시작·포트 노출·helper 설치를 다시 실행하세요."
-                    : "Selecting a pod checks its status automatically. If it stalls, use Retry to re-run pod start, port expose, and helper setup.")}
+                    ? "pod를 선택하면 상태만 자동으로 확인합니다. 시작·포트 노출·helper 설치가 필요하면 '다시 시도'를 누르세요."
+                    : "Selecting a pod only checks status. Use Retry when pod start, port expose, or helper setup is needed.")}
               </p>
             </section>
           )}
