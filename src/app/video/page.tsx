@@ -136,6 +136,7 @@ interface RunpodConnectionStatus {
   helperInitializing: boolean;
   comfyError: string;
   helperError: string;
+  podDesiredStatus: string;
 }
 
 interface VideoPipelineOption {
@@ -788,12 +789,13 @@ export default function VideoPage() {
     helperInitializing: false,
     comfyError: "",
     helperError: "",
+    podDesiredStatus: "",
   });
   const [videoPipelines, setVideoPipelines] = useState<VideoPipelineOption[]>([]);
   const [paimonOpen, setPaimonOpen] = useState(false);
   const activePromptIdRef = useRef("");
   const autoRunpodCheckKeyRef = useRef("");
-  const runpodPollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const runpodConnectionRef = useRef<RunpodConnectionStatus | null>(null);
   const generationAbortControllerRef = useRef<AbortController | null>(null);
 
   const startEditorResize = useCallback(
@@ -849,6 +851,14 @@ export default function VideoPage() {
   );
   const runpodTargetReady =
     generationTarget !== "runpod" || Boolean(selectedRunpodPod?.comfyUrl);
+  // Requirement 4: only allow generation once every RunPod connection is live —
+  // ComfyUI reachable AND the model-download helper reachable.
+  const runpodConnected =
+    generationTarget !== "runpod" ||
+    (runpodConnection.comfyReachable && runpodConnection.helperReachable);
+  const runpodPodRunning =
+    runpodConnection.comfyReachable ||
+    runpodConnection.podDesiredStatus.toUpperCase() === "RUNNING";
   const videoWorkflowReadyForTarget =
     generationTarget === "runpod"
       ? videoConfig.configured && videoConfig.exists
@@ -865,7 +875,8 @@ export default function VideoPage() {
     (!params.enable_sound || soundWorkflowReady) &&
     !isGenerating &&
     videoWorkflowReadyForTarget &&
-    runpodTargetReady;
+    runpodTargetReady &&
+    runpodConnected;
   const generateButtonProgress = isGenerating
     ? Math.max(buttonProgress, status.progress)
     : status.state === "completed"
@@ -895,6 +906,7 @@ export default function VideoPage() {
       helperInitializing: false,
       comfyError: "",
       helperError: "",
+      podDesiredStatus: "",
     });
   }, []);
 
@@ -915,6 +927,7 @@ export default function VideoPage() {
         helperInitializing,
         comfyError,
         helperError,
+        podDesiredStatus: String(data.podDesiredStatus || ""),
       });
 
       const serviceLine = (
@@ -974,6 +987,8 @@ export default function VideoPage() {
     [language]
   );
 
+  // Read-only status check (no start / port / helper side effects). The app must
+  // never start or manipulate the pod here — it only queries its current state.
   const checkRunpodConnection = useCallback(async () => {
     if (!selectedRunpodPodId || runpodBusy) return;
 
@@ -981,7 +996,7 @@ export default function VideoPage() {
     setRunpodStatus("");
     try {
       const response = await fetch(
-        `/api/runpod/pods/${selectedRunpodPodId}/status?ensure=1`,
+        `/api/runpod/pods/${selectedRunpodPodId}/status?auto=1`,
         { cache: "no-store" }
       );
       const data = await response.json();
@@ -999,6 +1014,7 @@ export default function VideoPage() {
         helperInitializing: false,
         comfyError: message,
         helperError: "",
+        podDesiredStatus: "",
       });
       setRunpodStatus(message);
     } finally {
@@ -1031,44 +1047,33 @@ export default function VideoPage() {
     void refreshRunpodStatus();
   }, [generationTarget, isGenerating, refreshRunpodStatus, selectedRunpodPodId]);
 
-  // Auto re-check while a service is still initializing, then stop once it is
-  // ready (or the target/pod changes). This mirrors runpod-video's live polling.
+  // Keep the latest connection snapshot in a ref so the polling interval below can
+  // read it without being torn down and recreated on every status change.
   useEffect(() => {
-    if (runpodPollRef.current) {
-      clearTimeout(runpodPollRef.current);
-      runpodPollRef.current = null;
-    }
-    if (
-      generationTarget !== "runpod" ||
-      !selectedRunpodPodId ||
-      isGenerating ||
-      runpodBusy ||
-      !runpodConnection.checked
-    ) {
+    runpodConnectionRef.current = runpodConnection;
+  }, [runpodConnection]);
+
+  // Live read-only polling: while RunPod is the target and a pod is selected, poll
+  // status every 5s until BOTH ComfyUI and the helper are reachable. This catches
+  // the pod being started in the RunPod console and its ports finishing
+  // initialization in real time. The poll only ever queries status (auto=1) and
+  // never starts or mutates the pod. The interval is keyed on stable inputs (not
+  // the status values) so it does not stop when consecutive polls return the same
+  // "still initializing" state.
+  useEffect(() => {
+    if (generationTarget !== "runpod" || !selectedRunpodPodId || isGenerating) {
       return;
     }
-    if (!runpodConnection.comfyInitializing && !runpodConnection.helperInitializing) {
-      return;
-    }
-    runpodPollRef.current = setTimeout(() => {
+    const interval = setInterval(() => {
+      // A manual "Recheck status" is already in flight, or everything is
+      // connected — skip this tick.
+      if (runpodBusy) return;
+      const current = runpodConnectionRef.current;
+      if (current?.comfyReachable && current?.helperReachable) return;
       void refreshRunpodStatus();
-    }, 6_000);
-    return () => {
-      if (runpodPollRef.current) {
-        clearTimeout(runpodPollRef.current);
-        runpodPollRef.current = null;
-      }
-    };
-  }, [
-    generationTarget,
-    isGenerating,
-    refreshRunpodStatus,
-    runpodBusy,
-    runpodConnection.checked,
-    runpodConnection.comfyInitializing,
-    runpodConnection.helperInitializing,
-    selectedRunpodPodId,
-  ]);
+    }, 5_000);
+    return () => clearInterval(interval);
+  }, [generationTarget, isGenerating, refreshRunpodStatus, runpodBusy, selectedRunpodPodId]);
 
   const setupRunpodHelper = useCallback(async () => {
     if (!selectedRunpodPodId || runpodSetupBusy || isGenerating) return;
@@ -1688,27 +1693,34 @@ export default function VideoPage() {
                         : "Helper ?"}
                 </span>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-8 gap-1.5"
-                  onClick={() => void setupRunpodHelper()}
-                  disabled={!selectedRunpodPodId || runpodSetupBusy || isGenerating}
-                >
-                  {runpodSetupBusy ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Wrench className="h-3.5 w-3.5" />
+              <div className="flex flex-wrap gap-2">
+                {/* Requirement 3: helper init only appears when the helper has a
+                    problem, and only while the pod is running (the app never
+                    starts the pod — the user starts it in the RunPod console). */}
+                {runpodConnection.checked &&
+                  !runpodConnection.helperReachable &&
+                  runpodPodRunning && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-8 flex-1 gap-1.5"
+                      onClick={() => void setupRunpodHelper()}
+                      disabled={!selectedRunpodPodId || runpodSetupBusy || isGenerating}
+                    >
+                      {runpodSetupBusy ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Wrench className="h-3.5 w-3.5" />
+                      )}
+                      {language === "ko" ? "Helper 초기화" : "Init helper"}
+                    </Button>
                   )}
-                  {language === "ko" ? "Helper 연결" : "Setup helper"}
-                </Button>
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="h-8 gap-1.5"
+                  className="h-8 flex-1 gap-1.5"
                   onClick={() => void checkRunpodConnection()}
                   disabled={!selectedRunpodPodId || runpodBusy || isGenerating}
                 >
@@ -1717,14 +1729,22 @@ export default function VideoPage() {
                   ) : (
                     <RefreshCcw className="h-3.5 w-3.5" />
                   )}
-                  {language === "ko" ? "다시 시도" : "Retry"}
+                  {language === "ko" ? "상태 다시 확인" : "Recheck status"}
                 </Button>
               </div>
+              {runpodConnection.checked && !runpodPodRunning && (
+                <p className="flex items-start gap-1.5 rounded-md bg-yellow-500/10 px-2 py-1.5 text-xs text-yellow-700 dark:text-yellow-500">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  {language === "ko"
+                    ? "Pod가 실행 중이 아닙니다. RunPod 콘솔에서 직접 pod를 시작한 뒤 '상태 다시 확인'을 눌러주세요. (앱은 pod를 시작하지 않습니다.)"
+                    : "Pod is not running. Start it yourself in the RunPod console, then press “Recheck status”. (This app never starts the pod.)"}
+                </p>
+              )}
               <p className="text-xs text-muted-foreground">
                 {runpodStatus ||
                   (language === "ko"
-                    ? "pod를 선택하면 상태만 자동으로 확인합니다. 시작·포트 노출·helper 설치가 필요하면 '다시 시도'를 누르세요."
-                    : "Selecting a pod only checks status. Use Retry when pod start, port expose, or helper setup is needed.")}
+                    ? "pod를 선택하면 상태만 조회합니다. Helper에 문제가 있으면 'Helper 초기화'로 설치할 수 있고, 모두 연결되면 파이프라인을 골라 영상을 생성할 수 있습니다."
+                    : "Selecting a pod only reads its status. If the helper has a problem, use “Init helper” to set it up; once everything is connected you can pick a pipeline and generate.")}
               </p>
             </section>
           )}
@@ -2413,6 +2433,16 @@ export default function VideoPage() {
               Select a RunPod pod with a ComfyUI URL before generating video.
             </p>
           )}
+          {generationTarget === "runpod" &&
+            runpodTargetReady &&
+            !runpodConnected &&
+            status.state !== "error" && (
+              <p className="mb-2 text-xs text-yellow-500">
+                {language === "ko"
+                  ? "RunPod ComfyUI와 Helper가 모두 연결된 뒤에 영상을 생성할 수 있습니다. 위 RunPod 패널에서 상태를 확인하세요."
+                  : "Connect both RunPod ComfyUI and the helper before generating. Check the RunPod panel above."}
+              </p>
+            )}
           {videoWorkflowReadyForTarget &&
             videoRequiresSourceImage &&
             !params.source_image &&

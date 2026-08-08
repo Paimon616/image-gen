@@ -333,7 +333,10 @@ function extensionForContentType(contentType: string | null) {
   return "jpg";
 }
 
-export async function uploadImageToComfyUI(imageUrl: string) {
+export async function uploadImageToComfyUI(
+  imageUrl: string,
+  options?: ComfyClientOptions
+) {
   const imageRes = await fetch(imageUrl);
 
   if (!imageRes.ok) {
@@ -351,18 +354,25 @@ export async function uploadImageToComfyUI(imageUrl: string) {
   formData.append("type", "input");
   formData.append("overwrite", "true");
 
-  const uploadRes = await comfyFetch("/upload/image", {
-    method: "POST",
-    body: formData,
-  });
+  // Upload to the SAME ComfyUI that will run the prompt (local or the RunPod
+  // pod). Uploading to the wrong instance makes LoadImage fail validation with
+  // "Invalid image file" because the target ComfyUI never received the file.
+  const uploadRes = await comfyFetch(
+    "/upload/image",
+    {
+      method: "POST",
+      body: formData,
+    },
+    options
+  );
   const uploaded = (await uploadRes.json()) as { name?: string };
 
   return uploaded.name ?? filename;
 }
 
-async function resolveControlNetImage(image: string) {
+async function resolveControlNetImage(image: string, options?: ComfyClientOptions) {
   if (!isRemoteImageRef(image)) return image;
-  return uploadImageToComfyUI(image);
+  return uploadImageToComfyUI(image, options);
 }
 
 function clampDenoiseStrength(value: unknown) {
@@ -1804,7 +1814,8 @@ function applyVideoPipelineSettingsToWorkflow(
 async function loadWorkflowFromEnv(
   envName: "COMFYUI_VIDEO_WORKFLOW_PATH" | "COMFYUI_AUDIO_WORKFLOW_PATH",
   params: VideoGenerationParams,
-  workflowPathOverride?: string
+  workflowPathOverride?: string,
+  options?: ComfyClientOptions
 ) {
   const workflowPath = workflowPathOverride ?? process.env[envName]?.trim();
 
@@ -1815,7 +1826,7 @@ async function loadWorkflowFromEnv(
   }
 
   const resolvedSourceImage = params.source_image
-    ? await resolveControlNetImage(params.source_image)
+    ? await resolveControlNetImage(params.source_image, options)
     : null;
   const resolvedParams = { ...params, source_image: resolvedSourceImage };
   const absolutePath = isAbsolute(workflowPath)
@@ -1840,19 +1851,26 @@ async function loadWorkflowFromEnv(
   );
 }
 
-async function loadVideoWorkflow(params: VideoGenerationParams) {
+async function loadVideoWorkflow(
+  params: VideoGenerationParams,
+  options?: ComfyClientOptions
+) {
   const { absolutePath } = await resolveVideoWorkflowPath(
     params.video_pipeline || params.video_model
   );
   return loadWorkflowFromEnv(
     "COMFYUI_VIDEO_WORKFLOW_PATH",
     params,
-    absolutePath
+    absolutePath,
+    options
   );
 }
 
-async function loadAudioWorkflow(params: VideoGenerationParams) {
-  return loadWorkflowFromEnv("COMFYUI_AUDIO_WORKFLOW_PATH", params);
+async function loadAudioWorkflow(
+  params: VideoGenerationParams,
+  options?: ComfyClientOptions
+) {
+  return loadWorkflowFromEnv("COMFYUI_AUDIO_WORKFLOW_PATH", params, undefined, options);
 }
 
 export type InterrogateMode = "auto" | "wd14" | "florence";
@@ -2111,7 +2129,7 @@ export async function queueComfyVideoPrompt(
   clientId = crypto.randomUUID(),
   options?: ComfyClientOptions
 ) {
-  const prompt = await loadVideoWorkflow(params);
+  const prompt = await loadVideoWorkflow(params, options);
   const queued = await queueComfyWorkflow(prompt, clientId, options);
   return { ...queued, prompt };
 }
@@ -2121,7 +2139,7 @@ export async function queueComfyAudioPrompt(
   clientId = crypto.randomUUID(),
   options?: ComfyClientOptions
 ) {
-  const prompt = await loadAudioWorkflow(params);
+  const prompt = await loadAudioWorkflow(params, options);
   const queued = await queueComfyWorkflow(prompt, clientId, options);
   return { ...queued, prompt };
 }

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { execFile, spawn } from "child_process";
+import { randomUUID } from "crypto";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { homedir } from "os";
 import { basename, dirname } from "path";
@@ -420,10 +421,10 @@ function identityFileFromSsh(value: string) {
 function friendlySshError(pod: RunpodPodSettings, error: unknown) {
   const message = error instanceof Error ? error.message : "SSH failed.";
   if (/Connection refused/i.test(message)) {
-    return "RunPod SSH endpoint is not accepting connections yet. Wait for the pod runtime port to finish attaching, then retry Helper 연결.";
+    return "RunPod SSH endpoint is not accepting connections yet. Wait for the pod runtime port to finish attaching, then retry Helper 초기화.";
   }
   if (/Operation timed out|Connection timed out/i.test(message)) {
-    return "RunPod SSH endpoint timed out. Check that the pod is running and its 22/tcp port is exposed, then retry Helper 연결.";
+    return "RunPod SSH endpoint timed out. Check that the pod is running and its 22/tcp port is exposed, then retry Helper 초기화.";
   }
   if (!/Permission denied \(publickey,password\)/i.test(message)) {
     return message;
@@ -743,8 +744,12 @@ export async function ensureRunpodStatus(pod: RunpodPodSettings) {
   };
 }
 
-export async function setupRunpodPod(pod: RunpodPodSettings) {
-  const helperServer = String.raw`
+// The RunPod Image Gen helper — a stdlib Python http.server that serves the
+// /api/runpod/helper/* endpoints on port 3000 and downloads model files into the
+// pod's ComfyUI models dir. Shipped to the pod either over SSH (setupRunpodPod)
+// or, when the pod has no sshd, over the Jupyter kernel websocket
+// (deployRunpodHelperViaJupyter) — matching runpod-video.
+const HELPER_SERVER_SOURCE = String.raw`
 import json
 import os
 import shutil
@@ -985,7 +990,11 @@ class Handler(BaseHTTPRequestHandler):
 
 ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
 `.trim();
-  const helperServerBase64 = Buffer.from(helperServer, "utf8").toString("base64");
+
+const HELPER_SERVER_BASE64 = Buffer.from(HELPER_SERVER_SOURCE, "utf8").toString("base64");
+
+export async function setupRunpodPod(pod: RunpodPodSettings) {
+  const helperServerBase64 = HELPER_SERVER_BASE64;
 
   const script = [
     "set -euo pipefail",
@@ -999,6 +1008,359 @@ ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
   ].join("; ");
 
   return runSsh(pod, script, { timeoutMs: 30_000 });
+}
+
+// ── Jupyter-based helper deploy ─────────────────────────────────────────────
+// Many RunPod ComfyUI templates (e.g. antilopax/ltx23) expose Jupyter on 8888
+// but do NOT run an sshd, so the SSH install path fails with "connection
+// refused". runpod-video works around this by shipping its agent over the
+// Jupyter kernel websocket. We do the same here: write the helper file and
+// launch it on port 3000 by executing Python in a throwaway Jupyter kernel.
+
+function deriveJupyterUrl(pod: RunpodPodSettings) {
+  if (!pod.comfyUrl) return "";
+  return pod.comfyUrl
+    .replace(/\/$/, "")
+    .replace(/-8188\.proxy\.runpod\.net/i, "-8888.proxy.runpod.net")
+    .replace(/:8188\b/, ":8888");
+}
+
+async function fetchRunpodPodEnv(podId: string): Promise<Record<string, string>> {
+  const settings = await readSettings();
+  if (!settings.runpodApiKey) return {};
+  try {
+    const response = await fetch(
+      `https://rest.runpod.io/v1/pods/${encodeURIComponent(podId)}`,
+      {
+        headers: { Authorization: `Bearer ${settings.runpodApiKey}` },
+        cache: "no-store",
+        signal: AbortSignal.timeout(10_000),
+      }
+    );
+    if (!response.ok) return {};
+    const data = JSON.parse(await response.text()) as { env?: unknown };
+    if (data.env && typeof data.env === "object") {
+      return data.env as Record<string, string>;
+    }
+    return {};
+  } catch {
+    return {};
+  }
+}
+
+function cookieJarFrom(response: Response) {
+  const jar: Record<string, string> = {};
+  const cookies =
+    typeof response.headers.getSetCookie === "function"
+      ? response.headers.getSetCookie()
+      : [];
+  for (const cookie of cookies) {
+    const first = cookie.split(";")[0];
+    const eq = first.indexOf("=");
+    if (eq > 0) jar[first.slice(0, eq).trim()] = first.slice(eq + 1).trim();
+  }
+  return jar;
+}
+
+// Execute one block of Python in a Jupyter kernel over the channels websocket and
+// return the accumulated stdout. Waits for the kernel to be ready before sending.
+function runJupyterKernelCode(
+  jupyterUrl: string,
+  kernelId: string,
+  password: string,
+  cookieHeader: string,
+  code: string,
+  timeoutMs = 90_000
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const wsBase = jupyterUrl.replace(/^http:/i, "ws:").replace(/^https:/i, "wss:");
+    const sessionId = randomUUID();
+    const wsUrl = `${wsBase}/api/kernels/${encodeURIComponent(kernelId)}/channels?session_id=${sessionId}&token=${encodeURIComponent(password)}`;
+
+    let socket: WebSocket;
+    try {
+      socket = new WebSocket(wsUrl, {
+        headers: { Cookie: cookieHeader },
+      } as unknown as string[]);
+    } catch {
+      socket = new WebSocket(wsUrl);
+    }
+
+    const output: string[] = [];
+    const msgId = randomUUID();
+    let sent = false;
+    let settled = false;
+    let readyTimer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = setTimeout(
+      () => finish(new Error("Jupyter execution timed out.")),
+      timeoutMs
+    );
+
+    const finish = (error?: Error, value?: string) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      if (readyTimer) clearTimeout(readyTimer);
+      try {
+        socket.close();
+      } catch {
+        // ignore
+      }
+      if (error) reject(error);
+      else resolve(value ?? output.join(""));
+    };
+
+    const sendExecute = () => {
+      if (sent || settled) return;
+      sent = true;
+      socket.send(
+        JSON.stringify({
+          header: {
+            msg_id: msgId,
+            username: "image-gen",
+            session: sessionId,
+            msg_type: "execute_request",
+            version: "5.3",
+            date: new Date().toISOString(),
+          },
+          parent_header: {},
+          metadata: {},
+          content: {
+            code,
+            silent: false,
+            store_history: false,
+            user_expressions: {},
+            allow_stdin: false,
+            stop_on_error: true,
+          },
+          channel: "shell",
+          buffers: [],
+        })
+      );
+    };
+
+    socket.onopen = () => {
+      // The kernel may still be "starting"; a fallback timer sends the request
+      // even if we never observe a clean idle status first.
+      readyTimer = setTimeout(sendExecute, 3_000);
+    };
+    socket.onerror = (event: Event) => {
+      const message =
+        (event as unknown as { message?: string }).message ||
+        (event as unknown as { type?: string }).type ||
+        "unknown";
+      finish(new Error(`Jupyter websocket error: ${message}`));
+    };
+    socket.onmessage = (event: MessageEvent) => {
+      let text = "";
+      if (typeof event.data === "string") text = event.data;
+      else if (event.data instanceof ArrayBuffer)
+        text = Buffer.from(event.data).toString("utf8");
+      if (!text) return;
+
+      let message: {
+        header?: { msg_type?: string };
+        parent_header?: { msg_id?: string };
+        content?: {
+          execution_state?: string;
+          text?: string;
+          ename?: string;
+          evalue?: string;
+          status?: string;
+        };
+      };
+      try {
+        message = JSON.parse(text);
+      } catch {
+        return;
+      }
+
+      const type = message.header?.msg_type;
+      const parentId = message.parent_header?.msg_id;
+
+      // Kernel signalled ready (idle) before we sent — send now.
+      if (type === "status" && message.content?.execution_state === "idle") {
+        if (!sent) {
+          if (readyTimer) clearTimeout(readyTimer);
+          sendExecute();
+          return;
+        }
+        if (parentId === msgId) {
+          finish(undefined, output.join(""));
+          return;
+        }
+      }
+
+      if (parentId && parentId !== msgId) return;
+      if (type === "stream") output.push(String(message.content?.text || ""));
+      if (type === "error") {
+        output.push(
+          "ERROR: " +
+            [message.content?.ename, message.content?.evalue]
+              .filter(Boolean)
+              .join(": ")
+        );
+      }
+    };
+  });
+}
+
+export async function deployRunpodHelperViaJupyter(pod: RunpodPodSettings) {
+  const jupyterUrl = deriveJupyterUrl(pod);
+  if (!jupyterUrl) {
+    throw new Error("RunPod ComfyUI URL is required to derive the Jupyter endpoint.");
+  }
+  if (!pod.podId) {
+    throw new Error("RunPod pod ID is required for the Jupyter helper deploy.");
+  }
+
+  const env = await fetchRunpodPodEnv(pod.podId);
+  const password = env.JUPYTER_PASSWORD || "";
+  if (!password) {
+    throw new Error(
+      "This pod does not expose a JUPYTER_PASSWORD, so the helper cannot be installed via Jupyter."
+    );
+  }
+
+  const tokenQuery = `token=${encodeURIComponent(password)}`;
+
+  // 1) Load a Jupyter page to obtain the _xsrf token + auth cookies.
+  const labResponse = await fetch(`${jupyterUrl}/lab?${tokenQuery}`, {
+    redirect: "manual",
+    cache: "no-store",
+    signal: AbortSignal.timeout(15_000),
+  });
+  const jar = cookieJarFrom(labResponse);
+  const xsrf = jar["_xsrf"] || "";
+  const cookieHeader = Object.entries(jar)
+    .map(([key, value]) => `${key}=${value}`)
+    .join("; ");
+  if (!xsrf) {
+    throw new Error(
+      "Failed to obtain a Jupyter XSRF token (is the pod's JUPYTER_PASSWORD correct?)."
+    );
+  }
+
+  // 2) Create a throwaway python3 kernel.
+  const kernelResponse = await fetch(`${jupyterUrl}/api/kernels?${tokenQuery}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-XSRFToken": xsrf,
+      Cookie: cookieHeader,
+    },
+    body: JSON.stringify({ name: "python3" }),
+    cache: "no-store",
+    signal: AbortSignal.timeout(20_000),
+  });
+  const kernelText = await kernelResponse.text();
+  if (!kernelResponse.ok) {
+    throw new Error(
+      `Jupyter kernel creation failed: HTTP ${kernelResponse.status} ${kernelText}`
+    );
+  }
+  const kernelId = (JSON.parse(kernelText) as { id?: string }).id || "";
+  if (!kernelId) {
+    throw new Error("Jupyter did not return a kernel id.");
+  }
+
+  // 3) Write + launch the helper on port 3000 by executing Python in the kernel.
+  const launchCode = [
+    "import base64, os, socket, subprocess, time",
+    "os.makedirs('/workspace/image-gen-helper', exist_ok=True)",
+    "try:",
+    "    pid_file = '/workspace/image-gen-helper/helper.pid'",
+    "    if os.path.exists(pid_file):",
+    "        old = open(pid_file).read().strip()",
+    "        if old:",
+    "            subprocess.run(['kill', old], capture_output=True)",
+    "except Exception:",
+    "    pass",
+    "try:",
+    "    subprocess.run(['fuser', '-k', '3000/tcp'], capture_output=True)",
+    "except Exception:",
+    "    pass",
+    "time.sleep(1)",
+    `src = base64.b64decode('${HELPER_SERVER_BASE64}')`,
+    "open('/workspace/image-gen-helper/server.py', 'wb').write(src)",
+    "log = open('/workspace/image-gen-helper.log', 'ab')",
+    "proc = subprocess.Popen(['python3', '-u', '/workspace/image-gen-helper/server.py'], stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, start_new_session=True)",
+    "open('/workspace/image-gen-helper/helper.pid', 'w').write(str(proc.pid))",
+    "def _up(port):",
+    "    with socket.socket() as s:",
+    "        s.settimeout(1)",
+    "        return s.connect_ex(('127.0.0.1', port)) == 0",
+    "ok = False",
+    "for _ in range(15):",
+    "    time.sleep(1)",
+    "    if _up(3000):",
+    "        ok = True",
+    "        break",
+    "print('HELPER_OK' if ok else 'HELPER_FAIL')",
+  ].join("\n");
+
+  try {
+    const stdout = await runJupyterKernelCode(
+      jupyterUrl,
+      kernelId,
+      password,
+      cookieHeader,
+      launchCode
+    );
+    if (!stdout.includes("HELPER_OK")) {
+      throw new Error(
+        `Helper did not come up on port 3000 via Jupyter. Kernel output: ${stdout.trim().slice(0, 600) || "(no output)"}`
+      );
+    }
+    return { stdout, stderr: "" };
+  } finally {
+    await fetch(
+      `${jupyterUrl}/api/kernels/${encodeURIComponent(kernelId)}?${tokenQuery}`,
+      {
+        method: "DELETE",
+        headers: { "X-XSRFToken": xsrf, Cookie: cookieHeader },
+        cache: "no-store",
+        signal: AbortSignal.timeout(10_000),
+      }
+    ).catch(() => {
+      // The kernel will be culled on idle; ignore cleanup failures.
+    });
+  }
+}
+
+// Install the helper using whichever mechanism the pod supports: prefer Jupyter
+// (works without an sshd) and fall back to SSH. Returns which method succeeded.
+export async function installRunpodHelper(pod: RunpodPodSettings) {
+  const attempts: string[] = [];
+
+  if (pod.podId) {
+    const env = await fetchRunpodPodEnv(pod.podId);
+    if (env.JUPYTER_PASSWORD) {
+      try {
+        const result = await deployRunpodHelperViaJupyter(pod);
+        return { method: "jupyter" as const, ...result };
+      } catch (error) {
+        attempts.push(
+          `Jupyter: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+    }
+  }
+
+  if (pod.ssh.trim()) {
+    try {
+      const result = await setupRunpodPod(pod);
+      return { method: "ssh" as const, ...result };
+    } catch (error) {
+      attempts.push(`SSH: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  throw new Error(
+    attempts.length
+      ? `Helper install failed. ${attempts.join(" | ")}`
+      : "No helper install method is available. Expose Jupyter (JUPYTER_PASSWORD) or configure SSH for this pod."
+  );
 }
 
 interface CatalogEntry {
