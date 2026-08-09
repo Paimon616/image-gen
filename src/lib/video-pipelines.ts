@@ -1,5 +1,14 @@
 import { basename, join, normalize, relative, resolve } from "path";
 
+export interface VideoPipelineCanvasSupport {
+  /** width/height inputs reach a numeric node and change the output size. */
+  resolution: boolean;
+  /** num_frames reaches a numeric node and changes the frame count. */
+  frames: boolean;
+  /** fps reaches a numeric node and changes the playback rate. */
+  fps: boolean;
+}
+
 export interface VideoPipelineDefinition {
   id: string;
   label: string;
@@ -7,9 +16,32 @@ export interface VideoPipelineDefinition {
   workflowPath: string;
   mode: "i2v" | "t2v";
   experimental?: boolean;
+  /**
+   * The workflow renders audio and muxes it into the output on its own (e.g. the
+   * LTXV audio VAE path or a CreateVideo/VideoCombine node fed an `audio` input).
+   * When true the separate "Generate Sound" toggle is irrelevant and hidden.
+   */
+  embedsAudio: boolean;
+  /**
+   * Which "Reference & Canvas" fields actually affect this pipeline. The current
+   * LTX/10Eros workflows wire width/height/length from internal nodes and take
+   * fps/length from the Pipeline controls below, so the generic canvas inputs are
+   * inert. Fields marked false are hidden so the UI matches real behavior.
+   */
+  canvas: VideoPipelineCanvasSupport;
   defaults: Record<string, string | number | boolean>;
   controls: VideoPipelineControl[];
 }
+
+// The LTX 2.3 / 10Eros workflows drive size from the reference image resize and
+// take frame count / fps from their Pipeline controls (Length, Base FPS, Video
+// Megapixels, Longer Side). The generic canvas width/height/frames/fps inputs
+// never reach a numeric node, so none of them are honored.
+const NO_CANVAS_SUPPORT: VideoPipelineCanvasSupport = {
+  resolution: false,
+  frames: false,
+  fps: false,
+};
 
 export interface VideoPipelineControl {
   key: string;
@@ -294,6 +326,8 @@ const BUILTIN_VIDEO_PIPELINES: VideoPipelineDefinition[] = [
     description: "RunPod Video Sulphur LTX 2.3 image-to-video distilled workflow",
     workflowPath: "workflows/sulphur_ltx23_i2v_distilled.json",
     mode: "i2v",
+    embedsAudio: true,
+    canvas: NO_CANVAS_SUPPORT,
     defaults: defaultsFromControls(sulphurI2vDistilledControls),
     controls: sulphurI2vDistilledControls,
   },
@@ -303,6 +337,8 @@ const BUILTIN_VIDEO_PIPELINES: VideoPipelineDefinition[] = [
     description: "RunPod Video Sulphur LTX 2.3 image-to-video base workflow",
     workflowPath: "workflows/sulphur_ltx23_i2v_base.json",
     mode: "i2v",
+    embedsAudio: true,
+    canvas: NO_CANVAS_SUPPORT,
     defaults: defaultsFromControls(sulphurI2vBaseControls),
     controls: sulphurI2vBaseControls,
   },
@@ -312,6 +348,8 @@ const BUILTIN_VIDEO_PIPELINES: VideoPipelineDefinition[] = [
     description: "RunPod Video Sulphur LTX 2.3 text-to-video distilled workflow",
     workflowPath: "workflows/sulphur_ltx23_t2v_distilled.json",
     mode: "t2v",
+    embedsAudio: true,
+    canvas: NO_CANVAS_SUPPORT,
     defaults: defaultsFromControls(sulphurT2vDistilledControls),
     controls: sulphurT2vDistilledControls,
   },
@@ -321,6 +359,8 @@ const BUILTIN_VIDEO_PIPELINES: VideoPipelineDefinition[] = [
     description: "RunPod Video Sulphur LTX 2.3 text-to-video base workflow",
     workflowPath: "workflows/sulphur_ltx23_t2v_base.json",
     mode: "t2v",
+    embedsAudio: true,
+    canvas: NO_CANVAS_SUPPORT,
     defaults: defaultsFromControls(sulphurT2vBaseControls),
     controls: sulphurT2vBaseControls,
   },
@@ -331,6 +371,10 @@ const BUILTIN_VIDEO_PIPELINES: VideoPipelineDefinition[] = [
     workflowPath: "workflows/10Eros_10SNodes_TripleSample_I2V.json",
     mode: "i2v",
     experimental: true,
+    // Renders audio through the LTXV audio VAE path and muxes it into the final
+    // VHS_VideoCombine output, so the video always carries sound.
+    embedsAudio: true,
+    canvas: NO_CANVAS_SUPPORT,
     defaults: defaultsFromControls(erosControls),
     controls: erosControls,
   },

@@ -9,7 +9,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -33,7 +32,10 @@ import type {
   ImportedCivitaiResource,
 } from "@/lib/types";
 import { getModelConfig, randomGenerationSeed } from "@/lib/types";
+import { useRunpodDownloadStore } from "@/lib/runpod-download-store";
 import {
+  AlertTriangle,
+  CheckCircle2,
   GripVertical,
   Download,
   DownloadCloud,
@@ -45,17 +47,17 @@ import {
   Loader2,
   PanelLeftClose,
   PanelLeftOpen,
-  Play,
   RefreshCw,
   ScanLine,
   Server,
-  Square,
   Trash2,
+  Wrench,
   X,
 } from "lucide-react";
 
 interface RunpodPodOption {
   id: string;
+  kind?: "image" | "video";
   label: string;
   podId: string;
   comfyUrl: string;
@@ -78,27 +80,12 @@ interface RunpodMissingFile {
 interface RunpodConnectionStatus {
   checked: boolean;
   comfyReachable: boolean;
+  comfyInitializing: boolean;
   helperReachable: boolean;
+  helperInitializing: boolean;
   comfyError: string;
   helperError: string;
-}
-
-interface RunpodDownloadProgress {
-  total: number;
-  completed: number;
-  currentPath: string;
-  downloadedBytes: number;
-  totalBytes: number;
-  filePercent: number;
-  files: Record<
-    string,
-    {
-      downloadedBytes: number;
-      totalBytes: number;
-      filePercent: number;
-      done: boolean;
-    }
-  >;
+  podDesiredStatus: string;
 }
 
 function formatBytes(bytes: number) {
@@ -238,18 +225,52 @@ export default function Home() {
   const [selectedRunpodPodId, setSelectedRunpodPodId] = useState("");
   const [runpodStatus, setRunpodStatus] = useState("");
   const [runpodBusy, setRunpodBusy] =
-    useState<"" | "start" | "stop" | "status" | "check" | "download">("");
-  const [runpodStopConfirmOpen, setRunpodStopConfirmOpen] = useState(false);
+    useState<"" | "status" | "check" | "download" | "setup">("");
+  const [runpodRunningIds, setRunpodRunningIds] = useState<Set<string>>(new Set());
   const [runpodMissingFiles, setRunpodMissingFiles] = useState<RunpodMissingFile[]>([]);
-  const [runpodDownloadProgress, setRunpodDownloadProgress] =
-    useState<RunpodDownloadProgress | null>(null);
+  // RunPod download progress/status live in a module-level store (not component
+  // state) so an in-flight download and its progress survive navigating away
+  // from and back to this page.
+  const runpodDownloadProgress = useRunpodDownloadStore((state) =>
+    selectedRunpodPodId ? state.progressByPod[selectedRunpodPodId] ?? null : null
+  );
+  const runpodDownloading = useRunpodDownloadStore((state) =>
+    selectedRunpodPodId
+      ? state.downloadingByPod[selectedRunpodPodId] ?? false
+      : false
+  );
+  const runpodDownloadMessage = useRunpodDownloadStore((state) =>
+    selectedRunpodPodId ? state.messageByPod[selectedRunpodPodId] ?? "" : ""
+  );
+  const runpodPendingRecheck = useRunpodDownloadStore((state) =>
+    selectedRunpodPodId
+      ? state.pendingRecheckByPod[selectedRunpodPodId] ?? false
+      : false
+  );
+  const startRunpodDownload = useRunpodDownloadStore(
+    (state) => state.startDownload
+  );
+  const setRunpodDownloadMessage = useRunpodDownloadStore(
+    (state) => state.setMessage
+  );
+  const clearRunpodPendingRecheck = useRunpodDownloadStore(
+    (state) => state.clearPendingRecheck
+  );
+  const setRunpodConnectionCache = useRunpodDownloadStore(
+    (state) => state.setConnection
+  );
   const [runpodConnection, setRunpodConnection] = useState<RunpodConnectionStatus>({
     checked: false,
     comfyReachable: false,
+    comfyInitializing: false,
     helperReachable: false,
+    helperInitializing: false,
     comfyError: "",
     helperError: "",
+    podDesiredStatus: "",
   });
+  const runpodConnectionRef = useRef<RunpodConnectionStatus | null>(null);
+  const autoRunpodCheckKeyRef = useRef("");
   const [runpodFilesChecked, setRunpodFilesChecked] = useState(false);
   const [activeGeneration, setActiveGeneration] =
     useState<GenerationQueueItem | null>(null);
@@ -328,9 +349,11 @@ export default function Home() {
     fetch("/api/settings", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
-        const pods = Array.isArray(data.runpodPods)
-          ? (data.runpodPods as RunpodPodOption[])
-          : [];
+        const pods = (
+          Array.isArray(data.runpodPods)
+            ? (data.runpodPods as RunpodPodOption[])
+            : []
+        ).filter((pod) => pod.kind !== "video");
         setRunpodPods(pods);
         setSelectedRunpodPodId((current) => {
           const savedPodId = (() => {
@@ -362,28 +385,184 @@ export default function Home() {
       .catch(() => {});
   }, []);
 
+  const resetRunpodConnection = useCallback(() => {
+    autoRunpodCheckKeyRef.current = "";
+    setRunpodStatus("");
+    setRunpodFilesChecked(false);
+    setRunpodMissingFiles([]);
+    setRunpodConnection({
+      checked: false,
+      comfyReachable: false,
+      comfyInitializing: false,
+      helperReachable: false,
+      helperInitializing: false,
+      comfyError: "",
+      helperError: "",
+      podDesiredStatus: "",
+    });
+  }, []);
+
+  const applyRunpodStatus = useCallback(
+    (data: Record<string, unknown>) => {
+      const comfyReachable = Boolean(data.comfyReachable);
+      const helperReachable = Boolean(data.helperReachable);
+      const status: RunpodConnectionStatus = {
+        checked: true,
+        comfyReachable,
+        comfyInitializing: !comfyReachable && Boolean(data.comfyInitializing),
+        helperReachable,
+        helperInitializing: !helperReachable && Boolean(data.helperInitializing),
+        comfyError: String(data.comfyError || ""),
+        helperError: String(data.helperError || ""),
+        podDesiredStatus: String(data.podDesiredStatus || ""),
+      };
+      setRunpodConnection(status);
+      // Cache the last-known status so returning to this page shows it
+      // immediately instead of flashing back to "unchecked".
+      if (selectedRunpodPodId) {
+        setRunpodConnectionCache(selectedRunpodPodId, status);
+      }
+    },
+    [selectedRunpodPodId, setRunpodConnectionCache]
+  );
+
+  // Seed the connection status from the module-level cache when (re)mounting or
+  // switching pods, so returning to the page shows the last-known state right
+  // away rather than flashing to "unchecked" while the poller re-runs.
   useEffect(() => {
-    if (generationTarget !== "runpod" || !selectedRunpodPodId) return;
+    if (!selectedRunpodPodId) return;
+    const cached =
+      useRunpodDownloadStore.getState().connectionByPod[selectedRunpodPodId];
+    if (cached) {
+      setRunpodConnection(cached);
+    }
+  }, [selectedRunpodPodId]);
 
-    let canceled = false;
-    fetch(`/api/runpod/pods/${selectedRunpodPodId}/status`, { cache: "no-store" })
-      .then((res) => res.json())
-      .then((data) => {
-        if (canceled || data.error) return;
-        setRunpodConnection({
-          checked: true,
-          comfyReachable: Boolean(data.comfyReachable),
-          helperReachable: Boolean(data.helperReachable),
-          comfyError: String(data.comfyError || ""),
-          helperError: String(data.helperError || ""),
-        });
-      })
-      .catch(() => {});
+  // Read-only status refresh (auto=1 => never starts the pod or sets up ports).
+  const refreshRunpodStatus = useCallback(async () => {
+    if (!selectedRunpodPodId) return;
+    try {
+      const response = await fetch(
+        `/api/runpod/pods/${selectedRunpodPodId}/status?auto=1`,
+        { cache: "no-store" }
+      );
+      const data = await response.json();
+      if (!response.ok || data.error) return;
+      applyRunpodStatus(data);
+    } catch {
+      // Keep the last known status; the next poll will retry.
+    }
+  }, [applyRunpodStatus, selectedRunpodPodId]);
 
-    return () => {
-      canceled = true;
-    };
-  }, [generationTarget, selectedRunpodPodId]);
+  // Query every configured image pod's RunPod desiredStatus in one call to flag
+  // running pods in the dropdown and auto-select one when RunPod mode is on.
+  const refreshRunpodRunning = useCallback(async () => {
+    try {
+      const response = await fetch("/api/runpod/pods/running?kind=image", {
+        cache: "no-store",
+      });
+      const data = await response.json();
+      const pods = Array.isArray(data.pods)
+        ? (data.pods as Array<{ id: string; running: boolean }>)
+        : [];
+      setRunpodRunningIds(
+        new Set(pods.filter((pod) => pod.running).map((pod) => pod.id))
+      );
+      return pods;
+    } catch {
+      return [] as Array<{ id: string; running: boolean }>;
+    }
+  }, []);
+
+  // On RunPod toggle, select the first RUNNING pod (topmost wins). If none are
+  // running, keep the current selection and say so.
+  const autoSelectRunningRunpodPod = useCallback(async () => {
+    const pods = await refreshRunpodRunning();
+    const runningIds = new Set(
+      pods.filter((pod) => pod.running).map((pod) => pod.id)
+    );
+    const runningPods = runpodPods.filter((pod) => runningIds.has(pod.id));
+
+    if (runningPods.length === 0) {
+      setRunpodStatus(
+        ko
+          ? "실행 중인 pod가 없습니다. RunPod 콘솔에서 pod를 시작한 뒤 '상태 다시 확인'을 눌러주세요."
+          : "No running pod found. Start one in the RunPod console, then press “Recheck status”."
+      );
+      return;
+    }
+
+    const [first] = runningPods;
+    setSelectedRunpodPodId(first.id);
+    try {
+      window.localStorage.setItem(SELECTED_RUNPOD_POD_STORAGE_KEY, first.id);
+    } catch {}
+    setRunpodStatus(
+      ko
+        ? runningPods.length > 1
+          ? `실행 중인 pod ${runningPods.length}개 중 첫 번째(${first.label || first.podId || first.id})를 선택했습니다.`
+          : `실행 중인 pod(${first.label || first.podId || first.id})를 선택했습니다.`
+        : runningPods.length > 1
+          ? `Selected the first of ${runningPods.length} running pods (${first.label || first.podId || first.id}).`
+          : `Selected the running pod (${first.label || first.podId || first.id}).`
+    );
+  }, [ko, refreshRunpodRunning, runpodPods]);
+
+  const selectGenerationTarget = useCallback(
+    (target: "local" | "runpod") => {
+      setGenerationTarget(target);
+      try {
+        window.localStorage.setItem(GENERATION_TARGET_STORAGE_KEY, target);
+      } catch {}
+      if (target === "runpod") {
+        resetRunpodConnection();
+        void autoSelectRunningRunpodPod();
+      }
+    },
+    [autoSelectRunningRunpodPod, resetRunpodConnection]
+  );
+
+  useEffect(() => {
+    runpodConnectionRef.current = runpodConnection;
+  }, [runpodConnection]);
+
+  // First read after selecting a pod (once per target+pod combo).
+  useEffect(() => {
+    if (generationTarget !== "runpod" || !selectedRunpodPodId || activeGeneration) {
+      return;
+    }
+    const key = `${generationTarget}:${selectedRunpodPodId}`;
+    if (autoRunpodCheckKeyRef.current === key) return;
+    autoRunpodCheckKeyRef.current = key;
+    void refreshRunpodStatus();
+    void refreshRunpodRunning();
+  }, [
+    activeGeneration,
+    generationTarget,
+    refreshRunpodRunning,
+    refreshRunpodStatus,
+    selectedRunpodPodId,
+  ]);
+
+  // Live read-only polling until both ComfyUI and the helper are reachable.
+  useEffect(() => {
+    if (generationTarget !== "runpod" || !selectedRunpodPodId || activeGeneration) {
+      return;
+    }
+    const interval = setInterval(() => {
+      if (runpodBusy) return;
+      const current = runpodConnectionRef.current;
+      if (current?.comfyReachable && current?.helperReachable) return;
+      void refreshRunpodStatus();
+    }, 5_000);
+    return () => clearInterval(interval);
+  }, [
+    activeGeneration,
+    generationTarget,
+    refreshRunpodStatus,
+    runpodBusy,
+    selectedRunpodPodId,
+  ]);
 
   useEffect(() => {
     if (params.generation_mode !== "image_to_image") return;
@@ -807,6 +986,38 @@ export default function Home() {
     return missing;
   }, [params, selectedRunpodPodId]);
 
+  // When a background RunPod download settles, re-verify which files are
+  // present and report the result. `pendingRecheck` is a store flag, so this
+  // fires even when the download finished while the page was unmounted: on
+  // return the flag is still set and the check runs exactly once.
+  useEffect(() => {
+    if (!runpodPendingRecheck || !selectedRunpodPodId) return;
+    const podId = selectedRunpodPodId;
+    clearRunpodPendingRecheck(podId);
+    void checkRunpodFiles()
+      .then((missing) => {
+        const list = missing ?? [];
+        setRunpodDownloadMessage(
+          podId,
+          list.length === 0
+            ? ko
+              ? "RunPod에 다운로드했습니다. 생성 가능합니다."
+              : "Downloaded to RunPod. Ready to generate."
+            : ko
+              ? `다운로드 후에도 누락 파일 ${list.length}개가 있습니다.`
+              : `${list.length} file(s) are still missing after download.`
+        );
+      })
+      .catch(() => {});
+  }, [
+    runpodPendingRecheck,
+    selectedRunpodPodId,
+    checkRunpodFiles,
+    clearRunpodPendingRecheck,
+    setRunpodDownloadMessage,
+    ko,
+  ]);
+
   const generate = useCallback(async () => {
     if (!params.prompt.trim()) return;
     if (generationModeError) {
@@ -920,87 +1131,61 @@ export default function Home() {
   );
 
   const runRunpodAction = useCallback(
-    async (action: "start" | "stop" | "status" | "check" | "download") => {
-      if (!selectedRunpodPodId || runpodBusy) return;
+    async (action: "status" | "check" | "download" | "setup") => {
+      if (!selectedRunpodPodId || runpodBusy || runpodDownloading) return;
 
       setRunpodBusy(action);
       setRunpodStatus("");
+      // Drop any lingering download message so a non-download action's status
+      // text is what shows in the UI.
+      if (action !== "download") {
+        setRunpodDownloadMessage(selectedRunpodPodId, "");
+      }
       try {
-        if (action === "start") {
-          const response = await fetch(`/api/runpod/pods/${selectedRunpodPodId}/start`, {
-            method: "POST",
-          });
-          const data = await response.json();
-          if (!response.ok) throw new Error(data.error || "RunPod start failed");
-          setRunpodStatus(
-            ko
-              ? "RunPod 시작 요청을 보냈습니다. 잠시 후 상태 체크를 누르세요."
-              : "RunPod start requested. Check status again shortly."
-          );
-        }
-
-        if (action === "stop") {
-          const response = await fetch(`/api/runpod/pods/${selectedRunpodPodId}/stop`, {
-            method: "POST",
-          });
-          const data = await response.json();
-          if (!response.ok) throw new Error(data.error || "RunPod stop failed");
-          setRunpodConnection({
-            checked: true,
-            comfyReachable: false,
-            helperReachable: false,
-            comfyError: "",
-            helperError: "",
-          });
-          setRunpodFilesChecked(false);
-          setRunpodStatus(
-            ko
-              ? "RunPod 중지 요청을 보냈습니다. 잠시 후 상태 체크를 누르세요."
-              : "RunPod stop requested. Check status again shortly."
-          );
-        }
-
         if (action === "status") {
-          const response = await fetch(`/api/runpod/pods/${selectedRunpodPodId}/status?ensure=1`, {
-            cache: "no-store",
-          });
+          // Read-only: auto=1 never starts the pod or sets up ports. This app
+          // never starts the pod — start it in the RunPod console.
+          void refreshRunpodRunning();
+          const response = await fetch(
+            `/api/runpod/pods/${selectedRunpodPodId}/status?auto=1`,
+            { cache: "no-store" }
+          );
           const data = await response.json();
           if (!response.ok) throw new Error(data.error || "RunPod status failed");
-          setRunpodConnection({
-            checked: true,
-            comfyReachable: Boolean(data.comfyReachable),
-            helperReachable: Boolean(data.helperReachable),
-            comfyError: String(data.comfyError || ""),
-            helperError: String(data.helperError || ""),
-          });
+          applyRunpodStatus(data);
           setRunpodStatus(
             [
-              data.startRequested
-                ? ko ? "RunPod 시작 요청됨" : "RunPod start requested"
-                : "",
-              data.portExposeRequested
-                ? ko ? "3000 포트 노출 추가됨" : "Port 3000 exposure added"
-                : "",
-              data.portExposeError
-                ? ko ? `3000 포트 노출 실패: ${data.portExposeError}` : `Port 3000 exposure failed: ${data.portExposeError}`
-                : "",
-              data.setupRequested
-                ? ko ? "SSH로 Image Gen 3000 시작 요청됨. 잠시 후 상태 체크를 다시 누르세요." : "Image Gen 3000 start requested via SSH. Check again shortly."
+              data.podDesiredStatus
+                ? `RunPod ${String(data.podDesiredStatus).toLowerCase()}`
                 : "",
               data.comfyReachable
                 ? ko ? "ComfyUI 연결됨" : "ComfyUI reachable"
-                : ko ? `ComfyUI 미연결: ${data.comfyError || ""}` : `ComfyUI unreachable: ${data.comfyError || ""}`,
+                : data.comfyInitializing
+                  ? ko ? "ComfyUI 초기화 중" : "ComfyUI initializing"
+                  : ko ? `ComfyUI 미연결: ${data.comfyError || ""}` : `ComfyUI unreachable: ${data.comfyError || ""}`,
               data.helperReachable
                 ? ko ? "Helper 연결됨" : "Helper reachable"
-                : data.setupError
-                  ? ko
-                    ? `Helper 미연결: SSH 세팅 실패: ${data.setupError}`
-                    : `Helper unreachable: SSH setup failed: ${data.setupError}`
-                : ko
-                  ? `Helper 미연결: 3000 포트에서 Image Gen이 아직 준비 중입니다. 잠시 후 상태 체크를 다시 누르세요.`
-                  : `Helper unreachable: Image Gen is still preparing on port 3000. Check again shortly.`,
+                : data.helperInitializing
+                  ? ko ? "Helper 초기화 중" : "Helper initializing"
+                  : ko ? `Helper 미연결: ${data.helperError || ""}` : `Helper unreachable: ${data.helperError || ""}`,
             ].filter(Boolean).join(" · ")
           );
+        }
+
+        if (action === "setup") {
+          const response = await fetch(`/api/runpod/pods/${selectedRunpodPodId}/setup`, {
+            method: "POST",
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || "RunPod helper setup failed");
+          setRunpodStatus(
+            ko
+              ? "Helper 시작 요청을 보냈습니다. 잠시 후 상태를 다시 확인합니다."
+              : "Helper start requested. Rechecking status shortly."
+          );
+          window.setTimeout(() => {
+            void refreshRunpodStatus();
+          }, 1500);
         }
 
         if (action === "check") {
@@ -1025,169 +1210,36 @@ export default function Home() {
             return;
           }
 
-          const initialFileProgress = Object.fromEntries(
-            downloadable.map((item) => [
-              item.path,
-              { downloadedBytes: 0, totalBytes: 0, filePercent: 0, done: false },
-            ])
-          );
-          const updateDownloadProgress = (
-            path: string,
-            patch: Partial<RunpodDownloadProgress["files"][string]>
-          ) => {
-            setRunpodDownloadProgress((current) => {
-              const files = {
-                ...(current?.files ?? initialFileProgress),
-                [path]: {
-                  ...(current?.files[path] ?? {
-                    downloadedBytes: 0,
-                    totalBytes: 0,
-                    filePercent: 0,
-                    done: false,
-                  }),
-                  ...patch,
-                },
-              };
-              const values = Object.values(files);
-              const downloadedBytes = values.reduce(
-                (sum, file) => sum + file.downloadedBytes,
-                0
-              );
-              const totalBytes = values.reduce((sum, file) => sum + file.totalBytes, 0);
-              const completed = values.filter((file) => file.done).length;
-              return {
-                total: downloadable.length,
-                completed,
-                currentPath: path,
-                downloadedBytes,
-                totalBytes,
-                filePercent: totalBytes > 0
-                  ? Math.min(100, Math.round((downloadedBytes / totalBytes) * 100))
-                  : Math.max(...values.map((file) => file.filePercent), 0),
-                files,
-              };
-            });
-          };
-
-          setRunpodDownloadProgress({
-            total: downloadable.length,
-            completed: 0,
-            currentPath: downloadable[0]?.path ?? "",
-            downloadedBytes: 0,
-            totalBytes: 0,
-            filePercent: 0,
-            files: initialFileProgress,
-          });
-
-          const downloadOne = async (index: number) => {
-            const item = downloadable[index];
-            updateDownloadProgress(item.path, {
-              downloadedBytes: 0,
-              totalBytes: 0,
-              filePercent: 0,
-              done: false,
-            });
-            setRunpodStatus(
-              ko
-                ? `RunPod 다운로드 중 ${index + 1}/${downloadable.length}: ${item.path}`
-                : `Downloading to RunPod ${index + 1}/${downloadable.length}: ${item.path}`
-            );
-            const response = await fetch(`/api/runpod/pods/${selectedRunpodPodId}/download/stream`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ resource: item.resource, targetPath: item.path }),
-            });
-            if (!response.ok || !response.body) {
-              const data = await response.json().catch(() => ({}));
-              throw new Error(data.error || "RunPod download failed");
-            }
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = "";
-            let streamError = "";
-            while (true) {
-              const { value, done } = await reader.read();
-              if (done) break;
-              buffer += decoder.decode(value, { stream: true });
-              const events = buffer.split("\n\n");
-              buffer = events.pop() ?? "";
-              for (const event of events) {
-                const dataLine = event
-                  .split("\n")
-                  .find((line) => line.startsWith("data: "));
-                if (!dataLine) continue;
-                const payload = JSON.parse(dataLine.slice(6)) as {
-                  type?: string;
-                  path?: string;
-                  downloaded?: number;
-                  total?: number;
-                  percent?: number;
-                  message?: string;
-                };
-                if (payload.type === "error") {
-                  streamError = payload.message || "RunPod download failed";
-                }
-                if (payload.type === "progress" || payload.type === "status") {
-                  const downloadedBytes = Number(payload.downloaded ?? 0);
-                  const totalBytes = Number(payload.total ?? 0);
-                  updateDownloadProgress(item.path, {
-                    downloadedBytes,
-                    totalBytes,
-                    filePercent: Number(payload.percent ?? 0),
-                  });
-                }
-                if (payload.type === "complete") {
-                  updateDownloadProgress(item.path, {
-                    filePercent: 100,
-                  });
-                }
-              }
-            }
-            if (streamError) throw new Error(streamError);
-            updateDownloadProgress(item.path, {
-              filePercent: 100,
-              done: true,
-            });
-          };
-
-          let nextDownloadIndex = 0;
-          const workerCount = Math.min(3, downloadable.length);
-          await Promise.all(
-            Array.from({ length: workerCount }, async () => {
-              while (nextDownloadIndex < downloadable.length) {
-                const index = nextDownloadIndex;
-                nextDownloadIndex += 1;
-                await downloadOne(index);
-              }
-            })
-          );
-          const missingAfterDownload = (await checkRunpodFiles()) ?? [];
-          setRunpodStatus(
-            missingAfterDownload.length === 0
-              ? ko
-                ? `${downloadable.length}개 파일을 RunPod에 다운로드했습니다. 생성 가능합니다.`
-                : `Downloaded ${downloadable.length} file(s) to RunPod. Ready to generate.`
-              : ko
-                ? `다운로드 후에도 누락 파일 ${missingAfterDownload.length}개가 있습니다.`
-                : `${missingAfterDownload.length} file(s) are still missing after download.`
+          // Hand the batch to the module-level store. It keeps running (and its
+          // progress keeps updating) even if this page unmounts, and the
+          // pendingRecheck effect re-verifies files when it settles.
+          await startRunpodDownload(
+            selectedRunpodPodId,
+            downloadable.map((item) => ({
+              path: item.path,
+              resource: item.resource,
+            })),
+            { ko }
           );
         }
       } catch (error) {
         setRunpodStatus(error instanceof Error ? error.message : "RunPod action failed");
       } finally {
-        if (action === "download") {
-          setRunpodDownloadProgress(null);
-        }
         setRunpodBusy("");
       }
     },
     [
+      applyRunpodStatus,
       checkRunpodFiles,
       ko,
+      refreshRunpodRunning,
+      refreshRunpodStatus,
       runpodBusy,
+      runpodDownloading,
       runpodMissingFiles,
       selectedRunpodPodId,
+      startRunpodDownload,
+      setRunpodDownloadMessage,
     ]
   );
 
@@ -1310,6 +1362,9 @@ export default function Home() {
   const isGenerating = Boolean(activeGeneration);
   const queuedJobCount = generationQueue.length;
   const runpodTargetMissing = generationTarget === "runpod" && !selectedRunpodPodId;
+  const runpodPodRunning =
+    runpodConnection.comfyReachable ||
+    runpodConnection.podDesiredStatus.toUpperCase() === "RUNNING";
 
   return (
     <div ref={layoutRef} className="flex h-screen">
@@ -1332,15 +1387,7 @@ export default function Home() {
                 <button
                   key={item.value}
                   type="button"
-                  onClick={() => {
-                    setGenerationTarget(item.value);
-                    try {
-                      window.localStorage.setItem(
-                        GENERATION_TARGET_STORAGE_KEY,
-                        item.value
-                      );
-                    } catch {}
-                  }}
+                  onClick={() => selectGenerationTarget(item.value)}
                   className={`h-7 rounded px-2 text-xs font-semibold transition-colors ${
                     generationTarget === item.value
                       ? "bg-primary text-primary-foreground"
@@ -1367,16 +1414,7 @@ export default function Home() {
                       window.localStorage.removeItem(SELECTED_RUNPOD_POD_STORAGE_KEY);
                     }
                   } catch {}
-                  setRunpodConnection({
-                    checked: false,
-                    comfyReachable: false,
-                    helperReachable: false,
-                    comfyError: "",
-                    helperError: "",
-                  });
-                  setRunpodFilesChecked(false);
-                  setRunpodMissingFiles([]);
-                  setRunpodStatus("");
+                  resetRunpodConnection();
                 }}
                 className="h-9 max-w-40 rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
                 aria-label="RunPod target"
@@ -1386,7 +1424,8 @@ export default function Home() {
                 ) : (
                   runpodPods.map((pod) => (
                     <option key={pod.id} value={pod.id}>
-                      {pod.label || pod.podId || pod.id}
+                      {(runpodRunningIds.has(pod.id) ? "🟢 " : "⚪ ") +
+                        (pod.label || pod.podId || pod.id)}
                     </option>
                   ))
                 )}
@@ -1401,8 +1440,8 @@ export default function Home() {
               title="RunPod"
               description={
                 ko
-                  ? "팟을 시작하고 원격 ComfyUI와 모델 파일 상태를 관리합니다."
-                  : "Start the pod and manage remote ComfyUI and model files."
+                  ? "선택한 pod의 ComfyUI/Helper 연결 상태와 모델 파일만 조회합니다. 앱은 pod를 시작하지 않습니다."
+                  : "Reads the selected pod's ComfyUI/Helper status and model files only. This app never starts the pod."
               }
             >
               <div className="space-y-3 rounded-md border border-border bg-card/80 p-3">
@@ -1416,26 +1455,60 @@ export default function Home() {
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   <span
-                    className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${
-                      runpodConnection.checked && runpodConnection.comfyReachable
-                        ? "bg-green-500/15 text-green-600"
-                        : "bg-muted text-muted-foreground"
+                    className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold ${
+                      !runpodConnection.checked
+                        ? "bg-muted text-muted-foreground"
+                        : runpodConnection.comfyReachable
+                          ? "bg-green-500/15 text-green-600"
+                          : runpodConnection.comfyInitializing
+                            ? "bg-yellow-500/15 text-yellow-600"
+                            : "bg-destructive/15 text-destructive"
                     }`}
                   >
-                    {runpodConnection.checked && runpodConnection.comfyReachable
-                      ? ko ? "팟 실행 중" : "Pod running"
-                      : ko ? "팟 상태 미확인" : "Pod unchecked"}
+                    {!runpodConnection.checked ? (
+                      <AlertTriangle className="h-3 w-3" />
+                    ) : runpodConnection.comfyReachable ? (
+                      <CheckCircle2 className="h-3 w-3" />
+                    ) : runpodConnection.comfyInitializing ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <AlertTriangle className="h-3 w-3" />
+                    )}
+                    {!runpodConnection.checked
+                      ? ko ? "ComfyUI 미확인" : "ComfyUI unchecked"
+                      : runpodConnection.comfyReachable
+                        ? "ComfyUI OK"
+                        : runpodConnection.comfyInitializing
+                          ? ko ? "ComfyUI 초기화 중" : "ComfyUI initializing"
+                          : "ComfyUI ?"}
                   </span>
                   <span
-                    className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${
-                      runpodConnection.checked && runpodConnection.helperReachable
-                        ? "bg-green-500/15 text-green-600"
-                        : "bg-muted text-muted-foreground"
+                    className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold ${
+                      !runpodConnection.checked
+                        ? "bg-muted text-muted-foreground"
+                        : runpodConnection.helperReachable
+                          ? "bg-green-500/15 text-green-600"
+                          : runpodConnection.helperInitializing
+                            ? "bg-yellow-500/15 text-yellow-600"
+                            : "bg-destructive/15 text-destructive"
                     }`}
                   >
-                    {runpodConnection.checked && runpodConnection.helperReachable
-                      ? "Helper OK"
-                      : "Helper ?"}
+                    {!runpodConnection.checked ? (
+                      <AlertTriangle className="h-3 w-3" />
+                    ) : runpodConnection.helperReachable ? (
+                      <CheckCircle2 className="h-3 w-3" />
+                    ) : runpodConnection.helperInitializing ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <AlertTriangle className="h-3 w-3" />
+                    )}
+                    {!runpodConnection.checked
+                      ? ko ? "Helper 미확인" : "Helper unchecked"
+                      : runpodConnection.helperReachable
+                        ? "Helper OK"
+                        : runpodConnection.helperInitializing
+                          ? ko ? "Helper 초기화 중" : "Helper initializing"
+                          : "Helper ?"}
                   </span>
                   <span
                     className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${
@@ -1454,37 +1527,39 @@ export default function Home() {
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 xl:grid-cols-3">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={runpodConnection.checked && runpodConnection.comfyReachable ? "secondary" : "outline"}
-                    className="gap-1.5"
-                    disabled={!selectedRunpodPodId || Boolean(runpodBusy)}
-                    onClick={() => {
-                      if (runpodConnection.checked && runpodConnection.comfyReachable) {
-                        setRunpodStopConfirmOpen(true);
-                        return;
-                      }
-                      void runRunpodAction("start");
-                    }}
-                  >
-                    {runpodBusy === "start" || runpodBusy === "stop" ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : runpodConnection.checked && runpodConnection.comfyReachable ? (
-                      <Square className="h-3.5 w-3.5" />
-                    ) : (
-                      <Play className="h-3.5 w-3.5" />
+                  {runpodConnection.checked &&
+                    !runpodConnection.helperReachable &&
+                    runpodPodRunning && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5"
+                        disabled={
+                          !selectedRunpodPodId ||
+                          Boolean(runpodBusy) ||
+                          runpodDownloading
+                        }
+                        onClick={() => void runRunpodAction("setup")}
+                      >
+                        {runpodBusy === "setup" ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Wrench className="h-3.5 w-3.5" />
+                        )}
+                        {ko ? "Helper 초기화" : "Init helper"}
+                      </Button>
                     )}
-                    {runpodConnection.checked && runpodConnection.comfyReachable
-                      ? ko ? "중지하기" : "Stop pod"
-                      : ko ? "팟 실행" : "Start pod"}
-                  </Button>
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
                     className="gap-1.5"
-                    disabled={!selectedRunpodPodId || Boolean(runpodBusy)}
+                    disabled={
+                      !selectedRunpodPodId ||
+                      Boolean(runpodBusy) ||
+                      runpodDownloading
+                    }
                     onClick={() => void runRunpodAction("status")}
                   >
                     {runpodBusy === "status" ? (
@@ -1492,14 +1567,18 @@ export default function Home() {
                     ) : (
                       <RefreshCw className="h-3.5 w-3.5" />
                     )}
-                    {ko ? "상태 체크" : "Check"}
+                    {ko ? "상태 다시 확인" : "Recheck status"}
                   </Button>
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
                     className="gap-1.5"
-                    disabled={!selectedRunpodPodId || Boolean(runpodBusy)}
+                    disabled={
+                      !selectedRunpodPodId ||
+                      Boolean(runpodBusy) ||
+                      runpodDownloading
+                    }
                     onClick={() => void runRunpodAction("check")}
                   >
                     {runpodBusy === "check" ? (
@@ -1510,6 +1589,14 @@ export default function Home() {
                     {ko ? "파일 체크" : "Files"}
                   </Button>
                 </div>
+                {runpodConnection.checked && !runpodPodRunning && (
+                  <p className="flex items-start gap-1.5 rounded-md bg-yellow-500/10 px-2 py-1.5 text-xs text-yellow-700 dark:text-yellow-500">
+                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    {ko
+                      ? "Pod가 실행 중이 아닙니다. RunPod 콘솔에서 직접 pod를 시작한 뒤 '상태 다시 확인'을 눌러주세요. (앱은 pod를 시작하지 않습니다.)"
+                      : "Pod is not running. Start it yourself in the RunPod console, then press “Recheck status”. (This app never starts the pod.)"}
+                  </p>
+                )}
                 {runpodMissingFiles.length > 0 && (
                   <div className="space-y-2 rounded-md border border-dashed border-destructive/30 bg-destructive/10 p-2">
                     <div className="flex items-center justify-between gap-2">
@@ -1523,13 +1610,14 @@ export default function Home() {
                         className="h-7 gap-1 px-2 text-[11px]"
                         disabled={
                           Boolean(runpodBusy) ||
+                          runpodDownloading ||
                           !runpodMissingFiles.some(
                             (item) => canDownloadRunpodMissingFile(item)
                           )
                         }
                         onClick={() => void runRunpodAction("download")}
                       >
-                        {runpodBusy === "download" ? (
+                        {runpodBusy === "download" || runpodDownloading ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         ) : (
                           <DownloadCloud className="h-3.5 w-3.5" />
@@ -1601,8 +1689,10 @@ export default function Home() {
                     )}
                   </div>
                 )}
-                {runpodStatus && (
-                  <p className="text-xs text-muted-foreground">{runpodStatus}</p>
+                {(runpodDownloadMessage || runpodStatus) && (
+                  <p className="text-xs text-muted-foreground">
+                    {runpodDownloadMessage || runpodStatus}
+                  </p>
                 )}
               </div>
             </EditorSection>
@@ -2209,46 +2299,6 @@ export default function Home() {
 
       {/* Image Viewer Dialog */}
       <ImageViewer />
-
-      <Dialog
-        open={runpodStopConfirmOpen}
-        onOpenChange={(open) => {
-          if (!runpodBusy) setRunpodStopConfirmOpen(open);
-        }}
-      >
-        <DialogContent className="border border-border bg-card shadow-xl sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{ko ? "RunPod를 중지할까요?" : "Stop RunPod?"}</DialogTitle>
-            <DialogDescription>
-              {ko
-                ? "현재 pod를 중지하면 진행 중인 생성, 모델 다운로드, ComfyUI 연결이 끊길 수 있습니다."
-                : "Stopping the pod can interrupt active generations, model downloads, and the ComfyUI connection."}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={Boolean(runpodBusy)}
-              onClick={() => setRunpodStopConfirmOpen(false)}
-            >
-              {ko ? "취소" : "Cancel"}
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={Boolean(runpodBusy)}
-              onClick={() => {
-                setRunpodStopConfirmOpen(false);
-                void runRunpodAction("stop");
-              }}
-            >
-              {runpodBusy === "stop" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              {ko ? "중지하기" : "Stop pod"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog
         open={sourceImagePreviewOpen && Boolean(params.source_image)}

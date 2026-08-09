@@ -193,6 +193,9 @@ export interface GeneratedVideo {
   filename: string;
   contentType: string;
   audios?: GeneratedAudio[];
+  // Present while a video is queued/generating (client-only pending card) and
+  // set to a terminal state on error/cancel. Reuses the image status shape.
+  generation?: ImageGenerationStatus;
 }
 
 export interface GenerationStatus {

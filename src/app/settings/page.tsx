@@ -1,24 +1,37 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Plus, Save, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Check,
+  Film,
+  Image as ImageIcon,
+  KeyRound,
+  Plus,
+  Server,
+  Trash2,
+} from "lucide-react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { useStore } from "@/lib/store";
+
+type RunpodPodKind = "image" | "video";
 
 interface RunpodPodForm {
   id: string;
+  kind: RunpodPodKind;
   label: string;
   podId: string;
   ssh: string;
   comfyUrl: string;
 }
 
-const emptyPod = (): RunpodPodForm => ({
+type SaveScope = "keys" | "image" | "video";
+
+const emptyPod = (kind: RunpodPodKind): RunpodPodForm => ({
   id: crypto.randomUUID(),
+  kind,
   label: "",
   podId: "",
   ssh: "",
@@ -33,8 +46,24 @@ export default function SettingsPage() {
   const [civitaiApiKeyConfigured, setCivitaiApiKeyConfigured] = useState(false);
   const [runpodApiKeyConfigured, setRunpodApiKeyConfigured] = useState(false);
   const [runpodPods, setRunpodPods] = useState<RunpodPodForm[]>([]);
-  const [status, setStatus] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [savingScope, setSavingScope] = useState<SaveScope | null>(null);
+  const [savedScope, setSavedScope] = useState<SaveScope | null>(null);
+
+  const normalizePods = (value: unknown): RunpodPodForm[] =>
+    Array.isArray(value)
+      ? value.map((raw) => {
+          const pod = raw as Partial<RunpodPodForm>;
+          return {
+            id: String(pod.id || crypto.randomUUID()),
+            kind: pod.kind === "video" ? "video" : "image",
+            label: String(pod.label ?? ""),
+            podId: String(pod.podId ?? ""),
+            ssh: String(pod.ssh ?? ""),
+            comfyUrl: String(pod.comfyUrl ?? ""),
+          } satisfies RunpodPodForm;
+        })
+      : [];
 
   useEffect(() => {
     fetch("/api/settings", { cache: "no-store" })
@@ -42,14 +71,38 @@ export default function SettingsPage() {
       .then((data) => {
         setCivitaiApiKeyConfigured(Boolean(data.civitaiApiKeyConfigured));
         setRunpodApiKeyConfigured(Boolean(data.runpodApiKeyConfigured));
-        setRunpodPods(Array.isArray(data.runpodPods) ? data.runpodPods : []);
+        setRunpodPods(normalizePods(data.runpodPods));
       })
-      .catch(() => setStatus(ko ? "설정을 불러오지 못했습니다." : "Failed to load settings."));
+      .catch(() =>
+        setLoadError(ko ? "설정을 불러오지 못했습니다." : "Failed to load settings.")
+      );
   }, [ko]);
 
-  const save = async () => {
-    setSaving(true);
-    setStatus("");
+  const imagePods = useMemo(
+    () => runpodPods.filter((pod) => pod.kind === "image"),
+    [runpodPods]
+  );
+  const videoPods = useMemo(
+    () => runpodPods.filter((pod) => pod.kind === "video"),
+    [runpodPods]
+  );
+
+  const updatePod = (id: string, patch: Partial<RunpodPodForm>) =>
+    setRunpodPods((pods) =>
+      pods.map((pod) => (pod.id === id ? { ...pod, ...patch } : pod))
+    );
+  const removePod = (id: string) =>
+    setRunpodPods((pods) => pods.filter((pod) => pod.id !== id));
+  const addPod = (kind: RunpodPodKind) =>
+    setRunpodPods((pods) => [...pods, emptyPod(kind)]);
+
+  // Every scope saves the full settings payload (blank API keys keep existing
+  // values server-side); the scope only decides which button shows feedback so
+  // image/video pod lists can be saved independently without losing the other.
+  const save = async (scope: SaveScope) => {
+    setSavingScope(scope);
+    setSavedScope(null);
+    setLoadError("");
     try {
       const response = await fetch("/api/settings", {
         method: "PUT",
@@ -60,188 +113,338 @@ export default function SettingsPage() {
       const data = await response.json();
       setCivitaiApiKeyConfigured(Boolean(data.civitaiApiKeyConfigured));
       setRunpodApiKeyConfigured(Boolean(data.runpodApiKeyConfigured));
-      setRunpodPods(Array.isArray(data.runpodPods) ? data.runpodPods : runpodPods);
-      setCivitaiApiKey("");
-      setRunpodApiKey("");
-      setStatus(ko ? "저장했습니다." : "Saved.");
+      setRunpodPods(normalizePods(data.runpodPods));
+      if (scope === "keys") {
+        setCivitaiApiKey("");
+        setRunpodApiKey("");
+      }
+      setSavedScope(scope);
     } catch {
-      setStatus(ko ? "저장하지 못했습니다." : "Failed to save.");
+      setLoadError(ko ? "저장하지 못했습니다." : "Failed to save.");
     } finally {
-      setSaving(false);
+      setSavingScope(null);
     }
   };
+
+  const renderPodList = (kind: RunpodPodKind, pods: RunpodPodForm[]) => (
+    <div className="space-y-3">
+      {pods.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
+          {kind === "image"
+            ? ko
+              ? "이미지 생성에 사용할 Pod가 없습니다. 아래에서 추가하세요."
+              : "No pods for image generation yet. Add one below."
+            : ko
+              ? "비디오 생성에 사용할 Pod가 없습니다. 아래에서 추가하세요."
+              : "No pods for video generation yet. Add one below."}
+        </div>
+      ) : (
+        pods.map((pod, index) => (
+          <div
+            key={pod.id}
+            className="rounded-lg border border-border bg-card p-4 shadow-sm"
+          >
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-md bg-muted text-xs font-semibold text-muted-foreground">
+                  {index + 1}
+                </span>
+                <h3 className="text-sm font-medium">
+                  {pod.label ||
+                    (kind === "image"
+                      ? ko
+                        ? `이미지 Pod ${index + 1}`
+                        : `Image pod ${index + 1}`
+                      : ko
+                        ? `비디오 Pod ${index + 1}`
+                        : `Video pod ${index + 1}`)}
+                </h3>
+              </div>
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                className="text-muted-foreground hover:text-destructive"
+                onClick={() => removePod(pod.id)}
+                aria-label={ko ? "Pod 삭제" : "Delete pod"}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  {ko ? "라벨" : "Label"}
+                </Label>
+                <Input
+                  value={pod.label}
+                  onChange={(event) => updatePod(pod.id, { label: event.target.value })}
+                  placeholder={ko ? "예: RunPod A100" : "e.g. RunPod A100"}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Pod ID</Label>
+                <Input
+                  value={pod.podId}
+                  onChange={(event) => updatePod(pod.id, { podId: event.target.value })}
+                  placeholder={ko ? "RunPod Pod ID" : "RunPod Pod ID"}
+                />
+              </div>
+              <div className="space-y-1.5 md:col-span-2">
+                <Label className="text-xs text-muted-foreground">ComfyUI URL</Label>
+                <Input
+                  value={pod.comfyUrl}
+                  onChange={(event) => updatePod(pod.id, { comfyUrl: event.target.value })}
+                  placeholder="https://xxxxx-8188.proxy.runpod.net"
+                />
+              </div>
+              <div className="space-y-1.5 md:col-span-2">
+                <Label className="text-xs text-muted-foreground">
+                  {ko ? "SSH 명령 (선택)" : "SSH command (optional)"}
+                </Label>
+                <Input
+                  value={pod.ssh}
+                  onChange={(event) => updatePod(pod.id, { ssh: event.target.value })}
+                  placeholder="ssh ... -i ~/.ssh/id_ed25519"
+                />
+              </div>
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  );
+
+  const savedLabel = ko ? "저장됨" : "Saved";
 
   return (
     <div className="flex h-screen">
       <AppSidebar />
-      <main className="flex-1 overflow-y-auto">
-        <div className="border-b border-border px-6 py-4">
-          <h1 className="text-lg font-semibold">{ko ? "설정" : "Settings"}</h1>
-          <p className="text-xs text-muted-foreground">
+      <main className="flex-1 overflow-y-auto bg-muted/20">
+        <div className="border-b border-border bg-background px-8 py-5">
+          <h1 className="text-xl font-semibold tracking-tight">
+            {ko ? "설정" : "Settings"}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             {ko
               ? "외부 서비스 키와 원격 생성 대상을 관리합니다."
               : "Manage external service keys and remote generation targets."}
           </p>
         </div>
 
-        <div className="max-w-3xl space-y-8 p-6">
-          <section className="space-y-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-semibold">Civitai</h2>
-                <span
-                  className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${
-                    civitaiApiKeyConfigured
-                      ? "bg-green-500/15 text-green-600"
-                      : "bg-muted text-muted-foreground"
-                  }`}
-                >
-                  {civitaiApiKeyConfigured
-                    ? ko ? "저장됨" : "Saved"
-                    : ko ? "미설정" : "Not set"}
-                </span>
+        <div className="mx-auto max-w-3xl space-y-6 p-8">
+          {loadError && (
+            <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {loadError}
+            </div>
+          )}
+
+          {/* API keys */}
+          <section className="rounded-xl border border-border bg-background shadow-sm">
+            <header className="flex items-start gap-3 border-b border-border px-6 py-4">
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <KeyRound className="h-4 w-4" />
+              </span>
+              <div>
+                <h2 className="text-sm font-semibold">
+                  {ko ? "API 키" : "API keys"}
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  {ko
+                    ? "키는 서버에만 저장되고 다시 표시되지 않습니다. 빈칸은 기존 값을 유지합니다."
+                    : "Keys are stored server-side and never shown again. Blank keeps the existing value."}
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                {ko
-                  ? "API key는 서버에 저장되며 화면에는 다시 표시하지 않습니다. 빈칸은 기존 값을 유지합니다."
-                  : "The API key is stored server-side and never shown again. Blank keeps the existing value."}
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="civitai-api-key">API Key</Label>
-              <Input
-                id="civitai-api-key"
-                type="password"
-                value={civitaiApiKey}
-                onChange={(event) => setCivitaiApiKey(event.target.value)}
-                placeholder={ko ? "새 Civitai API key" : "New Civitai API key"}
-              />
-            </div>
-          </section>
-
-          <Separator />
-
-          <section className="space-y-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-semibold">RunPod</h2>
-                <span
-                  className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${
-                    runpodApiKeyConfigured
-                      ? "bg-green-500/15 text-green-600"
-                      : "bg-muted text-muted-foreground"
-                  }`}
-                >
-                  {runpodApiKeyConfigured
-                    ? ko ? "API key 저장됨" : "API key saved"
-                    : ko ? "API key 미설정" : "API key not set"}
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {ko
-                  ? "ComfyUI URL만 필수입니다. SSH 명령은 상태 체크에서 Port 3000 Image Gen을 설치/시작할 때만 선택적으로 사용합니다."
-                  : "Only the ComfyUI URL is required. The SSH command is optional and only used to install/start Port 3000 Image Gen from status checks."}
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="runpod-api-key">RunPod API Key</Label>
-              <Input
-                id="runpod-api-key"
-                type="password"
-                value={runpodApiKey}
-                onChange={(event) => setRunpodApiKey(event.target.value)}
-                placeholder={ko ? "새 RunPod API key" : "New RunPod API key"}
-              />
-            </div>
-
-            <div className="space-y-3">
-              {runpodPods.map((pod, index) => (
-                <div key={pod.id} className="rounded-md border border-border p-3">
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <h3 className="text-sm font-semibold">
-                      {pod.label || (ko ? `RunPod ${index + 1}` : `RunPod ${index + 1}`)}
-                    </h3>
-                    <Button
-                      type="button"
-                      size="icon-sm"
-                      variant="outline"
-                      onClick={() =>
-                        setRunpodPods((pods) => pods.filter((item) => item.id !== pod.id))
-                      }
-                      aria-label={ko ? "Pod 삭제" : "Delete pod"}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <Input
-                      value={pod.label}
-                      onChange={(event) =>
-                        setRunpodPods((pods) =>
-                          pods.map((item) =>
-                            item.id === pod.id ? { ...item, label: event.target.value } : item
-                          )
-                        )
-                      }
-                      placeholder={ko ? "라벨" : "Label"}
-                    />
-                    <Input
-                      value={pod.podId}
-                      onChange={(event) =>
-                        setRunpodPods((pods) =>
-                          pods.map((item) =>
-                            item.id === pod.id ? { ...item, podId: event.target.value } : item
-                          )
-                        )
-                      }
-                      placeholder="Pod ID"
-                    />
-                    <Input
-                      value={pod.comfyUrl}
-                      onChange={(event) =>
-                        setRunpodPods((pods) =>
-                          pods.map((item) =>
-                            item.id === pod.id ? { ...item, comfyUrl: event.target.value } : item
-                          )
-                        )
-                      }
-                      placeholder="ComfyUI URL, e.g. https://..."
-                    />
-                    <Input
-                      value={pod.ssh}
-                      onChange={(event) =>
-                        setRunpodPods((pods) =>
-                          pods.map((item) =>
-                            item.id === pod.id ? { ...item, ssh: event.target.value } : item
-                          )
-                        )
-                      }
-                      placeholder={ko ? "선택 SSH 명령, e.g. ssh ... -i ~/.ssh/id_ed25519" : "Optional SSH command, e.g. ssh ... -i ~/.ssh/id_ed25519"}
-                    />
-                  </div>
+            </header>
+            <div className="space-y-5 px-6 py-5">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="civitai-api-key">Civitai API Key</Label>
+                  <StatusBadge
+                    configured={civitaiApiKeyConfigured}
+                    savedLabel={savedLabel}
+                    notSetLabel={ko ? "미설정" : "Not set"}
+                  />
                 </div>
-              ))}
-              <Button
-                type="button"
-                variant="outline"
-                className="gap-2"
-                onClick={() => setRunpodPods((pods) => [...pods, emptyPod()])}
-              >
-                <Plus className="h-4 w-4" />
-                {ko ? "Pod 추가" : "Add pod"}
-              </Button>
+                <Input
+                  id="civitai-api-key"
+                  type="password"
+                  value={civitaiApiKey}
+                  onChange={(event) => setCivitaiApiKey(event.target.value)}
+                  placeholder={ko ? "새 Civitai API key" : "New Civitai API key"}
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="runpod-api-key">RunPod API Key</Label>
+                  <StatusBadge
+                    configured={runpodApiKeyConfigured}
+                    savedLabel={savedLabel}
+                    notSetLabel={ko ? "미설정" : "Not set"}
+                  />
+                </div>
+                <Input
+                  id="runpod-api-key"
+                  type="password"
+                  value={runpodApiKey}
+                  onChange={(event) => setRunpodApiKey(event.target.value)}
+                  placeholder={ko ? "새 RunPod API key" : "New RunPod API key"}
+                />
+              </div>
+              <SectionSaveBar
+                onSave={() => void save("keys")}
+                saving={savingScope === "keys"}
+                saved={savedScope === "keys"}
+                ko={ko}
+              />
             </div>
           </section>
 
-          <div className="flex items-center gap-3 border-t border-border pt-5">
-            <Button type="button" onClick={() => void save()} disabled={saving} className="gap-2">
-              <Save className="h-4 w-4" />
-              {saving ? (ko ? "저장 중..." : "Saving...") : ko ? "저장" : "Save"}
-            </Button>
-            {status && <span className="text-sm text-muted-foreground">{status}</span>}
-          </div>
+          {/* Image pods */}
+          <PodSection
+            icon={<ImageIcon className="h-4 w-4" />}
+            title={ko ? "이미지 생성 Pod" : "Image generation pods"}
+            description={
+              ko
+                ? "이미지 생성 화면에서 이 목록의 Pod만 선택할 수 있습니다."
+                : "Only pods in this list appear on the image generation page."
+            }
+            count={imagePods.length}
+            ko={ko}
+            addLabel={ko ? "이미지 Pod 추가" : "Add image pod"}
+            onAdd={() => addPod("image")}
+            onSave={() => void save("image")}
+            saving={savingScope === "image"}
+            saved={savedScope === "image"}
+          >
+            {renderPodList("image", imagePods)}
+          </PodSection>
+
+          {/* Video pods */}
+          <PodSection
+            icon={<Film className="h-4 w-4" />}
+            title={ko ? "비디오 생성 Pod" : "Video generation pods"}
+            description={
+              ko
+                ? "비디오 생성 화면에서 이 목록의 Pod만 선택할 수 있습니다."
+                : "Only pods in this list appear on the video generation page."
+            }
+            count={videoPods.length}
+            ko={ko}
+            addLabel={ko ? "비디오 Pod 추가" : "Add video pod"}
+            onAdd={() => addPod("video")}
+            onSave={() => void save("video")}
+            saving={savingScope === "video"}
+            saved={savedScope === "video"}
+          >
+            {renderPodList("video", videoPods)}
+          </PodSection>
         </div>
       </main>
     </div>
+  );
+}
+
+function StatusBadge({
+  configured,
+  savedLabel,
+  notSetLabel,
+}: {
+  configured: boolean;
+  savedLabel: string;
+  notSetLabel: string;
+}) {
+  return (
+    <span
+      className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${
+        configured
+          ? "bg-green-500/15 text-green-600"
+          : "bg-muted text-muted-foreground"
+      }`}
+    >
+      {configured ? savedLabel : notSetLabel}
+    </span>
+  );
+}
+
+function SectionSaveBar({
+  onSave,
+  saving,
+  saved,
+  ko,
+}: {
+  onSave: () => void;
+  saving: boolean;
+  saved: boolean;
+  ko: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-3 pt-1">
+      <Button type="button" onClick={onSave} disabled={saving} size="sm">
+        {saving ? (ko ? "저장 중..." : "Saving...") : ko ? "저장" : "Save"}
+      </Button>
+      {saved && !saving && (
+        <span className="flex items-center gap-1 text-xs font-medium text-green-600">
+          <Check className="h-3.5 w-3.5" />
+          {ko ? "저장했습니다." : "Saved."}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function PodSection({
+  icon,
+  title,
+  description,
+  count,
+  ko,
+  addLabel,
+  onAdd,
+  onSave,
+  saving,
+  saved,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  count: number;
+  ko: boolean;
+  addLabel: string;
+  onAdd: () => void;
+  onSave: () => void;
+  saving: boolean;
+  saved: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-xl border border-border bg-background shadow-sm">
+      <header className="flex items-start gap-3 border-b border-border px-6 py-4">
+        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          {icon}
+        </span>
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold">{title}</h2>
+            <span className="flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+              <Server className="h-3 w-3" />
+              {count}
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground">{description}</p>
+        </div>
+      </header>
+      <div className="space-y-4 px-6 py-5">
+        {children}
+        <Button type="button" variant="outline" className="w-full gap-2" onClick={onAdd}>
+          <Plus className="h-4 w-4" />
+          {addLabel}
+        </Button>
+        <div className="border-t border-border pt-4">
+          <SectionSaveBar onSave={onSave} saving={saving} saved={saved} ko={ko} />
+        </div>
+      </div>
+    </section>
   );
 }

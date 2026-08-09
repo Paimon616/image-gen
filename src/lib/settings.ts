@@ -3,8 +3,11 @@ import "server-only";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { dirname, join } from "path";
 
+export type RunpodPodKind = "image" | "video";
+
 export interface RunpodPodSettings {
   id: string;
+  kind: RunpodPodKind;
   label: string;
   podId: string;
   ssh: string;
@@ -32,6 +35,9 @@ function cleanSettings(value: Partial<AppSettings>): AppSettings {
     runpodPods: Array.isArray(value.runpodPods)
       ? value.runpodPods.map((pod) => ({
           id: String(pod.id || crypto.randomUUID()),
+          // Pods saved before the image/video split are untagged; treat them as
+          // image pods so existing setups keep working on the image page.
+          kind: pod.kind === "video" ? "video" : "image",
           label: String(pod.label ?? "").trim(),
           podId: String(pod.podId ?? "").trim(),
           ssh: String(pod.ssh ?? "").trim(),

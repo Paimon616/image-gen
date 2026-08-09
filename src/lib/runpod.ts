@@ -349,6 +349,42 @@ async function fetchRunpodPodSummary(podId: string) {
   };
 }
 
+// Lightweight bulk lookup: query RunPod's REST list endpoint ONCE and return a
+// map of podId -> desiredStatus. Used to auto-select a running pod and to flag
+// running pods in the target dropdown without probing every ComfyUI/helper port.
+export async function fetchRunpodDesiredStatusMap(): Promise<Record<string, string>> {
+  const settings = await readSettings();
+  if (!settings.runpodApiKey) return {};
+
+  const response = await fetch("https://rest.runpod.io/v1/pods", {
+    headers: { Authorization: `Bearer ${settings.runpodApiKey}` },
+    cache: "no-store",
+    signal: AbortSignal.timeout(10_000),
+  });
+  const text = await response.text();
+  if (!response.ok) {
+    throw new Error(`RunPod API HTTP ${response.status} ${text}`);
+  }
+
+  const parsed = JSON.parse(text) as unknown;
+  // The REST list endpoint has returned both a bare array and a { pods: [...] }
+  // envelope across API versions; accept either.
+  const pods = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray((parsed as { pods?: unknown }).pods)
+      ? (parsed as { pods: unknown[] }).pods
+      : [];
+
+  const map: Record<string, string> = {};
+  for (const entry of pods) {
+    if (!entry || typeof entry !== "object") continue;
+    const id = String((entry as { id?: unknown }).id ?? "");
+    if (!id) continue;
+    map[id] = String((entry as { desiredStatus?: unknown }).desiredStatus ?? "");
+  }
+  return map;
+}
+
 async function resolvedSshCommand(pod: RunpodPodSettings) {
   const extracted = extractSshCommand(pod.ssh);
   if (!extracted) {

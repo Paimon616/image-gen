@@ -136,8 +136,18 @@ function workflowIncludesAudio(workflow: unknown) {
       class_type?: unknown;
       inputs?: Record<string, unknown>;
     };
+    const classType = String(record.class_type ?? "");
 
-    return record.class_type === "CreateVideo" && Boolean(record.inputs?.audio);
+    // A muxing node (CreateVideo / VHS_VideoCombine) fed an `audio` input embeds
+    // sound in the output. The LTXV audio decode path is a strong signal too.
+    if (
+      (classType === "CreateVideo" || classType === "VHS_VideoCombine") &&
+      Boolean(record.inputs?.audio)
+    ) {
+      return true;
+    }
+
+    return classType.startsWith("LTXVAudio");
   });
 }
 

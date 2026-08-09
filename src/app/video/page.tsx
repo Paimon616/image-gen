@@ -6,6 +6,7 @@ import { CivitaiMissingResources } from "@/components/civitai-missing-resources"
 import { CopyLinkButton } from "@/components/copy-link-button";
 import { EditorSection } from "@/components/editor-section";
 import { ImageUpload } from "@/components/image-upload";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,12 +15,18 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useStore } from "@/lib/store";
+import { useRunpodDownloadStore } from "@/lib/runpod-download-store";
 import {
   DEFAULT_VIDEO_PARAMS,
   type CivitaiImportResult,
@@ -34,14 +41,24 @@ import {
   type MissingResource,
 } from "@/lib/civitai-resource-matching";
 import {
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  FileJson,
   Film,
   GripVertical,
   Bot,
+  Check,
   CheckCircle2,
   AlertTriangle,
+  ClipboardCopy,
+  Clock,
+  CopyPlus,
   HelpCircle,
   LinkIcon,
   Loader2,
+  Maximize2,
   MessageCircle,
   PanelLeftClose,
   PanelLeftOpen,
@@ -54,6 +71,7 @@ import {
   Trash2,
   Volume2,
   X,
+  XCircle,
 } from "lucide-react";
 
 type AppLanguage = "ko" | "en";
@@ -122,6 +140,7 @@ interface VideoConfigState extends WorkflowConfigState {
 
 interface RunpodPodOption {
   id: string;
+  kind?: "image" | "video";
   label: string;
   podId: string;
   ssh: string;
@@ -139,6 +158,12 @@ interface RunpodConnectionStatus {
   podDesiredStatus: string;
 }
 
+interface VideoPipelineCanvasSupport {
+  resolution: boolean;
+  frames: boolean;
+  fps: boolean;
+}
+
 interface VideoPipelineOption {
   id: string;
   label: string;
@@ -146,9 +171,19 @@ interface VideoPipelineOption {
   workflowPath: string;
   mode: "i2v" | "t2v";
   experimental?: boolean;
+  embedsAudio?: boolean;
+  canvas?: VideoPipelineCanvasSupport;
   defaults: Record<string, string | number | boolean>;
   controls: VideoPipelineControlOption[];
 }
+
+// A pipeline the client hasn't loaded metadata for is treated as honoring every
+// canvas field (legacy behavior) so we never hide an input that actually works.
+const FULL_CANVAS_SUPPORT: VideoPipelineCanvasSupport = {
+  resolution: true,
+  frames: true,
+  fps: true,
+};
 
 interface VideoPipelineControlOption {
   key: string;
@@ -167,6 +202,13 @@ interface VideoPipelineControlOption {
   }>;
 }
 
+interface VideoQueueItem {
+  id: string;
+  params: VideoGenerationParams;
+  generationTarget: "local" | "runpod";
+  runpodPodId?: string;
+}
+
 interface GenerationDetail {
   id: string;
   stage: string;
@@ -179,6 +221,7 @@ interface GenerationDetail {
 }
 
 const VIDEO_GENERATION_STATE_KEY = "image-gen-video-generation-state";
+const VIDEO_GENERATION_TARGET_KEY = "image-gen-video:generation-target";
 
 interface StoredVideoGenerationState {
   status: GenerationStatus;
@@ -562,16 +605,77 @@ const VIDEO_THUMBNAIL_MAX_WIDTH = 560;
 
 function VideoGalleryCard({
   video,
+  language,
+  liveDetail,
   onDelete,
+  onCancelGeneration,
+  onReuse,
+  onRemovePending,
+  onOpenDetail,
 }: {
   video: GeneratedVideo;
+  language: AppLanguage;
+  liveDetail?: GenerationDetail;
   onDelete: (video: GeneratedVideo) => Promise<void>;
+  onCancelGeneration: (video: GeneratedVideo) => void;
+  onReuse: (video: GeneratedVideo) => void;
+  onRemovePending: (video: GeneratedVideo) => void;
+  onOpenDetail: (video: GeneratedVideo) => void;
 }) {
   const articleRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [errorCopied, setErrorCopied] = useState(false);
+
+  const generation = video.generation;
+  const hasVideo = Boolean(video.url);
+  const displayState =
+    generation?.state === "generating" &&
+    /queued|waiting for comfyui|queued\.\.\./i.test(generation.message)
+      ? "waiting"
+      : generation?.state;
+  const isPending =
+    displayState === "queued" ||
+    displayState === "waiting" ||
+    displayState === "generating";
+  const progress = Math.min(100, Math.max(0, generation?.progress ?? 0));
+  const statusLabel =
+    displayState === "queued"
+      ? language === "ko" ? "대기열" : "Queued"
+      : displayState === "waiting"
+        ? language === "ko" ? "준비 중" : "Waiting"
+        : displayState === "generating"
+          ? language === "ko" ? "생성 중" : "Generating"
+          : displayState === "error"
+            ? language === "ko" ? "오류" : "Error"
+            : displayState === "canceled"
+              ? language === "ko" ? "취소됨" : "Canceled"
+              : "";
+  const StatusIcon =
+    displayState === "queued" || displayState === "waiting"
+      ? Clock
+      : displayState === "generating"
+        ? Loader2
+        : displayState === "error"
+          ? AlertCircle
+          : displayState === "canceled"
+            ? XCircle
+            : null;
+
+  const copyErrorDetails = async () => {
+    const details =
+      generation?.message ||
+      (language === "ko" ? "알 수 없는 생성 오류" : "Unknown generation error");
+    try {
+      await navigator.clipboard.writeText(details);
+      setErrorCopied(true);
+      window.setTimeout(() => setErrorCopied(false), 1600);
+    } catch {
+      setErrorCopied(false);
+    }
+  };
 
   useLayoutEffect(() => {
     const article = articleRef.current;
@@ -589,12 +693,286 @@ function VideoGalleryCard({
     return () => observer.disconnect();
   }, []);
 
+  if (!hasVideo) {
+    return (
+      <article
+        ref={articleRef}
+        className="relative overflow-hidden rounded-md border border-border shadow-sm"
+      >
+        <div
+          ref={contentRef}
+          className={`relative flex flex-col gap-3 p-3 ${
+            displayState === "generating"
+              ? "bg-slate-950 text-white"
+              : displayState === "error"
+                ? "bg-red-50 text-red-950"
+                : displayState === "canceled"
+                  ? "bg-slate-100 text-slate-700"
+                  : displayState === "waiting"
+                    ? "bg-amber-50 text-amber-950"
+                    : "bg-sky-50 text-sky-950"
+          }`}
+        >
+          {displayState === "generating" && (
+            <>
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(34,211,238,0.28),transparent_38%),radial-gradient(circle_at_80%_70%,rgba(168,85,247,0.30),transparent_42%)]" />
+              <div className="gallery-generation-scan pointer-events-none absolute inset-x-0 h-24 bg-gradient-to-b from-transparent via-cyan-300/20 to-transparent" />
+              <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.08)_1px,transparent_1px)] [background-size:24px_24px]" />
+            </>
+          )}
+          <div className="relative z-10 flex items-center justify-between gap-2">
+            <Badge
+              variant="outline"
+              className={`rounded-md ${
+                displayState === "generating"
+                  ? "border-cyan-300/40 bg-cyan-300/10 text-cyan-100"
+                  : displayState === "error"
+                    ? "border-red-300 bg-red-100 text-red-700"
+                    : displayState === "canceled"
+                      ? "border-slate-300 bg-slate-200 text-slate-600"
+                      : displayState === "waiting"
+                        ? "border-amber-300 bg-amber-100 text-amber-800"
+                        : "border-sky-300 bg-sky-100 text-sky-800"
+              }`}
+            >
+              {StatusIcon && (
+                <StatusIcon
+                  className={`h-3 w-3 ${
+                    displayState === "generating" ? "animate-spin" : ""
+                  }`}
+                />
+              )}
+              {statusLabel || "Pending"}
+            </Badge>
+            {isPending && (
+              <span
+                className={`text-xs font-medium tabular-nums ${
+                  displayState === "generating" ? "text-cyan-100" : "opacity-70"
+                }`}
+              >
+                {Math.round(progress)}%
+              </span>
+            )}
+          </div>
+
+          <div className="relative z-10 flex items-center justify-center py-4">
+            {displayState === "generating" ? (
+              <div className="relative flex h-24 w-24 items-center justify-center">
+                <div className="absolute inset-0 animate-spin rounded-full border border-transparent border-r-violet-400 border-t-cyan-300" />
+                <div className="absolute inset-2 animate-[spin_3s_linear_infinite_reverse] rounded-full border border-transparent border-b-fuchsia-300 border-l-cyan-200" />
+                <div className="absolute inset-5 animate-pulse rounded-full bg-white/10 shadow-[0_0_30px_rgba(34,211,238,.35)]" />
+                <Film className="relative h-8 w-8 text-cyan-100 drop-shadow-[0_0_10px_rgba(103,232,249,.8)]" />
+              </div>
+            ) : displayState === "error" ? (
+              <div className="flex flex-col items-center gap-2 text-center">
+                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-red-100 text-red-600 ring-1 ring-red-200">
+                  <AlertCircle className="h-7 w-7" />
+                </span>
+                <p className="text-sm font-semibold">
+                  {language === "ko" ? "생성에 실패했습니다" : "Generation failed"}
+                </p>
+              </div>
+            ) : (
+              <span
+                className={`flex h-14 w-14 items-center justify-center rounded-full ${
+                  displayState === "waiting"
+                    ? "bg-amber-100 text-amber-600"
+                    : displayState === "canceled"
+                      ? "bg-slate-200 text-slate-500"
+                      : "bg-sky-100 text-sky-600"
+                }`}
+              >
+                {StatusIcon ? <StatusIcon className="h-7 w-7" /> : <Film className="h-7 w-7" />}
+              </span>
+            )}
+          </div>
+
+          <div className="relative z-10 space-y-2">
+            {generation?.message && (
+              <p
+                className={`line-clamp-2 text-[11px] font-medium ${
+                  displayState === "generating"
+                    ? "text-cyan-100/80"
+                    : displayState === "waiting"
+                      ? "text-amber-800/80"
+                      : displayState === "error"
+                        ? "text-red-700"
+                        : displayState === "canceled"
+                          ? "text-slate-500"
+                          : "text-sky-800/80"
+                }`}
+              >
+                {generation.message}
+              </p>
+            )}
+            {isPending && (
+              <div
+                className={`h-1.5 overflow-hidden rounded-full ${
+                  displayState === "generating" ? "bg-white/15" : "bg-black/10"
+                }`}
+              >
+                <div
+                  className={`h-full rounded-full transition-[width] duration-500 ${
+                    displayState === "waiting"
+                      ? "bg-amber-500"
+                      : "bg-gradient-to-r from-sky-500 via-cyan-400 to-emerald-400"
+                  }`}
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            )}
+            {isPending && liveDetail && (
+              <div
+                className={`flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] ${
+                  displayState === "generating" ? "text-cyan-100/70" : "opacity-60"
+                }`}
+              >
+                <span className="font-mono">{formatElapsed(liveDetail.elapsed_ms)}</span>
+                {typeof liveDetail.step === "number" &&
+                  typeof liveDetail.total_steps === "number" && (
+                    <span>
+                      step {liveDetail.step}/{liveDetail.total_steps}
+                    </span>
+                  )}
+                {liveDetail.node_type && <span>{liveDetail.node_type}</span>}
+                {liveDetail.node_id && <span>node {liveDetail.node_id}</span>}
+                {liveDetail.stage && <span>{liveDetail.stage}</span>}
+              </div>
+            )}
+            <p
+              className={`line-clamp-2 text-xs leading-5 ${
+                displayState === "generating" ? "text-white/90" : ""
+              }`}
+            >
+              {video.params?.prompt || "No prompt"}
+            </p>
+            {displayState === "error" ? (
+              <div className="grid grid-cols-3 gap-1.5 pt-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 min-w-0 px-1 text-[10px]"
+                  onClick={() => onReuse(video)}
+                  disabled={!video.params}
+                  title={
+                    language === "ko"
+                      ? "실패 당시의 생성 설정을 편집 영역에 불러옵니다"
+                      : "Load the failed generation settings into the editor"
+                  }
+                >
+                  <CopyPlus className="h-3.5 w-3.5" />
+                  {language === "ko" ? "설정 재사용" : "Reuse"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 min-w-0 px-1 text-[10px]"
+                  onClick={() => void copyErrorDetails()}
+                  title={
+                    language === "ko"
+                      ? "오류 메시지를 클립보드에 복사합니다"
+                      : "Copy the error message"
+                  }
+                >
+                  {errorCopied ? (
+                    <Check className="h-3.5 w-3.5" />
+                  ) : (
+                    <ClipboardCopy className="h-3.5 w-3.5" />
+                  )}
+                  {errorCopied
+                    ? language === "ko" ? "복사됨" : "Copied"
+                    : language === "ko" ? "오류 복사" : "Copy"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="destructive"
+                  className="h-8 min-w-0 px-1 text-[10px]"
+                  onClick={() => onRemovePending(video)}
+                  title={language === "ko" ? "오류 카드를 제거합니다" : "Remove this error card"}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  {language === "ko" ? "제거" : "Remove"}
+                </Button>
+              </div>
+            ) : (
+              <div
+                className={`grid gap-1.5 pt-1 ${
+                  (isPending || displayState === "canceled") ? "grid-cols-2" : "grid-cols-1"
+                }`}
+              >
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className={`h-8 min-w-0 px-1 text-[11px] ${
+                    displayState === "generating"
+                      ? "border-white/25 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                      : ""
+                  }`}
+                  onClick={() => onReuse(video)}
+                  disabled={!video.params}
+                  title={
+                    language === "ko"
+                      ? "이 생성의 설정을 편집 영역에 불러옵니다"
+                      : "Load this generation's settings into the editor"
+                  }
+                >
+                  <CopyPlus className="h-3.5 w-3.5" />
+                  {language === "ko" ? "설정 재사용" : "Reuse"}
+                </Button>
+                {isPending && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="destructive"
+                    className="h-8 min-w-0 px-1 text-[11px]"
+                    onClick={() => onCancelGeneration(video)}
+                  >
+                    <XCircle className="h-3.5 w-3.5" />
+                    {language === "ko" ? "생성 취소" : "Cancel"}
+                  </Button>
+                )}
+                {displayState === "canceled" && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="destructive"
+                    className="h-8 min-w-0 px-1 text-[11px]"
+                    onClick={() => onRemovePending(video)}
+                    title={language === "ko" ? "취소된 카드를 삭제합니다" : "Remove this canceled card"}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    {language === "ko" ? "삭제" : "Delete"}
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </article>
+    );
+  }
+
   return (
     <article
       ref={articleRef}
       className="relative overflow-hidden rounded-md border border-border bg-card shadow-sm"
     >
       <div ref={contentRef}>
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="secondary"
+          className="absolute left-2 top-2 z-20 shadow-md"
+          onClick={() => onOpenDetail(video)}
+          aria-label={language === "ko" ? "상세 보기" : "View details"}
+          title={language === "ko" ? "상세 보기" : "View details"}
+        >
+          <Maximize2 />
+        </Button>
         <Button
           type="button"
           size="icon-sm"
@@ -698,6 +1076,508 @@ function VideoGalleryCard({
   );
 }
 
+function VideoDetailField({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <div className="rounded-md border border-border bg-card px-3 py-2">
+      <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </div>
+      <div className="mt-1 break-words text-sm font-semibold text-foreground">
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function VideoDetailSection({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-lg border border-border bg-card p-3 shadow-sm">
+      <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </h3>
+      <div className="mt-3">{children}</div>
+    </section>
+  );
+}
+
+function VideoDetailModal({
+  video,
+  videos,
+  language,
+  pipelines,
+  onClose,
+  onSelectVideo,
+  onReuse,
+  onDelete,
+}: {
+  video: GeneratedVideo;
+  videos: GeneratedVideo[];
+  language: AppLanguage;
+  pipelines: VideoPipelineOption[];
+  onClose: () => void;
+  onSelectVideo: (video: GeneratedVideo) => void;
+  onReuse: (video: GeneratedVideo) => void;
+  onDelete: (video: GeneratedVideo) => Promise<void>;
+}) {
+  const ko = language === "ko";
+  const [originalSize, setOriginalSize] = useState(false);
+  const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 });
+  const [metadataCopied, setMetadataCopied] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
+  const gif = isGif(video);
+  const params = video.params;
+
+  const index = videos.findIndex((item) => item.id === video.id);
+  const hasNavigation = videos.length > 1;
+
+  const navigate = useCallback(
+    (direction: "prev" | "next") => {
+      if (videos.length === 0) return;
+      const current = videos.findIndex((item) => item.id === video.id);
+      if (current === -1) return;
+      const nextIndex =
+        direction === "prev"
+          ? (current - 1 + videos.length) % videos.length
+          : (current + 1) % videos.length;
+      onSelectVideo(videos[nextIndex]);
+    },
+    [onSelectVideo, video.id, videos]
+  );
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      navigate(event.key === "ArrowLeft" ? "prev" : "next");
+    };
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
+  }, [navigate]);
+
+  const downloadVideo = () => {
+    const a = document.createElement("a");
+    a.href = video.url;
+    a.download = video.filename || "video";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
+  const copyMetadata = async () => {
+    const metadata = {
+      id: video.id,
+      filename: video.filename,
+      url: video.url,
+      contentType: video.contentType,
+      timestamp: video.timestamp,
+      createdAt: new Date(video.timestamp).toISOString(),
+      params: video.params,
+    };
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(metadata, null, 2));
+      setMetadataCopied(true);
+      window.setTimeout(() => setMetadataCopied(false), 1500);
+    } catch {
+      setMetadataCopied(false);
+    }
+  };
+
+  const pipeline = params
+    ? pipelines.find((item) => item.id === params.video_pipeline) ??
+      pipelines.find((item) => item.id === params.video_model)
+    : undefined;
+  const durationSeconds =
+    params && params.fps > 0
+      ? Math.round((params.num_frames / params.fps) * 10) / 10
+      : params?.duration_seconds;
+
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="!block h-[94vh] max-h-[94vh] w-[96vw] max-w-[96vw] overflow-hidden border border-border bg-card p-0 shadow-xl sm:max-w-[96vw]">
+        <DialogTitle className="sr-only">
+          {ko ? "비디오 상세 정보" : "Video Details"}
+        </DialogTitle>
+
+        <div className="flex h-full w-full flex-col bg-background">
+          <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(22rem,34rem)]">
+            <div className="relative min-w-0 overflow-auto border-r border-border bg-[radial-gradient(circle_at_1px_1px,color-mix(in_oklch,var(--border)_55%,transparent)_1px,transparent_0)] [background-size:24px_24px]">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={downloadVideo}
+                className="absolute right-4 top-4 z-10 h-11 w-11 rounded-full bg-card/90 shadow-lg backdrop-blur hover:bg-card"
+                aria-label={ko ? "비디오 다운로드" : "Download video"}
+                title={ko ? "비디오 다운로드" : "Download video"}
+              >
+                <Download className="h-5 w-5" />
+              </Button>
+              {hasNavigation && (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => navigate("prev")}
+                    className="absolute left-4 top-1/2 z-10 h-11 w-11 -translate-y-1/2 rounded-full bg-card/90 shadow-lg backdrop-blur hover:bg-card"
+                    aria-label={ko ? "이전 비디오" : "Previous video"}
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => navigate("next")}
+                    className="absolute right-4 top-1/2 z-10 h-11 w-11 -translate-y-1/2 rounded-full bg-card/90 shadow-lg backdrop-blur hover:bg-card"
+                    aria-label={ko ? "다음 비디오" : "Next video"}
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </Button>
+                </>
+              )}
+              <div className="flex h-full min-h-0 min-w-full items-center justify-center p-6">
+                <div
+                  className={
+                    originalSize
+                      ? "m-auto rounded-lg border border-border bg-card p-2 shadow-lg"
+                      : "m-auto flex max-h-full max-w-full rounded-lg border border-border bg-card p-2 shadow-lg"
+                  }
+                >
+                  {gif ? (
+                    <img
+                      src={video.url}
+                      alt={params?.prompt || "Generated video"}
+                      onLoad={(event) =>
+                        setNaturalSize({
+                          width: event.currentTarget.naturalWidth,
+                          height: event.currentTarget.naturalHeight,
+                        })
+                      }
+                      className={
+                        originalSize
+                          ? "block h-auto max-h-none w-auto max-w-none rounded-md"
+                          : "block h-auto max-h-[calc(94vh-9rem)] max-w-full rounded-md object-contain"
+                      }
+                    />
+                  ) : (
+                    <video
+                      src={video.url}
+                      controls
+                      autoPlay
+                      loop
+                      playsInline
+                      onLoadedMetadata={(event) =>
+                        setNaturalSize({
+                          width: event.currentTarget.videoWidth,
+                          height: event.currentTarget.videoHeight,
+                        })
+                      }
+                      className={
+                        originalSize
+                          ? "block h-auto max-h-none w-auto max-w-none rounded-md"
+                          : "block h-auto max-h-[calc(94vh-9rem)] max-w-full rounded-md object-contain"
+                      }
+                    />
+                  )}
+                </div>
+              </div>
+              {naturalSize.width > 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setOriginalSize((current) => !current)}
+                  className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 gap-1.5 rounded-full bg-card/90 shadow-lg backdrop-blur hover:bg-card"
+                >
+                  <Maximize2 className="h-3.5 w-3.5" />
+                  {originalSize
+                    ? ko ? "화면에 맞추기" : "Fit to screen"
+                    : ko
+                      ? `원본 크기 (${naturalSize.width}×${naturalSize.height})`
+                      : `Original (${naturalSize.width}×${naturalSize.height})`}
+                </Button>
+              )}
+            </div>
+
+            <aside className="flex min-h-0 flex-col bg-card">
+              <header className="border-b border-border bg-secondary/50 px-5 py-4 pr-12">
+                <div className="text-xs font-bold uppercase tracking-wide text-primary">
+                  {ko ? "생성된 비디오" : "Generated Video"}
+                </div>
+                <div className="mt-1 truncate text-sm font-semibold text-foreground">
+                  {video.filename || (ko ? "비디오" : "Video")}
+                </div>
+                <div className="mt-1 text-xs font-medium text-muted-foreground">
+                  {new Date(video.timestamp).toLocaleString()}
+                </div>
+              </header>
+
+              <div className="flex flex-wrap gap-2 border-b border-border px-5 py-3">
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    onReuse(video);
+                    onClose();
+                  }}
+                  disabled={!params}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  {ko ? "설정 재사용" : "Reuse"}
+                </Button>
+                <Button size="sm" variant="outline" onClick={downloadVideo}>
+                  <Download className="h-4 w-4" />
+                  {ko ? "다운로드" : "Download"}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => void copyMetadata()}>
+                  {metadataCopied ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <FileJson className="h-4 w-4" />
+                  )}
+                  {metadataCopied
+                    ? ko ? "복사됨" : "Copied"
+                    : ko ? "메타데이터 복사" : "Copy metadata"}
+                </Button>
+                <div className="relative">
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    disabled={deleting}
+                    onClick={() => setConfirmingDelete((current) => !current)}
+                  >
+                    {deleting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                    {ko ? "삭제" : "Delete"}
+                  </Button>
+                  {confirmingDelete && (
+                    <div className="absolute right-0 top-11 z-20 w-44 rounded-md border border-border bg-popover p-2.5 shadow-xl">
+                      <p className="text-[11px] font-medium leading-4 text-popover-foreground">
+                        {ko ? "이 비디오를 삭제할까요?" : "Delete this video?"}
+                      </p>
+                      {deleteError && (
+                        <p className="mt-1 text-[11px] text-destructive">{deleteError}</p>
+                      )}
+                      <div className="mt-2 flex gap-1.5">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="destructive"
+                          className="h-7 flex-1 text-[11px]"
+                          disabled={deleting}
+                          onClick={async () => {
+                            setDeleting(true);
+                            setDeleteError("");
+                            try {
+                              const neighbor =
+                                index > 0
+                                  ? videos[index - 1]
+                                  : videos[index + 1] ?? null;
+                              await onDelete(video);
+                              setConfirmingDelete(false);
+                              if (neighbor && neighbor.id !== video.id) {
+                                onSelectVideo(neighbor);
+                              } else {
+                                onClose();
+                              }
+                            } catch (error) {
+                              setDeleteError(
+                                error instanceof Error
+                                  ? error.message
+                                  : ko ? "삭제하지 못했습니다." : "Failed to delete video."
+                              );
+                            } finally {
+                              setDeleting(false);
+                            }
+                          }}
+                        >
+                          {ko ? "삭제" : "Delete"}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 flex-1 text-[11px]"
+                          disabled={deleting}
+                          onClick={() => setConfirmingDelete(false)}
+                        >
+                          {ko ? "취소" : "Cancel"}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-background/70 p-5">
+                {params ? (
+                  <>
+                    <VideoDetailSection label="Prompt">
+                      <p className="whitespace-pre-wrap break-words text-sm leading-6 text-foreground">
+                        {params.prompt || (ko ? "프롬프트 없음" : "No prompt")}
+                      </p>
+                    </VideoDetailSection>
+
+                    {params.negative_prompt && (
+                      <VideoDetailSection label="Negative Prompt">
+                        <p className="whitespace-pre-wrap break-words text-sm leading-6 text-muted-foreground">
+                          {params.negative_prompt}
+                        </p>
+                      </VideoDetailSection>
+                    )}
+
+                    <VideoDetailSection label={ko ? "생성 정보" : "Generation"}>
+                      <div className="grid grid-cols-2 gap-2">
+                        <VideoDetailField
+                          label={ko ? "파이프라인" : "Pipeline"}
+                          value={pipeline?.label || params.video_pipeline || params.video_model}
+                        />
+                        <VideoDetailField
+                          label={ko ? "모드" : "Mode"}
+                          value={(pipeline?.mode || "i2v").toUpperCase()}
+                        />
+                        <VideoDetailField
+                          label={ko ? "해상도" : "Resolution"}
+                          value={`${params.width} × ${params.height}`}
+                        />
+                        {naturalSize.width > 0 && (
+                          <VideoDetailField
+                            label={ko ? "실제 해상도" : "Actual resolution"}
+                            value={`${naturalSize.width} × ${naturalSize.height}`}
+                          />
+                        )}
+                        <VideoDetailField
+                          label={ko ? "프레임 수" : "Frames"}
+                          value={params.num_frames}
+                        />
+                        <VideoDetailField label="FPS" value={params.fps} />
+                        <VideoDetailField
+                          label={ko ? "길이" : "Duration"}
+                          value={`${durationSeconds ?? params.duration_seconds}s`}
+                        />
+                        <VideoDetailField
+                          label={ko ? "스텝" : "Steps"}
+                          value={params.num_inference_steps}
+                        />
+                        <VideoDetailField label="CFG" value={params.guidance_scale} />
+                        <VideoDetailField
+                          label="Seed"
+                          value={params.seed ?? (ko ? "랜덤" : "Random")}
+                        />
+                      </div>
+                    </VideoDetailSection>
+
+                    <VideoDetailSection label={ko ? "VAE 디코딩" : "VAE Decode"}>
+                      <div className="grid grid-cols-2 gap-2">
+                        <VideoDetailField
+                          label={ko ? "타일 크기" : "Tile size"}
+                          value={params.vae_tile_size}
+                        />
+                        <VideoDetailField
+                          label={ko ? "타일 겹침" : "Tile overlap"}
+                          value={params.vae_tile_overlap}
+                        />
+                        <VideoDetailField
+                          label={ko ? "시간 청크" : "Temporal size"}
+                          value={params.vae_temporal_size}
+                        />
+                        <VideoDetailField
+                          label={ko ? "시간 겹침" : "Temporal overlap"}
+                          value={params.vae_temporal_overlap}
+                        />
+                      </div>
+                    </VideoDetailSection>
+
+                    {params.enable_sound && (
+                      <VideoDetailSection label={ko ? "사운드" : "Sound"}>
+                        {params.sound_prompt && (
+                          <p className="mb-2 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">
+                            {params.sound_prompt}
+                          </p>
+                        )}
+                        <div className="grid grid-cols-2 gap-2">
+                          <VideoDetailField
+                            label={ko ? "사운드 길이" : "Sound duration"}
+                            value={`${params.sound_duration_seconds}s`}
+                          />
+                        </div>
+                      </VideoDetailSection>
+                    )}
+
+                    {params.source_image && (
+                      <VideoDetailSection label={ko ? "소스 이미지" : "Source image"}>
+                        <div className="overflow-hidden rounded-md border border-border bg-background">
+                          <img
+                            src={params.source_image}
+                            alt={ko ? "소스 이미지" : "Source image"}
+                            className="block h-auto w-full object-contain"
+                          />
+                        </div>
+                      </VideoDetailSection>
+                    )}
+
+                    {video.audios && video.audios.length > 0 && (
+                      <VideoDetailSection label={ko ? "생성된 사운드" : "Generated sound"}>
+                        <div className="space-y-2">
+                          {video.audios.map((audio) => (
+                            <div
+                              key={audio.id}
+                              className="rounded-md border border-border bg-background/80 p-2"
+                            >
+                              <div className="mb-1 flex items-center gap-1.5 text-xs font-medium">
+                                <Volume2 className="h-3.5 w-3.5 text-muted-foreground" />
+                                Sound
+                              </div>
+                              <audio src={audio.url} controls className="h-8 w-full" />
+                            </div>
+                          ))}
+                        </div>
+                      </VideoDetailSection>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    {ko
+                      ? "이 비디오에 대한 생성 정보가 없습니다."
+                      : "No generation details are available for this video."}
+                  </p>
+                )}
+              </div>
+            </aside>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function mapCivitaiParamsToVideoParams(
   imported: CivitaiImportResult
 ): Partial<VideoGenerationParams> {
@@ -751,6 +1631,12 @@ export default function VideoPage() {
   const [buttonProgress, setButtonProgress] = useState(0);
   const [generationDetails, setGenerationDetails] = useState<GenerationDetail[]>([]);
   const [videos, setVideos] = useState<GeneratedVideo[]>([]);
+  // Client-only in-flight generation cards (queued / generating / error / canceled).
+  // They live alongside the server-backed `videos` list and graduate out of
+  // `pendingVideos` once the finished video arrives.
+  const [pendingVideos, setPendingVideos] = useState<GeneratedVideo[]>([]);
+  const [generationQueue, setGenerationQueue] = useState<VideoQueueItem[]>([]);
+  const [activeGeneration, setActiveGeneration] = useState<VideoQueueItem | null>(null);
   const [thumbnailWidth, setThumbnailWidth] = useState(320);
   const [editorWidth, setEditorWidth] = useState(576);
   const [editorOpen, setEditorOpen] = useState(true);
@@ -791,12 +1677,21 @@ export default function VideoPage() {
     helperError: "",
     podDesiredStatus: "",
   });
+  const [runpodRunningIds, setRunpodRunningIds] = useState<Set<string>>(new Set());
   const [videoPipelines, setVideoPipelines] = useState<VideoPipelineOption[]>([]);
   const [paimonOpen, setPaimonOpen] = useState(false);
+  const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
   const activePromptIdRef = useRef("");
   const autoRunpodCheckKeyRef = useRef("");
   const runpodConnectionRef = useRef<RunpodConnectionStatus | null>(null);
   const generationAbortControllerRef = useRef<AbortController | null>(null);
+  const activeGenerationRef = useRef<VideoQueueItem | null>(null);
+  // Cache the last-known RunPod connection status in a module-level store so
+  // navigating away and back does not flash the status badges to "unchecked"
+  // while the poller re-runs.
+  const setRunpodConnectionCache = useRunpodDownloadStore(
+    (state) => state.setConnection
+  );
 
   const startEditorResize = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -836,7 +1731,8 @@ export default function VideoPage() {
     [editorOpen, editorWidth]
   );
 
-  const isGenerating = status.state === "generating";
+  const isGenerating = activeGeneration !== null;
+  const queuedJobCount = generationQueue.length;
   const videoWorkflowReady =
     videoConfig.configured && videoConfig.exists && videoConfig.ready;
   const selectedRunpodPod = useMemo(
@@ -866,22 +1762,27 @@ export default function VideoPage() {
   const videoRequiresSourceImage =
     selectedVideoPipeline?.mode === "i2v" ||
     (!selectedVideoPipeline && params.video_model !== "ltx-10eros");
-  const videoIncludesAudio = Boolean(videoConfig.includesAudio);
+  // The selected pipeline's own metadata is the source of truth: it knows whether
+  // the workflow bakes in audio and which canvas fields actually reach a node.
+  // Fall back to the per-file config only when no pipeline is resolved yet.
+  const videoIncludesAudio = selectedVideoPipeline
+    ? Boolean(selectedVideoPipeline.embedsAudio)
+    : Boolean(videoConfig.includesAudio);
+  const canvasSupport = selectedVideoPipeline?.canvas ?? FULL_CANVAS_SUPPORT;
+  const showCanvasPanel =
+    canvasSupport.resolution || canvasSupport.frames || canvasSupport.fps;
   const soundWorkflowReady =
     videoConfig.audio.configured && videoConfig.audio.exists && videoConfig.audio.ready;
+  // A pipeline that embeds its own audio ignores the separate sound pass, so a
+  // stale enable_sound toggle must not gate generation or spin up a second pass.
+  const soundPassActive = params.enable_sound && !videoIncludesAudio;
   const canGenerate =
     params.prompt.trim().length > 0 &&
     (!videoRequiresSourceImage || Boolean(params.source_image)) &&
-    (!params.enable_sound || soundWorkflowReady) &&
-    !isGenerating &&
+    (!soundPassActive || soundWorkflowReady) &&
     videoWorkflowReadyForTarget &&
     runpodTargetReady &&
     runpodConnected;
-  const generateButtonProgress = isGenerating
-    ? Math.max(buttonProgress, status.progress)
-    : status.state === "completed"
-      ? 100
-      : 0;
 
   const updateParams = useCallback((update: Partial<VideoGenerationParams>) => {
     setParams((current) => ({ ...current, ...update }));
@@ -894,6 +1795,7 @@ export default function VideoPage() {
     }),
     []
   );
+
 
   const resetRunpodConnection = useCallback(() => {
     autoRunpodCheckKeyRef.current = "";
@@ -910,6 +1812,68 @@ export default function VideoPage() {
     });
   }, []);
 
+  // Query every configured video pod's RunPod desiredStatus in one call and
+  // remember which ids are RUNNING (used to flag the dropdown and auto-select).
+  const refreshRunpodRunning = useCallback(async () => {
+    try {
+      const response = await fetch("/api/runpod/pods/running?kind=video", {
+        cache: "no-store",
+      });
+      const data = await response.json();
+      const pods = Array.isArray(data.pods)
+        ? (data.pods as Array<{ id: string; running: boolean }>)
+        : [];
+      setRunpodRunningIds(new Set(pods.filter((pod) => pod.running).map((pod) => pod.id)));
+      return pods;
+    } catch {
+      return [] as Array<{ id: string; running: boolean }>;
+    }
+  }, []);
+
+  // When RunPod mode is turned on, pick the first RUNNING pod in the list. If
+  // several are running the topmost wins; if none are running, say so and leave
+  // the current selection alone.
+  const autoSelectRunningRunpodPod = useCallback(async () => {
+    const pods = await refreshRunpodRunning();
+    const runningIds = new Set(pods.filter((pod) => pod.running).map((pod) => pod.id));
+    const runningPods = runpodPods.filter((pod) => runningIds.has(pod.id));
+
+    if (runningPods.length === 0) {
+      setRunpodStatus(
+        language === "ko"
+          ? "실행 중인 pod가 없습니다. RunPod 콘솔에서 pod를 시작한 뒤 '상태 다시 확인'을 눌러주세요."
+          : "No running pod found. Start one in the RunPod console, then press “Recheck status”."
+      );
+      return;
+    }
+
+    const [first] = runningPods;
+    setSelectedRunpodPodId(first.id);
+    setRunpodStatus(
+      language === "ko"
+        ? runningPods.length > 1
+          ? `실행 중인 pod ${runningPods.length}개 중 첫 번째(${first.label || first.podId || first.id})를 선택했습니다.`
+          : `실행 중인 pod(${first.label || first.podId || first.id})를 선택했습니다.`
+        : runningPods.length > 1
+          ? `Selected the first of ${runningPods.length} running pods (${first.label || first.podId || first.id}).`
+          : `Selected the running pod (${first.label || first.podId || first.id}).`
+    );
+  }, [language, refreshRunpodRunning, runpodPods]);
+
+  const selectGenerationTarget = useCallback(
+    (target: "local" | "runpod") => {
+      setGenerationTarget(target);
+      try {
+        window.localStorage.setItem(VIDEO_GENERATION_TARGET_KEY, target);
+      } catch {}
+      resetRunpodConnection();
+      if (target === "runpod") {
+        void autoSelectRunningRunpodPod();
+      }
+    },
+    [autoSelectRunningRunpodPod, resetRunpodConnection]
+  );
+
   const applyRunpodStatus = useCallback(
     (data: Record<string, unknown>) => {
       const comfyReachable = Boolean(data.comfyReachable);
@@ -919,7 +1883,7 @@ export default function VideoPage() {
       const comfyError = String(data.comfyError || "");
       const helperError = String(data.helperError || "");
 
-      setRunpodConnection({
+      const status: RunpodConnectionStatus = {
         checked: true,
         comfyReachable,
         comfyInitializing,
@@ -928,7 +1892,11 @@ export default function VideoPage() {
         comfyError,
         helperError,
         podDesiredStatus: String(data.podDesiredStatus || ""),
-      });
+      };
+      setRunpodConnection(status);
+      if (selectedRunpodPodId) {
+        setRunpodConnectionCache(selectedRunpodPodId, status);
+      }
 
       const serviceLine = (
         reachable: boolean,
@@ -984,8 +1952,20 @@ export default function VideoPage() {
           .join(" · ")
       );
     },
-    [language]
+    [language, selectedRunpodPodId, setRunpodConnectionCache]
   );
+
+  // Seed the connection status from the module-level cache when (re)mounting or
+  // switching pods, so returning to the page shows the last-known state right
+  // away instead of flashing to "unchecked" while the poller re-runs.
+  useEffect(() => {
+    if (!selectedRunpodPodId) return;
+    const cached =
+      useRunpodDownloadStore.getState().connectionByPod[selectedRunpodPodId];
+    if (cached) {
+      setRunpodConnection(cached);
+    }
+  }, [selectedRunpodPodId]);
 
   // Read-only status check (no start / port / helper side effects). The app must
   // never start or manipulate the pod here — it only queries its current state.
@@ -995,6 +1975,7 @@ export default function VideoPage() {
     setRunpodBusy(true);
     setRunpodStatus("");
     try {
+      void refreshRunpodRunning();
       const response = await fetch(
         `/api/runpod/pods/${selectedRunpodPodId}/status?auto=1`,
         { cache: "no-store" }
@@ -1020,7 +2001,7 @@ export default function VideoPage() {
     } finally {
       setRunpodBusy(false);
     }
-  }, [applyRunpodStatus, runpodBusy, selectedRunpodPodId]);
+  }, [applyRunpodStatus, refreshRunpodRunning, runpodBusy, selectedRunpodPodId]);
 
   // Lightweight status refresh (no ensure/start/setup side effects) used for polling
   // while ComfyUI/helper are still booting, so the badges flip to OK on their own.
@@ -1045,7 +2026,14 @@ export default function VideoPage() {
     if (autoRunpodCheckKeyRef.current === key) return;
     autoRunpodCheckKeyRef.current = key;
     void refreshRunpodStatus();
-  }, [generationTarget, isGenerating, refreshRunpodStatus, selectedRunpodPodId]);
+    void refreshRunpodRunning();
+  }, [
+    generationTarget,
+    isGenerating,
+    refreshRunpodRunning,
+    refreshRunpodStatus,
+    selectedRunpodPodId,
+  ]);
 
   // Keep the latest connection snapshot in a ref so the polling interval below can
   // read it without being torn down and recreated on every status change.
@@ -1133,6 +2121,24 @@ export default function VideoPage() {
     []
   );
 
+  const updatePendingVideo = useCallback(
+    (id: string, update: Partial<GeneratedVideo>) => {
+      setPendingVideos((current) =>
+        current.map((video) => (video.id === id ? { ...video, ...update } : video))
+      );
+    },
+    []
+  );
+
+  const removePendingVideo = useCallback((video: GeneratedVideo) => {
+    setPendingVideos((current) => current.filter((item) => item.id !== video.id));
+  }, []);
+
+  const reuseVideoParams = useCallback((video: GeneratedVideo) => {
+    if (!video.params) return;
+    setParams({ ...DEFAULT_VIDEO_PARAMS, ...video.params });
+  }, []);
+
   const importCivitaiMetadata = useCallback(async () => {
     if (!civitaiUrl.trim() || isImportingCivitai) return;
 
@@ -1208,15 +2214,30 @@ export default function VideoPage() {
     refreshVideos();
   }, [refreshVideos]);
 
+  // Restore the persisted generation target after mount (kept out of the initial
+  // render to avoid a hydration mismatch, matching the image page).
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem(VIDEO_GENERATION_TARGET_KEY) === "runpod") {
+        setGenerationTarget("runpod");
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => {
     fetch("/api/settings", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
-        const pods = Array.isArray(data.runpodPods)
-          ? (data.runpodPods as RunpodPodOption[])
-          : [];
+        const pods = (
+          Array.isArray(data.runpodPods)
+            ? (data.runpodPods as RunpodPodOption[])
+            : []
+        ).filter((pod) => pod.kind === "video");
         setRunpodPods(pods);
-        setSelectedRunpodPodId((current) => current || pods[0]?.id || "");
+        setSelectedRunpodPodId((current) => {
+          const podExists = pods.some((pod) => pod.id === current);
+          return current && podExists ? current : pods[0]?.id || "";
+        });
       })
       .catch(() => {});
   }, []);
@@ -1333,7 +2354,220 @@ export default function VideoPage() {
     [params.fps, params.num_frames]
   );
 
-  const generate = useCallback(async () => {
+  const runGenerationJob = useCallback(
+    async (job: VideoQueueItem) => {
+      const { id, params: jobParams, generationTarget: jobTarget, runpodPodId } = job;
+
+      const abortController = new AbortController();
+      activePromptIdRef.current = "";
+      generationAbortControllerRef.current = abortController;
+      setGenerationDetails([]);
+      setButtonProgress(1);
+      setStatus({ state: "generating", progress: 1, message: "Queued..." });
+      updatePendingVideo(id, {
+        generation: { state: "waiting", progress: 1, message: "Queued..." },
+      });
+      appendGenerationDetail({
+        stage: "queued",
+        message: "Queued request in Image Gen.",
+        elapsed_ms: 0,
+      });
+
+      let generated = false;
+
+      try {
+        const res = await fetch("/api/video/generate/stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...jobParams,
+            generationTarget: jobTarget,
+            runpodPodId: jobTarget === "runpod" ? runpodPodId : undefined,
+          }),
+          signal: abortController.signal,
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || "Video generation failed");
+        }
+
+        if (!res.body) {
+          throw new Error("Video generation stream did not start");
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let completed = false;
+
+        while (!completed) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split("\n\n");
+          buffer = events.pop() ?? "";
+
+          for (const rawEvent of events) {
+            if (!rawEvent.trim()) continue;
+            const { event, data } = parseSseEvent(rawEvent);
+
+            if (event === "queued") {
+              activePromptIdRef.current = String(data?.prompt_id ?? "");
+              updatePendingVideo(id, {
+                generation: {
+                  state: "waiting",
+                  progress: 1,
+                  message: "Waiting for ComfyUI...",
+                },
+              });
+            }
+
+            if (event === "progress") {
+              const progress = Number(data?.progress ?? 0);
+              const message = String(data?.message ?? "Generating video...");
+              const isStepProgress =
+                data?.step != null && data?.total_steps != null;
+              setButtonProgress(progress);
+              setStatus({ state: "generating", progress, message });
+              updatePendingVideo(id, {
+                generation: {
+                  state: isStepProgress ? "generating" : "waiting",
+                  progress,
+                  message,
+                },
+              });
+              appendGenerationDetail({
+                stage: String(data?.stage ?? "progress"),
+                message,
+                node_id: data?.node_id ? String(data.node_id) : undefined,
+                node_type: data?.node_type ? String(data.node_type) : undefined,
+                step:
+                  typeof data?.step === "number" ? Number(data.step) : undefined,
+                total_steps:
+                  typeof data?.total_steps === "number"
+                    ? Number(data.total_steps)
+                    : undefined,
+                elapsed_ms:
+                  typeof data?.elapsed_ms === "number"
+                    ? Number(data.elapsed_ms)
+                    : undefined,
+              });
+            }
+
+            if (event === "detail") {
+              const message = String(data?.message ?? "Working...");
+              setStatus((current) => ({
+                ...current,
+                message,
+              }));
+              // Keep the card's progress/state, just refresh the message.
+              setPendingVideos((current) =>
+                current.map((video) =>
+                  video.id === id && video.generation
+                    ? { ...video, generation: { ...video.generation, message } }
+                    : video
+                )
+              );
+              appendGenerationDetail({
+                stage: String(data?.stage ?? "detail"),
+                message,
+                node_id: data?.node_id ? String(data.node_id) : undefined,
+                node_type: data?.node_type ? String(data.node_type) : undefined,
+                elapsed_ms:
+                  typeof data?.elapsed_ms === "number"
+                    ? Number(data.elapsed_ms)
+                    : undefined,
+              });
+            }
+
+            if (event === "complete") {
+              const generatedVideos = (data?.videos ?? []) as GeneratedVideo[];
+              if (generatedVideos.length > 0) {
+                setVideos((current) => [...generatedVideos, ...current]);
+              }
+              // The finished video moves into the server-backed list, so drop
+              // the pending card.
+              setPendingVideos((current) =>
+                current.filter((video) => video.id !== id)
+              );
+              generated = true;
+              completed = true;
+            }
+
+            if (event === "error") {
+              throw new Error(data?.error || "Video generation failed");
+            }
+          }
+        }
+
+        if (!generated) {
+          throw new Error("Video generation stream ended without a result.");
+        }
+
+        setButtonProgress(100);
+        setStatus({ state: "completed", progress: 100, message: "Done!" });
+        appendGenerationDetail({
+          stage: "complete",
+          message: jobParams.enable_sound
+            ? "Video and sound saved locally."
+            : "Video saved locally.",
+        });
+        setTimeout(() => {
+          setButtonProgress(0);
+          setStatus({ state: "idle", progress: 0, message: "" });
+          clearStoredGenerationState();
+        }, 2000);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          setButtonProgress(0);
+          setStatus({ state: "canceled", progress: 0, message: "Canceled." });
+          updatePendingVideo(id, {
+            generation: { state: "canceled", progress: 0, message: "Canceled." },
+          });
+          clearStoredGenerationState();
+          return;
+        }
+
+        const message =
+          error instanceof Error ? error.message : "Video generation failed";
+        setButtonProgress(0);
+        setStatus({ state: "error", progress: 0, message });
+        updatePendingVideo(id, {
+          generation: { state: "error", progress: 0, message },
+        });
+      } finally {
+        generationAbortControllerRef.current = null;
+        activePromptIdRef.current = "";
+        activeGenerationRef.current = null;
+        setActiveGeneration(null);
+      }
+    },
+    [appendGenerationDetail, updatePendingVideo]
+  );
+
+  // Process the queue one job at a time (video generation is GPU-heavy, so
+  // running several at once would just thrash VRAM).
+  useEffect(() => {
+    if (
+      activeGenerationRef.current ||
+      activeGeneration ||
+      generationQueue.length === 0
+    ) {
+      return;
+    }
+
+    const [nextJob] = generationQueue;
+    activeGenerationRef.current = nextJob;
+    setGenerationQueue((queue) =>
+      queue[0]?.id === nextJob.id ? queue.slice(1) : queue
+    );
+    setActiveGeneration(nextJob);
+    void runGenerationJob(nextJob);
+  }, [activeGeneration, generationQueue, runGenerationJob]);
+
+  const generate = useCallback(() => {
     if (!params.prompt.trim()) return;
     if (videoRequiresSourceImage && !params.source_image) {
       setStatus({
@@ -1359,7 +2593,7 @@ export default function VideoPage() {
       });
       return;
     }
-    if (params.enable_sound && !soundWorkflowReady) {
+    if (soundPassActive && !soundWorkflowReady) {
       setStatus({
         state: "error",
         progress: 0,
@@ -1368,150 +2602,48 @@ export default function VideoPage() {
       return;
     }
 
-    const abortController = new AbortController();
-    activePromptIdRef.current = "";
-    generationAbortControllerRef.current = abortController;
-    setGenerationDetails([]);
-    setButtonProgress(1);
-    setStatus({ state: "generating", progress: 1, message: "Queued..." });
-    appendGenerationDetail({
-      stage: "queued",
-      message: "Queued request in Image Gen.",
-      elapsed_ms: 0,
-    });
+    const jobParams: VideoGenerationParams = {
+      ...params,
+      // A pipeline that renders its own audio never needs the separate pass; drop
+      // any stale toggle so the backend doesn't queue a redundant audio workflow.
+      enable_sound: soundPassActive,
+      video_pipeline_settings: { ...params.video_pipeline_settings },
+    };
+    const id = crypto.randomUUID();
 
-    try {
-      const res = await fetch("/api/video/generate/stream", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...params,
-          generationTarget,
-          runpodPodId: generationTarget === "runpod" ? selectedRunpodPodId : undefined,
-        }),
-        signal: abortController.signal,
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Video generation failed");
-      }
-
-      if (!res.body) {
-        throw new Error("Video generation stream did not start");
-      }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let completed = false;
-
-      while (!completed) {
-        const { value, done } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const events = buffer.split("\n\n");
-        buffer = events.pop() ?? "";
-
-        for (const rawEvent of events) {
-          if (!rawEvent.trim()) continue;
-          const { event, data } = parseSseEvent(rawEvent);
-
-          if (event === "queued") {
-            activePromptIdRef.current = String(data?.prompt_id ?? "");
-          }
-
-          if (event === "progress") {
-            const progress = Number(data?.progress ?? 0);
-            const message = String(data?.message ?? "Generating video...");
-            setButtonProgress(progress);
-            setStatus({ state: "generating", progress, message });
-            appendGenerationDetail({
-              stage: String(data?.stage ?? "progress"),
-              message,
-              node_id: data?.node_id ? String(data.node_id) : undefined,
-              node_type: data?.node_type ? String(data.node_type) : undefined,
-              step:
-                typeof data?.step === "number" ? Number(data.step) : undefined,
-              total_steps:
-                typeof data?.total_steps === "number"
-                  ? Number(data.total_steps)
-                  : undefined,
-              elapsed_ms:
-                typeof data?.elapsed_ms === "number"
-                  ? Number(data.elapsed_ms)
-                  : undefined,
-            });
-          }
-
-          if (event === "detail") {
-            const message = String(data?.message ?? "Working...");
-            setStatus((current) => ({
-              ...current,
-              message,
-            }));
-            appendGenerationDetail({
-              stage: String(data?.stage ?? "detail"),
-              message,
-              node_id: data?.node_id ? String(data.node_id) : undefined,
-              node_type: data?.node_type ? String(data.node_type) : undefined,
-              elapsed_ms:
-                typeof data?.elapsed_ms === "number"
-                  ? Number(data.elapsed_ms)
-                  : undefined,
-            });
-          }
-
-          if (event === "complete") {
-            const generatedVideos = (data?.videos ?? []) as GeneratedVideo[];
-            setVideos((current) => [...generatedVideos, ...current]);
-            completed = true;
-          }
-
-          if (event === "error") {
-            throw new Error(data?.error || "Video generation failed");
-          }
-        }
-      }
-
-      setButtonProgress(100);
-      setStatus({ state: "completed", progress: 100, message: "Done!" });
-      appendGenerationDetail({
-        stage: "complete",
-        message: params.enable_sound
-          ? "Video and sound saved locally."
-          : "Video saved locally.",
-      });
-      setTimeout(() => {
-        setButtonProgress(0);
-        setStatus({ state: "idle", progress: 0, message: "" });
-        clearStoredGenerationState();
-      }, 2000);
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") {
-        setButtonProgress(0);
-        setStatus({ state: "canceled", progress: 0, message: "Canceled." });
-        clearStoredGenerationState();
-        return;
-      }
-
-      setButtonProgress(0);
-      setStatus({
-        state: "error",
-        progress: 0,
-        message: error instanceof Error ? error.message : "Video generation failed",
-      });
-    } finally {
-      generationAbortControllerRef.current = null;
-      activePromptIdRef.current = "";
-    }
+    setPendingVideos((current) => [
+      {
+        id,
+        url: "",
+        filename: "",
+        contentType: "",
+        params: jobParams,
+        timestamp: Date.now(),
+        generation: {
+          state: "queued",
+          progress: 0,
+          message: language === "ko" ? "대기열에 추가됨" : "Queued",
+        },
+      },
+      ...current,
+    ]);
+    setGenerationQueue((queue) => [
+      ...queue,
+      {
+        id,
+        params: jobParams,
+        generationTarget,
+        runpodPodId: generationTarget === "runpod" ? selectedRunpodPodId : undefined,
+      },
+    ]);
+    setStatus({ state: "idle", progress: 0, message: "" });
   }, [
-    appendGenerationDetail,
     generationTarget,
+    language,
     params,
     selectedRunpodPod?.comfyUrl,
     selectedRunpodPodId,
+    soundPassActive,
     soundWorkflowReady,
     videoConfig.audio.message,
     videoConfig.message,
@@ -1519,27 +2651,70 @@ export default function VideoPage() {
     videoWorkflowReadyForTarget,
   ]);
 
-  const cancelGeneration = useCallback(() => {
-    const promptId = activePromptIdRef.current;
+  const cancelGeneration = useCallback(
+    (videoId?: string) => {
+      const targetId = videoId ?? activeGenerationRef.current?.id ?? activeGeneration?.id;
+      if (!targetId) return;
 
-    generationAbortControllerRef.current?.abort();
+      // A job that is still waiting in the queue can be dropped without touching
+      // the running stream.
+      const queuedJob = generationQueue.find((job) => job.id === targetId);
+      if (queuedJob) {
+        setGenerationQueue((queue) => queue.filter((job) => job.id !== targetId));
+        updatePendingVideo(targetId, {
+          generation: { state: "canceled", progress: 0, message: "Canceled." },
+        });
+        return;
+      }
 
-    if (promptId) {
-      void fetch("/api/generate/cancel", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt_id: promptId }),
-      }).catch(() => {});
-    }
+      const runningJob = activeGenerationRef.current ?? activeGeneration;
+      if (runningJob?.id !== targetId) return;
 
-    setButtonProgress(0);
-    setStatus({ state: "canceled", progress: 0, message: "Canceled." });
-    appendGenerationDetail({
-      stage: "canceled",
-      message: "Cancel requested.",
-    });
-    clearStoredGenerationState();
-  }, [appendGenerationDetail]);
+      const promptId = activePromptIdRef.current;
+      generationAbortControllerRef.current?.abort();
+
+      if (promptId) {
+        void fetch("/api/generate/cancel", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt_id: promptId }),
+        }).catch(() => {});
+      }
+
+      setButtonProgress(0);
+      setStatus({ state: "canceled", progress: 0, message: "Canceled." });
+      updatePendingVideo(targetId, {
+        generation: { state: "canceled", progress: 0, message: "Canceled." },
+      });
+      appendGenerationDetail({
+        stage: "canceled",
+        message: "Cancel requested.",
+      });
+      clearStoredGenerationState();
+    },
+    [activeGeneration, appendGenerationDetail, generationQueue, updatePendingVideo]
+  );
+
+  // Show in-flight generation cards ahead of the saved videos, newest first.
+  const visibleVideos = useMemo(() => {
+    if (pendingVideos.length === 0) return videos;
+    const pendingIds = new Set(pendingVideos.map((video) => video.id));
+    const rest = videos.filter((video) => !pendingIds.has(video.id));
+    return [...pendingVideos, ...rest].sort((a, b) => b.timestamp - a.timestamp);
+  }, [pendingVideos, videos]);
+
+  // Only finished videos (with a playable URL) participate in the detail modal
+  // and its prev/next navigation.
+  const detailVideos = useMemo(
+    () => visibleVideos.filter((video) => video.url),
+    [visibleVideos]
+  );
+  // A stale id simply resolves to null and the modal stops rendering; no cleanup
+  // effect is needed when the open video disappears (deleted / list refresh).
+  const selectedVideo = useMemo(
+    () => detailVideos.find((video) => video.id === selectedVideoId) ?? null,
+    [detailVideos, selectedVideoId]
+  );
 
   return (
     <>
@@ -1569,10 +2744,7 @@ export default function VideoPage() {
                 <button
                   key={item.value}
                   type="button"
-                  onClick={() => {
-                    setGenerationTarget(item.value);
-                    resetRunpodConnection();
-                  }}
+                  onClick={() => selectGenerationTarget(item.value)}
                   disabled={isGenerating}
                   className={`h-7 rounded px-2 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
                     generationTarget === item.value
@@ -1600,7 +2772,8 @@ export default function VideoPage() {
                 ) : (
                   runpodPods.map((pod) => (
                     <option key={pod.id} value={pod.id}>
-                      {pod.label || pod.podId || pod.id}
+                      {(runpodRunningIds.has(pod.id) ? "🟢 " : "⚪ ") +
+                        (pod.label || pod.podId || pod.id)}
                     </option>
                   ))
                 )}
@@ -1611,22 +2784,24 @@ export default function VideoPage() {
 
         <div className="flex-1 space-y-4 overflow-y-auto p-4">
           {generationTarget === "runpod" && (
-            <section className="space-y-3 rounded-md border border-border bg-card/85 p-3 shadow-sm">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
-                    <Server className="h-4 w-4 shrink-0 text-primary" />
-                    <span className="truncate">RunPod</span>
-                  </div>
-                  <p className="mt-1 truncate text-xs text-muted-foreground">
-                    {selectedRunpodPod
-                      ? `${selectedRunpodPod.label || selectedRunpodPod.podId || selectedRunpodPod.id} · ${selectedRunpodPod.comfyUrl || "ComfyUI URL 없음"}`
-                      : language === "ko"
-                        ? "설정에서 RunPod pod를 추가하세요."
-                        : "Add a RunPod pod in Settings."}
-                  </p>
-                </div>
-              </div>
+            <EditorSection
+              title="RunPod"
+              description={
+                language === "ko"
+                  ? "선택한 pod의 ComfyUI/Helper 연결 상태만 조회합니다. 앱은 pod를 시작하지 않습니다."
+                  : "Reads the selected pod's ComfyUI/Helper connection status only. This app never starts the pod."
+              }
+            >
+              <p className="flex min-w-0 items-center gap-2 truncate text-xs text-muted-foreground">
+                <Server className="h-4 w-4 shrink-0 text-primary" />
+                <span className="truncate">
+                  {selectedRunpodPod
+                    ? `${selectedRunpodPod.label || selectedRunpodPod.podId || selectedRunpodPod.id} · ${selectedRunpodPod.comfyUrl || "ComfyUI URL 없음"}`
+                    : language === "ko"
+                      ? "설정에서 RunPod pod를 추가하세요."
+                      : "Add a RunPod pod in Settings."}
+                </span>
+              </p>
               <div className="flex flex-wrap gap-1.5">
                 <span
                   className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold ${
@@ -1746,16 +2921,20 @@ export default function VideoPage() {
                     ? "pod를 선택하면 상태만 조회합니다. Helper에 문제가 있으면 'Helper 초기화'로 설치할 수 있고, 모두 연결되면 파이프라인을 골라 영상을 생성할 수 있습니다."
                     : "Selecting a pod only reads its status. If the helper has a problem, use “Init helper” to set it up; once everything is connected you can pick a pipeline and generate.")}
               </p>
-            </section>
+            </EditorSection>
           )}
 
-          <section className="rounded-md border border-border bg-card/85 p-3 shadow-sm">
+          <EditorSection
+            title="Import from Civitai"
+            description={
+              language === "ko"
+                ? "이미지 또는 비디오 URL을 붙여넣어 호환되는 비디오 입력값을 불러옵니다."
+                : "Paste an image or video URL to load compatible video fields."
+            }
+          >
             <div className="mb-2 flex items-center justify-between gap-2">
               <div>
-                <Label className="text-xs text-muted-foreground">
-                  Import from Civitai
-                </Label>
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Paste an image or video URL to load compatible video fields.
                 </p>
               </div>
@@ -1825,7 +3004,7 @@ export default function VideoPage() {
                 );
               }}
             />
-          </section>
+          </EditorSection>
 
           <EditorSection
             title={language === "ko" ? "Pipeline" : "Pipeline"}
@@ -2030,11 +3209,26 @@ export default function VideoPage() {
           <EditorSection
             title="Sound"
             description={
-              language === "ko"
-                ? "별도 오디오 workflow가 준비된 경우 영상에 맞춘 사운드를 생성합니다."
-                : "Generate synchronized sound when a separate audio workflow is configured."
+              videoIncludesAudio
+                ? language === "ko"
+                  ? "선택한 파이프라인이 영상에 사운드를 함께 생성합니다."
+                  : "The selected pipeline renders sound together with the video."
+                : language === "ko"
+                  ? "별도 오디오 workflow가 준비된 경우 영상에 맞춘 사운드를 생성합니다."
+                  : "Generate synchronized sound when a separate audio workflow is configured."
             }
           >
+            {videoIncludesAudio ? (
+              <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3">
+                <Volume2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                <p className="text-xs text-muted-foreground">
+                  {language === "ko"
+                    ? "이 파이프라인은 오디오를 자체 생성해 영상에 합칩니다. 별도 설정 없이 생성된 영상에 사운드가 포함됩니다."
+                    : "This pipeline generates audio on its own and muxes it into the video, so sound is included with no extra setup."}
+                </p>
+              </div>
+            ) : (
+              <>
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <Label className="flex items-center gap-2 text-xs font-medium text-foreground">
@@ -2061,11 +3255,7 @@ export default function VideoPage() {
                 />
               </div>
 
-              {videoIncludesAudio ? (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  The configured video workflow already embeds generated audio.
-                </p>
-              ) : !soundWorkflowReady ? (
+              {!soundWorkflowReady ? (
                 <p className="mt-2 text-xs text-yellow-500">
                   {videoConfig.audio.message ||
                     "Set COMFYUI_AUDIO_WORKFLOW_PATH to enable sound generation."}
@@ -2122,6 +3312,8 @@ export default function VideoPage() {
                   </div>
                 </div>
               )}
+              </>
+            )}
           </EditorSection>
 
           <Separator />
@@ -2130,8 +3322,26 @@ export default function VideoPage() {
             title={language === "ko" ? "참조와 캔버스" : "Reference & Canvas"}
             description={
               language === "ko"
-                ? "I2V pipeline은 시작 이미지가 필요합니다."
-                : "I2V pipelines require a start image."
+                ? [
+                    videoRequiresSourceImage
+                      ? "I2V pipeline은 시작 이미지가 필요합니다."
+                      : "T2V pipeline은 시작 이미지가 선택 사항입니다.",
+                    showCanvasPanel
+                      ? ""
+                      : "해상도·길이·FPS는 아래 Pipeline 설정에서 제어합니다.",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")
+                : [
+                    videoRequiresSourceImage
+                      ? "I2V pipelines require a start image."
+                      : "A start image is optional for T2V pipelines.",
+                    showCanvasPanel
+                      ? ""
+                      : "Resolution, length, and FPS are controlled in the Pipeline section below.",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")
             }
           >
             <div className="grid gap-3 xl:grid-cols-2">
@@ -2151,84 +3361,113 @@ export default function VideoPage() {
               />
             </div>
 
-            <div className="space-y-3 rounded-md border border-border bg-card/80 p-3 shadow-sm">
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label className="mb-1.5 block text-xs text-muted-foreground">
-                    Width
-                  </Label>
-                  <Input
-                    type="number"
-                    min={256}
-                    max={2048}
-                    step={8}
-                    value={params.width}
-                    onChange={(event) =>
-                      updateParams({
-                        width: numericValue(event.target.value, params.width),
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label className="mb-1.5 block text-xs text-muted-foreground">
-                    Height
-                  </Label>
-                  <Input
-                    type="number"
-                    min={256}
-                    max={2048}
-                    step={8}
-                    value={params.height}
-                    onChange={(event) =>
-                      updateParams({
-                        height: numericValue(event.target.value, params.height),
-                      })
-                    }
-                  />
-                </div>
-              </div>
+            {showCanvasPanel ? (
+              <div className="space-y-3 rounded-md border border-border bg-card/80 p-3 shadow-sm">
+                {canvasSupport.resolution && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="mb-1.5 block text-xs text-muted-foreground">
+                        Width
+                      </Label>
+                      <Input
+                        type="number"
+                        min={256}
+                        max={2048}
+                        step={8}
+                        value={params.width}
+                        onChange={(event) =>
+                          updateParams({
+                            width: numericValue(event.target.value, params.width),
+                          })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label className="mb-1.5 block text-xs text-muted-foreground">
+                        Height
+                      </Label>
+                      <Input
+                        type="number"
+                        min={256}
+                        max={2048}
+                        step={8}
+                        value={params.height}
+                        onChange={(event) =>
+                          updateParams({
+                            height: numericValue(event.target.value, params.height),
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+                )}
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label className="mb-1.5 block text-xs text-muted-foreground">
-                    Frames
-                  </Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={240}
-                    value={params.num_frames}
-                    onChange={(event) =>
-                      updateParams({
-                        num_frames: numericValue(
-                          event.target.value,
-                          params.num_frames
-                        ),
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label className="mb-1.5 block text-xs text-muted-foreground">
-                    FPS
-                  </Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={60}
-                    value={params.fps}
-                    onChange={(event) =>
-                      updateParams({
-                        fps: numericValue(event.target.value, params.fps),
-                      })
-                    }
-                  />
-                </div>
-              </div>
+                {(canvasSupport.frames || canvasSupport.fps) && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {canvasSupport.frames && (
+                      <div>
+                        <Label className="mb-1.5 block text-xs text-muted-foreground">
+                          Frames
+                        </Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={240}
+                          value={params.num_frames}
+                          onChange={(event) =>
+                            updateParams({
+                              num_frames: numericValue(
+                                event.target.value,
+                                params.num_frames
+                              ),
+                            })
+                          }
+                        />
+                      </div>
+                    )}
+                    {canvasSupport.fps && (
+                      <div>
+                        <Label className="mb-1.5 block text-xs text-muted-foreground">
+                          FPS
+                        </Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={60}
+                          value={params.fps}
+                          onChange={(event) =>
+                            updateParams({
+                              fps: numericValue(event.target.value, params.fps),
+                            })
+                          }
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
 
-              <p className="text-xs text-muted-foreground">{durationLabel}</p>
-            </div>
+                {(canvasSupport.frames || canvasSupport.fps) && (
+                  <p className="text-xs text-muted-foreground">{durationLabel}</p>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3">
+                <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  {language === "ko"
+                    ? `이 파이프라인은 해상도·길이·FPS를 아래 Pipeline 설정(Length, Base FPS 등)에서 제어합니다.${
+                        videoRequiresSourceImage
+                          ? " 출력 크기는 참조 이미지에 맞춰집니다."
+                          : ""
+                      }`
+                    : `This pipeline controls resolution, length, and FPS from the Pipeline section below (Length, Base FPS, and resize controls).${
+                        videoRequiresSourceImage
+                          ? " Output size follows the reference image."
+                          : ""
+                      }`}
+                </p>
+              </div>
+            )}
             </div>
           </EditorSection>
 
@@ -2376,50 +3615,6 @@ export default function VideoPage() {
         </div>
 
         <div className="border-t border-border p-4">
-          {generationDetails.length > 0 && (
-            <div className="mb-3 rounded-md border border-border bg-card/85 p-3 shadow-sm">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <div className="text-xs font-semibold text-foreground">
-                  Generation details
-                </div>
-                {isGenerating && (
-                  <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    Live
-                  </span>
-                )}
-              </div>
-              <div className="space-y-1.5">
-                {generationDetails.map((detail) => (
-                  <div
-                    key={detail.id}
-                    className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-2 rounded-md bg-background/75 px-2 py-1.5 text-xs"
-                  >
-                    <div className="font-mono text-[11px] text-muted-foreground">
-                      {formatElapsed(detail.elapsed_ms)}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="truncate font-medium text-foreground">
-                        {detail.message}
-                      </div>
-                      <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
-                        <span>{detail.stage}</span>
-                        {detail.node_type && <span>{detail.node_type}</span>}
-                        {detail.node_id && <span>node {detail.node_id}</span>}
-                        {typeof detail.step === "number" &&
-                          typeof detail.total_steps === "number" && (
-                            <span>
-                              step {detail.step}/{detail.total_steps}
-                            </span>
-                          )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {status.state === "error" && (
             <p className="mb-2 text-xs text-destructive">{status.message}</p>
           )}
@@ -2457,40 +3652,30 @@ export default function VideoPage() {
           {status.state === "canceled" && (
             <p className="mb-2 text-xs text-muted-foreground">{status.message}</p>
           )}
+          {(isGenerating || queuedJobCount > 0) && (
+            <p className="mb-2 text-xs text-muted-foreground">
+              {language === "ko"
+                ? `실행 중 ${isGenerating ? 1 : 0}개 · 대기 ${queuedJobCount}개`
+                : `Running ${isGenerating ? 1 : 0} · Queued ${queuedJobCount}`}
+            </p>
+          )}
           <div
             className={
               isGenerating ? "grid grid-cols-[minmax(0,1fr)_6.5rem] gap-2" : ""
             }
           >
             <Button
-              className={`relative w-full overflow-hidden ${
-                isGenerating
-                  ? "bg-zinc-800 text-zinc-100 disabled:bg-zinc-800 disabled:text-zinc-100 disabled:opacity-100 dark:bg-zinc-800 dark:disabled:bg-zinc-800"
-                  : ""
-              }`}
+              className="relative w-full overflow-hidden"
               size="lg"
               onClick={generate}
               disabled={!canGenerate}
-              aria-busy={isGenerating}
             >
-              <span
-                className="absolute inset-y-0 left-0 bg-gradient-to-r from-sky-500 via-cyan-400 to-emerald-400 transition-[width] duration-500 ease-out"
-                style={{ width: `${isGenerating ? generateButtonProgress : 0}%` }}
-                aria-hidden="true"
-              />
-              {isGenerating ? (
-                <span className="relative z-10 flex min-w-0 items-center gap-2 drop-shadow-sm">
-                  <span className="tabular-nums">
-                    {Math.round(generateButtonProgress)}%
-                  </span>
-                  <span>Generating...</span>
-                </span>
-              ) : (
-                <span className="relative z-10 flex items-center gap-2 drop-shadow-sm">
-                  <Play className="h-4 w-4" />
-                  Generate Video
-                </span>
-              )}
+              <span className="relative z-10 flex items-center gap-2 drop-shadow-sm">
+                <Play className="h-4 w-4" />
+                {isGenerating || queuedJobCount > 0
+                  ? language === "ko" ? "대기열에 추가" : "Add to Queue"
+                  : language === "ko" ? "영상 생성" : "Generate Video"}
+              </span>
             </Button>
 
             {isGenerating && (
@@ -2498,7 +3683,7 @@ export default function VideoPage() {
                 type="button"
                 variant="outline"
                 size="lg"
-                onClick={cancelGeneration}
+                onClick={() => cancelGeneration()}
                 className="gap-1.5"
               >
                 <X className="h-4 w-4" />
@@ -2573,7 +3758,7 @@ export default function VideoPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">
-          {videos.length === 0 ? (
+          {visibleVideos.length === 0 ? (
             <div className="flex h-full items-center justify-center text-center text-muted-foreground">
               <div>
                 <Film className="mx-auto mb-3 h-10 w-10 opacity-50" />
@@ -2592,11 +3777,21 @@ export default function VideoPage() {
                 gridAutoRows: "8px",
               }}
             >
-              {videos.map((video) => (
+              {visibleVideos.map((video) => (
                 <VideoGalleryCard
                   key={video.id}
                   video={video}
+                  language={language}
+                  liveDetail={
+                    video.id === activeGeneration?.id
+                      ? generationDetails[0]
+                      : undefined
+                  }
                   onDelete={deleteVideo}
+                  onCancelGeneration={(item) => cancelGeneration(item.id)}
+                  onReuse={reuseVideoParams}
+                  onRemovePending={removePendingVideo}
+                  onOpenDetail={(item) => setSelectedVideoId(item.id)}
                 />
               ))}
             </div>
@@ -2611,6 +3806,19 @@ export default function VideoPage() {
       onOpenChange={setPaimonOpen}
       onApplyParams={updateParams}
     />
+    {selectedVideo && (
+      <VideoDetailModal
+        key={selectedVideo.id}
+        video={selectedVideo}
+        videos={detailVideos}
+        language={language}
+        pipelines={videoPipelines}
+        onClose={() => setSelectedVideoId(null)}
+        onSelectVideo={(item) => setSelectedVideoId(item.id)}
+        onReuse={reuseVideoParams}
+        onDelete={deleteVideo}
+      />
+    )}
     </>
   );
 }
