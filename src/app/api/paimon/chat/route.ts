@@ -181,8 +181,14 @@ async function imageInputUrl(attachment: PaimonAttachment, requestUrl: URL) {
   const attachmentUrl = attachment.url;
   if (!attachmentUrl) return "";
   const parsed = new URL(attachmentUrl, requestUrl.origin);
-  const isLocalImage = parsed.origin === requestUrl.origin &&
-    LOCAL_IMAGE_PATHS.some((prefix) => parsed.pathname.startsWith(prefix));
+  // Match app-served images by path only, NOT by origin: a start image URL can
+  // carry a different host than the incoming request (localhost vs 127.0.0.1 vs
+  // a LAN IP), which previously made us forward the unreachable localhost URL to
+  // the remote vision model instead of inlining the bytes. The embedded host is
+  // ignored — we always fetch the path from THIS server's origin.
+  const isLocalImage = LOCAL_IMAGE_PATHS.some((prefix) =>
+    parsed.pathname.startsWith(prefix)
+  );
   if (!isLocalImage) return parsed.toString();
   const localUrl = new URL(parsed.pathname + parsed.search, requestUrl.origin);
   const response = await fetch(localUrl, { cache: "no-store" });

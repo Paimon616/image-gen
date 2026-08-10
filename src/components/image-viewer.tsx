@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   BookmarkPlus,
   Check,
@@ -10,11 +11,13 @@ import {
   Download,
   ExternalLink,
   FileJson,
+  Film,
   RotateCcw,
   Trash2,
   Wand2,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
+import { stashVideoReference, toAbsoluteImageUrl } from "@/lib/video-reference";
 import { CivitaiOriginModal } from "@/components/civitai-origin-modal";
 import { WorkspacePicker } from "@/components/workspace-picker";
 import { CopyLinkButton } from "@/components/copy-link-button";
@@ -256,6 +259,7 @@ export function ImageViewer() {
     removeImage,
     language,
   } = useStore();
+  const router = useRouter();
   const ko = language === "ko";
   const [originModalOpen, setOriginModalOpen] = useState(false);
   const [actualImageSize, setActualImageSize] = useState({ width: 0, height: 0 });
@@ -705,6 +709,28 @@ export function ImageViewer() {
               <Button size="sm" onClick={handleReuse} disabled={!params}>
                 <RotateCcw className="h-4 w-4" />
                 Reuse
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  stashVideoReference({
+                    url: toAbsoluteImageUrl(selectedImage.url),
+                    filename: selectedImage.filename,
+                    timestamp: Date.now(),
+                  });
+                  setSelectedImage(null);
+                  router.push("/video");
+                }}
+                disabled={!selectedImage.url}
+                title={
+                  ko
+                    ? "이 이미지를 레퍼런스로 비디오 생성 화면으로 이동"
+                    : "Open Video Generation with this image as reference"
+                }
+              >
+                <Film className="h-4 w-4" />
+                {ko ? "비디오 생성" : "Make video"}
               </Button>
               <Button
                 size="sm"

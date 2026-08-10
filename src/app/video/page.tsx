@@ -6,6 +6,7 @@ import { CivitaiMissingResources } from "@/components/civitai-missing-resources"
 import { CopyLinkButton } from "@/components/copy-link-button";
 import { EditorSection } from "@/components/editor-section";
 import { ImageUpload } from "@/components/image-upload";
+import { VideoReferenceImport } from "@/components/video-reference-import";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useStore } from "@/lib/store";
 import { useRunpodDownloadStore } from "@/lib/runpod-download-store";
+import { takeVideoReference } from "@/lib/video-reference";
 import {
   DEFAULT_VIDEO_PARAMS,
   type CivitaiImportResult,
@@ -56,6 +58,7 @@ import {
   Clock,
   CopyPlus,
   HelpCircle,
+  ImagePlus,
   LinkIcon,
   Loader2,
   Maximize2,
@@ -254,6 +257,43 @@ function numericValue(value: string, fallback: number) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+interface VideoPaimonAttachment {
+  id: string;
+  kind: "clipboard_image";
+  label: string;
+  url?: string;
+  dataUrl?: string;
+}
+
+async function uploadPaimonImageFile(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await fetch("/api/upload", { method: "POST", body: formData });
+  const data = (await res.json()) as { url?: string; error?: string };
+
+  if (!res.ok || !data.url) {
+    throw new Error(data.error || "Upload failed");
+  }
+
+  return data.url;
+}
+
+function readPaimonImageDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+        return;
+      }
+      reject(new Error("Image read failed"));
+    };
+    reader.onerror = () => reject(new Error("Image read failed"));
+    reader.readAsDataURL(file);
+  });
+}
+
 function pipelineSettingValue(
   params: VideoGenerationParams,
   control: VideoPipelineControlOption
@@ -366,6 +406,7 @@ function VideoPaimonPanel({
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [attachments, setAttachments] = useState<VideoPaimonAttachment[]>([]);
   const resetChat = useCallback(() => {
     setMessages([
       {
@@ -379,7 +420,66 @@ function VideoPaimonPanel({
     ]);
     setDraft("");
     setError("");
+    setAttachments([]);
   }, [language]);
+
+  const removeAttachment = useCallback((attachmentId: string) => {
+    setAttachments((current) =>
+      current.filter((attachment) => attachment.id !== attachmentId)
+    );
+  }, []);
+
+  const handlePaste = useCallback(
+    async (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      const imageItem = Array.from(event.clipboardData.items).find((item) =>
+        item.type.startsWith("image/")
+      );
+      const file = imageItem?.getAsFile();
+
+      if (!file) return;
+
+      event.preventDefault();
+      setBusy(true);
+      setError("");
+      try {
+        const [url, dataUrl] = await Promise.all([
+          uploadPaimonImageFile(file),
+          readPaimonImageDataUrl(file),
+        ]);
+        const attachment: VideoPaimonAttachment = {
+          id: crypto.randomUUID(),
+          kind: "clipboard_image",
+          label: language === "ko" ? "클립보드 이미지" : "Clipboard image",
+          url,
+          dataUrl,
+        };
+
+        setAttachments((current) => [...current, attachment].slice(-6));
+        setMessages((current) => [
+          ...current,
+          {
+            id: crypto.randomUUID(),
+            role: "assistant",
+            content:
+              language === "ko"
+                ? "클립보드 이미지가 채팅에 첨부됐어요. 무엇을 도와드릴까요?"
+                : "The clipboard image is attached. How can I help?",
+          },
+        ]);
+      } catch (caught) {
+        setError(
+          caught instanceof Error
+            ? caught.message
+            : language === "ko"
+              ? "이미지 업로드 실패"
+              : "Image upload failed"
+        );
+      } finally {
+        setBusy(false);
+      }
+    },
+    [language]
+  );
 
   const askPaimon = useCallback(async () => {
     const text = draft.trim();
@@ -397,6 +497,28 @@ function VideoPaimonPanel({
     };
     const nextMessages = [...messages, userMessage];
 
+    // Let Paimon actually see the pixels of the start/reference image, not just
+    // its URL: send it as the first visual attachment. Local /api/uploads and
+    // /api/images URLs are inlined server-side by the chat route.
+    const sentAttachments = [
+      ...(params.source_image
+        ? [
+            {
+              kind: "gallery_image" as const,
+              url: params.source_image,
+              dataUrl: undefined as string | undefined,
+              referenceId: language === "ko" ? "시작 이미지" : "start image",
+            },
+          ]
+        : []),
+      ...attachments.map((attachment, index) => ({
+        kind: attachment.kind,
+        url: attachment.url,
+        dataUrl: attachment.dataUrl,
+        referenceId: `참조${index + 1}`,
+      })),
+    ];
+
     setMessages([...nextMessages, assistantMessage]);
     setDraft("");
     setBusy(true);
@@ -409,7 +531,7 @@ function VideoPaimonPanel({
         body: JSON.stringify({
           messages: nextMessages.map(({ role, content }) => ({ role, content })),
           currentParams: params,
-          attachments: [],
+          attachments: sentAttachments,
         }),
       });
       const contentType = response.headers.get("content-type") ?? "";
@@ -476,7 +598,7 @@ function VideoPaimonPanel({
     } finally {
       setBusy(false);
     }
-  }, [busy, draft, language, messages, onApplyParams, params]);
+  }, [attachments, busy, draft, language, messages, onApplyParams, params]);
 
   return (
     <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-3">
@@ -522,6 +644,50 @@ function VideoPaimonPanel({
             </Button>
           </div>
         </header>
+        {attachments.length > 0 && (
+          <div className="flex gap-2 overflow-x-auto border-b border-border px-3 py-2">
+            <span className="shrink-0 self-center text-[10px] text-muted-foreground">
+              {language === "ko" ? "대화에서 참조1, 참조2로 지칭" : "Referenced as 참조1, 참조2"}
+            </span>
+            {attachments.map((attachment, index) => (
+              <div
+                key={attachment.id}
+                className="relative flex w-24 shrink-0 flex-col overflow-hidden rounded-md border border-border bg-secondary text-[11px]"
+                title={attachment.url || attachment.label}
+              >
+                <div className="relative h-16 w-full bg-muted">
+                  {attachment.url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={attachment.url}
+                      alt={`${attachment.label} 미리보기`}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="flex h-full items-center justify-center text-muted-foreground">
+                      <ImagePlus className="size-5" />
+                    </span>
+                  )}
+                  <span className="absolute bottom-1 left-1 rounded bg-background/85 px-1 py-0.5 font-semibold shadow-sm backdrop-blur-sm">
+                    참조{index + 1}
+                  </span>
+                </div>
+                <span className="truncate px-1.5 py-1 text-muted-foreground">
+                  {attachment.label}
+                </span>
+                <button
+                  type="button"
+                  className="absolute right-1 top-1 rounded-full bg-background/85 p-1 text-muted-foreground shadow-sm backdrop-blur-sm hover:bg-background hover:text-foreground"
+                  onClick={() => removeAttachment(attachment.id)}
+                  aria-label={`${attachment.label} 제거`}
+                  title={language === "ko" ? "첨부 제거" : "Remove attachment"}
+                >
+                  <X className="size-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="flex-1 space-y-3 overflow-y-auto p-3">
             {messages.map((message) => (
               <div
@@ -554,16 +720,17 @@ function VideoPaimonPanel({
             <Textarea
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
+              onPaste={handlePaste}
               onKeyDown={(event) => {
-                if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+                if (event.key === "Enter" && !event.shiftKey) {
                   event.preventDefault();
                   void askPaimon();
                 }
               }}
               placeholder={
                 language === "ko"
-                  ? "예: 이 장면을 LTX용 자연스러운 카메라 움직임으로 정리해줘"
-                  : "Example: Rewrite this as a natural LTX camera-motion prompt"
+                  ? "예: 이 장면을 LTX용 자연스러운 카메라 움직임으로 정리해줘 (Shift+Enter 줄바꿈, Ctrl+V 이미지 첨부)"
+                  : "Example: Rewrite this as a natural LTX camera-motion prompt (Shift+Enter for newline, Ctrl+V to attach)"
               }
               className="max-h-28 min-h-10 resize-none text-sm"
             />
@@ -1681,6 +1848,14 @@ export default function VideoPage() {
   const [videoPipelines, setVideoPipelines] = useState<VideoPipelineOption[]>([]);
   const [paimonOpen, setPaimonOpen] = useState(false);
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
+  // Natural pixel size of the reference/start image, used to preview the output
+  // resolution for resize-driven pipelines (LTX / 10Eros) that size the video
+  // from the reference image rather than explicit width/height inputs.
+  const [referenceSize, setReferenceSize] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
+  const [startImagePreviewOpen, setStartImagePreviewOpen] = useState(false);
   const activePromptIdRef = useRef("");
   const autoRunpodCheckKeyRef = useRef("");
   const runpodConnectionRef = useRef<RunpodConnectionStatus | null>(null);
@@ -1787,6 +1962,43 @@ export default function VideoPage() {
   const updateParams = useCallback((update: Partial<VideoGenerationParams>) => {
     setParams((current) => ({ ...current, ...update }));
   }, []);
+
+  // Pick up a reference image handed off from the Image Generation gallery
+  // ("비디오 생성" button in the detail modal) and preload it as the start image.
+  useEffect(() => {
+    const handoff = takeVideoReference();
+    if (!handoff) return;
+    setParams((current) => ({ ...current, source_image: handoff.url }));
+    setEditorOpen(true);
+  }, []);
+
+  // Read the reference image's natural dimensions so resize-driven pipelines can
+  // preview the expected output size.
+  useEffect(() => {
+    const src = params.source_image;
+    if (!src) {
+      setReferenceSize(null);
+      return;
+    }
+
+    let cancelled = false;
+    const image = new window.Image();
+    image.onload = () => {
+      if (cancelled) return;
+      setReferenceSize({
+        width: image.naturalWidth,
+        height: image.naturalHeight,
+      });
+    };
+    image.onerror = () => {
+      if (!cancelled) setReferenceSize(null);
+    };
+    image.src = src;
+
+    return () => {
+      cancelled = true;
+    };
+  }, [params.source_image]);
 
   const settingsForPipeline = useCallback(
     (pipeline: VideoPipelineOption | undefined, current: VideoGenerationParams) => ({
@@ -2349,10 +2561,65 @@ export default function VideoPage() {
       });
   }, []);
 
-  const durationLabel = useMemo(
-    () => `${params.num_frames} frames at ${params.fps} fps`,
-    [params.fps, params.num_frames]
-  );
+  const durationLabel = useMemo(() => {
+    const seconds = params.fps > 0 ? params.num_frames / params.fps : 0;
+    const secondsLabel = seconds > 0 ? ` ≈ ${seconds.toFixed(1)}초` : "";
+    return language === "ko"
+      ? `${params.num_frames} frames · ${params.fps} fps${secondsLabel}`
+      : `${params.num_frames} frames at ${params.fps} fps${
+          seconds > 0 ? ` ≈ ${seconds.toFixed(1)}s` : ""
+        }`;
+  }, [language, params.fps, params.num_frames]);
+
+  // For pipelines whose length/fps live in the Pipeline controls (LTX / 10Eros
+  // use NO_CANVAS_SUPPORT), derive the real clip duration from those settings so
+  // the user sees seconds next to "Length" and "Base FPS".
+  const pipelineDuration = useMemo(() => {
+    const controls = selectedVideoPipeline?.controls ?? [];
+    const lengthControl = controls.find((control) => control.key === "length");
+    const fpsControl = controls.find((control) => control.key === "frame_rate");
+    if (!lengthControl || !fpsControl) return null;
+
+    const settings = params.video_pipeline_settings ?? {};
+    const frames = Number(settings.length ?? lengthControl.defaultValue);
+    const fps = Number(settings.frame_rate ?? fpsControl.defaultValue);
+    if (!Number.isFinite(frames) || !Number.isFinite(fps) || fps <= 0) {
+      return null;
+    }
+    return { frames, fps, seconds: frames / fps };
+  }, [selectedVideoPipeline, params.video_pipeline_settings]);
+
+  // Resize-driven pipelines (10Eros / LTX) fit the reference image to a target
+  // "Longer Side", preserving its aspect ratio. Estimate the resulting output
+  // resolution so the user can see the width×height instead of guessing.
+  const estimatedOutputSize = useMemo(() => {
+    const controls = selectedVideoPipeline?.controls ?? [];
+    const longerSideControl = controls.find(
+      (control) => control.key === "longer_size"
+    );
+    if (!longerSideControl || !referenceSize) return null;
+    if (referenceSize.width <= 0 || referenceSize.height <= 0) return null;
+
+    const settings = params.video_pipeline_settings ?? {};
+    const longerSide = Number(
+      settings.longer_size ?? longerSideControl.defaultValue
+    );
+    if (!Number.isFinite(longerSide) || longerSide <= 0) return null;
+
+    const long = Math.max(referenceSize.width, referenceSize.height);
+    const short = Math.min(referenceSize.width, referenceSize.height);
+    // LTX-family workflows expect dimensions on a 32px grid.
+    const snap = (value: number) => Math.max(32, Math.round(value / 32) * 32);
+    const outLong = snap(longerSide);
+    const outShort = snap((short / long) * longerSide);
+    const landscape = referenceSize.width >= referenceSize.height;
+
+    return {
+      longerSide,
+      width: landscape ? outLong : outShort,
+      height: landscape ? outShort : outLong,
+    };
+  }, [selectedVideoPipeline, referenceSize, params.video_pipeline_settings]);
 
   const runGenerationJob = useCallback(
     async (job: VideoQueueItem) => {
@@ -3169,6 +3436,33 @@ export default function VideoPage() {
                   })}
               </div>
             ) : null}
+
+            {pipelineDuration && (
+              <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2">
+                <Clock className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  {language === "ko" ? (
+                    <>
+                      영상 길이 ≈{" "}
+                      <span className="font-semibold text-foreground">
+                        {pipelineDuration.seconds.toFixed(1)}초
+                      </span>{" "}
+                      (Length {pipelineDuration.frames} frames ÷ Base FPS{" "}
+                      {pipelineDuration.fps} fps)
+                    </>
+                  ) : (
+                    <>
+                      Clip length ≈{" "}
+                      <span className="font-semibold text-foreground">
+                        {pipelineDuration.seconds.toFixed(1)}s
+                      </span>{" "}
+                      (Length {pipelineDuration.frames} frames ÷ Base FPS{" "}
+                      {pipelineDuration.fps} fps)
+                    </>
+                  )}
+                </p>
+              </div>
+            )}
           </EditorSection>
 
           <EditorSection
@@ -3346,9 +3640,15 @@ export default function VideoPage() {
           >
             <div className="grid gap-3 xl:grid-cols-2">
             <div>
-              <Label className="mb-2 block text-xs text-muted-foreground">
-                Reference Image
-              </Label>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <Label className="block text-xs text-muted-foreground">
+                  Reference Image
+                </Label>
+                <VideoReferenceImport
+                  language={language}
+                  onSelect={(url) => updateParams({ source_image: url })}
+                />
+              </div>
               <ImageUpload
                 label="Start Image"
                 description={
@@ -3358,6 +3658,11 @@ export default function VideoPage() {
                 }
                 value={params.source_image}
                 onChange={(url) => updateParams({ source_image: url })}
+                onPreview={
+                  params.source_image
+                    ? () => setStartImagePreviewOpen(true)
+                    : undefined
+                }
               />
             </div>
 
@@ -3451,21 +3756,54 @@ export default function VideoPage() {
                 )}
               </div>
             ) : (
-              <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3">
-                <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                <p className="text-xs leading-relaxed text-muted-foreground">
-                  {language === "ko"
-                    ? `이 파이프라인은 해상도·길이·FPS를 아래 Pipeline 설정(Length, Base FPS 등)에서 제어합니다.${
-                        videoRequiresSourceImage
-                          ? " 출력 크기는 참조 이미지에 맞춰집니다."
-                          : ""
-                      }`
-                    : `This pipeline controls resolution, length, and FPS from the Pipeline section below (Length, Base FPS, and resize controls).${
-                        videoRequiresSourceImage
-                          ? " Output size follows the reference image."
-                          : ""
-                      }`}
-                </p>
+              <div className="space-y-2 rounded-md border border-border bg-muted/40 p-3">
+                <div className="flex items-start gap-2">
+                  <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    {language === "ko"
+                      ? "이 파이프라인은 가로·세로 크기를 직접 입력하지 않습니다. 출력 크기는 참조 이미지의 비율을 유지한 채 아래 Pipeline 설정의 Resize 값(Longer Side = 긴 변 px, Video Megapixels)에 맞춰 자동 결정됩니다. 길이·FPS는 Length·Base FPS로 제어합니다."
+                      : "This pipeline has no direct width/height inputs. The output size keeps the reference image's aspect ratio and is set by the Resize controls in the Pipeline section below (Longer Side = longer edge in px, Video Megapixels). Length and FPS are controlled by Length and Base FPS."}
+                  </p>
+                </div>
+                {estimatedOutputSize ? (
+                  <div className="flex items-center gap-2 rounded-md border border-border bg-background/60 px-2.5 py-2">
+                    <Maximize2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      {language === "ko" ? (
+                        <>
+                          참조 이미지 {referenceSize?.width}×{referenceSize?.height} →
+                          예상 출력{" "}
+                          <span className="font-semibold text-foreground">
+                            약 {estimatedOutputSize.width}×
+                            {estimatedOutputSize.height}
+                          </span>{" "}
+                          (긴 변 {estimatedOutputSize.longerSide}px · 32px 정렬 기준
+                          추정)
+                        </>
+                      ) : (
+                        <>
+                          Reference {referenceSize?.width}×{referenceSize?.height} →
+                          estimated output{" "}
+                          <span className="font-semibold text-foreground">
+                            ~{estimatedOutputSize.width}×
+                            {estimatedOutputSize.height}
+                          </span>{" "}
+                          (longer side {estimatedOutputSize.longerSide}px, snapped
+                          to 32px)
+                        </>
+                      )}
+                    </p>
+                  </div>
+                ) : videoRequiresSourceImage ? (
+                  <div className="flex items-center gap-2 rounded-md border border-dashed border-border px-2.5 py-2">
+                    <Maximize2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      {language === "ko"
+                        ? "참조 이미지를 올리면 예상 출력 가로세로 크기를 계산해 드려요."
+                        : "Upload a reference image to preview the estimated output width × height."}
+                    </p>
+                  </div>
+                ) : null}
               </div>
             )}
             </div>
@@ -3819,6 +4157,24 @@ export default function VideoPage() {
         onDelete={deleteVideo}
       />
     )}
+    <Dialog
+      open={startImagePreviewOpen && Boolean(params.source_image)}
+      onOpenChange={setStartImagePreviewOpen}
+    >
+      <DialogContent className="flex max-h-[92vh] w-auto max-w-[92vw] items-center justify-center border-none bg-transparent p-0 shadow-none">
+        <DialogTitle className="sr-only">
+          {language === "ko" ? "시작 이미지 크게 보기" : "Start image preview"}
+        </DialogTitle>
+        {params.source_image && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={params.source_image}
+            alt={language === "ko" ? "시작 이미지" : "Start image"}
+            className="max-h-[92vh] max-w-[92vw] rounded-md object-contain"
+          />
+        )}
+      </DialogContent>
+    </Dialog>
     </>
   );
 }

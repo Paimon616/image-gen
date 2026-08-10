@@ -1357,11 +1357,19 @@ function isAudioMediaRef(ref: ComfyMediaRef) {
 }
 
 function videoRefsFromHistory(history: ComfyHistoryItem | undefined) {
-  return Object.values(history?.outputs ?? {}).flatMap((output) => [
+  const all = Object.values(history?.outputs ?? {}).flatMap((output) => [
     ...(output.videos ?? []),
     ...(output.gifs ?? []),
     ...(output.images ?? []).filter(isVideoMediaRef),
   ]);
+  // Some workflows emit intermediate previews alongside the final render — e.g.
+  // the 10Eros triple-pass has a VHS_VideoCombine with save_output=false that
+  // writes a first-pass clip to the temp dir. ComfyUI tags those with
+  // type "temp", so keeping only saved "output" media stops one run from
+  // producing two videos. Fall back to everything if a workflow marks its sole
+  // result as temp, so we never regress to zero outputs.
+  const saved = all.filter((ref) => (ref.type ?? "output") === "output");
+  return saved.length > 0 ? saved : all;
 }
 
 function audioRefsFromHistory(history: ComfyHistoryItem | undefined) {
