@@ -21,12 +21,27 @@ export interface AppSettings {
 }
 
 const SETTINGS_PATH = join(process.cwd(), ".local", "settings.json");
+// Version-controlled pod list used to seed a fresh clone. It holds pod
+// connection info only (no API keys), so it is safe to commit.
+const DEFAULT_PODS_PATH = join(process.cwd(), "data", "default-pods.json");
 
 const DEFAULT_SETTINGS: AppSettings = {
   civitaiApiKey: "",
   runpodApiKey: "",
   runpodPods: [],
 };
+
+async function readDefaultPods(): Promise<RunpodPodSettings[]> {
+  try {
+    const raw = await readFile(DEFAULT_PODS_PATH, "utf8");
+    const parsed = JSON.parse(raw);
+    // Accept either a bare array or a { runpodPods: [...] } wrapper.
+    const pods = Array.isArray(parsed) ? parsed : parsed?.runpodPods;
+    return cleanSettings({ runpodPods: pods }).runpodPods;
+  } catch {
+    return [];
+  }
+}
 
 function cleanSettings(value: Partial<AppSettings>): AppSettings {
   return {
@@ -52,7 +67,10 @@ export async function readSettings() {
     const raw = await readFile(SETTINGS_PATH, "utf8");
     return cleanSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(raw) });
   } catch {
-    return DEFAULT_SETTINGS;
+    // No local settings yet (e.g. a fresh git clone): seed the pod list from
+    // the version-controlled defaults so a new machine has the pods ready.
+    // API keys stay empty and must still be entered locally.
+    return { ...DEFAULT_SETTINGS, runpodPods: await readDefaultPods() };
   }
 }
 

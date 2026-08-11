@@ -263,6 +263,86 @@ start_image_gen() {
   wait_for_http "Image Gen" "$IMAGE_GEN_URL" "$pid" "$log_file"
 }
 
+# Locate an existing Homebrew, even if it is not yet on PATH (fresh installs on
+# Apple Silicon live in /opt/homebrew, Intel in /usr/local).
+brew_bin() {
+  if command -v brew >/dev/null 2>&1; then
+    command -v brew
+    return 0
+  fi
+  local candidate
+  for candidate in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+    if [ -x "$candidate" ]; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Make sure Homebrew is available, offering to install it (system-modifying, so
+# it is gated behind an explicit y/N prompt). Loads brew into this shell's PATH.
+ensure_homebrew() {
+  local brew
+  if brew="$(brew_bin)"; then
+    eval "$("$brew" shellenv)"
+    return 0
+  fi
+
+  echo "Homebrew is needed to auto-install the missing tools, but it isn't installed."
+  printf "Install Homebrew now? This downloads and runs Homebrew's official installer. [y/N] "
+  local reply=""
+  read -r reply || true
+  case "$reply" in
+    y | Y)
+      NONINTERACTIVE=1 /bin/bash -c \
+        "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+      if brew="$(brew_bin)"; then
+        eval "$("$brew" shellenv)"
+        return 0
+      fi
+      echo "Homebrew installation did not complete." >&2
+      return 1
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+# Check the system tools the launcher and setup scripts assume, installing the
+# ones Homebrew can provide. curl and lsof ship with macOS, so they are only
+# warned about (installing them via brew is unnecessary and error-prone).
+ensure_system_deps() {
+  command -v curl >/dev/null 2>&1 || echo "Warning: curl not found (unexpected on macOS)." >&2
+  command -v lsof >/dev/null 2>&1 || echo "Warning: lsof not found (unexpected on macOS)." >&2
+
+  local missing=()
+  command -v git >/dev/null 2>&1 || missing+=("git")
+  command -v python3 >/dev/null 2>&1 || missing+=("python")
+  # node provides npm, so a single check/install covers both.
+  command -v node >/dev/null 2>&1 || missing+=("node")
+
+  if [ "${#missing[@]}" -eq 0 ]; then
+    return 0
+  fi
+
+  echo "Missing required tools: ${missing[*]}"
+  if ! ensure_homebrew; then
+    echo "Please install these manually and re-run the launcher: ${missing[*]}" >&2
+    exit 1
+  fi
+
+  echo "Installing missing tools with Homebrew: ${missing[*]}"
+  brew install "${missing[@]}"
+}
+
+# macOS is the supported auto-install target; on other platforms fall back to the
+# plain require_command checks below so behavior there is unchanged.
+if [ "$(uname -s)" = "Darwin" ]; then
+  ensure_system_deps
+fi
+
 require_command npm
 require_command lsof
 require_command curl
@@ -270,6 +350,13 @@ require_command curl
 if [ ! -d "$ROOT_DIR/node_modules" ]; then
   echo "Node dependencies are missing. Running npm install..."
   (cd "$ROOT_DIR" && npm install)
+fi
+
+# Register the git merge driver once per clone (idempotent). Previously a manual
+# `npm run setup:git-merge` step; folded in here so a fresh clone just works.
+if ! git -C "$ROOT_DIR" config --local --get merge.model-catalog-json.driver >/dev/null 2>&1; then
+  echo "Registering git merge driver..."
+  (cd "$ROOT_DIR" && npm run setup:git-merge) || echo "git-merge setup skipped (non-fatal)."
 fi
 
 mkdir -p "$LOG_DIR"
@@ -291,11 +378,14 @@ if [ ! -f "$LORA_RUNNER_DIR/sdxl_train_network.py" ] || [ ! -x "$LORA_RUNNER_DIR
 fi
 
 # AUTOMATIC1111 / Forge are optional WebUI backends. Install them if missing so
-# the app can auto-launch them on demand. Set SKIP_WEBUI_SETUP=1 to opt out.
+# the app can auto-launch them on demand. Set SKIP_WEBUI_SETUP=1 to opt out of
+# both. AUTOMATIC1111 is skipped by default here; set INSTALL_A1111=1 to enable.
 if [ "${SKIP_WEBUI_SETUP:-0}" != "1" ]; then
-  if [ ! -f "$A1111_DIR/.image-gen-ready" ] || [ ! -f "$A1111_DIR/extensions/adetailer/scripts/!adetailer.py" ]; then
-    echo "AUTOMATIC1111 or ADetailer is not ready. Running setup (first run downloads PyTorch)..."
-    (cd "$ROOT_DIR" && npm run setup:a1111)
+  if [ "${INSTALL_A1111:-0}" = "1" ]; then
+    if [ ! -f "$A1111_DIR/.image-gen-ready" ] || [ ! -f "$A1111_DIR/extensions/adetailer/scripts/!adetailer.py" ]; then
+      echo "AUTOMATIC1111 or ADetailer is not ready. Running setup (first run downloads PyTorch)..."
+      (cd "$ROOT_DIR" && npm run setup:a1111)
+    fi
   fi
 
   if [ ! -f "$FORGE_DIR/.image-gen-ready" ] || [ ! -f "$FORGE_DIR/extensions/adetailer/scripts/!adetailer.py" ]; then

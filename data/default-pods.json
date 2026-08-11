@@ -1,0 +1,82 @@
+[
+  {
+    "id": "a0d4c463-410d-4111-9ab5-f325917ce236",
+    "kind": "image",
+    "label": "onechat_image_h100_001",
+    "podId": "pahmi8jzveepad",
+    "ssh": "ssh root@103.207.149.88 -p 11851 -i ~/.ssh/id_ed25519",
+    "comfyUrl": "https://pahmi8jzveepad-8188.proxy.runpod.net"
+  },
+  {
+    "id": "d7f9d954-8ad2-43b0-8433-6c625605fb58",
+    "kind": "image",
+    "label": "onechat_image_h100_002",
+    "podId": "o4u8mocc68z7du",
+    "ssh": "ssh o4u8mocc68z7du-64412106@ssh.runpod.io -i ~/.ssh/id_ed25519",
+    "comfyUrl": "https://o4u8mocc68z7du-8188.proxy.runpod.net"
+  },
+  {
+    "id": "dce33871-0297-4cf2-bee4-cbf7459e011b",
+    "kind": "image",
+    "label": "onechat_image_h100_003",
+    "podId": "bhi4pyw0cphk7a",
+    "ssh": "ssh bhi4pyw0cphk7a-644121f7@ssh.runpod.io -i ~/.ssh/id_ed25519",
+    "comfyUrl": "https://bhi4pyw0cphk7a-8188.proxy.runpod.net"
+  },
+  {
+    "id": "14d1d509-dea1-49fc-89d4-133fec3a3c58",
+    "kind": "video",
+    "label": "onechat_video_h100_004",
+    "podId": "j7myhksfns7vst",
+    "ssh": "ssh j7myhksfns7vst-644121a5@ssh.runpod.io -i ~/.ssh/id_ed25519",
+    "comfyUrl": "https://j7myhksfns7vst-8188.proxy.runpod.net"
+  },
+  {
+    "id": "91543fff-8e5b-48a5-a024-7ea1d391dd06",
+    "kind": "video",
+    "label": "onechat_video_h100_001",
+    "podId": "67vn9s98fbn7n6",
+    "ssh": "ssh 67vn9s98fbn7n6-64411ff1@ssh.runpod.io -i ~/.ssh/id_ed25519",
+    "comfyUrl": "https://67vn9s98fbn7n6-8188.proxy.runpod.net"
+  },
+  {
+    "id": "158acee4-203d-485c-8249-8e0388923ae5",
+    "kind": "video",
+    "label": "onechat_video_h100_002",
+    "podId": "1hh7ckpzzrpzkx",
+    "ssh": "1hh7ckpzzrpzkx-644121a5@ssh.runpod.io",
+    "comfyUrl": ""
+  },
+  {
+    "id": "9eaa8f77-c462-4c0a-8302-f3dc1e25c692",
+    "kind": "image",
+    "label": "onechat_image_h100_004",
+    "podId": "v1jmlmsvk42j14",
+    "ssh": "ssh v1jmlmsvk42j14-64411fbe@ssh.runpod.io -i ~/.ssh/id_ed25519",
+    "comfyUrl": "https://v1jmlmsvk42j14-8188.proxy.runpod.net"
+  },
+  {
+    "id": "d1671e2b-8a21-43b5-a32e-3e95a9a45ef7",
+    "kind": "video",
+    "label": "onechat_video_h100_005",
+    "podId": "nyqv1pm817nlwj",
+    "ssh": "ssh nyqv1pm817nlwj-64411ff4@ssh.runpod.io -i ~/.ssh/id_ed25519",
+    "comfyUrl": "https://nyqv1pm817nlwj-8188.proxy.runpod.net"
+  },
+  {
+    "id": "80e5834b-3504-4411-a15b-274a57d3ee7f",
+    "kind": "image",
+    "label": "onechat_image_h100_005",
+    "podId": "eh4ff0aejqn807",
+    "ssh": "ssh eh4ff0aejqn807-64411fb4@ssh.runpod.io -i ~/.ssh/id_ed25519",
+    "comfyUrl": "https://eh4ff0aejqn807-8188.proxy.runpod.net"
+  },
+  {
+    "id": "3a7b8ad9-dcc3-4f32-92fa-6f15570f0331",
+    "kind": "video",
+    "label": "onechat_video_h100_003",
+    "podId": "vnxopi6fr9jafx",
+    "ssh": "ssh vnxopi6fr9jafx-64411915@ssh.runpod.io -i ~/.ssh/id_ed25519",
+    "comfyUrl": "https://vnxopi6fr9jafx-8188.proxy.runpod.net"
+  }
+]
