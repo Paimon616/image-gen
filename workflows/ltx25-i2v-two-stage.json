@@ -1,0 +1,621 @@
+{
+  "2004": {
+    "inputs": {
+      "image": ""
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "이미지 로드"
+    }
+  },
+  "4852": {
+    "inputs": {
+      "filename_prefix": "output",
+      "format": "auto",
+      "codec": "auto",
+      "video": [
+        "5518:4849",
+        0
+      ]
+    },
+    "class_type": "SaveVideo",
+    "_meta": {
+      "title": "비디오 저장"
+    }
+  },
+  "5508": {
+    "inputs": {
+      "value": ""
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "Prompt (positive)"
+    }
+  },
+  "5509": {
+    "inputs": {
+      "value": ""
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "Prompt (negative)"
+    }
+  },
+  "5511": {
+    "inputs": {
+      "value": 24
+    },
+    "class_type": "PrimitiveFloat",
+    "_meta": {
+      "title": "fps (frames per second)"
+    }
+  },
+  "5512": {
+    "inputs": {
+      "value": 5
+    },
+    "class_type": "PrimitiveFloat",
+    "_meta": {
+      "title": "duration in seconds (determines frames #)"
+    }
+  },
+  "5575:5570": {
+    "inputs": {
+      "vae_name": "ltx-2.5-audio-vae-bf16.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE - Audio"
+    }
+  },
+  "5575:5571": {
+    "inputs": {
+      "vae_name": "ltx-2.5-video-vae-conv-bf16.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE - Video"
+    }
+  },
+  "5575:5569": {
+    "inputs": {
+      "unet_name": "ltx-2.5-22b-distilled-transformer-bf16.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "확산 모델 로드"
+    }
+  },
+  "5575:5577": {
+    "inputs": {
+      "model_name": "ltx-2.3-spatial-upscaler-x2-1.1.safetensors"
+    },
+    "class_type": "LatentUpscaleModelLoader",
+    "_meta": {
+      "title": "Latent 업스케일 모델 불러오기"
+    }
+  },
+  "5575:5574": {
+    "inputs": {
+      "clip_name": "gemma4-12b-with-proj-ltx-2.5-bf16.safetensors",
+      "type": "ltxv",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP - Text Encoder"
+    }
+  },
+  "5014:4990": {
+    "inputs": {
+      "resize_type": "scale longer dimension",
+      "resize_type.longer_size": 1536,
+      "scale_method": "lanczos",
+      "input": [
+        "2004",
+        0
+      ]
+    },
+    "class_type": "ResizeImageMaskNode",
+    "_meta": {
+      "title": "이미지/마스크 크기 조정"
+    }
+  },
+  "5014:2612": {
+    "inputs": {
+      "text": [
+        "5509",
+        0
+      ],
+      "clip": [
+        "5575:5574",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Negative Prompt)"
+    }
+  },
+  "5014:2483": {
+    "inputs": {
+      "text": [
+        "5508",
+        0
+      ],
+      "clip": [
+        "5575:5574",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Positive Prompt)"
+    }
+  },
+  "5014:1241": {
+    "inputs": {
+      "frame_rate": [
+        "5014:5017",
+        0
+      ],
+      "positive": [
+        "5014:2483",
+        0
+      ],
+      "negative": [
+        "5014:2612",
+        0
+      ]
+    },
+    "class_type": "LTXVConditioning",
+    "_meta": {
+      "title": "LTXV 조건 설정"
+    }
+  },
+  "5014:5017": {
+    "inputs": {
+      "value": [
+        "5511",
+        0
+      ]
+    },
+    "class_type": "PrimitiveFloat",
+    "_meta": {
+      "title": "fps"
+    }
+  },
+  "5014:5507": {
+    "inputs": {
+      "value": [
+        "5512",
+        0
+      ]
+    },
+    "class_type": "PrimitiveFloat",
+    "_meta": {
+      "title": "Duration in seconds - Float"
+    }
+  },
+  "5014:5561": {
+    "inputs": {
+      "expression": "1 + floor(a*b/8)*8",
+      "values.a": [
+        "5014:5017",
+        0
+      ],
+      "values.b": [
+        "5014:5507",
+        0
+      ]
+    },
+    "class_type": "ComfyMathExpression",
+    "_meta": {
+      "title": "calculate frames count - Math Expression"
+    }
+  },
+  "5014:4988": {
+    "inputs": {
+      "value": [
+        "5014:5561",
+        1
+      ]
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "number of frames"
+    }
+  },
+  "5514:3336": {
+    "inputs": {
+      "img_compression": 18,
+      "image": [
+        "5014:4990",
+        0
+      ]
+    },
+    "class_type": "LTXVPreprocess",
+    "_meta": {
+      "title": "LTXV 전처리"
+    }
+  },
+  "5514:3059": {
+    "inputs": {
+      "width": 960,
+      "height": 544,
+      "length": [
+        "5014:4988",
+        0
+      ],
+      "batch_size": 1
+    },
+    "class_type": "EmptyLTXVLatentVideo",
+    "_meta": {
+      "title": "빈 잠재 비디오 (LTXV)"
+    }
+  },
+  "5514:5000": {
+    "inputs": {
+      "expression": "floor(a)",
+      "values.a": [
+        "5014:5017",
+        0
+      ]
+    },
+    "class_type": "ComfyMathExpression",
+    "_meta": {
+      "title": "fps float->int (audio frame_rate)"
+    }
+  },
+  "5514:3980": {
+    "inputs": {
+      "frames_number": [
+        "5014:4988",
+        0
+      ],
+      "frame_rate": [
+        "5514:5000",
+        1
+      ],
+      "batch_size": 1,
+      "audio_vae": [
+        "5575:5570",
+        0
+      ]
+    },
+    "class_type": "LTXVEmptyLatentAudio",
+    "_meta": {
+      "title": "LTXV 빈 latent 오디오"
+    }
+  },
+  "5514:3159": {
+    "inputs": {
+      "strength": 0.7,
+      "bypass": false,
+      "vae": [
+        "5575:5571",
+        0
+      ],
+      "image": [
+        "5514:3336",
+        0
+      ],
+      "latent": [
+        "5514:3059",
+        0
+      ]
+    },
+    "class_type": "LTXVImgToVideoInplace",
+    "_meta": {
+      "title": "LTXVImgToVideoInplace"
+    }
+  },
+  "5514:4528": {
+    "inputs": {
+      "video_latent": [
+        "5514:3159",
+        0
+      ],
+      "audio_latent": [
+        "5514:3980",
+        0
+      ]
+    },
+    "class_type": "LTXVConcatAVLatent",
+    "_meta": {
+      "title": "LTXVConcatAVLatent"
+    }
+  },
+  "5516:4832": {
+    "inputs": {
+      "noise_seed": 43
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "무작위 노이즈"
+    }
+  },
+  "5516:4828": {
+    "inputs": {
+      "cfg": 1,
+      "model": [
+        "5575:5569",
+        0
+      ],
+      "positive": [
+        "5014:1241",
+        0
+      ],
+      "negative": [
+        "5014:1241",
+        1
+      ]
+    },
+    "class_type": "CFGGuider",
+    "_meta": {
+      "title": "CFG 가이드"
+    }
+  },
+  "5516:4831": {
+    "inputs": {
+      "sampler_name": "euler_ancestral"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "KSampler (선택)"
+    }
+  },
+  "5516:4984": {
+    "inputs": {
+      "sigmas": "1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0"
+    },
+    "class_type": "ManualSigmas",
+    "_meta": {
+      "title": "ManualSigmas"
+    }
+  },
+  "5516:4829": {
+    "inputs": {
+      "noise": [
+        "5516:4832",
+        0
+      ],
+      "guider": [
+        "5516:4828",
+        0
+      ],
+      "sampler": [
+        "5516:4831",
+        0
+      ],
+      "sigmas": [
+        "5516:4984",
+        0
+      ],
+      "latent_image": [
+        "5514:4528",
+        0
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "고급 사용자 정의 샘플러"
+    }
+  },
+  "5516:4845": {
+    "inputs": {
+      "av_latent": [
+        "5516:4829",
+        0
+      ]
+    },
+    "class_type": "LTXVSeparateAVLatent",
+    "_meta": {
+      "title": "LTXVSeparateAVLatent"
+    }
+  },
+  "5517:4975": {
+    "inputs": {
+      "samples": [
+        "5516:4845",
+        0
+      ],
+      "upscale_model": [
+        "5575:5577",
+        0
+      ],
+      "vae": [
+        "5575:5571",
+        0
+      ]
+    },
+    "class_type": "LTXVLatentUpsampler",
+    "_meta": {
+      "title": "LTXVLatentUpsampler"
+    }
+  },
+  "5517:4970": {
+    "inputs": {
+      "strength": 1,
+      "bypass": false,
+      "vae": [
+        "5575:5571",
+        0
+      ],
+      "image": [
+        "5014:4990",
+        0
+      ],
+      "latent": [
+        "5517:4975",
+        0
+      ]
+    },
+    "class_type": "LTXVImgToVideoInplace",
+    "_meta": {
+      "title": "LTXVImgToVideoInplace"
+    }
+  },
+  "5517:4969": {
+    "inputs": {
+      "video_latent": [
+        "5517:4970",
+        0
+      ],
+      "audio_latent": [
+        "5516:4845",
+        1
+      ]
+    },
+    "class_type": "LTXVConcatAVLatent",
+    "_meta": {
+      "title": "LTXVConcatAVLatent"
+    }
+  },
+  "5517:4985": {
+    "inputs": {
+      "sigmas": "0.85, 0.7250, 0.4219, 0.0"
+    },
+    "class_type": "ManualSigmas",
+    "_meta": {
+      "title": "ManualSigmas"
+    }
+  },
+  "5517:4976": {
+    "inputs": {
+      "sampler_name": "euler_ancestral"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "KSampler (선택)"
+    }
+  },
+  "5517:4964": {
+    "inputs": {
+      "cfg": 1,
+      "model": [
+        "5575:5569",
+        0
+      ],
+      "positive": [
+        "5014:1241",
+        0
+      ],
+      "negative": [
+        "5014:1241",
+        1
+      ]
+    },
+    "class_type": "CFGGuider",
+    "_meta": {
+      "title": "CFG 가이드"
+    }
+  },
+  "5517:4967": {
+    "inputs": {
+      "noise_seed": 42
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "무작위 노이즈"
+    }
+  },
+  "5517:4973": {
+    "inputs": {
+      "av_latent": [
+        "5517:4971",
+        0
+      ]
+    },
+    "class_type": "LTXVSeparateAVLatent",
+    "_meta": {
+      "title": "LTXVSeparateAVLatent"
+    }
+  },
+  "5517:4971": {
+    "inputs": {
+      "noise": [
+        "5517:4967",
+        0
+      ],
+      "guider": [
+        "5517:4964",
+        0
+      ],
+      "sampler": [
+        "5517:4976",
+        0
+      ],
+      "sigmas": [
+        "5517:4985",
+        0
+      ],
+      "latent_image": [
+        "5517:4969",
+        0
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "고급 사용자 정의 샘플러"
+    }
+  },
+  "5518:4848": {
+    "inputs": {
+      "samples": [
+        "5517:4973",
+        1
+      ],
+      "audio_vae": [
+        "5575:5570",
+        0
+      ]
+    },
+    "class_type": "LTXVAudioVAEDecode",
+    "_meta": {
+      "title": "LTXV 오디오 VAE 디코드"
+    }
+  },
+  "5518:4849": {
+    "inputs": {
+      "fps": [
+        "5014:5017",
+        0
+      ],
+      "bit_depth": 8,
+      "images": [
+        "5518:5538",
+        0
+      ],
+      "audio": [
+        "5518:4848",
+        0
+      ]
+    },
+    "class_type": "CreateVideo",
+    "_meta": {
+      "title": "비디오 생성"
+    }
+  },
+  "5518:5538": {
+    "inputs": {
+      "tile_size": 512,
+      "overlap": 64,
+      "temporal_size": 64,
+      "temporal_overlap": 8,
+      "samples": [
+        "5517:4973",
+        0
+      ],
+      "vae": [
+        "5575:5571",
+        0
+      ]
+    },
+    "class_type": "VAEDecodeTiled",
+    "_meta": {
+      "title": "VAE 디코드 (타일)"
+    }
+  }
+}

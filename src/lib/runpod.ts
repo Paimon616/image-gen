@@ -16,6 +16,8 @@ import {
 import {
   KREA2_CLIP_NAME,
   KREA2_VAE_NAME,
+  PORNMASTER_CLIP_NAME,
+  PORNMASTER_VAE_NAME,
   isKrea2CheckpointName,
 } from "@/lib/comfyui-model-files";
 
@@ -45,6 +47,15 @@ const RUNPOD_BASE_ASSETS = [
   {
     path: `/workspace/ComfyUI/models/vae/${KREA2_VAE_NAME}`,
     url: `https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/vae/${KREA2_VAE_NAME}`,
+  },
+  {
+    // PornMaster Krea2 workflow stack (abliterated int8 Qwen3-VL + Wan 2.1 VAE).
+    path: `/workspace/ComfyUI/models/text_encoders/${PORNMASTER_CLIP_NAME}`,
+    url: `https://huggingface.co/DreamFast/Qwen3-VL-4b-Heretic-ComfyUI/resolve/main/${PORNMASTER_CLIP_NAME}`,
+  },
+  {
+    path: `/workspace/ComfyUI/models/vae/${PORNMASTER_VAE_NAME}`,
+    url: `https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/vae/${PORNMASTER_VAE_NAME}`,
   },
   {
     path: "/workspace/ComfyUI/models/ultralytics/bbox/face_yolov8n_v2.pt",
@@ -962,6 +973,77 @@ def download_to_file(target, url, token="", progress=None):
         progress(target.stat().st_size, target.stat().st_size)
     return str(target)
 
+def comfy_python():
+    venv = COMFYUI_DIR / "venv/bin/python"
+    if venv.exists():
+        return str(venv)
+    return shutil.which("python3") or shutil.which("python") or sys.executable
+
+def stream_cmd(args, cwd, on_line, timeout=2400):
+    proc = subprocess.Popen(
+        args, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+    )
+    for raw in iter(proc.stdout.readline, b""):
+        line = raw.decode("utf-8", "ignore").rstrip()
+        if line:
+            on_line(line)
+    proc.stdout.close()
+    proc.wait(timeout=timeout)
+    return proc.returncode
+
+# Install a list of {name, url} custom-node git repos into ComfyUI/custom_nodes,
+# running each repo's requirements.txt through the ComfyUI python. Emits progress
+# events so the caller's SSE stream stays alive during long pip installs.
+def install_node_repos(repos, on_event):
+    custom_nodes = COMFYUI_DIR / "custom_nodes"
+    custom_nodes.mkdir(parents=True, exist_ok=True)
+    git = shutil.which("git")
+    if not git:
+        raise RuntimeError("git is not available on this pod.")
+    py = comfy_python()
+    installed = []
+    for repo in repos:
+        name = str(repo.get("name") or "").strip()
+        url = str(repo.get("url") or "").strip()
+        if not name or not url or not url.startswith("https://"):
+            on_event({"type": "repo", "name": name, "status": "skipped",
+                      "message": "invalid repo"})
+            continue
+        safe = name.replace("/", "_").replace("\\", "_").replace("..", "_")
+        target = custom_nodes / safe
+        emit = lambda line, _n=name: on_event({"type": "log", "name": _n, "message": line})
+        try:
+            if (target / ".git").exists():
+                on_event({"type": "repo", "name": name, "status": "updating"})
+                code = stream_cmd([git, "-C", str(target), "pull", "--ff-only"],
+                                  str(custom_nodes), emit)
+            elif target.exists():
+                on_event({"type": "repo", "name": name, "status": "exists"})
+                code = 0
+            else:
+                on_event({"type": "repo", "name": name, "status": "cloning"})
+                code = stream_cmd([git, "clone", "--depth", "1", url, str(target)],
+                                  str(custom_nodes), emit)
+            if code != 0:
+                on_event({"type": "repo", "name": name, "status": "error",
+                          "message": "git exited with code %s" % code})
+                continue
+            req = target / "requirements.txt"
+            if req.is_file():
+                on_event({"type": "repo", "name": name, "status": "pip"})
+                pcode = stream_cmd([py, "-m", "pip", "install", "-r", str(req)],
+                                   str(target), emit)
+                if pcode != 0:
+                    on_event({"type": "repo", "name": name, "status": "pip-error",
+                              "message": "pip exited with code %s" % pcode})
+                    continue
+            installed.append(name)
+            on_event({"type": "repo", "name": name, "status": "done"})
+        except Exception as error:
+            on_event({"type": "repo", "name": name, "status": "error",
+                      "message": str(error)})
+    return installed
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         sys.stdout.write(fmt % args + "\n")
@@ -1015,6 +1097,26 @@ class Handler(BaseHTTPRequestHandler):
                     "percent": min(100, round(downloaded / total * 100)) if total > 0 else 0,
                 }))
                 send({"type": "complete", "path": str(target), "percent": 100})
+                return
+            if self.path == "/api/runpod/helper/install-nodes/stream":
+                body = read_json(self)
+                repos = body.get("repos") if isinstance(body.get("repos"), list) else []
+                restart = bool(body.get("restart", True))
+                self.send_response(200)
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("Content-Type", "text/event-stream")
+                self.end_headers()
+                def send(event):
+                    self.wfile.write(("data: " + json.dumps(event) + "\n\n").encode("utf-8"))
+                    self.wfile.flush()
+                try:
+                    send({"type": "status", "message": "installing", "total": len(repos)})
+                    installed = install_node_repos(repos, send)
+                    pid = restart_comfyui() if (restart and installed) else None
+                    send({"type": "complete", "installed": installed,
+                          "restarted": bool(restart and installed), "pid": pid})
+                except Exception as error:
+                    send({"type": "error", "message": str(error)})
                 return
             if self.path == "/api/runpod/helper/restart-comfy":
                 pid = restart_comfyui()
@@ -1528,8 +1630,12 @@ async function namesForParams(
       checkpointName
     );
     if (isKrea2CheckpointName(checkpointName)) {
-      push("other", "text_encoders", KREA2_CLIP_NAME);
-      push("vae", "vae", KREA2_VAE_NAME);
+      // "generic" and "refined" share the official Krea 2 stack (qwen3vl CLIP + qwen
+      // image VAE); only "pornmaster" swaps in its abliterated int8 CLIP + Wan 2.1 VAE.
+      // "refined" adds a second stock KSampler pass, so it needs no extra files or nodes.
+      const pornmaster = params.krea2_workflow === "pornmaster";
+      push("other", "text_encoders", pornmaster ? PORNMASTER_CLIP_NAME : KREA2_CLIP_NAME);
+      push("vae", "vae", pornmaster ? PORNMASTER_VAE_NAME : KREA2_VAE_NAME);
     }
   }
   (params.loras ?? []).forEach((lora) => {
@@ -1617,7 +1723,10 @@ export async function checkRunpodGenerationFiles(
     })
   );
 
-  return enriched;
+  return enriched.map((item) => ({
+    ...item,
+    downloadable: canDownloadRunpodResource(item.resource, item.path),
+  }));
 }
 
 function sleep(ms: number) {
@@ -1737,6 +1846,62 @@ function fallbackFilename(resource: ImportedCivitaiResource) {
   return /\.(ckpt|pt|pth|safetensors)$/i.test(safe) ? safe : `${safe}.safetensors`;
 }
 
+function isCivitaiHost(url: string) {
+  try {
+    return /(^|\.)civitai\.(com|red)$/i.test(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
+
+function isHuggingFaceHost(url: string) {
+  try {
+    return /(^|\.)huggingface\.co$/i.test(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
+
+// A "direct" URL points straight at a weights file, so the pod helper can fetch
+// it without a Civitai modelVersionId. Covers HuggingFace resolve links, any
+// /api/download/ endpoint, and plain file URLs. Civitai *model-page* URLs are not
+// direct — those still resolve through the modelVersionId path below.
+function isDirectDownloadUrl(url: string | undefined) {
+  if (!url) return false;
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
+  const path = parsed.pathname.toLowerCase();
+  if (parsed.hostname.endsWith("huggingface.co") && path.includes("/resolve/")) {
+    return true;
+  }
+  if (path.includes("/api/download/")) return true;
+  if (/\.(safetensors|ckpt|pt|pth|gguf|bin)$/i.test(path)) return true;
+  return false;
+}
+
+// Single source of truth for "can the pod fetch this file automatically?".
+// A file is downloadable if it maps to a known base asset, resolves to a direct
+// weights URL, or is a Civitai resource with a modelVersionId. getRunpodDownloadPlan
+// enforces the same conditions; the file check reports them to the client so the
+// UI never has to re-derive download eligibility from a hardcoded list.
+export function canDownloadRunpodResource(
+  resource: Pick<ImportedCivitaiResource, "type" | "url" | "modelVersionId">,
+  targetPath?: string
+) {
+  const folder = RESOURCE_FOLDERS[resource.type];
+  const baseAsset = targetPath ? runpodBaseAssetForPath(targetPath) : undefined;
+  const directUrl = !baseAsset && isDirectDownloadUrl(resource.url) ? resource.url : undefined;
+
+  if (!folder && !baseAsset && !(directUrl && targetPath)) return false;
+  if (!baseAsset && !directUrl && !resource.modelVersionId) return false;
+  return true;
+}
+
 async function getRunpodDownloadPlan(
   pod: RunpodPodSettings,
   resource: ImportedCivitaiResource,
@@ -1744,18 +1909,29 @@ async function getRunpodDownloadPlan(
 ) {
   const settings = await readSettings();
   const token = settings.civitaiApiKey || process.env.CIVITAI_API_TOKEN?.trim();
+  // Gated HuggingFace repos (e.g. Lightricks/LTX-2.5) return 401 without a token.
+  // Public HF files ignore the header, so it is safe to send for any HF URL.
+  const hfToken =
+    settings.huggingfaceApiKey ||
+    process.env.HF_TOKEN?.trim() ||
+    process.env.HUGGINGFACE_TOKEN?.trim() ||
+    process.env.HUGGING_FACE_HUB_TOKEN?.trim() ||
+    "";
 
   const folder = RESOURCE_FOLDERS[resource.type];
   const baseAsset = targetPath ? runpodBaseAssetForPath(targetPath) : undefined;
-  if (!folder && !baseAsset) {
+  const directUrl =
+    !baseAsset && isDirectDownloadUrl(resource.url) ? resource.url : undefined;
+  const directIsCivitai = directUrl ? isCivitaiHost(directUrl) : false;
+
+  if (!canDownloadRunpodResource(resource, targetPath)) {
     throw new Error("This resource cannot be downloaded automatically.");
   }
 
-  if (!baseAsset && !resource.modelVersionId) {
-    throw new Error("This resource cannot be downloaded automatically.");
-  }
-
-  if (!baseAsset && !token) throw new Error("Civitai API key is not configured.");
+  // HuggingFace (and other non-civitai direct URLs) need no token; civitai
+  // downloads — whether by modelVersionId or a direct civitai link — still do.
+  const needsToken = !baseAsset && (directUrl ? directIsCivitai : true);
+  if (needsToken && !token) throw new Error("Civitai API key is not configured.");
 
   const normalizedTargetPath = targetPath
     ?.replace(/^\/workspace\/ComfyUI\/models\//, "")
@@ -1773,9 +1949,15 @@ async function getRunpodDownloadPlan(
     : normalizedTargetPath
       ? `/workspace/ComfyUI/models/${normalizedTargetPath}`
       : `${targetDir}/${filename}`;
-  const downloadUrl = baseAsset?.url ??
+  const downloadUrl =
+    baseAsset?.url ??
+    directUrl ??
     `https://civitai.com/api/download/models/${resource.modelVersionId}`;
-  const tokenValue = !baseAsset && token ? token : "";
+  const tokenValue = needsToken
+    ? token ?? ""
+    : isHuggingFaceHost(downloadUrl)
+      ? hfToken
+      : "";
 
   return { pod, targetDir, targetFile, downloadUrl, tokenValue };
 }
@@ -1900,4 +2082,157 @@ export async function streamRunpodResourceDownload(
   }
 
   return targetFile;
+}
+
+export interface RunpodNodeRepo {
+  name: string;
+  url: string;
+}
+
+export interface RunpodNodeInstallEvent {
+  type: "status" | "repo" | "log" | "complete" | "error";
+  name?: string;
+  status?: string;
+  message?: string;
+  total?: number;
+  installed?: string[];
+  restarted?: boolean;
+  pid?: number | null;
+}
+
+// Fetch the set of node class_types ComfyUI currently has registered (via its
+// /object_info endpoint). Returns null when ComfyUI is unreachable so callers can
+// fall back to "install everything the workflow references".
+export async function fetchRunpodInstalledNodeTypes(pod: RunpodPodSettings) {
+  const base = pod.comfyUrl?.replace(/\/$/, "");
+  if (!base) return null;
+  try {
+    const response = await fetch(`${base}/object_info`, { cache: "no-store" });
+    if (!response.ok) return null;
+    const data = (await response.json()) as Record<string, unknown>;
+    return new Set(Object.keys(data));
+  } catch {
+    return null;
+  }
+}
+
+// Install a list of custom-node git repos onto the pod via the helper, streaming
+// per-repo/pip progress back through onEvent. Restarts ComfyUI when anything was
+// installed so the new nodes register.
+export async function streamRunpodNodeInstall(
+  podId: string,
+  repos: RunpodNodeRepo[],
+  onEvent: (event: RunpodNodeInstallEvent) => void,
+  restart = true
+) {
+  const pod = await getRunpodPod(podId);
+  if (!pod) throw new Error("RunPod target was not found.");
+
+  const helperUrl = deriveHelperUrl(pod);
+  if (!helperUrl) throw new Error("RunPod Image Gen helper URL is not configured.");
+
+  const postInstall = () =>
+    fetch(`${helperUrl}/api/runpod/helper/install-nodes/stream`, {
+      method: "POST",
+      cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ repos, restart }),
+    });
+
+  let response = await postInstall();
+
+  // A pod running an older helper build lacks this route and answers 404
+  // ("Not found."). Its /status route still responds, so the status probe
+  // reports the helper as healthy and it is never redeployed. Detect the stale
+  // helper here, redeploy the current build in place, wait for it to serve, and
+  // retry the install once.
+  if (response.status === 404) {
+    onEvent({
+      type: "status",
+      message: "Updating the pod helper to a build that supports node install...",
+    });
+    await installRunpodHelper(pod);
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      await wait(3_000);
+      try {
+        await fetchRunpodHelper(pod, "/api/runpod/helper/status", {
+          signal: AbortSignal.timeout(5_000),
+        });
+        break;
+      } catch {
+        // Keep waiting for the redeployed helper to start serving.
+      }
+    }
+    response = await postInstall();
+  }
+
+  if (!response.ok || !response.body) {
+    const text = await response.text();
+    throw new Error(text || `RunPod helper HTTP ${response.status}`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let helperError = "";
+  let installed: string[] = [];
+  const handle = (raw: string) => {
+    if (!raw.startsWith("data:")) return;
+    const event = JSON.parse(raw.slice(5).trim()) as RunpodNodeInstallEvent;
+    if (event.type === "error") helperError = event.message || "Node install failed.";
+    if (event.type === "complete") installed = event.installed ?? [];
+    onEvent(event);
+  };
+
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split(/\r?\n/);
+    buffer = lines.pop() ?? "";
+    for (const line of lines) handle(line);
+  }
+  if (buffer) handle(buffer);
+  if (helperError) throw new Error(helperError);
+
+  return installed;
+}
+
+// Custom-node packs a given image workflow variant needs, keyed by krea2_workflow.
+// Each entry maps a representative node class_type to its installable git repo.
+// "generic" and "refined" use only stock ComfyUI nodes, so they have no entry here.
+const IMAGE_WORKFLOW_NODE_PACKS: Record<
+  string,
+  Array<{ nodeType: string; repo: RunpodNodeRepo }>
+> = {
+  pornmaster: [
+    {
+      nodeType: "ClownsharKSampler_Beta",
+      repo: { name: "RES4LYF", url: "https://github.com/ClownsharkBatwing/RES4LYF" },
+    },
+  ],
+};
+
+// Resolve which custom-node repos the given image workflow still needs on this
+// pod by reading its live /object_info node list. comfyReachable is false when
+// ComfyUI could not be reached (so the caller can avoid a misleading "all good").
+export async function collectImageWorkflowNodePacks(
+  pod: RunpodPodSettings,
+  krea2Workflow: string
+): Promise<{ packs: RunpodNodeRepo[]; comfyReachable: boolean }> {
+  const required = IMAGE_WORKFLOW_NODE_PACKS[krea2Workflow] ?? [];
+  if (required.length === 0) return { packs: [], comfyReachable: true };
+
+  const installed = await fetchRunpodInstalledNodeTypes(pod);
+  if (!installed) return { packs: [], comfyReachable: false };
+
+  const packs: RunpodNodeRepo[] = [];
+  const seen = new Set<string>();
+  for (const { nodeType, repo } of required) {
+    if (!installed.has(nodeType) && !seen.has(repo.url)) {
+      seen.add(repo.url);
+      packs.push(repo);
+    }
+  }
+  return { packs, comfyReachable: true };
 }

@@ -7594,32 +7594,101 @@
     "name": "[Krea 2] BloomGirls UltraRealism",
     "version": "[Krea 2] Beta V0.1",
     "base_model": "Krea 2",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/2140c790-e23d-4b78-9a74-693db5169772/original=true/135057112.jpeg",
     "civitai_url": "https://civitai.red/models/2735553/krea-2-bloomgirls-ultrarealism?modelVersionId=3075850",
     "source_url": "https://civitai.red/models/2735553/krea-2-bloomgirls-ultrarealism?modelVersionId=3075850",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/2140c790-e23d-4b78-9a74-693db5169772/original=true/135057112.jpeg"
+    "tags": [
+      "realism",
+      "realistic",
+      "ai influencer",
+      "style"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
   },
   "loras/RealisticSnapshotKrea2.safetensors": {
     "name": "Realistic Snapshot (Z-Image-Turbo + Krea 2)",
     "version": "Krea2 (v0.5)",
     "base_model": "Krea 2",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/0c7a64a2-9833-4207-82b9-ab5ead6981b1/original=true/135351239.jpeg",
     "civitai_url": "https://civitai.red/models/2268008/realistic-snapshot-z-image-turbo-krea-2?modelVersionId=3084537",
     "source_url": "https://civitai.red/models/2268008/realistic-snapshot-z-image-turbo-krea-2?modelVersionId=3084537",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/0c7a64a2-9833-4207-82b9-ab5ead6981b1/original=true/135351239.jpeg"
+    "tags": [
+      "digicam",
+      "photorealistic",
+      "2000s",
+      "photography",
+      "amateur",
+      "realism",
+      "candid",
+      "style",
+      "beautifulgirl",
+      "ethereal",
+      "amateurphoto",
+      "influencer",
+      "selfie"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
   },
   "loras/realism_engine_krea2_v3.1.safetensors": {
     "name": "Realism Engine Ideogram 4 + Krea 2",
     "version": "Krea2 v3.0",
     "base_model": "Krea 2",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/866d389f-c8df-4881-a59c-d7e322dae96d/original=true/136067861.jpeg",
     "civitai_url": "https://civitai.red/models/2688234/realism-engine-ideogram-4-krea-2?modelVersionId=3109006",
     "source_url": "https://civitai.red/models/2688234/realism-engine-ideogram-4-krea-2?modelVersionId=3109006",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/866d389f-c8df-4881-a59c-d7e322dae96d/original=true/136067861.jpeg"
+    "tags": [
+      "bimbo",
+      "porn",
+      "anal",
+      "blowjob",
+      "fisting",
+      "ideogram",
+      "base model"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
   },
   "loras/Krea2_TextFusion_Refusal_Reduction.safetensors": {
     "name": "Krea2 TextFusion Refusal-Reduction LoRA",
-    "version": "v1.0",
+    "version": "v1",
     "base_model": "Krea 2",
     "civitai_url": "https://civitai.red/models/2775340/krea2-textfusion-refusal-reduction-lora?modelVersionId=3125118",
     "source_url": "https://civitai.red/models/2775340/krea2-textfusion-refusal-reduction-lora?modelVersionId=3125118",
+    "tags": [
+      "krea2",
+      "pornmaster",
+      "lora"
+    ],
+    "note": "원본 워크플로우에서 strength 1.0으로 활성. 강한 검열 주제 생성 보조.",
     "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/1b36ccbb-d3de-4fbc-85e4-631f2e8c7732/original=true/136629949.jpeg"
   },
   "embeddings/lazyhand.safetensors": {
@@ -7640,5 +7709,599 @@
     "civitai_url": "https://civitai.red/models/507472/uncanny-valley?modelVersionId=1880913",
     "source_url": "https://civitai.red/models/507472/uncanny-valley?modelVersionId=1880913",
     "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/f9019fba-9b84-499a-ac7e-e4b1f3c60d47/original=true/81101435.jpeg"
+  },
+  "upscale_models/4x-UltraSharp.pth": {
+    "name": "4x-Ultrasharp",
+    "version": "4x-UltraSharp v1.0",
+    "base_model": "Upscaler",
+    "civitai_url": "https://civitai.red/models/116225/4x-ultrasharp?modelVersionId=125843",
+    "source_url": "https://civitai.red/models/116225/4x-ultrasharp?modelVersionId=125843"
+  },
+  "diffusion_models/pornmasterKrea2_v25Turbo.safetensors": {
+    "name": "PornMaster 色情大師-Krea2",
+    "version": "V2.5 Turbo",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2735032/pornmaster-krea2?modelVersionId=3171380",
+    "source_url": "https://civitai.red/models/2735032/pornmaster-krea2?modelVersionId=3171380",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/91c4d035-5327-4e65-9995-7181772d89c1/original=true/137962343.jpeg"
+  },
+  "loras/Arcane_Krea2.safetensors": {
+    "name": "Arcane Style",
+    "version": "Arcane Style",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2815410/arcane-style?modelVersionId=3175347",
+    "source_url": "https://civitai.red/models/2815410/arcane-style?modelVersionId=3175347",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/6ce1e472-864c-495e-94f5-ecc9089b3726/original=true/138441719.mp4",
+    "tags": [
+      "arcanekreastyle"
+    ]
+  },
+  "vae/qwen_image_vae.safetensors": {
+    "name": "Qwen-Image VAE",
+    "version": "Qwen_Image_VAE",
+    "base_model": "Qwen",
+    "civitai_url": "https://civitai.red/models/1912333/qwen-image-vae?modelVersionId=2164481",
+    "source_url": "https://civitai.red/models/1912333/qwen-image-vae?modelVersionId=2164481"
+  },
+  "text_encoders/qwen3vl_4b_fp8_scaled.safetensors": {
+    "name": "Qwen3-VL 4B (fp8 scaled) text encoder",
+    "version": "fp8 scaled",
+    "base_model": "Krea 2",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Comfy-Org/Krea-2/resolve/main/text_encoders/qwen3vl_4b_fp8_scaled.safetensors",
+    "tags": [
+      "krea2",
+      "text_encoder",
+      "qwen3vl"
+    ],
+    "note": "Krea 2 필수 text encoder (CLIPLoader type=krea2). PornMaster/Krea2 워크플로우 공용."
+  },
+  "checkpoints/sd_xl_base_1.0.safetensors": {
+    "name": "Stable Diffusion XL Base 1.0",
+    "version": "1.0",
+    "base_model": "SDXL 1.0",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/resolve/main/sd_xl_base_1.0.safetensors",
+    "tags": [
+      "sdxl",
+      "checkpoint",
+      "base"
+    ],
+    "note": "앱 기본 base 모델. 공식 Stability HF 배포(직접 다운로드)."
+  },
+  "diffusion_models/pornmasterKrea2_v2TurboInt8.safetensors": {
+    "name": "PornMaster 色情大師-Krea2 (V2 Turbo int8)",
+    "version": "V2 Turbo int8",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2735032/pornmaster-krea2?modelVersionId=3119653",
+    "source_url": "https://civitai.red/models/2735032/pornmaster-krea2?modelVersionId=3119653",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/91c4d035-5327-4e65-9995-7181772d89c1/original=true/137962343.jpeg",
+    "tags": [
+      "krea2",
+      "pornmaster",
+      "nsfw",
+      "int8"
+    ],
+    "note": "원본 PornMaster RES4LYF 워크플로우가 사용한 정확한 체크포인트. 공개 다운로드(무료)."
+  },
+  "text_encoders/qwen3-vl-4b-heretic_int8.safetensors": {
+    "name": "Qwen3-VL 4B Heretic (int8) text encoder",
+    "version": "heretic int8",
+    "base_model": "Krea 2",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/DreamFast/Qwen3-VL-4b-Heretic-ComfyUI/resolve/main/qwen3-vl-4b-heretic_int8.safetensors",
+    "tags": [
+      "krea2",
+      "pornmaster",
+      "text_encoder",
+      "qwen3vl",
+      "uncensored"
+    ],
+    "note": "PornMaster 워크플로우 전용 무검열(abliterated) int8 CLIP. CLIPLoader type=krea2."
+  },
+  "vae/wan_2.1_vae.safetensors": {
+    "name": "Wan 2.1 VAE",
+    "version": "wan_2.1_vae",
+    "base_model": "Wan 2.1",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors",
+    "tags": [
+      "pornmaster",
+      "vae",
+      "wan"
+    ],
+    "note": "원본 PornMaster 워크플로우가 사용한 VAE(원본은 wan2.1_vae.safetensors로 리네임). 동일 파일."
+  },
+  "loras/Realistic Snapshot (Z-Image-Turbo + Krea 2).safetensors": {
+    "name": "Realistic Snapshot (Z-Image-Turbo + Krea 2)",
+    "version": "Krea2 (v0.5)",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2268008/realistic-snapshot-z-image-turbo-krea-2?modelVersionId=3084537",
+    "source_url": "https://civitai.red/models/2268008/realistic-snapshot-z-image-turbo-krea-2?modelVersionId=3084537"
+  },
+  "checkpoints/10Eros_v1.4_bf16.safetensors": {
+    "name": "10Eros (LTX 2.3 A/V checkpoint)",
+    "version": "v1.4 bf16",
+    "base_model": "LTXV 2.3",
+    "thumbnail_url": null,
+    "civitai_url": "https://civitai.red/models/2447875?modelVersionId=3109610",
+    "source_url": "https://civitai.com/api/download/models/3109610?type=Other&format=SafeTensor&fp=bf16",
+    "tags": [
+      "ltx23",
+      "checkpoint",
+      "video",
+      "audio",
+      "nsfw"
+    ],
+    "note": "확인됨: Civitai 10Eros v1.4 (bf16). 파일명이 civitai에서는 ltx2310eros_v14.safetensors 이므로 다운로드 후 10Eros_v1.4_bf16.safetensors 로 배치 필요"
+  },
+  "diffusion_models/ltx-2.3-22b-dev_transformer_only_bf16.safetensors": {
+    "name": "LTX-Video 2.3 22B (transformer only, bf16)",
+    "version": "dev bf16",
+    "base_model": "LTXV 2.3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Kijai/LTX2.3_comfy/resolve/main/diffusion_models/ltx-2.3-22b-dev_transformer_only_bf16.safetensors",
+    "tags": [
+      "ltx23",
+      "diffusion",
+      "transformer",
+      "video"
+    ],
+    "note": "확인됨: Kijai/LTX2.3_comfy"
+  },
+  "vae/taeltx2_3.safetensors": {
+    "name": "TAE LTX 2.3 (tiny autoencoder)",
+    "version": "2.3",
+    "base_model": "LTXV 2.3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Kijai/LTX2.3_comfy/resolve/main/vae/taeltx2_3.safetensors",
+    "tags": [
+      "ltx23",
+      "vae",
+      "taesd"
+    ],
+    "note": "확인됨: Kijai/LTX2.3_comfy (23.5MB TAE)"
+  },
+  "text_encoders/gemma_3_12B_it_fp8_scaled.safetensors": {
+    "name": "Gemma 3 12B IT (fp8 scaled) text encoder",
+    "version": "fp8 scaled",
+    "base_model": "Gemma 3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Comfy-Org/ltx-2/resolve/main/split_files/text_encoders/gemma_3_12B_it_fp8_scaled.safetensors",
+    "tags": [
+      "ltx23",
+      "text_encoder",
+      "gemma"
+    ],
+    "note": "확인됨: Comfy-Org/ltx-2"
+  },
+  "loras/ltx2_3/ltx-2.3-22b-distilled-lora-fro90_ceil72.safetensors": {
+    "name": "LTX-Video 2.3 22B distilled LoRA",
+    "version": "fro90 ceil72",
+    "base_model": "LTXV 2.3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/TenStrip/LTX2.3_Distilled_Lora_1.1_Experiments/resolve/main/ltx-2.3-22b-distilled-lora-fro90_ceil72.safetensors",
+    "tags": [
+      "ltx23",
+      "lora",
+      "distilled",
+      "speed"
+    ],
+    "note": "확인됨(정확): TenStrip/LTX2.3_Distilled_Lora_1.1_Experiments. SulphurAI/Sulphur-2-base 에도 동일계열 존재"
+  },
+  "upscale_models/ltx-2.3-spatial-upscaler-x2-1.1.safetensors": {
+    "name": "LTX-Video 2.3 spatial upscaler x2",
+    "version": "v1.1",
+    "base_model": "LTXV 2.3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Lightricks/LTX-2.3/resolve/main/ltx-2.3-spatial-upscaler-x2-1.1.safetensors",
+    "tags": [
+      "ltx23",
+      "upscaler",
+      "spatial"
+    ],
+    "note": "확인됨: Lightricks/LTX-2.3 (공식)"
+  },
+  "loras/LTX2.3-MysticXXX.safetensors": {
+    "name": "LTX2.3 MysticXXX",
+    "version": "LTX2.3",
+    "base_model": "LTXV 2.3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": null,
+    "tags": [
+      "ltx23",
+      "lora",
+      "nsfw"
+    ],
+    "note": "런너블 버전에서 제거됨(워크플로우 node 922 미참조). 공개 LTX2.3판 없음, strength 0.40 저강도라 영향 미미. 원본 확보 시 <lora:LTX2.3-MysticXXX:0.40:0.40> 태그 복원 가능"
+  },
+  "loras/ltx23_nsfw_helper_multi_concept_lora_v2.safetensors": {
+    "name": "LTX2.3 NSFW Helper (multi-concept)",
+    "version": "v2",
+    "base_model": "LTXV 2.3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/cdkkkk/setup/resolve/main/ltx2/ltx23_nsfw_helper_multi_concept_lora_v1.safetensors",
+    "tags": [
+      "ltx23",
+      "lora",
+      "nsfw",
+      "helper"
+    ],
+    "note": "대체(v2 미발견): HF에는 v1만 존재 → cdkkkk/setup/ltx2 의 v1 사용. 원본 v2는 Civitai에서 별도 확인 필요"
+  },
+  "loras/LTX2.3_Breasts_Jiggle_Physics.safetensors": {
+    "name": "LTX2.3 Breasts Jiggle Physics",
+    "version": "LTX2.3",
+    "base_model": "LTXV 2.3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Sentinel7/ltxv/resolve/main/2536021/2850154/LTX2.3_Breasts_Jiggle_Physics.safetensors",
+    "tags": [
+      "ltx23",
+      "lora",
+      "nsfw",
+      "physics"
+    ],
+    "note": "확인됨(정확): Sentinel7/ltxv (674MB, main 브랜치)"
+  },
+  "loras/SynthPussy_01_rank32.safetensors": {
+    "name": "SynthPussy 01 (rank32)",
+    "version": "rank32",
+    "base_model": "LTXV 2.3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/BoyoDiffusion/sharedmodelscivit/resolve/main/SynthPussy_01_rank32.safetensors",
+    "tags": [
+      "ltx23",
+      "lora",
+      "nsfw"
+    ],
+    "note": "확인됨(정확): BoyoDiffusion/sharedmodelscivit"
+  },
+  "loras/SexGod_FingeringDildo_LTX23_v1.safetensors": {
+    "name": "SexGod Fingering/Dildo LTX23",
+    "version": "v1",
+    "base_model": "LTXV 2.3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/cdkkkk/setup/resolve/main/ltx2/SexGod_FingeringDildo_LTX23_v1.safetensors",
+    "tags": [
+      "ltx23",
+      "lora",
+      "nsfw"
+    ],
+    "note": "확인됨(정확): cdkkkk/setup/ltx2 (2.7GB)"
+  },
+  "loras/Ltx23_RemoteOrgasm_v1.safetensors": {
+    "name": "LTX23 Remote Orgasm",
+    "version": "v1",
+    "base_model": "LTXV 2.3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Sentinel7/ltxv/resolve/main/2176039/2775805/LTX-2.3%20-%20Orgasm.safetensors",
+    "tags": [
+      "ltx23",
+      "lora",
+      "nsfw"
+    ],
+    "note": "치환(런너블): 원본 RemoteOrgasm은 공개 미발견 → Sentinel7/ltxv 'LTX-2.3 - Orgasm.safetensors'(805MB)로 다운로드. 저장 파일명은 워크플로우가 참조하는 Ltx23_RemoteOrgasm_v1.safetensors 로 지정할 것"
+  },
+  "loras/epic_cumshots-V1-LTX_2_3-CUMSH0T.safetensors": {
+    "name": "Epic Cumshots (LTX 2.3)",
+    "version": "V1 CUMSH0T",
+    "base_model": "LTXV 2.3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/cdkkkk/setup/resolve/main/ltx2/epic_cumshots-V1-LTX_2_3-CUMSH0T.safetensors",
+    "tags": [
+      "ltx23",
+      "lora",
+      "nsfw"
+    ],
+    "note": "확인됨(정확): cdkkkk/setup/ltx2 (428MB)"
+  },
+  "loras/PornMaster_Krea2_Realism_slider_V1.safetensors": {
+    "name": "PornMaster Krea2 Realism slider",
+    "version": "V1",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2742129/pornmaster-krea2-realism-slider?modelVersionId=3083986",
+    "source_url": "https://civitai.red/models/2742129/pornmaster-krea2-realism-slider?modelVersionId=3083986",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/df6dcd35-0774-46b9-9688-2536abcec786/original=true/135311091.jpeg"
+  },
+  "loras/PornMaster_Krea2_Asian_slider_V1.safetensors": {
+    "name": "PornMaster Krea2 Asian slider",
+    "version": "V1",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2756475/pornmaster-krea2-asian-slider?modelVersionId=3101650",
+    "source_url": "https://civitai.red/models/2756475/pornmaster-krea2-asian-slider?modelVersionId=3101650",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/41a30feb-0368-4f8d-9f8c-f5370a26f4f8/original=true/135901174.jpeg"
+  },
+  "loras/PornMaster_Flat_chest_&_Innie_pussy_krea2_V1.safetensors": {
+    "name": "PornMaster Krea2 Flat chest & Innie pussy",
+    "version": "V1",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2769967/pornmaster-krea2-flat-chest-innie-pussy?modelVersionId=3118444",
+    "source_url": "https://civitai.red/models/2769967/pornmaster-krea2-flat-chest-innie-pussy?modelVersionId=3118444",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/9ae1eb18-d378-4cde-931a-491a813febf1/original=true/136363569.jpeg",
+    "tags": [
+      "her genitals were just a slit,",
+      "she has small areolas, nipples visible.",
+      "she has no areolas. nipples visible."
+    ]
+  },
+  "diffusion_models/Pornmaster_krea2_Turbo_fp8_v2.safetensors": {
+    "name": "PornMaster 色情大師-Krea2",
+    "version": "V2 Turbo int8",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2735032/pornmaster-krea2?modelVersionId=3119653",
+    "source_url": "https://civitai.red/models/2735032/pornmaster-krea2?modelVersionId=3119653",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/3ecec6f0-be2a-4cf5-b77d-309bea01a96d/original=true/136398602.jpeg"
+  },
+  "loras/RealisticAnimeIXL_v2.safetensors": {
+    "name": "CAT - Citron Styles",
+    "version": "Real Anime IXL",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/362745/cat-citron-styles?modelVersionId=1169083",
+    "source_url": "https://civitai.red/models/362745/cat-citron-styles?modelVersionId=1169083",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/228c9265-00ff-48c9-bc21-47ea17b800ab/original=true/45767032.jpeg",
+    "tags": [
+      "bokeh, luminescent background,"
+    ]
+  },
+  "loras/Akali OgiIllustriousLoRA.safetensors": {
+    "name": "Akali from League of Legends | Illustrious",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/1265593/akali-from-league-of-legends-illustrious?modelVersionId=1427327",
+    "source_url": "https://civitai.red/models/1265593/akali-from-league-of-legends-illustrious?modelVersionId=1427327",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/91f0398b-3ef2-4823-bb2f-4934bef54ca5/original=true/58427089.jpeg",
+    "tags": [
+      "dual wielding, holding kunai, Holding scythe",
+      "back tattoo, dragon tattoo"
+    ]
+  },
+  "checkpoints/illustrijEVO_lvl3.safetensors": {
+    "name": "Illustrij EVO",
+    "version": "LVL3",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/1772230/illustrij-evo?modelVersionId=2182724",
+    "source_url": "https://civitai.red/models/1772230/illustrij-evo?modelVersionId=2182724",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/53dad236-fab9-48a6-85e6-1e3a797be4cf/original=true/125808645.jpeg"
+  },
+  "loras/sweatill 222.safetensors": {
+    "name": "Sweaty / Steamy / Musky (Anima/Illustrious)",
+    "version": "v7.0",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/1335716/sweaty-steamy-musky-anima-illustrious?modelVersionId=2926356",
+    "source_url": "https://civitai.red/models/1335716/sweaty-steamy-musky-anima-illustrious?modelVersionId=2926356",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/b657e01c-9c1c-46e5-804a-80f52542a215/original=true/129975451.jpeg",
+    "tags": [
+      "sweat, sweatdrop, sweaty",
+      "wet skin, smell, visible breath, steaming body, steamy"
+    ]
+  },
+  "diffusion_models/ltx-2.5-22b-distilled-transformer-bf16.safetensors": {
+    "name": "LTX-2.5 22B distilled transformer (bf16)",
+    "version": "distilled bf16",
+    "base_model": "LTXV 2.5",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/diffusion_models/ltx-2.5-22b-distilled-transformer-bf16.safetensors",
+    "tags": [
+      "ltx25",
+      "diffusion",
+      "transformer",
+      "video",
+      "distilled"
+    ],
+    "note": "확인됨: Lightricks/LTX-2.5 공식. 42.0GB. 고품질 i2v 기본 transformer(distilled, 2-stage). bf16는 80GB급 GPU 권장."
+  },
+  "diffusion_models/ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors": {
+    "name": "LTX-2.5 22B distilled transformer (ComfyUI int8)",
+    "version": "distilled int8-convrot",
+    "base_model": "LTXV 2.5",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/diffusion_models/ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors",
+    "tags": [
+      "ltx25",
+      "diffusion",
+      "transformer",
+      "video",
+      "distilled",
+      "int8"
+    ],
+    "note": "확인됨: Lightricks/LTX-2.5 공식. 21.5GB. 48GB GPU에 적합한 int8 양자화(ComfyUI 전용)."
+  },
+  "diffusion_models/ltx-2.5-22b-dev-transformer-bf16.safetensors": {
+    "name": "LTX-2.5 22B dev transformer (bf16)",
+    "version": "dev bf16",
+    "base_model": "LTXV 2.5",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/diffusion_models/ltx-2.5-22b-dev-transformer-bf16.safetensors",
+    "tags": [
+      "ltx25",
+      "diffusion",
+      "transformer",
+      "video",
+      "dev"
+    ],
+    "note": "확인됨: Lightricks/LTX-2.5 공식. 42.0GB. dev/trainable(파인튜닝·최대품질). distilled LoRA와 함께 사용 가능."
+  },
+  "diffusion_models/ltx-2.5-22b-dev-transformer-comfy-int8-convrot.safetensors": {
+    "name": "LTX-2.5 22B dev transformer (ComfyUI int8)",
+    "version": "dev int8-convrot",
+    "base_model": "LTXV 2.5",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/diffusion_models/ltx-2.5-22b-dev-transformer-comfy-int8-convrot.safetensors",
+    "tags": [
+      "ltx25",
+      "diffusion",
+      "transformer",
+      "video",
+      "dev",
+      "int8"
+    ],
+    "note": "확인됨: Lightricks/LTX-2.5 공식. 21.5GB."
+  },
+  "diffusion_models/ltx-2.5-22b-distilled-transformer-nvfp4.safetensors": {
+    "name": "LTX-2.5 22B distilled transformer (nvfp4)",
+    "version": "distilled nvfp4",
+    "base_model": "LTXV 2.5",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/diffusion_models/ltx-2.5-22b-distilled-transformer-nvfp4.safetensors",
+    "tags": [
+      "ltx25",
+      "diffusion",
+      "transformer",
+      "video",
+      "distilled",
+      "nvfp4"
+    ],
+    "note": "확인됨: Lightricks/LTX-2.5 공식. 18.7GB. Blackwell(RTX 50xx/B200) fp4 전용."
+  },
+  "text_encoders/gemma4-12b-with-proj-ltx-2.5-bf16.safetensors": {
+    "name": "Gemma4 12B w/ proj (LTX-2.5 text encoder, bf16)",
+    "version": "bf16",
+    "base_model": "LTXV 2.5",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/text_encoders/gemma4-12b-with-proj-ltx-2.5-bf16.safetensors",
+    "tags": [
+      "ltx25",
+      "text_encoder",
+      "gemma"
+    ],
+    "note": "확인됨: Lightricks/LTX-2.5 공식. 26.3GB. LTX-2.5 전용 텍스트 인코더(bf16)."
+  },
+  "text_encoders/gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors": {
+    "name": "Gemma4 12B w/ proj (LTX-2.5 text encoder, ComfyUI int8)",
+    "version": "int8-convrot",
+    "base_model": "LTXV 2.5",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/text_encoders/gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors",
+    "tags": [
+      "ltx25",
+      "text_encoder",
+      "gemma",
+      "int8"
+    ],
+    "note": "확인됨: Lightricks/LTX-2.5 공식. 15.4GB. 48GB GPU용 int8 인코더."
+  },
+  "vae/ltx-2.5-video-vae-bf16.safetensors": {
+    "name": "LTX-2.5 video VAE (bf16)",
+    "version": "bf16",
+    "base_model": "LTXV 2.5",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/vae/ltx-2.5-video-vae-bf16.safetensors",
+    "tags": [
+      "ltx25",
+      "vae",
+      "video"
+    ],
+    "note": "확인됨: Lightricks/LTX-2.5 공식. 1.47GB. 고품질 비디오 VAE."
+  },
+  "vae/ltx-2.5-video-vae-conv-bf16.safetensors": {
+    "name": "LTX-2.5 video VAE conv (bf16)",
+    "version": "conv bf16",
+    "base_model": "LTXV 2.5",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/vae/ltx-2.5-video-vae-conv-bf16.safetensors",
+    "tags": [
+      "ltx25",
+      "vae",
+      "video"
+    ],
+    "note": "확인됨: Lightricks/LTX-2.5 공식. 1.45GB. 경량/빠른 conv VAE."
+  },
+  "vae/ltx-2.5-audio-vae-bf16.safetensors": {
+    "name": "LTX-2.5 audio VAE (bf16)",
+    "version": "bf16",
+    "base_model": "LTXV 2.5",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/vae/ltx-2.5-audio-vae-bf16.safetensors",
+    "tags": [
+      "ltx25",
+      "vae",
+      "audio"
+    ],
+    "note": "확인됨: Lightricks/LTX-2.5 공식. 0.36GB. 오디오 VAE(A/V 동시 생성)."
+  },
+  "latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors": {
+    "name": "LTX-2.5 latent spatial upscaler x2 (bf16)",
+    "version": "v1.0 bf16",
+    "base_model": "LTXV 2.5",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
+    "tags": [
+      "ltx25",
+      "upscaler",
+      "spatial",
+      "latent"
+    ],
+    "note": "확인됨: Lightricks/LTX-2.5 공식. 2-stage 정제 패스의 공간 x2 업스케일러."
+  },
+  "latent_upscale_models/ltx-2.5-latent-temporal-upscaler-x2-bf16-1.0.safetensors": {
+    "name": "LTX-2.5 latent temporal upscaler x2 (bf16)",
+    "version": "v1.0 bf16",
+    "base_model": "LTXV 2.5",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/latent_upscale_models/ltx-2.5-latent-temporal-upscaler-x2-bf16-1.0.safetensors",
+    "tags": [
+      "ltx25",
+      "upscaler",
+      "temporal",
+      "latent"
+    ],
+    "note": "확인됨: Lightricks/LTX-2.5 공식. 시간축 x2 업스케일러(프레임 보간, 선택)."
+  },
+  "loras/ltx-2.5-22b-distilled-lora-450-bf16.safetensors": {
+    "name": "LTX-2.5 22B distilled LoRA (450, bf16)",
+    "version": "450 bf16",
+    "base_model": "LTXV 2.5",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/loras/ltx-2.5-22b-distilled-lora-450-bf16.safetensors",
+    "tags": [
+      "ltx25",
+      "lora",
+      "distilled",
+      "speed"
+    ],
+    "note": "확인됨: Lightricks/LTX-2.5 공식. dev transformer에 얹어 distilled 속도를 얻는 LoRA."
+  },
+  "model_patches/ltx-2.5-duration-head-bf16.safetensors": {
+    "name": "LTX-2.5 duration head (bf16)",
+    "version": "bf16",
+    "base_model": "LTXV 2.5",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/model_patches/ltx-2.5-duration-head-bf16.safetensors",
+    "tags": [
+      "ltx25",
+      "duration",
+      "patch"
+    ],
+    "note": "확인됨: Lightricks/LTX-2.5 공식. 자동 길이 예측 head(선택)."
   }
 }

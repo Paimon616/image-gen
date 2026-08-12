@@ -866,6 +866,25 @@ function parseSampler(rawSampler: string, rawScheduler = "") {
   return {};
 }
 
+function ensureModelExtension(value: string) {
+  return /\.(ckpt|pt|pth|safetensors)$/i.test(value) ? value : `${value}.safetensors`;
+}
+
+// ComfyUI images publish the exact checkpoint/unet file that was loaded in
+// `meta.models` (and `meta.Model`), using Windows-style paths. This is the
+// ground truth for which local file to select, so prefer it over the Civitai
+// version's canonical primary file (which can be a different variant).
+function comfyModelFileName(meta: Record<string, unknown>) {
+  const fromModels = Array.isArray(meta.models)
+    ? meta.models.map(stringValue).find(Boolean)
+    : "";
+  const raw = fromModels || stringValue(meta.Model ?? meta.model);
+  if (!raw) return "";
+
+  const base = raw.split(/[\\/]/).pop()?.trim() ?? "";
+  return base ? ensureModelExtension(base) : "";
+}
+
 function parseImportParams(meta: Record<string, unknown>, item: CivitaiImageItem) {
   const modelName = stringValue(meta.Model ?? meta.model ?? meta.ModelName);
   const backendRecommendation = recommendedCivitaiBackend(meta);
@@ -1005,6 +1024,10 @@ export async function POST(req: NextRequest) {
     )
   );
   const checkpoint = resources.find((resource) => resource.type === "checkpoint");
+  if (checkpoint && meta && (meta.comfy || Array.isArray(meta.models))) {
+    const comfyFile = comfyModelFileName(meta);
+    if (comfyFile) checkpoint.fileName = comfyFile;
+  }
   const promptLoraWeights = [
     ...stringValue(meta?.prompt ?? meta?.Prompt).matchAll(
       /<lora:[^:>]+:([-+]?\d*\.?\d+)>/gi

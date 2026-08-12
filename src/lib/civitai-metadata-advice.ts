@@ -15,6 +15,12 @@ interface AdviceInput {
 }
 
 export function recommendedCivitaiBackend(meta: Record<string, unknown>) {
+  // ComfyUI images embed the node graph (`meta.comfy`) and an `engine` marker
+  // instead of a WebUI version string, so detect those explicitly first.
+  if (meta.comfy || /comfyui/i.test(valueText(meta.engine ?? meta.Engine) ?? "")) {
+    return { backend: "comfyui" as const, confirmed: true };
+  }
+
   const backendText = [
     meta.Backend,
     meta.backend,
@@ -22,6 +28,8 @@ export function recommendedCivitaiBackend(meta: Record<string, unknown>) {
     meta.software,
     meta.Generator,
     meta.generator,
+    meta.engine,
+    meta.Engine,
     meta.Version,
     meta.version,
   ]

@@ -11,6 +11,11 @@ export const ANIMA_CLIP_NAME = "qwen_3_06b_base.safetensors";
 export const ANIMA_VAE_NAME = "qwen_image_vae.safetensors";
 export const KREA2_CLIP_NAME = "qwen3vl_4b_fp8_scaled.safetensors";
 export const KREA2_VAE_NAME = "qwen_image_vae.safetensors";
+// The PornMaster Krea2 workflow ships its own stack: an abliterated ("heretic")
+// int8 Qwen3-VL text encoder and the Wan 2.1 VAE. Kept separate from the official
+// Krea 2 files so the "generic" workflow is unaffected.
+export const PORNMASTER_CLIP_NAME = "qwen3-vl-4b-heretic_int8.safetensors";
+export const PORNMASTER_VAE_NAME = "wan_2.1_vae.safetensors";
 
 export interface CheckpointCapabilities {
   clip: boolean;
@@ -49,9 +54,16 @@ export async function modelFileExists(folder: string, modelName: string) {
   }
 }
 
-export async function getMissingRequiredModelFiles(checkpointName: string) {
-  const clipName = isKrea2CheckpointName(checkpointName)
-    ? KREA2_CLIP_NAME
+export async function getMissingRequiredModelFiles(
+  checkpointName: string,
+  krea2Workflow: "generic" | "refined" | "pornmaster" = "generic"
+) {
+  const isKrea2 = isKrea2CheckpointName(checkpointName);
+  const isPornmaster = isKrea2 && krea2Workflow === "pornmaster";
+  const clipName = isKrea2
+    ? isPornmaster
+      ? PORNMASTER_CLIP_NAME
+      : KREA2_CLIP_NAME
     : isAnimaCheckpointName(checkpointName)
       ? ANIMA_CLIP_NAME
       : null;
@@ -60,8 +72,10 @@ export async function getMissingRequiredModelFiles(checkpointName: string) {
     return [];
   }
 
-  const vaeName = isKrea2CheckpointName(checkpointName)
-    ? KREA2_VAE_NAME
+  const vaeName = isKrea2
+    ? isPornmaster
+      ? PORNMASTER_VAE_NAME
+      : KREA2_VAE_NAME
     : ANIMA_VAE_NAME;
   const requiredFiles = [
     {

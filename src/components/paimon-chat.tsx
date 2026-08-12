@@ -264,6 +264,7 @@ export function PaimonChat({
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([INTRO_MESSAGE]);
   const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const previousAttachmentIds = useRef(
     new Set(attachments.map((attachment) => attachment.id))
@@ -345,6 +346,7 @@ export function PaimonChat({
       setMessages((current) => [...current, userMessage]);
       setInput("");
       setLoading(true);
+      setStatus("");
       setError("");
 
       const assistantId = crypto.randomUUID();
@@ -436,7 +438,9 @@ export function PaimonChat({
               ? JSON.parse(dataLine.slice("data:".length).trim())
               : null;
 
-            if (event === "delta" && typeof payload?.text === "string") {
+            if (event === "status" && typeof payload?.message === "string") {
+              setStatus(payload.message);
+            } else if (event === "delta" && typeof payload?.text === "string") {
               streamedText += payload.text;
               appendToAssistant(payload.text);
             } else if (event === "done") {
@@ -450,7 +454,8 @@ export function PaimonChat({
         if (streamError) throw new Error(streamError);
 
         const patch = sanitizePatch(done?.paramsPatch);
-        if (Object.keys(patch).length > 0) {
+        const applied = Object.keys(patch).length > 0;
+        if (applied) {
           onApplyParams(patch);
         }
 
@@ -458,7 +463,9 @@ export function PaimonChat({
           done?.reply ||
           streamedText ||
           done?.attachmentNotice ||
-          "요청을 반영해서 현재 생성 정보를 수정했어요.";
+          (applied
+            ? "요청을 반영해서 현재 생성 정보를 수정했어요."
+            : "이번에는 반영할 내용을 만들지 못했어요. 조금 더 구체적으로 다시 요청해 주세요.");
         setAssistantContent(finalContent);
       } catch (err) {
         // Drop an empty placeholder so a failed turn doesn't leave a blank bubble.
@@ -473,6 +480,7 @@ export function PaimonChat({
         setError(err instanceof Error ? err.message : "파이몬 오류");
       } finally {
         setLoading(false);
+        setStatus("");
       }
     },
     [attachments, compactMessages, loading, onApplyParams, params]
@@ -657,7 +665,7 @@ export function PaimonChat({
             {loading && !isAssistantStreaming && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Loader2 className="size-3 animate-spin" />
-                파이몬이 생각하는 중
+                {status || "파이몬이 생각하는 중"}
               </div>
             )}
             {error && <p className="text-xs text-destructive">{error}</p>}
@@ -678,7 +686,16 @@ export function PaimonChat({
                 placeholder="엘프 여자를 만들어줘"
                 className="max-h-28 min-h-10 resize-none text-sm"
                 onKeyDown={(event) => {
-                  if (event.key === "Enter" && !event.shiftKey) {
+                  // A Korean/Japanese/Chinese IME fires a confirming Enter
+                  // (isComposing / keyCode 229) to commit the last syllable
+                  // before the real submit Enter. Sending on that keystroke
+                  // clears the input mid-composition, so the just-committed
+                  // character reappears in the empty field. Ignore it.
+                  if (
+                    event.key === "Enter" &&
+                    !event.shiftKey &&
+                    !(event.nativeEvent.isComposing || event.keyCode === 229)
+                  ) {
                     event.preventDefault();
                     void sendMessage(input);
                   }

@@ -50,12 +50,14 @@ async function saveBufferedImages({
   endpoint,
   civitaiOrigin,
   workspaceId,
+  workflow,
 }: {
   images: ComfyGeneratedImage[];
   params: GenerationParams;
   endpoint: string;
   civitaiOrigin?: CivitaiOrigin;
   workspaceId?: string;
+  workflow?: unknown;
 }) {
   await ensureOutputDir();
 
@@ -82,6 +84,7 @@ async function saveBufferedImages({
             original_url: img.originalUrl,
             index: i,
             civitai_origin: civitaiOrigin,
+            ...(workflow ? { workflow } : {}),
           },
           null,
           2
@@ -368,6 +371,7 @@ export async function POST(req: NextRequest) {
           endpoint: runpodPod ? `runpod/${runpodPod.label || runpodPod.podId}` : modelConfig.id,
           civitaiOrigin,
           workspaceId,
+          workflow: queued.workflow,
         });
 
         send("progress", { progress: 100, message: "Done" });

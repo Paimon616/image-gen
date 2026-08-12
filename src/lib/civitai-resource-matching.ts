@@ -53,6 +53,10 @@ function normalizeWords(value: string) {
     .filter(Boolean);
 }
 
+function baseName(value: string) {
+  return value.split(/[\\/]/).pop() ?? value;
+}
+
 function assetUrls(asset: LocalModelAsset) {
   return [asset.civitai_url ?? "", asset.source_url ?? ""].filter(Boolean);
 }
@@ -86,6 +90,20 @@ function resourceMatchScore(asset: LocalModelAsset, resource: ImportedCivitaiRes
   const targetWords = normalizeWords(resource.name);
 
   if (urlMatchesCivitaiId(urls, "version", targetVersionId)) return 100;
+
+  // ComfyUI imports carry the exact file that was loaded (resource.fileName).
+  // An exact basename match to a local file is definitive and bypasses the
+  // stricter name+version gating below (which otherwise scores unmatched
+  // versioned resources to 0 and forces a coarse family fallback).
+  const targetFile = normalizeToken(baseName(resource.fileName ?? ""));
+  if (
+    targetFile &&
+    (normalizeToken(baseName(asset.path)) === targetFile ||
+      normalizeToken(asset.name) === targetFile)
+  ) {
+    return 95;
+  }
+
   if (targetHash && candidates.some((candidate) => candidate.includes(targetHash))) {
     return 85;
   }
@@ -213,7 +231,7 @@ export function findMissingCivitaiResources(
     const bucket = resourceBucket(models, resource.type);
     const match =
       findLocalAsset(bucket, resource) ??
-      (resource.type === "checkpoint" && isKrea2Resource(resource)
+      (resource.type === "checkpoint" && !resource.fileName && isKrea2Resource(resource)
         ? bucket.find(
             (asset) =>
               asset.exists !== false &&
@@ -245,9 +263,14 @@ export function reconcileImportedParams(
     if (resource.type === "other") return;
 
     const bucket = resourceBucket(models, resource.type);
+    // When we know the exact file the workflow loaded (resource.fileName, from
+    // the ComfyUI graph / model-version details), never substitute a different
+    // Krea2 checkpoint. Selecting a coarse family match here silently swaps the
+    // model the user actually imported. Fall through to the exact filename
+    // (flagged for download when it is not present locally) instead.
     const match =
       findLocalAsset(bucket, resource) ??
-      (resource.type === "checkpoint" && isKrea2Resource(resource)
+      (resource.type === "checkpoint" && !resource.fileName && isKrea2Resource(resource)
         ? bucket.find(
             (asset) =>
               asset.exists !== false &&

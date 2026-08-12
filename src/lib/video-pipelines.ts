@@ -31,6 +31,34 @@ export interface VideoPipelineDefinition {
   canvas: VideoPipelineCanvasSupport;
   defaults: Record<string, string | number | boolean>;
   controls: VideoPipelineControl[];
+  /**
+   * Optional LoRA loaders spliced into the model graph at generation time. Unlike
+   * `controls` (which only patch values onto nodes already baked into the workflow),
+   * a slot inserts a brand-new LoraLoaderModelOnly node right after the base model
+   * loader and repoints every consumer of that model output through it. When the
+   * slot's select control is left on its `offValue` (or strength 0) nothing is
+   * injected, so the workflow runs byte-for-byte identically to before.
+   */
+  loraSlots?: VideoPipelineLoraSlot[];
+}
+
+export interface VideoPipelineLoraSlot {
+  /** Pipeline-setting key whose value selects the LoRA (equals `offValue` = disabled). */
+  selectKey: string;
+  /** Pipeline-setting key holding the numeric strength_model. */
+  strengthKey: string;
+  /** Select value that means "do not inject" (e.g. "None"). */
+  offValue: string;
+  /** LoRA file name as it lives under ComfyUI/models/loras. */
+  loraName: string;
+  /** Node id of the base model loader whose model output feeds the LoRA/sampler chain. */
+  sourceNodeId: string;
+  /** Output slot of the source node that carries the model (default 0). */
+  sourceOutput?: number;
+  /** Node id assigned to the injected loader — must not collide with the workflow. */
+  injectNodeId: string;
+  /** ComfyUI loader class (default LoraLoaderModelOnly — LTX 2.3 LoRAs are model-only). */
+  loraClass?: string;
 }
 
 // The LTX 2.3 / 10Eros workflows drive size from the reference image resize and
@@ -62,6 +90,64 @@ export interface VideoPipelineControl {
 
 const PROJECT_ROOT = process.cwd();
 const WORKFLOWS_DIR = join(/*turbopackIgnore: true*/ PROJECT_ROOT, "workflows");
+
+// --- Optional "East Asian Facial Fidelity" LoRA (LTX 2.3 I2V) -----------------
+// https://civitai.red/models/2816700 — improves face/eye/jaw consistency of East
+// Asian women during large camera motion. Standard model-only LoRA, no trigger
+// word, recommended strength 1.0. Selectable on every LTX 2.3 pipeline; when the
+// dropdown stays on "None" the pipeline is unchanged.
+//
+// Set this to whatever the file is actually named under ComfyUI/models/loras.
+const FACE_FIDELITY_LORA_FILE = "East_Asian_Facial_Fidelity_LTX23_I2V.safetensors";
+const FACE_FIDELITY_OFF = "None";
+const FACE_FIDELITY_ON = "동아시아 얼굴 충실도 (East Asian Facial Fidelity)";
+
+// Same key names on every pipeline so a user's choice survives pipeline switches.
+const FACE_FIDELITY_SELECT_KEY = "face_fidelity_lora";
+const FACE_FIDELITY_STRENGTH_KEY = "face_fidelity_strength";
+const FACE_FIDELITY_INJECT_NODE_ID = "ff_lora_inject";
+
+function faceFidelityControls(): VideoPipelineControl[] {
+  return [
+    {
+      key: FACE_FIDELITY_SELECT_KEY,
+      label: "Face Fidelity LoRA",
+      type: "select",
+      defaultValue: FACE_FIDELITY_OFF,
+      options: [FACE_FIDELITY_OFF, FACE_FIDELITY_ON],
+      group: "lora",
+      help:
+        "동아시아 여성 얼굴의 형태·눈매·홍채·윤곽 일관성을 높이는 LTX 2.3 I2V용 선택 LoRA입니다. " +
+        "'None'이면 기존과 완전히 동일하게 동작하고, 켜면 모델 로더 직후에 LoRA가 주입돼 모든 pass에 적용됩니다. " +
+        `ComfyUI/models/loras 안에 '${FACE_FIDELITY_LORA_FILE}' 파일이 있어야 합니다(파일명이 다르면 video-pipelines.ts의 FACE_FIDELITY_LORA_FILE 값을 변경하세요).`,
+      patches: [],
+    },
+    {
+      key: FACE_FIDELITY_STRENGTH_KEY,
+      label: "Face LoRA Strength",
+      type: "number",
+      defaultValue: 1,
+      min: 0,
+      max: 1.5,
+      step: 0.05,
+      group: "lora",
+      help: "Face Fidelity LoRA 강도(strength_model)입니다. 모델 카드 권장값은 1.0이며, 0이면 켜져 있어도 주입하지 않습니다(기존과 동일).",
+      patches: [],
+    },
+  ];
+}
+
+function faceFidelitySlot(sourceNodeId: string): VideoPipelineLoraSlot {
+  return {
+    selectKey: FACE_FIDELITY_SELECT_KEY,
+    strengthKey: FACE_FIDELITY_STRENGTH_KEY,
+    offValue: FACE_FIDELITY_OFF,
+    loraName: FACE_FIDELITY_LORA_FILE,
+    sourceNodeId,
+    injectNodeId: FACE_FIDELITY_INJECT_NODE_ID,
+    loraClass: "LoraLoaderModelOnly",
+  };
+}
 
 const SULPHUR_BASE_CONTROLS: VideoPipelineControl[] = [
   {
@@ -176,6 +262,7 @@ const SULPHUR_BASE_CONTROLS: VideoPipelineControl[] = [
     help: "ltx-2.3 distilled LoRA 강도입니다. 빠른 추론 성향을 더하지만 너무 높이면 질감이 단순해질 수 있습니다.",
     patches: [{ nodeId: "49", input: "strength_model" }],
   },
+  ...faceFidelityControls(),
 ];
 
 function sulphurControls(overrides: Record<string, string | number | boolean> = {}) {
@@ -317,9 +404,219 @@ const erosControls: VideoPipelineControl[] = [
     help: "참조 이미지의 긴 변 resize 크기입니다. IC guide용 conditioning 이미지 해상도에 영향을 줍니다.",
     patches: [{ nodeId: "530", input: "resize_type.longer_size" }],
   },
+  ...faceFidelityControls(),
+];
+
+// PornMaster-krea2 (LTX 2.3) I2V+audio workflow reconstructed from the reference
+// video's embedded ComfyUI prompt. Prompt / negative prompt (nodes 536 / 537) and
+// the reference image (node 773 LoadImage) are injected by the generic video params,
+// so they are not exposed here. The distilled multi-weight LoRA strengths
+// (nodes 779-782) and the whole NSFW LoRA stack (node 922, LoraManager) are kept
+// baked exactly as captured so output matches the source video.
+const krea2Controls: VideoPipelineControl[] = [
+  {
+    key: "seed",
+    label: "Seed",
+    type: "number",
+    defaultValue: 133733223221282,
+    min: 0,
+    step: 1,
+    group: "core",
+    help: "node 524 (Seed rgthree) -> RandomNoise. 캡처된 원본 seed가 기본값입니다. 같은 seed·같은 입력이면 원본 영상과 동일하게 재생성되고, 값을 바꾸면 다른 변주가 나옵니다.",
+    patches: [{ nodeId: "524", input: "seed" }],
+  },
+  {
+    key: "length",
+    label: "Length",
+    type: "number",
+    defaultValue: 264,
+    min: 33,
+    max: 361,
+    step: 1,
+    group: "core",
+    help: "node 796 (mxSlider Xi) -> latent length 계산으로 이어지는 총 frame 수입니다. 값이 커질수록 VRAM과 시간이 크게 증가합니다.",
+    patches: [{ nodeId: "796", input: "Xi" }],
+  },
+  {
+    key: "frame_rate",
+    label: "Base FPS",
+    type: "number",
+    defaultValue: 24,
+    min: 8,
+    max: 30,
+    step: 1,
+    group: "core",
+    help: "node 542 (PrimitiveFloat) -> LTXVConditioning frame_rate 및 VHS_VideoCombine frame_rate입니다. frame 수가 같으면 FPS가 높을수록 재생 시간이 짧아집니다.",
+    patches: [{ nodeId: "542", input: "value" }],
+  },
+  {
+    key: "image_guide",
+    label: "Image Guide Strength",
+    type: "number",
+    defaultValue: 0.8,
+    min: 0,
+    max: 1,
+    step: 0.05,
+    group: "conditioning",
+    help: "node 797 (mxSlider Xf) -> LTXVImgToVideoInplaceKJ / LTXVAddGuide strength입니다. 시작 이미지의 형태를 얼마나 강하게 유지할지 결정합니다. 높이면 입력 이미지에 더 충실하고, 낮추면 motion 자유도가 커집니다.",
+    patches: [{ nodeId: "797", input: "Xf" }],
+  },
+  ...faceFidelityControls(),
+];
+
+// LTX-2.5 two-stage distilled I2V (+audio), reconstructed from the official
+// Lightricks/ComfyUI-LTXVideo `2.5/LTX-2.5_T2V_I2V_Two_Stage_Distilled` template.
+// The official template ships as nested ComfyUI subgraphs; it was expanded to a
+// flat API-format prompt via ComfyUI's own graphToPrompt (hence the `5575:xxxx`
+// colon-namespaced node ids). Two changes vs. the raw template make it a clean,
+// deterministic self-hosted I2V:
+//   1. The cloud "Gemma API Text Encode" + local prompt-enhancer branches (which
+//      needed an LTX API key / a second Gemma encoder) were pruned; the positive
+//      and negative CLIPTextEncode nodes are wired straight to the prompt strings.
+//   2. The "use image" boolean (node 5014:5506) is forced true so the image
+//      conditioning is active (the raw template defaults to text-to-video).
+//   3. The transformer loader (node 5575:5569) uses the *distilled* 22B model,
+//      not the dev model the raw template shipped as a placeholder. Per the LTX-2.5
+//      model card the distilled model is the one designed for this workflow's fixed
+//      8-step (+3-step upscale) schedule at CFG=1; the dev model needs far more steps
+//      and produces garbled motion at 8 steps. The video VAE uses the `conv` variant,
+//      which is the decoder architecture ComfyUI's core VAELoader builds for LTX-2.5.
+// The base latent renders at width×height then a second pass runs a latent x2
+// upscaler + re-sample, so 960×544 outputs ~1920×1088. Audio is decoded through
+// the LTXV audio VAE and muxed by the CreateVideo node, so the clip carries sound.
+// Official constraints (LTX-2.5 model card): frame count must be 8n+1 (the duration
+// formula guarantees this) and width/height must be divisible by 32.
+const ltx25I2vControls: VideoPipelineControl[] = [
+  {
+    key: "seed",
+    label: "Seed",
+    type: "number",
+    defaultValue: 43,
+    min: 0,
+    step: 1,
+    group: "core",
+    help: "두 pass의 RandomNoise seed(node 5516:4832 / 5517:4967)입니다. 같은 seed·같은 입력이면 동일하게 재생성되고, 값을 바꾸면 다른 변주가 나옵니다.",
+    patches: [
+      { nodeId: "5516:4832", input: "noise_seed" },
+      { nodeId: "5517:4967", input: "noise_seed" },
+    ],
+  },
+  {
+    key: "duration_seconds",
+    label: "Duration (sec)",
+    type: "number",
+    defaultValue: 5,
+    min: 1,
+    max: 20,
+    step: 1,
+    group: "core",
+    help: "생성할 영상 길이(초)입니다. node 5512 → 프레임 수 = 1 + floor(fps×초/8)×8(항상 8n+1)로 환산됩니다. LTX-2.5 공식 권장 범위는 6~20초입니다. 길수록 VRAM과 시간이 크게 증가합니다.",
+    patches: [{ nodeId: "5512", input: "value" }],
+  },
+  {
+    key: "fps",
+    label: "FPS",
+    type: "number",
+    defaultValue: 24,
+    min: 8,
+    max: 60,
+    step: 1,
+    group: "core",
+    help: "재생 프레임레이트(node 5511)입니다. 오디오 latent·CreateVideo·프레임 수 계산에 함께 쓰입니다. 초가 같으면 FPS가 높을수록 프레임 수가 늘어납니다.",
+    patches: [{ nodeId: "5511", input: "value" }],
+  },
+  {
+    key: "width",
+    label: "Base Width",
+    type: "number",
+    defaultValue: 960,
+    min: 512,
+    max: 1280,
+    step: 32,
+    group: "resize",
+    help: "1차 pass의 기본 latent 가로(node 5514:3059)입니다. 2차 pass에서 x2 업스케일되어 최종은 약 2배가 됩니다. 32의 배수여야 하며, 입력 이미지의 가로세로비에 맞추면 왜곡이 줄어듭니다.",
+    patches: [{ nodeId: "5514:3059", input: "width" }],
+  },
+  {
+    key: "height",
+    label: "Base Height",
+    type: "number",
+    defaultValue: 544,
+    min: 512,
+    max: 1280,
+    step: 32,
+    group: "resize",
+    help: "1차 pass의 기본 latent 세로(node 5514:3059)입니다. 32의 배수여야 합니다. 최종 해상도는 2차 x2 업스케일 후 값의 약 2배입니다.",
+    patches: [{ nodeId: "5514:3059", input: "height" }],
+  },
+  {
+    key: "image_conditioning_size",
+    label: "Image Cond. Longer Side",
+    type: "number",
+    defaultValue: 1536,
+    min: 768,
+    max: 2048,
+    step: 64,
+    group: "resize",
+    help: "시작 이미지를 conditioning용으로 resize하는 긴 변 크기(node 5014:4990)입니다. 높이면 시작 이미지의 디테일이 더 잘 보존되지만 VRAM이 늘 수 있습니다.",
+    patches: [{ nodeId: "5014:4990", input: "resize_type.longer_size" }],
+  },
+  {
+    key: "image_guide",
+    label: "Image Guide Strength",
+    type: "number",
+    defaultValue: 0.7,
+    min: 0,
+    max: 1,
+    step: 0.05,
+    group: "conditioning",
+    help: "1차 pass의 이미지 conditioning 강도(node 5514:3159)입니다. 시작 이미지의 형태를 얼마나 강하게 유지할지 결정합니다. 높이면 입력에 더 충실하고, 낮추면 motion 자유도가 커집니다.",
+    patches: [{ nodeId: "5514:3159", input: "strength" }],
+  },
+  {
+    key: "cfg",
+    label: "CFG",
+    type: "number",
+    defaultValue: 1,
+    min: 1,
+    max: 8,
+    step: 0.1,
+    group: "conditioning",
+    help: "두 pass의 CFGGuider 값(node 5516:4828 / 5517:4964)입니다. LTX-2.5 distilled 모델은 8-step 고정 스케줄에서 CFG=1로 동작하도록 설계됐으니 1로 두는 것을 강력히 권장합니다. 올리면 distilled 특성상 artifact·과장된 motion이 늘 수 있습니다.",
+    patches: [
+      { nodeId: "5516:4828", input: "cfg" },
+      { nodeId: "5517:4964", input: "cfg" },
+    ],
+  },
+  {
+    key: "upscale_image_guide",
+    label: "Upscale Image Guide",
+    type: "number",
+    defaultValue: 1,
+    min: 0,
+    max: 1,
+    step: 0.05,
+    group: "advanced",
+    help: "2차(업스케일) pass의 이미지 conditioning 강도(node 5517:4970)입니다. 기본 1.0이며, 낮추면 업스케일 pass가 원본 형태에서 더 자유롭게 재생성합니다.",
+    patches: [{ nodeId: "5517:4970", input: "strength" }],
+  },
 ];
 
 const BUILTIN_VIDEO_PIPELINES: VideoPipelineDefinition[] = [
+  {
+    id: "ltx25-i2v-two-stage",
+    label: "LTX-2.5 - I2V (two-stage, high quality)",
+    description:
+      "공식 Lightricks LTX-2.5 이미지→비디오 2-stage distilled 워크플로우(bf16). 1차 생성 후 latent x2 업스케일 + 재샘플로 고해상도(예: 960×544 → ~1920×1088), 오디오까지 함께 생성됩니다. bf16 기준 80GB급 GPU 권장.",
+    workflowPath: "workflows/ltx25-i2v-two-stage.json",
+    mode: "i2v",
+    // CreateVideo (node 5518:4849) muxes the LTXV-audio-VAE output into the file,
+    // so every clip carries generated sound; the separate sound toggle is moot.
+    embedsAudio: true,
+    canvas: NO_CANVAS_SUPPORT,
+    defaults: defaultsFromControls(ltx25I2vControls),
+    controls: ltx25I2vControls,
+  },
   {
     id: "sulphur-ltx23-i2v-distilled-fast",
     label: "Sulphur LTX 2.3 - I2V (distilled, fast)",
@@ -330,6 +627,7 @@ const BUILTIN_VIDEO_PIPELINES: VideoPipelineDefinition[] = [
     canvas: NO_CANVAS_SUPPORT,
     defaults: defaultsFromControls(sulphurI2vDistilledControls),
     controls: sulphurI2vDistilledControls,
+    loraSlots: [faceFidelitySlot("44")],
   },
   {
     id: "sulphur-ltx23-i2v-base-high-quality",
@@ -341,6 +639,7 @@ const BUILTIN_VIDEO_PIPELINES: VideoPipelineDefinition[] = [
     canvas: NO_CANVAS_SUPPORT,
     defaults: defaultsFromControls(sulphurI2vBaseControls),
     controls: sulphurI2vBaseControls,
+    loraSlots: [faceFidelitySlot("44")],
   },
   {
     id: "sulphur-ltx23-t2v-distilled-fast",
@@ -352,6 +651,7 @@ const BUILTIN_VIDEO_PIPELINES: VideoPipelineDefinition[] = [
     canvas: NO_CANVAS_SUPPORT,
     defaults: defaultsFromControls(sulphurT2vDistilledControls),
     controls: sulphurT2vDistilledControls,
+    loraSlots: [faceFidelitySlot("44")],
   },
   {
     id: "sulphur-ltx23-t2v-base-high-quality",
@@ -363,6 +663,7 @@ const BUILTIN_VIDEO_PIPELINES: VideoPipelineDefinition[] = [
     canvas: NO_CANVAS_SUPPORT,
     defaults: defaultsFromControls(sulphurT2vBaseControls),
     controls: sulphurT2vBaseControls,
+    loraSlots: [faceFidelitySlot("44")],
   },
   {
     id: "10eros-i2v-triple-pass",
@@ -377,6 +678,23 @@ const BUILTIN_VIDEO_PIPELINES: VideoPipelineDefinition[] = [
     canvas: NO_CANVAS_SUPPORT,
     defaults: defaultsFromControls(erosControls),
     controls: erosControls,
+    loraSlots: [faceFidelitySlot("646")],
+  },
+  {
+    id: "krea2-pornmaster-ltx23-i2v",
+    label: "PornMaster-krea2 (LTX 2.3) - I2V + audio",
+    description:
+      "RunPod Video reconstruction of the PornMaster-krea2 LTX 2.3 image-to-video workflow (baked NSFW LoRA stack, two-pass upscale + RTX super resolution).",
+    workflowPath: "workflows/krea2-pornmaster-ltx23-i2v.json",
+    mode: "i2v",
+    experimental: true,
+    // Decodes audio through the LTXV audio VAE and muxes it into the final
+    // VHS_VideoCombine output (node 597), so the video always carries sound.
+    embedsAudio: true,
+    canvas: NO_CANVAS_SUPPORT,
+    defaults: defaultsFromControls(krea2Controls),
+    controls: krea2Controls,
+    loraSlots: [faceFidelitySlot("810:646")],
   },
 ];
 

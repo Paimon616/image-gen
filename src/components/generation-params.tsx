@@ -360,6 +360,36 @@ export function GenerationParams({ section = "output" }: {
             Pose Reference requires the ComfyUI backend.
           </p>
         )}
+        {params.backend === "comfyui" && (
+          <div className="mt-3">
+            <FieldHelp
+              className="mb-2"
+              label={ko ? "Krea 워크플로우" : "Krea workflow"}
+              help={
+                ko
+                  ? "Krea 2 체크포인트에만 적용됩니다. 범용은 앱 표준 단일 패스 KSampler, 범용 리파인은 범용에 저-denoise 2번째 KSampler 패스를 더해 Turbo 특유의 노이즈를 정리합니다(스톡 노드만 사용, RES4LYF 불필요). PornMaster는 원본 RES4LYF 2단 샘플러(ClownsharKSampler) 재현이며 ComfyUI에 RES4LYF 노드가 설치돼 있어야 합니다."
+                  : "Applies to Krea 2 checkpoints only. Generic uses the app's standard single-pass KSampler; Generic Refined adds a low-denoise second KSampler pass to clean up turbo grain (stock nodes only, no RES4LYF); PornMaster reproduces the original RES4LYF 2-stage sampler (ClownsharKSampler) and requires the RES4LYF nodes installed in ComfyUI."
+              }
+            />
+            <select
+              value={params.krea2_workflow}
+              onChange={(e) =>
+                setParams({
+                  krea2_workflow: e.target.value as "generic" | "refined" | "pornmaster",
+                })
+              }
+              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            >
+              <option value="generic">{ko ? "범용 (표준 KSampler)" : "Generic (standard KSampler)"}</option>
+              <option value="refined">
+                {ko ? "범용 리파인 (2단계, RES4LYF 불필요)" : "Generic Refined (2-stage, no RES4LYF)"}
+              </option>
+              <option value="pornmaster">
+                {ko ? "커스텀 Krea PornMaster (RES4LYF 2단)" : "Custom Krea PornMaster (RES4LYF 2-stage)"}
+              </option>
+            </select>
+          </div>
+        )}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">

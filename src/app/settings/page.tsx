@@ -42,8 +42,11 @@ export default function SettingsPage() {
   const language = useStore((state) => state.language);
   const ko = language === "ko";
   const [civitaiApiKey, setCivitaiApiKey] = useState("");
+  const [huggingfaceApiKey, setHuggingfaceApiKey] = useState("");
   const [runpodApiKey, setRunpodApiKey] = useState("");
   const [civitaiApiKeyConfigured, setCivitaiApiKeyConfigured] = useState(false);
+  const [huggingfaceApiKeyConfigured, setHuggingfaceApiKeyConfigured] =
+    useState(false);
   const [runpodApiKeyConfigured, setRunpodApiKeyConfigured] = useState(false);
   const [runpodPods, setRunpodPods] = useState<RunpodPodForm[]>([]);
   const [loadError, setLoadError] = useState("");
@@ -70,6 +73,7 @@ export default function SettingsPage() {
       .then((res) => res.json())
       .then((data) => {
         setCivitaiApiKeyConfigured(Boolean(data.civitaiApiKeyConfigured));
+        setHuggingfaceApiKeyConfigured(Boolean(data.huggingfaceApiKeyConfigured));
         setRunpodApiKeyConfigured(Boolean(data.runpodApiKeyConfigured));
         setRunpodPods(normalizePods(data.runpodPods));
       })
@@ -107,15 +111,22 @@ export default function SettingsPage() {
       const response = await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ civitaiApiKey, runpodApiKey, runpodPods }),
+        body: JSON.stringify({
+          civitaiApiKey,
+          huggingfaceApiKey,
+          runpodApiKey,
+          runpodPods,
+        }),
       });
       if (!response.ok) throw new Error("Save failed");
       const data = await response.json();
       setCivitaiApiKeyConfigured(Boolean(data.civitaiApiKeyConfigured));
+      setHuggingfaceApiKeyConfigured(Boolean(data.huggingfaceApiKeyConfigured));
       setRunpodApiKeyConfigured(Boolean(data.runpodApiKeyConfigured));
       setRunpodPods(normalizePods(data.runpodPods));
       if (scope === "keys") {
         setCivitaiApiKey("");
+        setHuggingfaceApiKey("");
         setRunpodApiKey("");
       }
       setSavedScope(scope);
@@ -273,6 +284,28 @@ export default function SettingsPage() {
                   onChange={(event) => setCivitaiApiKey(event.target.value)}
                   placeholder={ko ? "새 Civitai API key" : "New Civitai API key"}
                 />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="huggingface-api-key">HuggingFace Token</Label>
+                  <StatusBadge
+                    configured={huggingfaceApiKeyConfigured}
+                    savedLabel={savedLabel}
+                    notSetLabel={ko ? "미설정" : "Not set"}
+                  />
+                </div>
+                <Input
+                  id="huggingface-api-key"
+                  type="password"
+                  value={huggingfaceApiKey}
+                  onChange={(event) => setHuggingfaceApiKey(event.target.value)}
+                  placeholder={ko ? "새 HuggingFace 토큰 (hf_...)" : "New HuggingFace token (hf_...)"}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {ko
+                    ? "게이트 저장소(예: Lightricks/LTX-2.5) 모델 다운로드에 필요합니다. HuggingFace에서 해당 모델 약관에 먼저 동의한 계정의 read 토큰을 입력하세요."
+                    : "Needed to download gated repos (e.g. Lightricks/LTX-2.5). Use a read token from an account that has accepted the model's terms on HuggingFace."}
+                </p>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">

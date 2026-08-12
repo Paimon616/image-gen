@@ -12,12 +12,15 @@ import {
   ANIMA_VAE_NAME,
   KREA2_CLIP_NAME,
   KREA2_VAE_NAME,
+  PORNMASTER_CLIP_NAME,
+  PORNMASTER_VAE_NAME,
   getCheckpointCapabilities,
   getMissingRequiredModelFiles,
   isAnimaCheckpointName,
   isKrea2CheckpointName,
 } from "./comfyui-model-files";
 import { normalizeGenerationSeed } from "./types";
+import type { VideoPipelineLoraSlot } from "./video-pipelines";
 import { resolveVideoPipeline, resolveVideoWorkflowPath } from "./video-pipelines";
 
 const DEFAULT_COMFYUI_URL = "http://127.0.0.1:8188";
@@ -689,8 +692,18 @@ async function buildAnimaWorkflow(params: GenerationParams, checkpoint: string) 
   return workflow;
 }
 
-async function assertKrea2SupportFiles(checkpoint: string) {
-  const missing = await getMissingRequiredModelFiles(checkpoint);
+async function assertKrea2SupportFiles(
+  checkpoint: string,
+  krea2Workflow: "generic" | "refined" | "pornmaster" = "generic",
+  options?: ComfyClientOptions
+) {
+  // Support files live on whichever ComfyUI runs the job. When building for a
+  // remote pod (options.baseUrl set), the files are on the pod — presence is
+  // verified separately by checkRunpodGenerationFiles — so a local-only gap must
+  // not block the build. Only check the local filesystem for local generation.
+  if (options?.baseUrl) return;
+
+  const missing = await getMissingRequiredModelFiles(checkpoint, krea2Workflow);
 
   if (missing.length > 0) {
     throw new Error(
@@ -699,8 +712,12 @@ async function assertKrea2SupportFiles(checkpoint: string) {
   }
 }
 
-async function buildKrea2Workflow(params: GenerationParams, checkpoint: string) {
-  await assertKrea2SupportFiles(checkpoint);
+async function buildKrea2Workflow(
+  params: GenerationParams,
+  checkpoint: string,
+  options?: ComfyClientOptions
+) {
+  await assertKrea2SupportFiles(checkpoint, "generic", options);
 
   const loras = cleanLoras(params.loras);
   const vaeName = (await resolveAvailableVaeName(params.vae_name)) || KREA2_VAE_NAME;
@@ -826,10 +843,38 @@ async function buildKrea2Workflow(params: GenerationParams, checkpoint: string) 
       latent_image: latentRef,
     },
   };
+
+  // "refined" variant: a low-denoise second pass on the base latent. Krea 2 Turbo is
+  // distilled and a single short euler/simple pass tends to leave residual grain. The
+  // key to actually removing that grain (rather than just re-rolling it) is switching
+  // the refine pass to a higher-order multistep solver — dpmpp_2m + karras — which is
+  // the stock-node stand-in for the PornMaster recipe's res_4s/kl_optimal refinement.
+  // Same-solver refining (euler again) barely moves the noise, so we intentionally use
+  // a different, smoother sampler here. Stock nodes only — no RES4LYF on the pod.
+  let sampledLatentRef: [string, number] = ["5", 0];
+  if (params.krea2_workflow === "refined") {
+    workflow["50"] = {
+      class_type: "KSampler",
+      inputs: {
+        seed,
+        steps: Math.max(6, Math.round(Number(params.num_inference_steps) || 8)),
+        cfg,
+        sampler_name: "dpmpp_2m",
+        scheduler: "karras",
+        denoise: 0.35,
+        model: modelRef,
+        positive: ["2", 0],
+        negative: ["3", 0],
+        latent_image: ["5", 0],
+      },
+    };
+    sampledLatentRef = ["50", 0];
+  }
+
   workflow["6"] = {
     class_type: "VAEDecode",
     inputs: {
-      samples: ["5", 0],
+      samples: sampledLatentRef,
       vae: vaeRef,
     },
   };
@@ -892,11 +937,285 @@ async function buildKrea2Workflow(params: GenerationParams, checkpoint: string) 
   return workflow;
 }
 
-async function buildDefaultWorkflow(params: GenerationParams) {
+// --- Krea 2 "PornMaster" RES4LYF workflow -----------------------------------
+// A faithful reproduction of the PornMaster Krea2 Turbo T2I workflow, which
+// samples in two ClownsharKSampler_Beta stages (a base pass + a low-denoise
+// refinement) from the RES4LYF custom node pack. Because that node's widget set
+// varies by version, we introspect the live /object_info schema and populate
+// inputs by name, snapping combo values to valid options and filling any
+// remaining required widget from its schema default so /prompt always validates.
+
+async function getComfyObjectInfoEntry(
+  classType: string,
+  options?: ComfyClientOptions
+): Promise<ComfyObjectInfo | null> {
+  try {
+    const res = await comfyFetch(
+      "/object_info/" + encodeURIComponent(classType),
+      undefined,
+      options
+    );
+    const data = (await res.json()) as Record<string, ComfyObjectInfo>;
+    return data[classType] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function comfyInputComboOptions(spec: unknown): string[] {
+  if (!Array.isArray(spec)) return [];
+
+  // Older ComfyUI: [[...options], config?]. Newer: ["COMBO", { options: [...] }].
+  if (Array.isArray(spec[0])) {
+    return spec[0].filter((item: unknown): item is string => typeof item === "string");
+  }
+
+  const config = spec[1];
+  if (
+    spec[0] === "COMBO" &&
+    config &&
+    typeof config === "object" &&
+    !Array.isArray(config) &&
+    "options" in config &&
+    Array.isArray((config as { options: unknown[] }).options)
+  ) {
+    return (config as { options: unknown[] }).options.filter(
+      (item: unknown): item is string => typeof item === "string"
+    );
+  }
+
+  return [];
+}
+
+function comfyInputDefault(spec: unknown): unknown {
+  if (!Array.isArray(spec)) return undefined;
+
+  const type = spec[0];
+  const config = spec[1];
+  if (config && typeof config === "object" && !Array.isArray(config) && "default" in config) {
+    return (config as { default: unknown }).default;
+  }
+
+  const combo = comfyInputComboOptions(spec);
+  if (combo.length) return combo[0];
+  if (type === "INT" || type === "FLOAT") return 0;
+  if (type === "BOOLEAN") return false;
+  if (type === "STRING") return "";
+  return undefined;
+}
+
+function pickComfyCombo(spec: unknown, desired: string): string {
+  const options = comfyInputComboOptions(spec);
+  if (options.includes(desired)) return desired;
+  const fallback = comfyInputDefault(spec);
+  if (typeof fallback === "string" && options.includes(fallback)) return fallback;
+  return options[0] ?? desired;
+}
+
+function buildClownsharkNode(
+  specs: Record<string, unknown>,
+  required: Record<string, unknown>,
+  wiring: Record<string, [string, number]>,
+  overrides: Record<string, unknown>
+) {
+  const inputs: Record<string, unknown> = { ...wiring };
+
+  for (const [name, value] of Object.entries(overrides)) {
+    if (!(name in specs) || name in wiring) continue;
+    inputs[name] =
+      typeof value === "string" && comfyInputComboOptions(specs[name]).length
+        ? pickComfyCombo(specs[name], value)
+        : value;
+  }
+
+  // Every required widget must be present for /prompt to validate.
+  for (const [name, spec] of Object.entries(required)) {
+    if (name in inputs) continue;
+    const fallback = comfyInputDefault(spec);
+    if (fallback !== undefined) inputs[name] = fallback;
+  }
+
+  return { class_type: "ClownsharKSampler_Beta", inputs };
+}
+
+async function buildKrea2PornmasterWorkflow(
+  params: GenerationParams,
+  checkpoint: string,
+  options?: ComfyClientOptions
+) {
+  await assertKrea2SupportFiles(checkpoint, "pornmaster", options);
+
+  const clownInfo = await getComfyObjectInfoEntry("ClownsharKSampler_Beta", options);
+  const required = clownInfo?.input?.required as Record<string, unknown> | undefined;
+  if (!required) {
+    throw new Error(
+      "커스텀 Krea PornMaster 워크플로우에는 RES4LYF 커스텀 노드(ClownsharKSampler_Beta)가 필요합니다. " +
+        "ComfyUI Manager에서 'RES4LYF'를 설치한 뒤 다시 시도하거나, 생성 백엔드에서 'Krea 워크플로우 → 범용'을 선택하세요. " +
+        "(The custom Krea PornMaster workflow requires the RES4LYF nodes — install 'RES4LYF' via ComfyUI Manager, or switch the Krea workflow to Generic.)"
+    );
+  }
+  const optional =
+    (clownInfo?.input as { optional?: Record<string, unknown> } | undefined)?.optional ?? {};
+  const specs: Record<string, unknown> = { ...optional, ...required };
+
+  const loras = cleanLoras(params.loras);
+  // Faithful to the original: the abliterated int8 Qwen3-VL text encoder and the
+  // Wan 2.1 VAE. The VAE stays overridable from the UI VAE picker.
+  const vaeName = (await resolveAvailableVaeName(params.vae_name)) || PORNMASTER_VAE_NAME;
+  const seed = normalizeGenerationSeed(params.seed);
+
+  const workflow: Record<string, unknown> = {
+    "1": {
+      class_type: "UNETLoader",
+      inputs: { unet_name: checkpoint, weight_dtype: "default" },
+    },
+    "8": {
+      class_type: "CLIPLoader",
+      inputs: { clip_name: PORNMASTER_CLIP_NAME, type: "krea2", device: "default" },
+    },
+    "9": {
+      class_type: "VAELoader",
+      inputs: { vae_name: vaeName },
+    },
+  };
+
+  let modelRef: [string, number] = ["1", 0];
+  const clipRef: [string, number] = ["8", 0];
+  const vaeRef: [string, number] = ["9", 0];
+
+  // Krea 2 LoRAs are diffusion-model-only (no CLIP side).
+  loras.forEach((lora, index) => {
+    const nodeId = String(10 + index);
+    workflow[nodeId] = {
+      class_type: "LoraLoaderModelOnly",
+      inputs: {
+        lora_name: lora.path,
+        strength_model: lora.scale,
+        model: modelRef,
+      },
+    };
+    modelRef = [nodeId, 0];
+  });
+
+  workflow["2"] = {
+    class_type: "CLIPTextEncode",
+    inputs: {
+      text: withEmbeddingTokens(params.prompt, params.embeddings),
+      clip: clipRef,
+    },
+  };
+  // Turbo default: the negative is a zeroed-out copy of the positive conditioning
+  // (the distilled model runs at cfg 1, so an authored negative prompt is inert).
+  workflow["3"] = {
+    class_type: "ConditioningZeroOut",
+    inputs: { conditioning: ["2", 0] },
+  };
+
+  let latentRef: [string, number] = ["4", 0];
+  let baseDenoise = 1;
+
+  if (params.generation_mode === "image_to_image" && params.source_image) {
+    const sourceImage = await resolveControlNetImage(params.source_image, options);
+    workflow["4"] = {
+      class_type: "LoadImage",
+      inputs: { image: sourceImage },
+    };
+    workflow["22"] = {
+      class_type: "ImageScale",
+      inputs: {
+        image: ["4", 0],
+        upscale_method: "lanczos",
+        width: generationDimension(params.width, Number(params.hires_upscale)),
+        height: generationDimension(params.height, Number(params.hires_upscale)),
+        crop: "center",
+      },
+    };
+    workflow["23"] = {
+      class_type: "VAEEncode",
+      inputs: { pixels: ["22", 0], vae: vaeRef },
+    };
+    latentRef = ["23", 0];
+    baseDenoise = clampDenoiseStrength(params.denoise_strength);
+  } else {
+    workflow["4"] = {
+      class_type: "EmptyLatentImage",
+      inputs: {
+        width: generationDimension(params.width, Number(params.hires_upscale)),
+        height: generationDimension(params.height, Number(params.hires_upscale)),
+        batch_size: Math.min(Math.max(Number(params.num_images) || 1, 1), 4),
+      },
+    };
+  }
+
+  const baseSteps = Math.max(1, Math.round(Number(params.num_inference_steps) || 6));
+
+  // Stage 1 — base pass (euler / beta).
+  workflow["5"] = buildClownsharkNode(
+    specs,
+    required,
+    { model: modelRef, positive: ["2", 0], negative: ["3", 0], latent_image: latentRef },
+    {
+      seed,
+      steps: baseSteps,
+      cfg: 1,
+      sampler_name: "linear/euler",
+      scheduler: "beta",
+      denoise: baseDenoise,
+      eta: 0.5,
+    }
+  );
+  // Stage 2 — low-denoise refinement (res_4s munthe-kaas / kl_optimal).
+  workflow["6"] = buildClownsharkNode(
+    specs,
+    required,
+    { model: modelRef, positive: ["2", 0], negative: ["3", 0], latent_image: ["5", 0] },
+    {
+      seed,
+      steps: 2,
+      cfg: 1,
+      sampler_name: "exponential/res_4s_munthe-kaas",
+      scheduler: "kl_optimal",
+      denoise: 0.25,
+      eta: 0.5,
+    }
+  );
+
+  workflow["7"] = {
+    class_type: "VAEDecode",
+    inputs: { samples: ["6", 0], vae: vaeRef },
+  };
+
+  let saveImageRef: [string, number] = ["7", 0];
+  saveImageRef = addFaceDetailerWorkflowNode(
+    workflow,
+    params,
+    saveImageRef,
+    modelRef,
+    clipRef,
+    vaeRef,
+    ["2", 0],
+    ["3", 0],
+    seed
+  );
+
+  workflow["27"] = {
+    class_type: "SaveImage",
+    inputs: {
+      filename_prefix: "image-gen-krea2-pornmaster",
+      images: saveImageRef,
+    },
+  };
+
+  return workflow;
+}
+
+async function buildDefaultWorkflow(params: GenerationParams, options?: ComfyClientOptions) {
   const checkpoint = params.model_name.trim() || "sd_xl_base_1.0.safetensors";
 
   if (isKrea2CheckpointName(checkpoint)) {
-    return buildKrea2Workflow(params, checkpoint);
+    return params.krea2_workflow === "pornmaster"
+      ? buildKrea2PornmasterWorkflow(params, checkpoint, options)
+      : buildKrea2Workflow(params, checkpoint, options);
   }
 
   const checkpointCapabilities = await getCheckpointCapabilities(checkpoint);
@@ -1237,8 +1556,11 @@ export async function queueComfyPrompt(
     );
   }
   await releaseWebUiMemory();
-  const prompt = await buildDefaultWorkflow(params);
-  return queueComfyWorkflow(prompt, clientId, options);
+  const prompt = await buildDefaultWorkflow(params, options);
+  const queued = await queueComfyWorkflow(prompt, clientId, options);
+  // Surface the exact API-format graph we submitted so callers can persist it
+  // alongside the image (shown in the detail modal's ComfyUI workflow panel).
+  return { ...queued, workflow: prompt };
 }
 
 async function getHistory(promptId: string, options?: ComfyClientOptions) {
@@ -1740,10 +2062,21 @@ function applyVideoParamsToWorkflow(
     const inputs = record.inputs;
     if (!inputs) continue;
 
-    if (classType === "PrimitiveStringMultiline" && /prompt/i.test(title)) {
-      inputs.value = params.prompt;
-      patchedPositiveText = true;
-      continue;
+    if (classType === "PrimitiveStringMultiline") {
+      // A node titled with "negative" carries the negative prompt; check it first
+      // so workflows with separate "Prompt (positive)"/"Prompt (negative)" string
+      // nodes (e.g. LTX-2.5) route each side correctly instead of both getting the
+      // positive text. Any other prompt-titled string node stays the positive one.
+      if (/negative/i.test(title) && !patchedNegativeText) {
+        inputs.value = params.negative_prompt;
+        patchedNegativeText = true;
+        continue;
+      }
+      if (/prompt/i.test(title) && !patchedPositiveText) {
+        inputs.value = params.prompt;
+        patchedPositiveText = true;
+        continue;
+      }
     }
 
     if (classType === "CLIPTextEncode" && typeof inputs.text === "string") {
@@ -1816,7 +2149,66 @@ function applyVideoPipelineSettingsToWorkflow(
     }
   }
 
+  for (const slot of pipeline.loraSlots ?? []) {
+    injectVideoPipelineLora(workflow, slot, settings);
+  }
+
   return workflow;
+}
+
+// Splice an optional LoRA loader into a video workflow's model graph. Unlike the
+// value patches above, this inserts a new node between the base model loader and
+// everything that reads its model output, so the LoRA affects every sampling pass.
+// When the slot's select value is the off-value (or strength is 0) the workflow is
+// left untouched and runs identically to before.
+function injectVideoPipelineLora(
+  workflow: Record<string, unknown>,
+  slot: VideoPipelineLoraSlot,
+  settings: Record<string, string | number | boolean>
+) {
+  const selected = String(settings[slot.selectKey] ?? "").trim();
+  if (!selected || selected === slot.offValue) return;
+
+  const rawStrength = Number(settings[slot.strengthKey]);
+  const strength = Number.isFinite(rawStrength) ? rawStrength : 1;
+  if (strength === 0) return;
+
+  const sourceOutput = slot.sourceOutput ?? 0;
+
+  // The source node must exist, or we would inject a dangling model edge.
+  const sourceNode = workflow[slot.sourceNodeId];
+  if (!sourceNode || typeof sourceNode !== "object" || Array.isArray(sourceNode)) {
+    return;
+  }
+
+  // Repoint every consumer of [sourceNodeId, sourceOutput] to the injected loader.
+  // Only the model edge (that exact output index) is rewired; clip/vae edges from
+  // the same loader keep their original slot indices and are untouched.
+  for (const [nodeId, node] of Object.entries(workflow)) {
+    if (nodeId === slot.injectNodeId) continue;
+    if (!node || typeof node !== "object" || Array.isArray(node)) continue;
+    const inputs = (node as { inputs?: Record<string, unknown> }).inputs;
+    if (!inputs) continue;
+    for (const [key, value] of Object.entries(inputs)) {
+      if (
+        Array.isArray(value) &&
+        value.length === 2 &&
+        String(value[0]) === slot.sourceNodeId &&
+        Number(value[1]) === sourceOutput
+      ) {
+        inputs[key] = [slot.injectNodeId, 0];
+      }
+    }
+  }
+
+  workflow[slot.injectNodeId] = {
+    class_type: slot.loraClass ?? "LoraLoaderModelOnly",
+    inputs: {
+      lora_name: slot.loraName,
+      strength_model: strength,
+      model: [slot.sourceNodeId, sourceOutput],
+    },
+  };
 }
 
 async function loadWorkflowFromEnv(
@@ -2042,8 +2434,9 @@ async function buildInterrogateWorkflow({
 export async function generateWithComfyUI(params: GenerationParams) {
   const queued = await queueComfyPrompt(params);
   const imageRefs = await waitForComfyImageRefs(queued.prompt_id);
+  const images = await fetchComfyImages(imageRefs);
 
-  return fetchComfyImages(imageRefs);
+  return { images, workflow: queued.workflow };
 }
 function normalizeHistoryText(value: string[] | string | undefined) {
   if (Array.isArray(value)) {

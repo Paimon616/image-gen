@@ -53,6 +53,12 @@ export interface GenerationParams {
   scheduler: string;
   clip_skip: number;
   vae_name: string;
+  // ComfyUI Krea 2 build variant. "generic" = the app's standard single-pass KSampler
+  // recipe; "refined" = generic + a low-denoise 2nd KSampler pass (stock nodes only, no
+  // RES4LYF) that cleans up the residual grain turbo checkpoints leave behind;
+  // "pornmaster" = faithful RES4LYF 2-stage ClownsharKSampler recipe from the PornMaster
+  // Krea2 Turbo workflow. Only consulted for Krea 2 checkpoints on ComfyUI.
+  krea2_workflow: "generic" | "refined" | "pornmaster";
   upscale_model_name: string;
   hires_upscale: number;
   hires_steps: number;
@@ -314,6 +320,7 @@ export const DEFAULT_PARAMS: GenerationParams = {
   scheduler: "karras",
   clip_skip: 1,
   vae_name: "",
+  krea2_workflow: "generic",
   upscale_model_name: "",
   hires_upscale: 1,
   hires_steps: 12,

@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 function publicSettings(settings: AppSettings) {
   return {
     civitaiApiKeyConfigured: Boolean(settings.civitaiApiKey),
+    huggingfaceApiKeyConfigured: Boolean(settings.huggingfaceApiKey),
     runpodApiKeyConfigured: Boolean(settings.runpodApiKey),
     runpodPods: settings.runpodPods,
   };
@@ -25,6 +26,10 @@ export async function PUT(req: Request) {
       typeof body.civitaiApiKey === "string" && body.civitaiApiKey.trim()
         ? body.civitaiApiKey
         : current.civitaiApiKey,
+    huggingfaceApiKey:
+      typeof body.huggingfaceApiKey === "string" && body.huggingfaceApiKey.trim()
+        ? body.huggingfaceApiKey
+        : current.huggingfaceApiKey,
     runpodApiKey:
       typeof body.runpodApiKey === "string" && body.runpodApiKey.trim()
         ? body.runpodApiKey

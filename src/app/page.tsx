@@ -75,6 +75,9 @@ interface RunpodMissingFile {
     modelId?: number;
     modelVersionId?: number;
   };
+  // Server-computed: whether the pod can fetch this file automatically. Mirrors
+  // getRunpodDownloadPlan's eligibility so the client never re-derives it.
+  downloadable?: boolean;
 }
 
 interface RunpodConnectionStatus {
@@ -170,16 +173,9 @@ function cloneGenerationParams(params: GenerationParamsType) {
 }
 
 function canDownloadRunpodMissingFile(item: RunpodMissingFile) {
-  return Boolean(
-    item.resource.url &&
-      (item.resource.modelVersionId ||
-        item.path === "upscale_models/4x-UltraSharp.pth" ||
-        item.path === "upscale_models/remacri_original.safetensors" ||
-        item.path === "text_encoders/qwen3vl_4b_fp8_scaled.safetensors" ||
-        item.path === "vae/qwen_image_vae.safetensors" ||
-        item.path === "ultralytics/bbox/face_yolov8n_v2.pt" ||
-        item.path === "ultralytics/bbox/face_yolov8m.pt")
-  );
+  // Eligibility is decided server-side (see canDownloadRunpodResource in runpod.ts)
+  // where the base-asset list and catalog are known; the client just reflects it.
+  return item.downloadable === true;
 }
 
 export default function Home() {
@@ -228,6 +224,13 @@ export default function Home() {
     useState<"" | "status" | "check" | "download" | "setup">("");
   const [runpodRunningIds, setRunpodRunningIds] = useState<Set<string>>(new Set());
   const [runpodMissingFiles, setRunpodMissingFiles] = useState<RunpodMissingFile[]>([]);
+  // Custom-node packs the selected workflow needs but the pod lacks (e.g. RES4LYF
+  // for the PornMaster RES4LYF recipe), with a top-banner Install action.
+  const [runpodMissingNodePacks, setRunpodMissingNodePacks] = useState<
+    { name: string; url: string }[]
+  >([]);
+  const [nodeInstallBusy, setNodeInstallBusy] = useState(false);
+  const [nodeInstallStatus, setNodeInstallStatus] = useState("");
   // RunPod download progress/status live in a module-level store (not component
   // state) so an in-flight download and its progress survive navigating away
   // from and back to this page.
@@ -271,6 +274,7 @@ export default function Home() {
   });
   const runpodConnectionRef = useRef<RunpodConnectionStatus | null>(null);
   const autoRunpodCheckKeyRef = useRef("");
+  const autoRunpodFileSigRef = useRef("");
   const [runpodFilesChecked, setRunpodFilesChecked] = useState(false);
   const [activeGeneration, setActiveGeneration] =
     useState<GenerationQueueItem | null>(null);
@@ -387,6 +391,7 @@ export default function Home() {
 
   const resetRunpodConnection = useCallback(() => {
     autoRunpodCheckKeyRef.current = "";
+    autoRunpodFileSigRef.current = "";
     setRunpodStatus("");
     setRunpodFilesChecked(false);
     setRunpodMissingFiles([]);
@@ -986,6 +991,130 @@ export default function Home() {
     return missing;
   }, [params, selectedRunpodPodId]);
 
+  // Ask the pod which custom-node packs the current Krea workflow still needs
+  // (e.g. RES4LYF for the PornMaster recipe). Only meaningful for ComfyUI + a
+  // workflow that has a node-pack requirement; otherwise clears the banner.
+  const checkRunpodImageNodes = useCallback(async () => {
+    if (
+      generationTarget !== "runpod" ||
+      !selectedRunpodPodId ||
+      !runpodConnection.comfyReachable ||
+      params.backend !== "comfyui" ||
+      params.krea2_workflow !== "pornmaster"
+    ) {
+      setRunpodMissingNodePacks([]);
+      return;
+    }
+    try {
+      const res = await fetch(
+        `/api/runpod/pods/${selectedRunpodPodId}/image-nodes?workflow=${encodeURIComponent(
+          params.krea2_workflow
+        )}`,
+        { cache: "no-store" }
+      );
+      const data = (await res.json()) as { packs?: { name: string; url: string }[] };
+      setRunpodMissingNodePacks(res.ok && Array.isArray(data.packs) ? data.packs : []);
+    } catch {
+      setRunpodMissingNodePacks([]);
+    }
+  }, [
+    generationTarget,
+    params.backend,
+    params.krea2_workflow,
+    runpodConnection.comfyReachable,
+    selectedRunpodPodId,
+  ]);
+
+  // Install the missing custom-node packs on the pod (git clone + pip + restart),
+  // streaming progress into the banner status. Re-checks once ComfyUI is back.
+  const installRunpodImageNodes = useCallback(async () => {
+    if (!selectedRunpodPodId || runpodMissingNodePacks.length === 0 || nodeInstallBusy) return;
+    setNodeInstallBusy(true);
+    setNodeInstallStatus(
+      ko
+        ? `${runpodMissingNodePacks.length}개 노드 팩 설치 중... (pip 포함, 수 분 소요)`
+        : `Installing ${runpodMissingNodePacks.length} node pack(s)... (incl. pip, may take minutes)`
+    );
+    try {
+      const response = await fetch(
+        `/api/runpod/pods/${selectedRunpodPodId}/install-nodes/stream`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ repos: runpodMissingNodePacks }),
+        }
+      );
+      if (!response.ok || !response.body) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || "Node install failed.");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let streamError = "";
+      const handle = (raw: string) => {
+        if (!raw.startsWith("data:")) return;
+        const event = JSON.parse(raw.slice(5).trim()) as {
+          type?: string;
+          name?: string;
+          status?: string;
+          message?: string;
+          installed?: string[];
+        };
+        if (event.type === "error") streamError = event.message || "Node install failed.";
+        if (event.type === "status" && event.message) {
+          setNodeInstallStatus(event.message);
+        }
+        if (event.type === "repo" && event.name) {
+          setNodeInstallStatus(`${event.name}: ${event.status ?? ""}`);
+        }
+        if (event.type === "complete") {
+          const n = event.installed?.length ?? 0;
+          setNodeInstallStatus(
+            ko
+              ? `설치 완료 (${n}개). ComfyUI 재시작 후 자동으로 다시 확인합니다.`
+              : `Installed ${n} pack(s). Re-checking after ComfyUI restarts.`
+          );
+        }
+      };
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() ?? "";
+        for (const part of parts) {
+          const dataLine = part.split("\n").find((line) => line.startsWith("data:"));
+          if (dataLine) handle(dataLine);
+        }
+      }
+      if (buffer) {
+        const dataLine = buffer.split("\n").find((line) => line.startsWith("data:"));
+        if (dataLine) handle(dataLine);
+      }
+      if (streamError) throw new Error(streamError);
+      // ComfyUI restarts after install; give it a moment, then re-verify.
+      setTimeout(() => {
+        void refreshRunpodStatus();
+        void checkRunpodImageNodes();
+      }, 8000);
+    } catch (error) {
+      setNodeInstallStatus(
+        error instanceof Error ? error.message : "Failed to install custom nodes."
+      );
+    } finally {
+      setNodeInstallBusy(false);
+    }
+  }, [
+    checkRunpodImageNodes,
+    ko,
+    nodeInstallBusy,
+    refreshRunpodStatus,
+    runpodMissingNodePacks,
+    selectedRunpodPodId,
+  ]);
+
   // When a background RunPod download settles, re-verify which files are
   // present and report the result. `pendingRecheck` is a store flag, so this
   // fires even when the download finished while the page was unmounted: on
@@ -1017,6 +1146,73 @@ export default function Home() {
     setRunpodDownloadMessage,
     ko,
   ]);
+
+  // A signature of every model a generation would pull to RunPod. namesForParams
+  // (server-side) derives the same set — keep the fields in sync.
+  const runpodFileSignature = useMemo(
+    () =>
+      [
+        params.model_name,
+        params.krea2_workflow,
+        params.vae_name,
+        params.upscale_model_name,
+        params.hires_upscale > 1 ? "hires" : "",
+        params.adetailer_enabled ? params.adetailer_model : "",
+        params.loras.map((lora) => lora.path).join(","),
+        params.embeddings.map((embedding) => embedding.path).join(","),
+      ].join("|"),
+    [
+      params.model_name,
+      params.krea2_workflow,
+      params.vae_name,
+      params.upscale_model_name,
+      params.hires_upscale,
+      params.adetailer_enabled,
+      params.adetailer_model,
+      params.loras,
+      params.embeddings,
+    ]
+  );
+
+  // Proactively re-check RunPod files whenever that set changes while the pod is
+  // reachable. Picking the PornMaster workflow, for instance, immediately lists
+  // its extra files (heretic CLIP / Wan VAE / int8 checkpoint) with the Download
+  // button below — no need to hit Generate first.
+  useEffect(() => {
+    if (
+      generationTarget !== "runpod" ||
+      !selectedRunpodPodId ||
+      activeGeneration ||
+      runpodBusy ||
+      runpodDownloading
+    ) {
+      return;
+    }
+    if (!runpodConnection.comfyReachable || !runpodConnection.helperReachable) {
+      return;
+    }
+    const signature = `${selectedRunpodPodId}:${runpodFileSignature}`;
+    if (autoRunpodFileSigRef.current === signature) return;
+    autoRunpodFileSigRef.current = signature;
+    void checkRunpodFiles().catch(() => {});
+  }, [
+    generationTarget,
+    selectedRunpodPodId,
+    activeGeneration,
+    runpodBusy,
+    runpodDownloading,
+    runpodConnection.comfyReachable,
+    runpodConnection.helperReachable,
+    runpodFileSignature,
+    checkRunpodFiles,
+  ]);
+
+  // Detect missing custom-node packs for the selected Krea workflow (e.g. RES4LYF
+  // for PornMaster) as soon as the pod's ComfyUI is reachable, so the install
+  // banner appears without needing a failed Generate.
+  useEffect(() => {
+    void checkRunpodImageNodes();
+  }, [checkRunpodImageNodes]);
 
   const generate = useCallback(async () => {
     if (!params.prompt.trim()) return;
@@ -1435,6 +1631,46 @@ export default function Home() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          {generationTarget === "runpod" &&
+            (runpodMissingNodePacks.length > 0 || nodeInstallStatus) && (
+              <div className="space-y-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
+                    <span className="text-sm font-semibold text-amber-700">
+                      {ko ? "커스텀 노드 설치 필요" : "Custom nodes required"}
+                    </span>
+                  </div>
+                  {runpodMissingNodePacks.length > 0 && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="h-7 gap-1 px-3 text-xs"
+                      disabled={nodeInstallBusy}
+                      onClick={() => void installRunpodImageNodes()}
+                    >
+                      {nodeInstallBusy ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <DownloadCloud className="h-3.5 w-3.5" />
+                      )}
+                      {ko ? "설치" : "Install"}
+                    </Button>
+                  )}
+                </div>
+                {runpodMissingNodePacks.length > 0 && (
+                  <p className="text-xs text-amber-700/90">
+                    {(ko
+                      ? "이 워크플로우에 필요한 노드가 pod에 없습니다: "
+                      : "This workflow needs nodes the pod is missing: ") +
+                      runpodMissingNodePacks.map((pack) => pack.name).join(", ")}
+                  </p>
+                )}
+                {nodeInstallStatus && (
+                  <p className="text-xs text-muted-foreground">{nodeInstallStatus}</p>
+                )}
+              </div>
+            )}
           {generationTarget === "runpod" && (
             <EditorSection
               title="RunPod"

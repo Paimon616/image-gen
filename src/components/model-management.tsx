@@ -49,6 +49,7 @@ interface ModelAsset {
   tags: string[];
   risk?: ModelRisk | null;
   license?: CivitaiLicenseInfo | null;
+  exists?: boolean;
 }
 
 interface ModelsResponse {
@@ -58,6 +59,7 @@ interface ModelsResponse {
   vaeAssets: ModelAsset[];
   upscaleModelAssets: ModelAsset[];
   videoModelAssets: ModelAsset[];
+  textEncoderAssets: ModelAsset[];
   catalog: Record<string, EditableMetadata>;
 }
 
@@ -105,6 +107,7 @@ const GROUPS = [
   { id: "embeddings", label: "Embeddings", folder: "embeddings", key: "embeddingAssets" },
   { id: "vae", label: "VAE", folder: "vae", key: "vaeAssets" },
   { id: "upscale_models", label: "Upscalers", folder: "upscale_models", key: "upscaleModelAssets" },
+  { id: "text_encoders", label: "Text Encoders", folder: "text_encoders", key: "textEncoderAssets" },
 ] as const;
 
 function parseTags(value: string) {
@@ -250,16 +253,86 @@ function ModelCard({
   selecting = false,
   selected = false,
   onToggleSelect,
+  onDownloaded,
 }: {
   asset: ModelAsset;
   onView: () => void;
   selecting?: boolean;
   selected?: boolean;
   onToggleSelect?: () => void;
+  onDownloaded?: () => void;
 }) {
   const [showAllTags, setShowAllTags] = useState(false);
+  const [downloadState, setDownloadState] = useState<{
+    status: "idle" | "downloading" | "error";
+    percent: number | null;
+    error?: string;
+  }>({ status: "idle", percent: null });
   const visibleTags = showAllTags ? asset.tags : asset.tags.slice(0, 4);
   const sourceUrl = getSourceUrl(asset);
+  const downloadFolder = asset.folder ?? "";
+  // Catalog entries not yet on disk can be pulled locally when we have both a
+  // source URL and a known target folder.
+  const canDownload =
+    asset.exists === false && Boolean(sourceUrl) && Boolean(downloadFolder);
+
+  const handleDownload = useCallback(async () => {
+    if (!sourceUrl || !downloadFolder) return;
+    setDownloadState({ status: "downloading", percent: null });
+    try {
+      const response = await fetch("/api/models/download", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folder: downloadFolder, filename: asset.path, url: sourceUrl }),
+      });
+      if (!response.ok || !response.body) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || `Download failed: HTTP ${response.status}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let failure = "";
+      let done = false;
+      while (!done) {
+        const { done: streamDone, value } = await reader.read();
+        if (streamDone) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const event = JSON.parse(line) as {
+            type: string;
+            percent?: number | null;
+            error?: string;
+          };
+          if (event.type === "progress") {
+            setDownloadState({
+              status: "downloading",
+              percent: typeof event.percent === "number" ? event.percent : null,
+            });
+          } else if (event.type === "complete") {
+            done = true;
+          } else if (event.type === "error") {
+            failure = event.error || "Download failed";
+            done = true;
+          }
+        }
+      }
+
+      if (failure) throw new Error(failure);
+      setDownloadState({ status: "idle", percent: null });
+      onDownloaded?.();
+    } catch (error) {
+      setDownloadState({
+        status: "error",
+        percent: null,
+        error: error instanceof Error ? error.message : "Download failed",
+      });
+    }
+  }, [asset.path, downloadFolder, onDownloaded, sourceUrl]);
 
   return (
     <article
@@ -403,6 +476,39 @@ function ModelCard({
                 </>
               )}
             </Button>
+            {canDownload && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1 px-2 text-xs"
+                disabled={downloadState.status === "downloading"}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void handleDownload();
+                }}
+              >
+                {downloadState.status === "downloading" ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    {downloadState.percent != null ? `${downloadState.percent}%` : "…"}
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-3.5 w-3.5" />
+                    Download
+                  </>
+                )}
+              </Button>
+            )}
+            {downloadState.status === "error" && (
+              <span
+                className="truncate text-[11px] text-destructive"
+                title={downloadState.error}
+              >
+                {downloadState.error}
+              </span>
+            )}
             {sourceUrl && (
               <>
                 <a
@@ -1259,13 +1365,15 @@ export function ModelManagement() {
         (models?.embeddingAssets.length ?? 0) +
         (models?.vaeAssets.length ?? 0) +
         (models?.upscaleModelAssets.length ?? 0) +
-        (models?.videoModelAssets.length ?? 0),
+        (models?.videoModelAssets.length ?? 0) +
+        (models?.textEncoderAssets.length ?? 0),
       checkpoints: models?.checkpointAssets.length ?? 0,
       video_models: models?.videoModelAssets.length ?? 0,
       loras: models?.loraAssets.length ?? 0,
       embeddings: models?.embeddingAssets.length ?? 0,
       vae: models?.vaeAssets.length ?? 0,
       upscale_models: models?.upscaleModelAssets.length ?? 0,
+      text_encoders: models?.textEncoderAssets.length ?? 0,
     }),
     [models]
   );
@@ -1443,6 +1551,7 @@ export function ModelManagement() {
                       toggleCatalogSelection(catalogKey(folder, asset))
                     }
                     onView={() => setViewing({ asset, folder })}
+                    onDownloaded={refreshModels}
                   />
                 ))}
               </div>
@@ -1471,6 +1580,7 @@ export function ModelManagement() {
                       onView={() =>
                         setViewing({ asset, folder: asset.folder ?? group.folder })
                       }
+                      onDownloaded={refreshModels}
                     />
                   ))}
                 </div>

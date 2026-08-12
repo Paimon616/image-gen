@@ -24,10 +24,12 @@ async function saveBufferedImages({
   images,
   params,
   endpoint,
+  workflow,
 }: {
   images: { buffer: Buffer; contentType: string; originalUrl: string }[];
   params: GenerationParams;
   endpoint: string;
+  workflow?: unknown;
 }) {
   await ensureOutputDir();
 
@@ -55,6 +57,7 @@ async function saveBufferedImages({
             timestamp,
             original_url: img.originalUrl,
             index: i,
+            ...(workflow ? { workflow } : {}),
           },
           null,
           2
@@ -102,17 +105,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const images =
-      body.backend === "a1111" || body.backend === "forge"
-        ? await generateWithA1111(body, req.signal)
-        : await generateWithComfyUI(body);
+    const isWebUi = body.backend === "a1111" || body.backend === "forge";
+    let images: { buffer: Buffer; contentType: string; originalUrl: string }[];
+    let workflow: unknown;
+    if (isWebUi) {
+      images = await generateWithA1111(body, req.signal);
+    } else {
+      const result = await generateWithComfyUI(body);
+      images = result.images;
+      workflow = result.workflow;
+    }
     const savedImages = await saveBufferedImages({
       images,
       params: body,
-      endpoint:
-        body.backend === "a1111" || body.backend === "forge"
-          ? `${body.backend}/local`
-          : modelConfig.id,
+      endpoint: isWebUi ? `${body.backend}/local` : modelConfig.id,
+      workflow,
     });
 
     return NextResponse.json({ images: savedImages });

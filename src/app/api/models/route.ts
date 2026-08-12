@@ -18,6 +18,7 @@ const MODEL_CATALOG_PATH = "data/model-catalog.json";
 const ALLOWED_MODEL_FOLDERS = new Set([
   "checkpoints",
   "diffusion_models",
+  "text_encoders",
   "loras",
   "embeddings",
   "vae",
@@ -426,6 +427,7 @@ export async function GET() {
     upscaleModelAssets,
     controlnetAssets,
     videoModelAssets,
+    textEncoderAssets,
   ] = await Promise.all([
     listModelAssets("checkpoints", catalog),
     listKrea2ImageAssets(catalog),
@@ -435,6 +437,7 @@ export async function GET() {
     listModelAssets("upscale_models", catalog),
     listModelAssets("controlnet", catalog),
     listVideoModelAssets(catalog),
+    listModelAssets("text_encoders", catalog),
   ]);
   const checkpointAssets = [
     ...checkpointFolderAssets.filter((asset) => !isKrea2CheckpointName(asset.path)),
@@ -453,6 +456,7 @@ export async function GET() {
       upscale_models: upscaleModelAssets.map((asset) => asset.path),
       controlnets: controlnetAssets.map((asset) => asset.path),
       video_models: videoModelAssets.map((asset) => `${asset.folder}/${asset.path}`),
+      text_encoders: textEncoderAssets.map((asset) => asset.path),
       checkpointAssets,
       loraAssets,
       embeddingAssets,
@@ -460,6 +464,7 @@ export async function GET() {
       upscaleModelAssets,
       controlnetAssets,
       videoModelAssets,
+      textEncoderAssets,
       animaMissingRequiredFiles,
       catalog,
     },

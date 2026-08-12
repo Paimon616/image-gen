@@ -27,7 +27,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useStore } from "@/lib/store";
-import { useRunpodDownloadStore } from "@/lib/runpod-download-store";
+import {
+  useRunpodDownloadStore,
+  type RunpodDownloadItem,
+} from "@/lib/runpod-download-store";
 import { takeVideoReference } from "@/lib/video-reference";
 import {
   DEFAULT_VIDEO_PARAMS,
@@ -1208,6 +1211,7 @@ function VideoGalleryCard({
             <video
               src={video.url}
               controls
+              muted
               playsInline
               preload="metadata"
               className="block h-auto w-full"
@@ -1457,6 +1461,7 @@ function VideoDetailModal({
                       controls
                       autoPlay
                       loop
+                      muted
                       playsInline
                       onLoadedMetadata={(event) =>
                         setNaturalSize({
@@ -1834,6 +1839,10 @@ export default function VideoPage() {
   const [runpodBusy, setRunpodBusy] = useState(false);
   const [runpodSetupBusy, setRunpodSetupBusy] = useState(false);
   const [runpodStatus, setRunpodStatus] = useState("");
+  const [pipelineModelsBusy, setPipelineModelsBusy] = useState(false);
+  const [pipelineModelsStatus, setPipelineModelsStatus] = useState("");
+  const [nodeInstallBusy, setNodeInstallBusy] = useState(false);
+  const [nodeInstallStatus, setNodeInstallStatus] = useState("");
   const [runpodConnection, setRunpodConnection] = useState<RunpodConnectionStatus>({
     checked: false,
     comfyReachable: false,
@@ -1866,6 +1875,18 @@ export default function VideoPage() {
   // while the poller re-runs.
   const setRunpodConnectionCache = useRunpodDownloadStore(
     (state) => state.setConnection
+  );
+  const startPodModelDownload = useRunpodDownloadStore(
+    (state) => state.startDownload
+  );
+  const podDownloading = useRunpodDownloadStore((state) =>
+    selectedRunpodPodId ? Boolean(state.downloadingByPod[selectedRunpodPodId]) : false
+  );
+  const podDownloadProgress = useRunpodDownloadStore((state) =>
+    selectedRunpodPodId ? state.progressByPod[selectedRunpodPodId] ?? null : null
+  );
+  const podDownloadMessage = useRunpodDownloadStore((state) =>
+    selectedRunpodPodId ? state.messageByPod[selectedRunpodPodId] ?? "" : ""
   );
 
   const startEditorResize = useCallback(
@@ -2310,6 +2331,210 @@ export default function VideoPage() {
     runpodSetupBusy,
     selectedRunpodPodId,
   ]);
+
+  // Resolve the selected pipeline's required models (checkpoint, unet, vae, text
+  // encoder, upscaler, distilled LoRA + the whole LoRA stack) from the model
+  // catalog and download them onto the selected pod. The helper skips files that
+  // already exist, so re-running is a safe no-op for anything already present.
+  const downloadPipelineModels = useCallback(async () => {
+    const pipelineId = params.video_pipeline || params.video_model;
+    if (!selectedRunpodPodId || !pipelineId || pipelineModelsBusy || podDownloading) {
+      return;
+    }
+
+    setPipelineModelsBusy(true);
+    setPipelineModelsStatus(
+      language === "ko" ? "필요 모델 목록을 확인하는 중..." : "Resolving required models..."
+    );
+    try {
+      const response = await fetch(
+        `/api/video/pipelines/${encodeURIComponent(pipelineId)}/models`,
+        { cache: "no-store" }
+      );
+      const data = (await response.json()) as {
+        error?: string;
+        total?: number;
+        models?: Array<{
+          path: string;
+          hasUrl: boolean;
+          resource: RunpodDownloadItem["resource"];
+        }>;
+        missingSource?: string[];
+      };
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to resolve pipeline models.");
+      }
+
+      const items: RunpodDownloadItem[] = (data.models ?? [])
+        .filter((model) => model.hasUrl)
+        .map((model) => ({ path: model.path, resource: model.resource }));
+
+      if (items.length === 0) {
+        setPipelineModelsStatus(
+          language === "ko"
+            ? "다운로드할 수 있는 모델 URL이 없습니다."
+            : "No downloadable model URLs were found."
+        );
+        return;
+      }
+
+      const missing = data.missingSource ?? [];
+      const missingNote =
+        missing.length > 0
+          ? language === "ko"
+            ? ` (URL 미확보 ${missing.length}개는 수동 필요: ${missing
+                .map((path) => path.split("/").pop())
+                .join(", ")})`
+            : ` (${missing.length} without a source must be added manually: ${missing
+                .map((path) => path.split("/").pop())
+                .join(", ")})`
+          : "";
+      setPipelineModelsStatus(
+        (language === "ko"
+          ? `${items.length}개 모델 다운로드를 시작합니다.`
+          : `Starting download of ${items.length} model(s).`) + missingNote
+      );
+
+      await startPodModelDownload(selectedRunpodPodId, items, {
+        ko: language === "ko",
+      });
+    } catch (error) {
+      setPipelineModelsStatus(
+        error instanceof Error ? error.message : "Failed to download pipeline models."
+      );
+    } finally {
+      setPipelineModelsBusy(false);
+    }
+  }, [
+    language,
+    params.video_model,
+    params.video_pipeline,
+    pipelineModelsBusy,
+    podDownloading,
+    selectedRunpodPodId,
+    startPodModelDownload,
+  ]);
+
+  // Detect which custom-node packs the selected pipeline needs (via the pod's
+  // live /object_info) and install the missing ones onto the pod through the
+  // helper (git clone + pip + ComfyUI restart), streaming progress.
+  const installPipelineNodes = useCallback(async () => {
+    const pipelineId = params.video_pipeline || params.video_model;
+    if (!selectedRunpodPodId || !pipelineId || nodeInstallBusy) return;
+
+    const ko = language === "ko";
+    setNodeInstallBusy(true);
+    setNodeInstallStatus(ko ? "누락된 커스텀 노드를 확인하는 중..." : "Checking for missing custom nodes...");
+    try {
+      const res = await fetch(
+        `/api/runpod/pods/${selectedRunpodPodId}/nodes?pipeline=${encodeURIComponent(pipelineId)}`,
+        { cache: "no-store" }
+      );
+      const data = (await res.json()) as {
+        error?: string;
+        packs?: Array<{ name: string; url: string }>;
+        unmappedClassTypes?: string[];
+        detected?: boolean;
+        comfyReachable?: boolean;
+      };
+      if (!res.ok) throw new Error(data.error || "Failed to resolve pipeline nodes.");
+
+      const packs = data.packs ?? [];
+      const unmapped = data.unmappedClassTypes ?? [];
+      const unmappedNote =
+        unmapped.length > 0
+          ? ko
+            ? ` (수동 확인 필요: ${unmapped.join(", ")})`
+            : ` (resolve manually: ${unmapped.join(", ")})`
+          : "";
+
+      if (packs.length === 0) {
+        setNodeInstallStatus(
+          (data.comfyReachable
+            ? ko
+              ? "필요한 커스텀 노드가 모두 설치되어 있습니다."
+              : "All required custom nodes are already installed."
+            : ko
+              ? "ComfyUI에 연결할 수 없어 설치 상태를 확인하지 못했습니다."
+              : "Could not reach ComfyUI to verify installed nodes.") + unmappedNote
+        );
+        return;
+      }
+
+      setNodeInstallStatus(
+        (ko
+          ? `${packs.length}개 노드 팩 설치 중... (pip 포함, 수 분 소요)`
+          : `Installing ${packs.length} node pack(s)... (incl. pip, may take minutes)`) +
+          unmappedNote
+      );
+
+      const response = await fetch(
+        `/api/runpod/pods/${selectedRunpodPodId}/install-nodes/stream`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ repos: packs }),
+        }
+      );
+      if (!response.ok || !response.body) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || "Node install failed.");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let streamError = "";
+      const handle = (raw: string) => {
+        if (!raw.startsWith("data:")) return;
+        const event = JSON.parse(raw.slice(5).trim()) as {
+          type?: string;
+          name?: string;
+          status?: string;
+          message?: string;
+          installed?: string[];
+        };
+        if (event.type === "error") streamError = event.message || "Node install failed.";
+        if (event.type === "repo" && event.name) {
+          setNodeInstallStatus(
+            ko
+              ? `${event.name}: ${event.status}`
+              : `${event.name}: ${event.status}`
+          );
+        }
+        if (event.type === "complete") {
+          const n = event.installed?.length ?? 0;
+          setNodeInstallStatus(
+            ko
+              ? `설치 완료 (${n}개). ComfyUI를 재시작했습니다. 잠시 후 '상태 다시 확인'을 눌러주세요.`
+              : `Installed ${n} pack(s). ComfyUI restarted — press “Recheck status” shortly.`
+          );
+        }
+      };
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() ?? "";
+        for (const part of parts) {
+          const dataLine = part.split("\n").find((line) => line.startsWith("data:"));
+          if (dataLine) handle(dataLine);
+        }
+      }
+      if (buffer) {
+        const dataLine = buffer.split("\n").find((line) => line.startsWith("data:"));
+        if (dataLine) handle(dataLine);
+      }
+      if (streamError) throw new Error(streamError);
+    } catch (error) {
+      setNodeInstallStatus(
+        error instanceof Error ? error.message : "Failed to install custom nodes."
+      );
+    } finally {
+      setNodeInstallBusy(false);
+    }
+  }, [language, nodeInstallBusy, params.video_model, params.video_pipeline, selectedRunpodPodId]);
 
   const appendGenerationDetail = useCallback(
     (detail: Omit<GenerationDetail, "id">) => {
@@ -3139,25 +3364,34 @@ export default function VideoPage() {
                 {/* Requirement 3: helper init only appears when the helper has a
                     problem, and only while the pod is running (the app never
                     starts the pod — the user starts it in the RunPod console). */}
-                {runpodConnection.checked &&
-                  !runpodConnection.helperReachable &&
-                  runpodPodRunning && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="h-8 flex-1 gap-1.5"
-                      onClick={() => void setupRunpodHelper()}
-                      disabled={!selectedRunpodPodId || runpodSetupBusy || isGenerating}
-                    >
-                      {runpodSetupBusy ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Wrench className="h-3.5 w-3.5" />
-                      )}
-                      {language === "ko" ? "Helper 초기화" : "Init helper"}
-                    </Button>
-                  )}
+                {runpodConnection.checked && runpodPodRunning && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 flex-1 gap-1.5"
+                    onClick={() => void setupRunpodHelper()}
+                    disabled={!selectedRunpodPodId || runpodSetupBusy || isGenerating}
+                    title={
+                      language === "ko"
+                        ? "Helper를 (재)설치합니다. 노드 설치 기능을 쓰려면 최신 Helper로 업데이트하세요."
+                        : "(Re)install the helper. Update to the latest helper to use node install."
+                    }
+                  >
+                    {runpodSetupBusy ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Wrench className="h-3.5 w-3.5" />
+                    )}
+                    {runpodConnection.helperReachable
+                      ? language === "ko"
+                        ? "Helper 업데이트"
+                        : "Update helper"
+                      : language === "ko"
+                        ? "Helper 초기화"
+                        : "Init helper"}
+                  </Button>
+                )}
                 <Button
                   type="button"
                   size="sm"
@@ -3188,6 +3422,107 @@ export default function VideoPage() {
                     ? "pod를 선택하면 상태만 조회합니다. Helper에 문제가 있으면 'Helper 초기화'로 설치할 수 있고, 모두 연결되면 파이프라인을 골라 영상을 생성할 수 있습니다."
                     : "Selecting a pod only reads its status. If the helper has a problem, use “Init helper” to set it up; once everything is connected you can pick a pipeline and generate.")}
               </p>
+
+              <div className="grid gap-2 border-t border-border/60 pt-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="min-w-0 truncate text-xs font-semibold">
+                    {language === "ko" ? "커스텀 노드" : "Custom nodes"}
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 shrink-0 gap-1.5"
+                    onClick={() => void installPipelineNodes()}
+                    disabled={
+                      !selectedRunpodPodId ||
+                      !runpodConnection.helperReachable ||
+                      nodeInstallBusy ||
+                      isGenerating
+                    }
+                    title={
+                      language === "ko"
+                        ? "이 파이프라인에 필요한 누락 커스텀 노드를 pod에 설치합니다 (git + pip + 재시작)"
+                        : "Install the pipeline's missing custom nodes onto the pod (git + pip + restart)"
+                    }
+                  >
+                    {nodeInstallBusy ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Wrench className="h-3.5 w-3.5" />
+                    )}
+                    {language === "ko" ? "노드 설치" : "Install nodes"}
+                  </Button>
+                </div>
+                {nodeInstallStatus && (
+                  <p className="text-[11px] text-muted-foreground">{nodeInstallStatus}</p>
+                )}
+
+                <div className="flex items-center justify-between gap-2 border-t border-border/40 pt-2">
+                  <span className="min-w-0 truncate text-xs font-semibold">
+                    {language === "ko" ? "파이프라인 모델" : "Pipeline models"}
+                    {selectedVideoPipeline?.label ? (
+                      <span className="ml-1 font-normal text-muted-foreground">
+                        · {selectedVideoPipeline.label}
+                      </span>
+                    ) : null}
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 shrink-0 gap-1.5"
+                    onClick={() => void downloadPipelineModels()}
+                    disabled={
+                      !selectedRunpodPodId ||
+                      !runpodConnection.helperReachable ||
+                      pipelineModelsBusy ||
+                      podDownloading ||
+                      isGenerating
+                    }
+                    title={
+                      language === "ko"
+                        ? "선택한 파이프라인의 모델을 이 pod로 다운로드합니다 (이미 있으면 건너뜀)"
+                        : "Download this pipeline's models onto the pod (existing files are skipped)"
+                    }
+                  >
+                    {pipelineModelsBusy || podDownloading ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Download className="h-3.5 w-3.5" />
+                    )}
+                    {language === "ko" ? "모델 다운로드" : "Download models"}
+                  </Button>
+                </div>
+                {podDownloadProgress && (
+                  <div className="grid gap-1">
+                    <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
+                      <div
+                        className="h-full bg-primary transition-all"
+                        style={{ width: `${podDownloadProgress.filePercent}%` }}
+                      />
+                    </div>
+                    <div className="truncate text-[11px] text-muted-foreground">
+                      {podDownloadProgress.completed}/{podDownloadProgress.total}
+                      {podDownloadProgress.currentPath
+                        ? ` · ${podDownloadProgress.currentPath}`
+                        : ""}
+                    </div>
+                  </div>
+                )}
+                {(podDownloadMessage || pipelineModelsStatus) && (
+                  <p className="text-[11px] text-muted-foreground">
+                    {podDownloadMessage || pipelineModelsStatus}
+                  </p>
+                )}
+                {!runpodConnection.helperReachable && (
+                  <p className="text-[11px] text-muted-foreground">
+                    {language === "ko"
+                      ? "Helper가 연결되어야 다운로드할 수 있습니다."
+                      : "The helper must be connected to download."}
+                  </p>
+                )}
+              </div>
             </EditorSection>
           )}
 

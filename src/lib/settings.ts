@@ -16,6 +16,8 @@ export interface RunpodPodSettings {
 
 export interface AppSettings {
   civitaiApiKey: string;
+  /** HuggingFace access token, for gated repos (e.g. Lightricks/LTX-2.5). */
+  huggingfaceApiKey: string;
   runpodApiKey: string;
   runpodPods: RunpodPodSettings[];
 }
@@ -27,6 +29,7 @@ const DEFAULT_PODS_PATH = join(process.cwd(), "data", "default-pods.json");
 
 const DEFAULT_SETTINGS: AppSettings = {
   civitaiApiKey: "",
+  huggingfaceApiKey: "",
   runpodApiKey: "",
   runpodPods: [],
 };
@@ -46,6 +49,7 @@ async function readDefaultPods(): Promise<RunpodPodSettings[]> {
 function cleanSettings(value: Partial<AppSettings>): AppSettings {
   return {
     civitaiApiKey: String(value.civitaiApiKey ?? "").trim(),
+    huggingfaceApiKey: String(value.huggingfaceApiKey ?? "").trim(),
     runpodApiKey: String(value.runpodApiKey ?? "").trim(),
     runpodPods: Array.isArray(value.runpodPods)
       ? value.runpodPods.map((pod) => ({
@@ -89,4 +93,15 @@ export async function getRunpodPod(id: string) {
 export async function getCivitaiApiKey() {
   const settings = await readSettings();
   return settings.civitaiApiKey || process.env.CIVITAI_API_TOKEN?.trim() || "";
+}
+
+export async function getHuggingfaceApiKey() {
+  const settings = await readSettings();
+  return (
+    settings.huggingfaceApiKey ||
+    process.env.HF_TOKEN?.trim() ||
+    process.env.HUGGINGFACE_TOKEN?.trim() ||
+    process.env.HUGGING_FACE_HUB_TOKEN?.trim() ||
+    ""
+  );
 }

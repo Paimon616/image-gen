@@ -288,6 +288,11 @@ export function ImageViewer() {
     filename: string;
   } | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [workflowOpen, setWorkflowOpen] = useState(false);
+  const [workflowText, setWorkflowText] = useState<string | null>(null);
+  const [workflowStatus, setWorkflowStatus] = useState<
+    "idle" | "loading" | "empty" | "error"
+  >("idle");
 
   useEffect(() => {
     fetch("/api/models", { cache: "no-store" })
@@ -309,6 +314,10 @@ export function ImageViewer() {
 
   useEffect(() => {
     setConfirmingDelete(false);
+    // Reset the lazily-loaded ComfyUI workflow panel when the viewed image changes.
+    setWorkflowOpen(false);
+    setWorkflowText(null);
+    setWorkflowStatus("idle");
   }, [selectedImage?.id]);
 
   const navigate = useCallback(
@@ -470,6 +479,54 @@ export function ImageViewer() {
     await navigator.clipboard.writeText(await metadataText());
     setAppliedKey("metadata-copied");
     window.setTimeout(() => setAppliedKey(null), 1500);
+  };
+
+  // Toggle the workflow panel, lazily fetching the stored ComfyUI graph the first
+  // time it opens (kept out of the image-list payload to keep the gallery light).
+  const toggleWorkflow = async () => {
+    const next = !workflowOpen;
+    setWorkflowOpen(next);
+    if (!next || workflowText || workflowStatus === "loading") return;
+    setWorkflowStatus("loading");
+    try {
+      const res = await fetch(
+        "/api/images/" + selectedImage.filename + "/metadata",
+        { cache: "no-store" }
+      );
+      if (!res.ok) {
+        setWorkflowStatus("empty");
+        return;
+      }
+      const data = (await res.json()) as { workflow?: unknown };
+      if (data?.workflow) {
+        setWorkflowText(JSON.stringify(data.workflow, null, 2));
+        setWorkflowStatus("idle");
+      } else {
+        setWorkflowStatus("empty");
+      }
+    } catch {
+      setWorkflowStatus("error");
+    }
+  };
+
+  const copyWorkflow = async () => {
+    if (!workflowText) return;
+    await navigator.clipboard.writeText(workflowText);
+    setAppliedKey("workflow-copied");
+    window.setTimeout(() => setAppliedKey(null), 1500);
+  };
+
+  const downloadWorkflow = () => {
+    if (!workflowText) return;
+    const blob = new Blob([workflowText], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${
+      selectedImage.filename.replace(/\.[^/.]+$/, "") || "image"
+    }-workflow.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
   };
 
   const copyImage = async () => {
@@ -1061,6 +1118,70 @@ export function ImageViewer() {
                     )}
                   </div>
                 </section>
+
+                {params.backend === "comfyui" && (
+                  <section className="rounded-lg border border-border bg-card p-3 shadow-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                        {ko ? "ComfyUI 워크플로" : "ComfyUI workflow"}
+                      </h3>
+                      <Button size="sm" variant="outline" onClick={() => void toggleWorkflow()}>
+                        <FileJson className="mr-1 size-3.5" />
+                        {workflowOpen
+                          ? ko
+                            ? "숨기기"
+                            : "Hide"
+                          : ko
+                            ? "워크플로 보기"
+                            : "Show workflow"}
+                      </Button>
+                    </div>
+                    {workflowOpen && (
+                      <div className="mt-3 space-y-2">
+                        {workflowStatus === "loading" && (
+                          <p className="text-xs text-muted-foreground">
+                            {ko ? "불러오는 중…" : "Loading…"}
+                          </p>
+                        )}
+                        {workflowStatus === "empty" && (
+                          <p className="text-xs text-muted-foreground">
+                            {ko
+                              ? "이 이미지에는 저장된 워크플로가 없습니다 (이 기능 추가 이전에 생성됨)."
+                              : "No workflow stored for this image (generated before this feature)."}
+                          </p>
+                        )}
+                        {workflowStatus === "error" && (
+                          <p className="text-xs text-destructive">
+                            {ko ? "워크플로를 불러오지 못했습니다." : "Failed to load workflow."}
+                          </p>
+                        )}
+                        {workflowText && (
+                          <>
+                            <div className="flex flex-wrap gap-2">
+                              <Button size="sm" variant="outline" onClick={() => void copyWorkflow()}>
+                                <Copy className="mr-1 size-3.5" />
+                                {appliedKey === "workflow-copied"
+                                  ? ko
+                                    ? "복사됨"
+                                    : "Copied"
+                                  : ko
+                                    ? "복사"
+                                    : "Copy"}
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => downloadWorkflow()}>
+                                <Download className="mr-1 size-3.5" />
+                                {ko ? "JSON 저장" : "Download JSON"}
+                              </Button>
+                            </div>
+                            <pre className="max-h-80 overflow-auto rounded-md border border-border bg-muted/40 p-3 font-mono text-[11px] leading-relaxed whitespace-pre">
+                              {workflowText}
+                            </pre>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </section>
+                )}
 
                 <section className="rounded-lg border border-border bg-card p-3 shadow-sm">
                   <div className="flex items-center justify-between gap-2">

@@ -8,7 +8,7 @@ import type {
 export const dynamic = "force-dynamic";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const PAIMON_MODEL = "deepseek/deepseek-v4-pro";
+const PAIMON_MODEL = "deepseek/deepseek-v4-flash";
 const PAIMON_VISION_MODEL = "qwen/qwen3-vl-8b-instruct";
 const PAIMON_VISION_FALLBACK_MODELS = [
   PAIMON_VISION_MODEL,
@@ -163,6 +163,14 @@ interface OpenRouterImagePart { type: "image_url"; image_url: { url: string }; }
 type OpenRouterContentPart = OpenRouterTextPart | OpenRouterImagePart;
 const LOCAL_IMAGE_PATHS = ["/api/uploads/", "/api/images/"];
 
+// The actual image bytes travel as `image_url` parts (vision call) — never as
+// text. Strip the multi-MB base64 `dataUrl` before an attachment is stringified
+// into any prompt, so we don't dump hundreds of thousands of junk tokens into
+// the payload. Keep the short `url` path as a lightweight reference marker.
+function redactAttachments(attachments: PaimonAttachment[]) {
+  return attachments.map(({ dataUrl: _dataUrl, ...rest }) => rest);
+}
+
 function validateImageDataUrl(dataUrl: string) {
   const match = dataUrl.match(/^data:(image\/(?:png|jpeg|jpg|webp));base64,([A-Za-z0-9+/=]+)$/);
   if (!match) throw new Error("Attached image data URL is invalid.");
@@ -173,9 +181,41 @@ function validateImageDataUrl(dataUrl: string) {
   return `data:${mimeType};base64,${base64}`;
 }
 
+// Vision inference time scales with the image's pixel dimensions, so oversized
+// attachments (2K–4K clipboard/gallery originals) make the qwen-vl analysis
+// noticeably slower. Downscale ONLY the copy sent to the vision model — the
+// stored original used for img2img/pose references is never touched. NSFW
+// analysis stays on qwen-vl; only the resolution shrinks.
+const VISION_MAX_EDGE = 1280;
+
+async function resizeDataUrlForVision(dataUrl: string): Promise<string> {
+  const match = dataUrl.match(/^data:image\/[a-z0-9.+-]+;base64,(.+)$/i);
+  if (!match) return dataUrl;
+  try {
+    const sharp = (await import("sharp")).default;
+    const input = Buffer.from(match[1], "base64");
+    const meta = await sharp(input).metadata();
+    const longestEdge = Math.max(meta.width ?? 0, meta.height ?? 0);
+    // Already within budget: skip re-encoding to avoid needless quality loss.
+    if (longestEdge > 0 && longestEdge <= VISION_MAX_EDGE) return dataUrl;
+    const output = await sharp(input)
+      .rotate() // bake EXIF orientation so the model sees it upright
+      .resize(VISION_MAX_EDGE, VISION_MAX_EDGE, {
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .webp({ quality: 82 })
+      .toBuffer();
+    return `data:image/webp;base64,${output.toString("base64")}`;
+  } catch {
+    // Any decode/encode failure: fall back to the full-size image untouched.
+    return dataUrl;
+  }
+}
+
 async function imageInputUrl(attachment: PaimonAttachment, requestUrl: URL) {
   if (attachment.dataUrl) {
-    return validateImageDataUrl(attachment.dataUrl);
+    return resizeDataUrlForVision(validateImageDataUrl(attachment.dataUrl));
   }
 
   const attachmentUrl = attachment.url;
@@ -197,13 +237,13 @@ async function imageInputUrl(attachment: PaimonAttachment, requestUrl: URL) {
   if (!mimeType?.startsWith("image/")) throw new Error("Attached URL did not return an image.");
   const bytes = Buffer.from(await response.arrayBuffer());
   if (bytes.byteLength > 15 * 1024 * 1024) throw new Error("Attached image is larger than 15 MB.");
-  return `data:${mimeType};base64,${bytes.toString("base64")}`;
+  return resizeDataUrlForVision(`data:${mimeType};base64,${bytes.toString("base64")}`);
 }
 
 async function createMultimodalContent(body: PaimonRequest, requestUrl: URL, messages: PaimonMessage[]): Promise<OpenRouterContentPart[]> {
   const attachments = body.attachments ?? [];
   const content: OpenRouterContentPart[] = [{ type: "text", text: JSON.stringify({
-    currentParams: body.currentParams, attachments, modelContext: body.modelContext ?? null, conversation: messages,
+    currentParams: body.currentParams, attachments: redactAttachments(attachments), modelContext: body.modelContext ?? null, conversation: messages,
   }) }];
   for (const [index, attachment] of attachments.entries()) {
     if (!attachment.url && !attachment.dataUrl) continue;
@@ -275,7 +315,7 @@ async function analyzeAttachments(
       "If a detail is not useful for supported generation, summarize it at a high level and continue with visual attributes.",
       "For each referenceId, report subjects, anatomy, clothing or nudity, pose, action, expression, camera angle, framing, composition, environment, lighting, colors, style, motion cues, and important spatial relationships.",
       "Keep references separate and do not infer generation settings that are not visually observable.",
-      `Attachment metadata: ${JSON.stringify(body.attachments ?? [])}`,
+      `Attachment metadata: ${JSON.stringify(redactAttachments(body.attachments ?? []))}`,
     ].join("\n"),
   };
 
@@ -283,7 +323,7 @@ async function analyzeAttachments(
   for (const model of PAIMON_VISION_FALLBACK_MODELS) {
     const response = await fetch(OPENROUTER_URL, {
       method: "POST",
-      signal: AbortSignal.timeout(45_000),
+      signal: AbortSignal.timeout(20_000),
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
@@ -410,69 +450,80 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const attachmentVisualAnalysis = await analyzeAttachments(
-      apiKey,
-      body,
-      req.nextUrl,
-      messages
+    const hasImageAttachments = (body.attachments ?? []).some(
+      (attachment) => attachment.url || attachment.dataUrl
     );
 
-    const upstream = await fetch(OPENROUTER_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-        "HTTP-Referer": "http://localhost:3000",
-        "X-Title": "Image Gen Paimon",
-      },
-      body: JSON.stringify({
-        model: PAIMON_MODEL,
-        temperature: 0.2,
-        stream: true,
-        response_format: { type: "json_object" },
-        messages: [
-          {
-            role: "system",
-            content: PAIMON_SYSTEM_PROMPT,
-          },
-          {
-            role: "user",
-            content: JSON.stringify({
-              currentParams: body.currentParams,
-              attachments: body.attachments ?? [],
-              attachmentVisualAnalysis,
-              modelContext: body.modelContext ?? null,
-              conversation: messages,
-            }),
-          },
-        ],
-      }),
-    });
-
-    if (!upstream.ok || !upstream.body) {
-      const errorData = await upstream.json().catch(() => null);
-      return NextResponse.json(
-        { error: errorData?.error?.message ?? "OpenRouter request failed." },
-        { status: upstream.ok ? 502 : upstream.status }
-      );
-    }
-
     const encoder = new TextEncoder();
-    const upstreamBody = upstream.body;
 
+    // Vision analysis and the main completion both run INSIDE the stream so we
+    // can emit progress immediately. Previously the whole vision round-trip was
+    // awaited before the Response even returned, so attaching an image left the
+    // client on a blank spinner for the entire (slow) analysis with no feedback.
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
         const send = (event: string, data: unknown) =>
           controller.enqueue(encoder.encode(sse(event, data)));
 
-        const reader = upstreamBody.getReader();
         const decoder = new TextDecoder();
         let sseBuffer = "";
         let contentBuffer = "";
         let sentLength = 0;
 
         try {
+          if (hasImageAttachments) {
+            send("status", { message: "첨부 이미지를 분석하는 중" });
+          }
+          const attachmentVisualAnalysis = await analyzeAttachments(
+            apiKey,
+            body,
+            req.nextUrl,
+            messages
+          );
+
           send("status", { message: "답변을 작성하는 중" });
+
+          const upstream = await fetch(OPENROUTER_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${apiKey}`,
+              "HTTP-Referer": "http://localhost:3000",
+              "X-Title": "Image Gen Paimon",
+            },
+            body: JSON.stringify({
+              model: PAIMON_MODEL,
+              temperature: 0.2,
+              stream: true,
+              response_format: { type: "json_object" },
+              messages: [
+                {
+                  role: "system",
+                  content: PAIMON_SYSTEM_PROMPT,
+                },
+                {
+                  role: "user",
+                  content: JSON.stringify({
+                    currentParams: body.currentParams,
+                    attachments: redactAttachments(body.attachments ?? []),
+                    attachmentVisualAnalysis,
+                    modelContext: body.modelContext ?? null,
+                    conversation: messages,
+                  }),
+                },
+              ],
+            }),
+          });
+
+          if (!upstream.ok || !upstream.body) {
+            const errorData = await upstream.json().catch(() => null);
+            send("error", {
+              error: errorData?.error?.message ?? "OpenRouter request failed.",
+            });
+            return;
+          }
+
+          const reader = upstream.body.getReader();
 
           while (true) {
             const { value, done } = await reader.read();
