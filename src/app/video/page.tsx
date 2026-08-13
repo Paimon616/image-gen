@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import Link from "next/link";
 import { AppSidebar } from "@/components/app-sidebar";
 import { CivitaiMissingResources } from "@/components/civitai-missing-resources";
 import { CopyLinkButton } from "@/components/copy-link-button";
@@ -27,11 +28,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useStore } from "@/lib/store";
+import { useVideoStore } from "@/lib/video-store";
 import {
   useRunpodDownloadStore,
   type RunpodDownloadItem,
 } from "@/lib/runpod-download-store";
 import { takeVideoReference } from "@/lib/video-reference";
+import { readImageDataUrlForVision } from "@/lib/image-resize";
 import {
   DEFAULT_VIDEO_PARAMS,
   type CivitaiImportResult,
@@ -159,8 +162,10 @@ interface RunpodConnectionStatus {
   comfyInitializing: boolean;
   helperReachable: boolean;
   helperInitializing: boolean;
+  helperOutdated: boolean;
   comfyError: string;
   helperError: string;
+  comfyVersion: string;
   podDesiredStatus: string;
 }
 
@@ -282,20 +287,6 @@ async function uploadPaimonImageFile(file: File) {
   return data.url;
 }
 
-function readPaimonImageDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        resolve(reader.result);
-        return;
-      }
-      reject(new Error("Image read failed"));
-    };
-    reader.onerror = () => reject(new Error("Image read failed"));
-    reader.readAsDataURL(file);
-  });
-}
 
 function pipelineSettingValue(
   params: VideoGenerationParams,
@@ -447,7 +438,7 @@ function VideoPaimonPanel({
       try {
         const [url, dataUrl] = await Promise.all([
           uploadPaimonImageFile(file),
-          readPaimonImageDataUrl(file),
+          readImageDataUrlForVision(file),
         ]);
         const attachment: VideoPaimonAttachment = {
           id: crypto.randomUUID(),
@@ -1802,11 +1793,18 @@ export default function VideoPage() {
   });
   const [buttonProgress, setButtonProgress] = useState(0);
   const [generationDetails, setGenerationDetails] = useState<GenerationDetail[]>([]);
-  const [videos, setVideos] = useState<GeneratedVideo[]>([]);
-  // Client-only in-flight generation cards (queued / generating / error / canceled).
-  // They live alongside the server-backed `videos` list and graduate out of
-  // `pendingVideos` once the finished video arrives.
-  const [pendingVideos, setPendingVideos] = useState<GeneratedVideo[]>([]);
+  // Both the finished `videos` and the in-flight `pendingVideos` live in a
+  // module-level store (not component state) so navigating away and back keeps
+  // the in-flight cards alive — and lets the detached SSE stream keep updating
+  // them and land its finished video — exactly like the image gallery.
+  const videos = useVideoStore((state) => state.videos);
+  const setVideos = useVideoStore((state) => state.setVideos);
+  const pendingVideos = useVideoStore((state) => state.pendingVideos);
+  const addPendingVideo = useVideoStore((state) => state.addPendingVideo);
+  const updatePendingVideo = useVideoStore((state) => state.updatePendingVideo);
+  const removePendingVideoById = useVideoStore(
+    (state) => state.removePendingVideo
+  );
   const [generationQueue, setGenerationQueue] = useState<VideoQueueItem[]>([]);
   const [activeGeneration, setActiveGeneration] = useState<VideoQueueItem | null>(null);
   const [thumbnailWidth, setThumbnailWidth] = useState(320);
@@ -1849,8 +1847,10 @@ export default function VideoPage() {
     comfyInitializing: false,
     helperReachable: false,
     helperInitializing: false,
+    helperOutdated: false,
     comfyError: "",
     helperError: "",
+    comfyVersion: "",
     podDesiredStatus: "",
   });
   const [runpodRunningIds, setRunpodRunningIds] = useState<Set<string>>(new Set());
@@ -1881,9 +1881,6 @@ export default function VideoPage() {
   );
   const podDownloading = useRunpodDownloadStore((state) =>
     selectedRunpodPodId ? Boolean(state.downloadingByPod[selectedRunpodPodId]) : false
-  );
-  const podDownloadProgress = useRunpodDownloadStore((state) =>
-    selectedRunpodPodId ? state.progressByPod[selectedRunpodPodId] ?? null : null
   );
   const podDownloadMessage = useRunpodDownloadStore((state) =>
     selectedRunpodPodId ? state.messageByPod[selectedRunpodPodId] ?? "" : ""
@@ -2039,8 +2036,10 @@ export default function VideoPage() {
       comfyInitializing: false,
       helperReachable: false,
       helperInitializing: false,
+      helperOutdated: false,
       comfyError: "",
       helperError: "",
+      comfyVersion: "",
       podDesiredStatus: "",
     });
   }, []);
@@ -2122,8 +2121,10 @@ export default function VideoPage() {
         comfyInitializing,
         helperReachable,
         helperInitializing,
+        helperOutdated: helperReachable && Boolean(data.helperOutdated),
         comfyError,
         helperError,
+        comfyVersion: String(data.comfyVersion || ""),
         podDesiredStatus: String(data.podDesiredStatus || ""),
       };
       setRunpodConnection(status);
@@ -2226,8 +2227,10 @@ export default function VideoPage() {
         comfyInitializing: false,
         helperReachable: false,
         helperInitializing: false,
+        helperOutdated: false,
         comfyError: message,
         helperError: "",
+        comfyVersion: "",
         podDesiredStatus: "",
       });
       setRunpodStatus(message);
@@ -2338,7 +2341,9 @@ export default function VideoPage() {
   // already exist, so re-running is a safe no-op for anything already present.
   const downloadPipelineModels = useCallback(async () => {
     const pipelineId = params.video_pipeline || params.video_model;
-    if (!selectedRunpodPodId || !pipelineId || pipelineModelsBusy || podDownloading) {
+    // A background download no longer blocks this: fresh models are appended to
+    // the pod's running download queue, so the user can keep adding models.
+    if (!selectedRunpodPodId || !pipelineId || pipelineModelsBusy) {
       return;
     }
 
@@ -2410,7 +2415,6 @@ export default function VideoPage() {
     params.video_model,
     params.video_pipeline,
     pipelineModelsBusy,
-    podDownloading,
     selectedRunpodPodId,
     startPodModelDownload,
   ]);
@@ -2558,18 +2562,10 @@ export default function VideoPage() {
     []
   );
 
-  const updatePendingVideo = useCallback(
-    (id: string, update: Partial<GeneratedVideo>) => {
-      setPendingVideos((current) =>
-        current.map((video) => (video.id === id ? { ...video, ...update } : video))
-      );
-    },
-    []
+  const removePendingVideo = useCallback(
+    (video: GeneratedVideo) => removePendingVideoById(video.id),
+    [removePendingVideoById]
   );
-
-  const removePendingVideo = useCallback((video: GeneratedVideo) => {
-    setPendingVideos((current) => current.filter((item) => item.id !== video.id));
-  }, []);
 
   const reuseVideoParams = useCallback((video: GeneratedVideo) => {
     if (!video.params) return;
@@ -2631,7 +2627,7 @@ export default function VideoPage() {
         setVideos(data.videos ?? []);
       })
       .catch(() => {});
-  }, []);
+  }, [setVideos]);
 
   const deleteVideo = useCallback(async (video: GeneratedVideo) => {
     const response = await fetch(
@@ -2645,7 +2641,7 @@ export default function VideoPage() {
       throw new Error(data?.error || "Failed to delete video.");
     }
     setVideos((current) => current.filter((item) => item.id !== video.id));
-  }, []);
+  }, [setVideos]);
 
   useEffect(() => {
     refreshVideos();
@@ -2955,13 +2951,14 @@ export default function VideoPage() {
                 message,
               }));
               // Keep the card's progress/state, just refresh the message.
-              setPendingVideos((current) =>
-                current.map((video) =>
-                  video.id === id && video.generation
-                    ? { ...video, generation: { ...video.generation, message } }
-                    : video
-                )
-              );
+              const detailCard = useVideoStore
+                .getState()
+                .pendingVideos.find((video) => video.id === id);
+              if (detailCard?.generation) {
+                updatePendingVideo(id, {
+                  generation: { ...detailCard.generation, message },
+                });
+              }
               appendGenerationDetail({
                 stage: String(data?.stage ?? "detail"),
                 message,
@@ -2981,9 +2978,7 @@ export default function VideoPage() {
               }
               // The finished video moves into the server-backed list, so drop
               // the pending card.
-              setPendingVideos((current) =>
-                current.filter((video) => video.id !== id)
-              );
+              removePendingVideoById(id);
               generated = true;
               completed = true;
             }
@@ -3036,7 +3031,12 @@ export default function VideoPage() {
         setActiveGeneration(null);
       }
     },
-    [appendGenerationDetail, updatePendingVideo]
+    [
+      appendGenerationDetail,
+      removePendingVideoById,
+      setVideos,
+      updatePendingVideo,
+    ]
   );
 
   // Process the queue one job at a time (video generation is GPU-heavy, so
@@ -3103,22 +3103,19 @@ export default function VideoPage() {
     };
     const id = crypto.randomUUID();
 
-    setPendingVideos((current) => [
-      {
-        id,
-        url: "",
-        filename: "",
-        contentType: "",
-        params: jobParams,
-        timestamp: Date.now(),
-        generation: {
-          state: "queued",
-          progress: 0,
-          message: language === "ko" ? "대기열에 추가됨" : "Queued",
-        },
+    addPendingVideo({
+      id,
+      url: "",
+      filename: "",
+      contentType: "",
+      params: jobParams,
+      timestamp: Date.now(),
+      generation: {
+        state: "queued",
+        progress: 0,
+        message: language === "ko" ? "대기열에 추가됨" : "Queued",
       },
-      ...current,
-    ]);
+    });
     setGenerationQueue((queue) => [
       ...queue,
       {
@@ -3130,6 +3127,7 @@ export default function VideoPage() {
     ]);
     setStatus({ state: "idle", progress: 0, message: "" });
   }, [
+    addPendingVideo,
     generationTarget,
     language,
     params,
@@ -3477,7 +3475,6 @@ export default function VideoPage() {
                       !selectedRunpodPodId ||
                       !runpodConnection.helperReachable ||
                       pipelineModelsBusy ||
-                      podDownloading ||
                       isGenerating
                     }
                     title={
@@ -3486,7 +3483,7 @@ export default function VideoPage() {
                         : "Download this pipeline's models onto the pod (existing files are skipped)"
                     }
                   >
-                    {pipelineModelsBusy || podDownloading ? (
+                    {pipelineModelsBusy ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : (
                       <Download className="h-3.5 w-3.5" />
@@ -3494,26 +3491,25 @@ export default function VideoPage() {
                     {language === "ko" ? "모델 다운로드" : "Download models"}
                   </Button>
                 </div>
-                {podDownloadProgress && (
-                  <div className="grid gap-1">
-                    <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
-                      <div
-                        className="h-full bg-primary transition-all"
-                        style={{ width: `${podDownloadProgress.filePercent}%` }}
-                      />
-                    </div>
-                    <div className="truncate text-[11px] text-muted-foreground">
-                      {podDownloadProgress.completed}/{podDownloadProgress.total}
-                      {podDownloadProgress.currentPath
-                        ? ` · ${podDownloadProgress.currentPath}`
-                        : ""}
-                    </div>
-                  </div>
-                )}
-                {(podDownloadMessage || pipelineModelsStatus) && (
-                  <p className="text-[11px] text-muted-foreground">
-                    {podDownloadMessage || pipelineModelsStatus}
+                {podDownloading ? (
+                  <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    {language === "ko"
+                      ? "다운로드가 백그라운드에서 진행 중입니다. "
+                      : "Downloading in the background. "}
+                    <Link
+                      href="/downloads"
+                      className="font-semibold text-primary underline-offset-2 hover:underline"
+                    >
+                      {language === "ko" ? "다운로드 매니저에서 확인" : "Open Download Manager"}
+                    </Link>
                   </p>
+                ) : (
+                  (podDownloadMessage || pipelineModelsStatus) && (
+                    <p className="text-[11px] text-muted-foreground">
+                      {podDownloadMessage || pipelineModelsStatus}
+                    </p>
+                  )
                 )}
                 {!runpodConnection.helperReachable && (
                   <p className="text-[11px] text-muted-foreground">
@@ -4338,12 +4334,12 @@ export default function VideoPage() {
             }
           >
             <Button
-              className="relative w-full overflow-hidden"
+              className="relative w-full cursor-pointer overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/40 hover:brightness-110"
               size="lg"
               onClick={generate}
               disabled={!canGenerate}
             >
-              <span className="relative z-10 flex items-center gap-2 drop-shadow-sm">
+              <span className="relative z-10 flex items-center justify-center gap-2 drop-shadow-sm">
                 <Play className="h-4 w-4" />
                 {isGenerating || queuedJobCount > 0
                   ? language === "ko" ? "대기열에 추가" : "Add to Queue"

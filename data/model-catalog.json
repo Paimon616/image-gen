@@ -2467,7 +2467,8 @@
         "Rent",
         "Sell"
       ]
-    }
+    },
+    "source_url": "https://civitai.red/models/1028032/niji-male-style?modelVersionId=1152969"
   },
   "loras/748cm_illu.safetensors": {
     "name": "748cm | Shiiro's Styles | Niji",
@@ -6866,7 +6867,8 @@
         "RentCivit",
         "Rent"
       ]
-    }
+    },
+    "source_url": "https://civitai.red/models/176554/usnr-style?modelVersionId=959419"
   },
   "loras/USNR_STYLE_ILL_V1_lokr3-000024.safetensors": {
     "name": "薄塗り / USNR STYLE",
@@ -7131,7 +7133,8 @@
         "Image",
         "Sell"
       ]
-    }
+    },
+    "source_url": "https://civitai.red/models/147759/remacri?modelVersionId=164821"
   },
   "vae/sdxlVAE_sdxlVAE.safetensors": {
     "name": "SDXL VAE",
@@ -7715,7 +7718,9 @@
     "version": "4x-UltraSharp v1.0",
     "base_model": "Upscaler",
     "civitai_url": "https://civitai.red/models/116225/4x-ultrasharp?modelVersionId=125843",
-    "source_url": "https://civitai.red/models/116225/4x-ultrasharp?modelVersionId=125843"
+    "source_url": "https://civitai.red/models/116225/4x-ultrasharp?modelVersionId=125843",
+    "thumbnail_url": null,
+    "tags": []
   },
   "diffusion_models/pornmasterKrea2_v25Turbo.safetensors": {
     "name": "PornMaster 色情大師-Krea2",
@@ -7741,14 +7746,16 @@
     "version": "Qwen_Image_VAE",
     "base_model": "Qwen",
     "civitai_url": "https://civitai.red/models/1912333/qwen-image-vae?modelVersionId=2164481",
-    "source_url": "https://civitai.red/models/1912333/qwen-image-vae?modelVersionId=2164481"
+    "source_url": "https://civitai.red/models/1912333/qwen-image-vae?modelVersionId=2164481",
+    "thumbnail_url": null,
+    "tags": []
   },
   "text_encoders/qwen3vl_4b_fp8_scaled.safetensors": {
     "name": "Qwen3-VL 4B (fp8 scaled) text encoder",
     "version": "fp8 scaled",
     "base_model": "Krea 2",
     "thumbnail_url": null,
-    "civitai_url": null,
+    "civitai_url": "https://huggingface.co/Comfy-Org/Krea-2/resolve/main/text_encoders/qwen3vl_4b_fp8_scaled.safetensors",
     "source_url": "https://huggingface.co/Comfy-Org/Krea-2/resolve/main/text_encoders/qwen3vl_4b_fp8_scaled.safetensors",
     "tags": [
       "krea2",
@@ -7791,7 +7798,7 @@
     "version": "heretic int8",
     "base_model": "Krea 2",
     "thumbnail_url": null,
-    "civitai_url": null,
+    "civitai_url": "https://huggingface.co/DreamFast/Qwen3-VL-4b-Heretic-ComfyUI/resolve/main/qwen3-vl-4b-heretic_int8.safetensors",
     "source_url": "https://huggingface.co/DreamFast/Qwen3-VL-4b-Heretic-ComfyUI/resolve/main/qwen3-vl-4b-heretic_int8.safetensors",
     "tags": [
       "krea2",
@@ -7807,7 +7814,7 @@
     "version": "wan_2.1_vae",
     "base_model": "Wan 2.1",
     "thumbnail_url": null,
-    "civitai_url": null,
+    "civitai_url": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors",
     "source_url": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors",
     "tags": [
       "pornmaster",
@@ -8017,7 +8024,8 @@
     "base_model": "Krea 2",
     "civitai_url": "https://civitai.red/models/2742129/pornmaster-krea2-realism-slider?modelVersionId=3083986",
     "source_url": "https://civitai.red/models/2742129/pornmaster-krea2-realism-slider?modelVersionId=3083986",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/df6dcd35-0774-46b9-9688-2536abcec786/original=true/135311091.jpeg"
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/df6dcd35-0774-46b9-9688-2536abcec786/original=true/135311091.jpeg",
+    "tags": []
   },
   "loras/PornMaster_Krea2_Asian_slider_V1.safetensors": {
     "name": "PornMaster Krea2 Asian slider",
@@ -8025,7 +8033,8 @@
     "base_model": "Krea 2",
     "civitai_url": "https://civitai.red/models/2756475/pornmaster-krea2-asian-slider?modelVersionId=3101650",
     "source_url": "https://civitai.red/models/2756475/pornmaster-krea2-asian-slider?modelVersionId=3101650",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/41a30feb-0368-4f8d-9f8c-f5370a26f4f8/original=true/135901174.jpeg"
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/41a30feb-0368-4f8d-9f8c-f5370a26f4f8/original=true/135901174.jpeg",
+    "tags": []
   },
   "loras/PornMaster_Flat_chest_&_Innie_pussy_krea2_V1.safetensors": {
     "name": "PornMaster Krea2 Flat chest & Innie pussy",
@@ -8046,7 +8055,8 @@
     "base_model": "Krea 2",
     "civitai_url": "https://civitai.red/models/2735032/pornmaster-krea2?modelVersionId=3119653",
     "source_url": "https://civitai.red/models/2735032/pornmaster-krea2?modelVersionId=3119653",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/3ecec6f0-be2a-4cf5-b77d-309bea01a96d/original=true/136398602.jpeg"
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/3ecec6f0-be2a-4cf5-b77d-309bea01a96d/original=true/136398602.jpeg",
+    "tags": []
   },
   "loras/RealisticAnimeIXL_v2.safetensors": {
     "name": "CAT - Citron Styles",
@@ -8303,5 +8313,149 @@
       "patch"
     ],
     "note": "확인됨: Lightricks/LTX-2.5 공식. 자동 길이 예측 head(선택)."
+  },
+  "loras/v1.0.safetensors": {
+    "name": "v1.0",
+    "version": "V1",
+    "base_model": "SD 1.5",
+    "civitai_url": "https://civitai.red/models/1336410/v1-0?modelVersionId=1509122",
+    "source_url": "https://civitai.red/models/1336410/v1-0?modelVersionId=1509122",
+    "thumbnail_url": null,
+    "tags": []
+  },
+  "loras/illustrious_masterpieces_v3.safetensors": {
+    "name": "Aesthetic Quality Modifiers - Masterpiece",
+    "version": "v3.0 [illustrious]",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/929497/aesthetic-quality-modifiers-masterpiece?modelVersionId=2247497",
+    "source_url": "https://civitai.red/models/929497/aesthetic-quality-modifiers-masterpiece?modelVersionId=2247497",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/c412dec5-ab50-4cc1-8b7b-1526e771fdf3/original=true/102155669.jpeg",
+    "tags": [
+      "masterpiece, best quality, very aesthetic"
+    ]
+  },
+  "loras/MGBODYTYPEO2IL.safetensors": {
+    "name": "Puffy Nipples / MG Body Type O for Realistic Illustious",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/2003137/puffy-nipples-mg-body-type-o-for-realistic-illustious?modelVersionId=2267333",
+    "source_url": "https://civitai.red/models/2003137/puffy-nipples-mg-body-type-o-for-realistic-illustious?modelVersionId=2267333",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/8f18b58a-8b64-4509-a620-42d450afb425/original=true/103329478.jpeg",
+    "tags": [
+      "(breasts, nipples, perky breasts)"
+    ]
+  },
+  "checkpoints/duchesse_v30.safetensors": {
+    "name": "Duchesse",
+    "version": "v3.0",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/1798332/duchesse?modelVersionId=2370371",
+    "source_url": "https://civitai.red/models/1798332/duchesse?modelVersionId=2370371",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/7511df6d-9db4-4db3-ac86-57a893f4d171/original=true/108667096.jpeg"
+  },
+  "loras/iLLC0lorL1nes.safetensors": {
+    "name": "Velvet's Mythic Fantasy Styles | Flux + Pony + illustrious + ZiT + Anima + Krea2",
+    "version": "illustrious Colorful Line",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/599757/velvet-s-mythic-fantasy-styles-flux-pony-illustrious-zit-anima-krea2?modelVersionId=2620790",
+    "source_url": "https://civitai.red/models/599757/velvet-s-mythic-fantasy-styles-flux-pony-illustrious-zit-anima-krea2?modelVersionId=2620790",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/2b51113d-1a94-4635-9651-fe5778760f54/original=true/118378407.jpeg",
+    "tags": [
+      "C0lorL1nes"
+    ]
+  },
+  "loras/Rembrandt Lighting style illu v1.safetensors": {
+    "name": "Rembrandt (Low-Key) Lighting Style XL + SD1.5 + F1D + Illu + Pony + zit",
+    "version": "Rembrandt Illu v1.0",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/280454/rembrandt-low-key-lighting-style-xl-sd1-5-f1d-illu-pony-zit?modelVersionId=1806931",
+    "source_url": "https://civitai.red/models/280454/rembrandt-low-key-lighting-style-xl-sd1-5-f1d-illu-pony-zit?modelVersionId=1806931"
+  },
+  "loras/RealSkin_xxXL_v1.safetensors": {
+    "name": "Real Skin Slider",
+    "version": "v1.0",
+    "base_model": "Pony",
+    "civitai_url": "https://civitai.red/models/1486921/real-skin-slider?modelVersionId=1681921",
+    "source_url": "https://civitai.red/models/1486921/real-skin-slider?modelVersionId=1681921"
+  },
+  "diffusion_models/krea2Turbo_v10.safetensors": {
+    "name": "Krea 2 Turbo",
+    "version": "v1.0",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2732656/krea-2-turbo?modelVersionId=3072332",
+    "source_url": "https://civitai.red/models/2732656/krea-2-turbo?modelVersionId=3072332",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/2d6c922c-af6e-41f7-8ca4-a91da06ece68/original=true/135352641.jpeg"
+  },
+  "loras/ass_krea2_loraholic.safetensors": {
+    "name": "Ass and Thighs Slider - (Krea-2 + ZIT)",
+    "version": "Krea-2_v1",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2554616/ass-and-thighs-slider-krea-2-zit?modelVersionId=3072964",
+    "source_url": "https://civitai.red/models/2554616/ass-and-thighs-slider-krea-2-zit?modelVersionId=3072964",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/81b11f8a-7ff0-40c7-a6dd-8c9cc2bdf794/original=true/134964430.jpeg"
+  },
+  "loras/areola_size_krea2_loraholic.safetensors": {
+    "name": "Areola Size Slider - (Krea2 + ZIT)",
+    "version": "Krea2_v1",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2554618/areola-size-slider-krea2-zit?modelVersionId=3120387",
+    "source_url": "https://civitai.red/models/2554618/areola-size-slider-krea2-zit?modelVersionId=3120387",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/290e24e7-d6a1-41a1-9233-ce3d3ed68c6b/original=true/136418837.jpeg"
+  },
+  "loras/breast_size_v2_krea2_loraholic.safetensors": {
+    "name": "Breast Size Slider  - (Krea-2 + ZIT)",
+    "version": "Krea-2_v2",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2540187/breast-size-slider-krea-2-zit?modelVersionId=3131773",
+    "source_url": "https://civitai.red/models/2540187/breast-size-slider-krea-2-zit?modelVersionId=3131773",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/c3c7667e-f0c2-4c77-b1c5-731b5b145571/original=true/136772816.jpeg"
+  },
+  "loras/krea2-bloomgirls-realism-step00004000.safetensors": {
+    "name": "[Krea 2] BloomGirls UltraRealism",
+    "version": "v1.0 (Main)",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2735553/krea-2-bloomgirls-ultrarealism?modelVersionId=3191538",
+    "source_url": "https://civitai.red/models/2735553/krea-2-bloomgirls-ultrarealism?modelVersionId=3191538",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/6e9d3fe6-76ac-48db-8331-e7404af29331/original=true/138554654.jpeg",
+    "tags": [
+      "bl00m"
+    ]
+  },
+  "loras/Private_Style_v11.safetensors": {
+    "name": "Private Style",
+    "version": "v1.1",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2833524/private-style?modelVersionId=3214549",
+    "source_url": "https://civitai.red/models/2833524/private-style?modelVersionId=3214549",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/2324e005-cb6c-49a9-8646-e717f46dcec6/original=true/139274138.jpeg"
+  },
+  "ultralytics/bbox/face_yolov8n_v2.pt": {
+    "name": "bbox/face_yolov8n_v2.pt",
+    "version": "",
+    "base_model": "",
+    "thumbnail_url": null,
+    "civitai_url": "https://huggingface.co/Bingsu/adetailer/resolve/main/face_yolov8n_v2.pt",
+    "source_url": "https://huggingface.co/Bingsu/adetailer/resolve/main/face_yolov8n_v2.pt",
+    "tags": []
+  },
+  "loras/hina_krea2Turbo_lora_tqd_v4.0.safetensors": {
+    "name": "[Krea2 Turbo] AsianMix Lora",
+    "version": "v4.0 - TQD",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2746042/krea2-turbo-asianmix-lora?modelVersionId=3203007",
+    "source_url": "https://civitai.red/models/2746042/krea2-turbo-asianmix-lora?modelVersionId=3203007",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/57487454-3a00-4be6-8273-dbfd11e052d3/original=true/138912695.jpeg",
+    "tags": [
+      "asian woman"
+    ]
+  },
+  "diffusion_models/krea2_turbo_int8_convrot.safetensors": {
+    "name": "Krea 2 Turbo Official Comfy-Org Checkpoints (Krea2)",
+    "version": "krea2_turbo_int8_convrot",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2726029/krea-2-turbo-official-comfy-org-checkpoints-krea2?modelVersionId=3091481",
+    "source_url": "https://civitai.red/models/2726029/krea-2-turbo-official-comfy-org-checkpoints-krea2?modelVersionId=3091481",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/8940b90b-7d94-435f-9b1a-7551b8aef713/original=true/135529120.jpeg",
+    "tags": []
   }
 }

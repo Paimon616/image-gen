@@ -28,7 +28,7 @@ export const AVAILABLE_MODELS: ModelConfig[] = [
       embeddings: true,
       custom_model: true,
       ip_adapter: false,
-      face_id: false,
+      face_id: true,
       negative_prompt: true,
     },
     defaults: { num_inference_steps: 30, guidance_scale: 7.5 },
@@ -83,6 +83,10 @@ export interface GenerationParams {
   prompt_weighting: boolean;
   style_image: string | null;
   character_image: string | null;
+  // PuLID identity weight for character_image. Higher reproduces the reference
+  // face more faithfully; lower lets the prompt/pose lead. Only consulted on the
+  // SDXL/Illustrious workflow when character_image is set. Sweet spot ~0.7–1.0.
+  character_reference_strength: number;
   source_image: string | null;
   denoise_strength: number;
   pose_reference_image: string | null;
@@ -345,6 +349,7 @@ export const DEFAULT_PARAMS: GenerationParams = {
   prompt_weighting: true,
   style_image: null,
   character_image: null,
+  character_reference_strength: 0.7,
   source_image: null,
   denoise_strength: 0.6,
   pose_reference_image: null,

@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import Link from "next/link";
 import { imageMatchesWorkspace, useStore } from "@/lib/store";
+import { isPulidInstallableError } from "@/lib/pulid-assets";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -32,7 +34,17 @@ import type {
   ImportedCivitaiResource,
 } from "@/lib/types";
 import { getModelConfig, randomGenerationSeed } from "@/lib/types";
+import {
+  compareComfyVersions,
+  formatComfyVersion,
+  parseComfyVersion,
+  requiredComfyVersionForCheckpoint,
+} from "@/lib/comfy-version";
 import { useRunpodDownloadStore } from "@/lib/runpod-download-store";
+import {
+  runpodDownloadEntryId,
+  useDownloadManagerStore,
+} from "@/lib/download-manager-store";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -47,6 +59,7 @@ import {
   Loader2,
   PanelLeftClose,
   PanelLeftOpen,
+  Power,
   RefreshCw,
   ScanLine,
   Server,
@@ -86,21 +99,14 @@ interface RunpodConnectionStatus {
   comfyInitializing: boolean;
   helperReachable: boolean;
   helperInitializing: boolean;
+  // Helper is reachable but running an older build than this app ships; the user
+  // is prompted to redeploy so newer features (e.g. the shared model catalog) work.
+  helperOutdated: boolean;
   comfyError: string;
   helperError: string;
+  // The ComfyUI version the pod reports (system.comfyui_version), "" if unknown.
+  comfyVersion: string;
   podDesiredStatus: string;
-}
-
-function formatBytes(bytes: number) {
-  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  let value = bytes;
-  let unitIndex = 0;
-  while (value >= 1024 && unitIndex < units.length - 1) {
-    value /= 1024;
-    unitIndex += 1;
-  }
-  return `${value >= 10 || unitIndex === 0 ? value.toFixed(0) : value.toFixed(1)} ${units[unitIndex]}`;
 }
 
 const EDITOR_MIN_WIDTH = 320;
@@ -195,6 +201,10 @@ export default function Home() {
     removeImage,
     setImageWorkspace,
     setImageWorkspaces,
+    fetchImagePage,
+    imagesNextCursor,
+    imagesTotal,
+    isLoadingMoreImages,
   } = useStore();
   const ko = language === "ko";
   const [localControlnets, setLocalControlnets] = useState<string[]>([]);
@@ -213,10 +223,23 @@ export default function Home() {
   const [batchDownloadBusy, setBatchDownloadBusy] = useState(false);
   const layoutRef = useRef<HTMLDivElement | null>(null);
   const [generationQueue, setGenerationQueue] = useState<GenerationQueueItem[]>([]);
+  // True from the moment Generate is pressed until the pending gallery card is
+  // registered. On the RunPod path an async file check sits in that gap, so the
+  // button shows a "registering card" state instead of looking unresponsive.
+  const [isSubmitting, setIsSubmitting] = useState(false);
   // Always start with the deterministic default so the server-rendered HTML and
   // the client's first render match. The persisted value is read after mount
   // (see the useEffect below) to avoid a hydration mismatch.
   const [generationTarget, setGenerationTarget] = useState<"local" | "runpod">("local");
+  // Local ComfyUI backend state. The launcher no longer starts ComfyUI; the app
+  // offers to start it on demand via a banner when in local mode (see below).
+  const [comfy, setComfy] = useState<{
+    running: boolean;
+    starting: boolean;
+    local: boolean;
+    installed: boolean;
+  }>({ running: true, starting: false, local: true, installed: true });
+  const [comfyStartError, setComfyStartError] = useState("");
   const [runpodPods, setRunpodPods] = useState<RunpodPodOption[]>([]);
   const [selectedRunpodPodId, setSelectedRunpodPodId] = useState("");
   const [runpodStatus, setRunpodStatus] = useState("");
@@ -231,12 +254,17 @@ export default function Home() {
   >([]);
   const [nodeInstallBusy, setNodeInstallBusy] = useState(false);
   const [nodeInstallStatus, setNodeInstallStatus] = useState("");
+  // PuLID one-click install (surfaced when a generation fails with a missing-node
+  // or missing-weight PuLID error). Streams script/helper progress into `message`.
+  const [pulidInstall, setPulidInstall] = useState<{ running: boolean; message: string }>({
+    running: false,
+    message: "",
+  });
+  const [comfyUpgradeBusy, setComfyUpgradeBusy] = useState(false);
+  const [comfyUpgradeStatus, setComfyUpgradeStatus] = useState("");
   // RunPod download progress/status live in a module-level store (not component
-  // state) so an in-flight download and its progress survive navigating away
-  // from and back to this page.
-  const runpodDownloadProgress = useRunpodDownloadStore((state) =>
-    selectedRunpodPodId ? state.progressByPod[selectedRunpodPodId] ?? null : null
-  );
+  // state) so an in-flight download survives navigating away from and back to
+  // this page. Progress itself is shown on the Download Manager page.
   const runpodDownloading = useRunpodDownloadStore((state) =>
     selectedRunpodPodId
       ? state.downloadingByPod[selectedRunpodPodId] ?? false
@@ -244,6 +272,11 @@ export default function Home() {
   );
   const runpodDownloadMessage = useRunpodDownloadStore((state) =>
     selectedRunpodPodId ? state.messageByPod[selectedRunpodPodId] ?? "" : ""
+  );
+  // Per-file download status (from the Download Manager) so each missing-file
+  // row can show whether that exact file is downloading / done right now.
+  const downloadManagerEntries = useDownloadManagerStore(
+    (state) => state.entries
   );
   const runpodPendingRecheck = useRunpodDownloadStore((state) =>
     selectedRunpodPodId
@@ -268,8 +301,10 @@ export default function Home() {
     comfyInitializing: false,
     helperReachable: false,
     helperInitializing: false,
+    helperOutdated: false,
     comfyError: "",
     helperError: "",
+    comfyVersion: "",
     podDesiredStatus: "",
   });
   const runpodConnectionRef = useRef<RunpodConnectionStatus | null>(null);
@@ -401,8 +436,10 @@ export default function Home() {
       comfyInitializing: false,
       helperReachable: false,
       helperInitializing: false,
+      helperOutdated: false,
       comfyError: "",
       helperError: "",
+      comfyVersion: "",
       podDesiredStatus: "",
     });
   }, []);
@@ -417,8 +454,10 @@ export default function Home() {
         comfyInitializing: !comfyReachable && Boolean(data.comfyInitializing),
         helperReachable,
         helperInitializing: !helperReachable && Boolean(data.helperInitializing),
+        helperOutdated: helperReachable && Boolean(data.helperOutdated),
         comfyError: String(data.comfyError || ""),
         helperError: String(data.helperError || ""),
+        comfyVersion: String(data.comfyVersion || ""),
         podDesiredStatus: String(data.podDesiredStatus || ""),
       };
       setRunpodConnection(status);
@@ -527,6 +566,67 @@ export default function Home() {
     [autoSelectRunningRunpodPod, resetRunpodConnection]
   );
 
+  const refreshComfyStatus = useCallback(async () => {
+    try {
+      const res = await fetch("/api/comfyui/status", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = (await res.json()) as {
+        running: boolean;
+        starting: boolean;
+        local: boolean;
+        installed: boolean;
+      };
+      // Only update when something changed so the poll doesn't re-render the
+      // whole page on every tick.
+      setComfy((prev) =>
+        prev.running === data.running &&
+        prev.starting === data.starting &&
+        prev.local === data.local &&
+        prev.installed === data.installed
+          ? prev
+          : data
+      );
+    } catch {
+      // Transient fetch error; leave the last known status in place.
+    }
+  }, []);
+
+  const startComfy = useCallback(async () => {
+    setComfyStartError("");
+    setComfy((prev) => ({ ...prev, starting: true }));
+    try {
+      const res = await fetch("/api/comfyui/start", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setComfyStartError(
+          (data as { error?: string })?.error || "Failed to start ComfyUI."
+        );
+        setComfy((prev) => ({ ...prev, starting: false }));
+        return;
+      }
+      setComfy(data as typeof comfy);
+    } catch {
+      setComfyStartError("Failed to start ComfyUI.");
+      setComfy((prev) => ({ ...prev, starting: false }));
+    }
+  }, []);
+
+  // Poll the local ComfyUI status while in local mode. Poll quickly until it is
+  // up (so the banner clears promptly once it boots), then back off.
+  useEffect(() => {
+    if (generationTarget !== "local") return;
+    let active = true;
+    const tick = () => {
+      if (active) void refreshComfyStatus();
+    };
+    tick();
+    const interval = setInterval(tick, comfy.running ? 15_000 : 3_000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [generationTarget, refreshComfyStatus, comfy.running]);
+
   useEffect(() => {
     runpodConnectionRef.current = runpodConnection;
   }, [runpodConnection]);
@@ -599,6 +699,23 @@ export default function Home() {
 
   const currentModel = getModelConfig(params.model);
   const supportsPoseReference = currentModel.provider === "comfyui";
+
+  // ComfyUI version gating: some checkpoints (e.g. int8-quantized Krea2) need a
+  // newer ComfyUI build than the pod may be running. Compare the model's minimum
+  // against the version the pod reports so the UI can warn + offer an upgrade.
+  const requiredComfyVersion = useMemo(
+    () => requiredComfyVersionForCheckpoint(params.model_name || ""),
+    [params.model_name]
+  );
+  const currentComfyVersion = useMemo(
+    () => parseComfyVersion(runpodConnection.comfyVersion),
+    [runpodConnection.comfyVersion]
+  );
+  const comfyVersionOutdated = Boolean(
+    requiredComfyVersion &&
+      currentComfyVersion &&
+      compareComfyVersions(currentComfyVersion, requiredComfyVersion) < 0
+  );
   const galleryBatchImages = useMemo(() => {
     const visiblePending = pendingImages.filter((image) =>
       imageMatchesWorkspace(image, activeWorkspaceId)
@@ -1115,6 +1232,151 @@ export default function Home() {
     selectedRunpodPodId,
   ]);
 
+  // One-click PuLID install: streams the local setup script or the pod helper
+  // install into the banner. `target` decides local vs RunPod endpoint.
+  const installPulid = useCallback(
+    async (target: "local" | "runpod") => {
+      if (pulidInstall.running) return;
+      if (target === "runpod" && !selectedRunpodPodId) {
+        setPulidInstall({
+          running: false,
+          message: ko ? "RunPod 대상을 먼저 선택하세요." : "Select a RunPod target first.",
+        });
+        return;
+      }
+      const url =
+        target === "runpod"
+          ? `/api/runpod/pods/${selectedRunpodPodId}/pulid/install/stream`
+          : "/api/comfyui/pulid/install/stream";
+      setPulidInstall({
+        running: true,
+        message: ko ? "PuLID 설치 준비 중... (수 분 소요)" : "Preparing PuLID install... (may take minutes)",
+      });
+      try {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+        if (!response.ok || !response.body) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.error || "PuLID install failed.");
+        }
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let streamError = "";
+        let doneMessage = "";
+        const handle = (raw: string) => {
+          if (!raw.startsWith("data:")) return;
+          const event = JSON.parse(raw.slice(5).trim()) as { type?: string; message?: string };
+          if (event.type === "error") streamError = event.message || "PuLID install failed.";
+          else if (event.type === "complete") doneMessage = event.message || (ko ? "설치 완료." : "Installed.");
+          else if (event.message) setPulidInstall({ running: true, message: event.message });
+        };
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop() ?? "";
+          for (const part of parts) {
+            const dataLine = part.split("\n").find((line) => line.startsWith("data:"));
+            if (dataLine) handle(dataLine);
+          }
+        }
+        if (buffer) {
+          const dataLine = buffer.split("\n").find((line) => line.startsWith("data:"));
+          if (dataLine) handle(dataLine);
+        }
+        if (streamError) throw new Error(streamError);
+        setPulidInstall({
+          running: false,
+          message: doneMessage || (ko ? "설치 완료." : "Installed."),
+        });
+      } catch (error) {
+        setPulidInstall({
+          running: false,
+          message: error instanceof Error ? error.message : "PuLID install failed.",
+        });
+      }
+    },
+    [ko, pulidInstall.running, selectedRunpodPodId]
+  );
+
+  // Update the pod's ComfyUI to the pinned version (git checkout + pip + restart),
+  // streaming progress into the status line. Re-checks once ComfyUI is back so the
+  // new version and the model's requirement re-reconcile automatically.
+  const upgradeRunpodComfy = useCallback(async () => {
+    if (!selectedRunpodPodId || comfyUpgradeBusy) return;
+    setComfyUpgradeBusy(true);
+    setComfyUpgradeStatus(
+      ko
+        ? "ComfyUI 업데이트 중... (git + pip, 수 분 소요, 완료 후 자동 재시작)"
+        : "Upgrading ComfyUI... (git + pip, may take minutes, auto-restarts when done)"
+    );
+    try {
+      const response = await fetch(
+        `/api/runpod/pods/${selectedRunpodPodId}/comfyui/upgrade/stream`,
+        { method: "POST", headers: { "Content-Type": "application/json" } }
+      );
+      if (!response.ok || !response.body) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || "ComfyUI upgrade failed.");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let streamError = "";
+      const handle = (raw: string) => {
+        if (!raw.startsWith("data:")) return;
+        const event = JSON.parse(raw.slice(5).trim()) as {
+          type?: string;
+          message?: string;
+          version?: string;
+        };
+        if (event.type === "error") streamError = event.message || "ComfyUI upgrade failed.";
+        if ((event.type === "status" || event.type === "log") && event.message) {
+          setComfyUpgradeStatus(event.message);
+        }
+        if (event.type === "complete") {
+          const v = event.version ? ` (v${event.version})` : "";
+          setComfyUpgradeStatus(
+            ko
+              ? `업데이트 완료${v}. 상태를 다시 확인합니다.`
+              : `Upgrade complete${v}. Re-checking status.`
+          );
+        }
+      };
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() ?? "";
+        for (const part of parts) {
+          const dataLine = part.split("\n").find((line) => line.startsWith("data:"));
+          if (dataLine) handle(dataLine);
+        }
+      }
+      if (buffer) {
+        const dataLine = buffer.split("\n").find((line) => line.startsWith("data:"));
+        if (dataLine) handle(dataLine);
+      }
+      if (streamError) throw new Error(streamError);
+      // ComfyUI restarts after the upgrade; give it time to rebind, then re-verify.
+      setTimeout(() => {
+        void refreshRunpodStatus();
+      }, 12000);
+    } catch (error) {
+      setComfyUpgradeStatus(
+        error instanceof Error ? error.message : "Failed to upgrade ComfyUI."
+      );
+    } finally {
+      setComfyUpgradeBusy(false);
+    }
+  }, [comfyUpgradeBusy, ko, refreshRunpodStatus, selectedRunpodPodId]);
+
   // When a background RunPod download settles, re-verify which files are
   // present and report the result. `pendingRecheck` is a store flag, so this
   // fires even when the download finished while the page was unmounted: on
@@ -1183,8 +1445,7 @@ export default function Home() {
       generationTarget !== "runpod" ||
       !selectedRunpodPodId ||
       activeGeneration ||
-      runpodBusy ||
-      runpodDownloading
+      runpodBusy
     ) {
       return;
     }
@@ -1200,7 +1461,6 @@ export default function Home() {
     selectedRunpodPodId,
     activeGeneration,
     runpodBusy,
-    runpodDownloading,
     runpodConnection.comfyReachable,
     runpodConnection.helperReachable,
     runpodFileSignature,
@@ -1216,6 +1476,10 @@ export default function Home() {
 
   const generate = useCallback(async () => {
     if (!params.prompt.trim()) return;
+    // Flag the "registering card" state up front; the finally below clears it
+    // once the pending card exists (or an early return bails out).
+    setIsSubmitting(true);
+    try {
     if (generationModeError) {
       setStatus({ state: "error", progress: 0, message: generationModeError });
       return;
@@ -1310,6 +1574,9 @@ export default function Home() {
       },
     ]);
     setStatus({ state: "idle", progress: 0, message: "" });
+    } finally {
+      setIsSubmitting(false);
+    }
   }, [
     addImage,
     generationModeError,
@@ -1328,7 +1595,10 @@ export default function Home() {
 
   const runRunpodAction = useCallback(
     async (action: "status" | "check" | "download" | "setup") => {
-      if (!selectedRunpodPodId || runpodBusy || runpodDownloading) return;
+      // Note: a background download no longer blocks these actions. File checks
+      // are read-only and safe mid-download, and the download queue appends new
+      // files to the running batch, so status/check/download stay usable.
+      if (!selectedRunpodPodId || runpodBusy) return;
 
       setRunpodBusy(action);
       setRunpodStatus("");
@@ -1360,7 +1630,9 @@ export default function Home() {
                   ? ko ? "ComfyUI 초기화 중" : "ComfyUI initializing"
                   : ko ? `ComfyUI 미연결: ${data.comfyError || ""}` : `ComfyUI unreachable: ${data.comfyError || ""}`,
               data.helperReachable
-                ? ko ? "Helper 연결됨" : "Helper reachable"
+                ? data.helperOutdated
+                  ? ko ? "Helper 업데이트 필요" : "Helper update needed"
+                  : ko ? "Helper 연결됨" : "Helper reachable"
                 : data.helperInitializing
                   ? ko ? "Helper 초기화 중" : "Helper initializing"
                   : ko ? `Helper 미연결: ${data.helperError || ""}` : `Helper unreachable: ${data.helperError || ""}`,
@@ -1431,7 +1703,6 @@ export default function Home() {
       refreshRunpodRunning,
       refreshRunpodStatus,
       runpodBusy,
-      runpodDownloading,
       runpodMissingFiles,
       selectedRunpodPodId,
       startRunpodDownload,
@@ -1631,6 +1902,54 @@ export default function Home() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          {generationTarget === "local" && comfy.local && !comfy.running && (
+            <div className="space-y-2 rounded-md border border-sky-500/40 bg-sky-500/10 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <Server className="h-4 w-4 shrink-0 text-sky-600" />
+                  <span className="text-sm font-semibold text-sky-700">
+                    {ko ? "ComfyUI가 실행 중이 아닙니다" : "ComfyUI is not running"}
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-7 gap-1 px-3 text-xs"
+                  disabled={comfy.starting || !comfy.installed}
+                  onClick={() => void startComfy()}
+                >
+                  {comfy.starting ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Power className="h-3.5 w-3.5" />
+                  )}
+                  {comfy.starting
+                    ? ko
+                      ? "시작 중..."
+                      : "Starting..."
+                    : ko
+                      ? "ComfyUI 켜기"
+                      : "Start ComfyUI"}
+                </Button>
+              </div>
+              <p className="text-xs text-sky-700/90">
+                {!comfy.installed
+                  ? ko
+                    ? "ComfyUI가 설치되어 있지 않습니다. 터미널에서 npm run setup:comfyui 를 실행하세요."
+                    : "ComfyUI is not installed. Run npm run setup:comfyui in a terminal."
+                  : comfy.starting
+                    ? ko
+                      ? "ComfyUI를 시작하는 중입니다. 첫 실행은 시간이 걸릴 수 있습니다."
+                      : "Starting ComfyUI. The first launch can take a little while."
+                    : ko
+                      ? "로컬 생성을 하려면 ComfyUI가 실행 중이어야 합니다."
+                      : "Local generation needs ComfyUI running."}
+              </p>
+              {comfyStartError && (
+                <p className="text-xs text-red-600">{comfyStartError}</p>
+              )}
+            </div>
+          )}
           {generationTarget === "runpod" &&
             (runpodMissingNodePacks.length > 0 || nodeInstallStatus) && (
               <div className="space-y-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3">
@@ -1713,7 +2032,9 @@ export default function Home() {
                     {!runpodConnection.checked
                       ? ko ? "ComfyUI 미확인" : "ComfyUI unchecked"
                       : runpodConnection.comfyReachable
-                        ? "ComfyUI OK"
+                        ? runpodConnection.comfyVersion
+                          ? `ComfyUI v${runpodConnection.comfyVersion}`
+                          : "ComfyUI OK"
                         : runpodConnection.comfyInitializing
                           ? ko ? "ComfyUI 초기화 중" : "ComfyUI initializing"
                           : "ComfyUI ?"}
@@ -1722,14 +2043,18 @@ export default function Home() {
                     className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold ${
                       !runpodConnection.checked
                         ? "bg-muted text-muted-foreground"
-                        : runpodConnection.helperReachable
-                          ? "bg-green-500/15 text-green-600"
-                          : runpodConnection.helperInitializing
-                            ? "bg-yellow-500/15 text-yellow-600"
-                            : "bg-destructive/15 text-destructive"
+                        : runpodConnection.helperReachable && runpodConnection.helperOutdated
+                          ? "bg-yellow-500/15 text-yellow-600"
+                          : runpodConnection.helperReachable
+                            ? "bg-green-500/15 text-green-600"
+                            : runpodConnection.helperInitializing
+                              ? "bg-yellow-500/15 text-yellow-600"
+                              : "bg-destructive/15 text-destructive"
                     }`}
                   >
                     {!runpodConnection.checked ? (
+                      <AlertTriangle className="h-3 w-3" />
+                    ) : runpodConnection.helperReachable && runpodConnection.helperOutdated ? (
                       <AlertTriangle className="h-3 w-3" />
                     ) : runpodConnection.helperReachable ? (
                       <CheckCircle2 className="h-3 w-3" />
@@ -1740,11 +2065,13 @@ export default function Home() {
                     )}
                     {!runpodConnection.checked
                       ? ko ? "Helper 미확인" : "Helper unchecked"
-                      : runpodConnection.helperReachable
-                        ? "Helper OK"
-                        : runpodConnection.helperInitializing
-                          ? ko ? "Helper 초기화 중" : "Helper initializing"
-                          : "Helper ?"}
+                      : runpodConnection.helperReachable && runpodConnection.helperOutdated
+                        ? ko ? "Helper 업데이트 필요" : "Helper update needed"
+                        : runpodConnection.helperReachable
+                          ? "Helper OK"
+                          : runpodConnection.helperInitializing
+                            ? ko ? "Helper 초기화 중" : "Helper initializing"
+                            : "Helper ?"}
                   </span>
                   <span
                     className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${
@@ -1764,7 +2091,8 @@ export default function Home() {
                 </div>
                 <div className="grid grid-cols-2 gap-2 xl:grid-cols-3">
                   {runpodConnection.checked &&
-                    !runpodConnection.helperReachable &&
+                    (!runpodConnection.helperReachable ||
+                      runpodConnection.helperOutdated) &&
                     runpodPodRunning && (
                       <Button
                         type="button"
@@ -1773,8 +2101,7 @@ export default function Home() {
                         className="gap-1.5"
                         disabled={
                           !selectedRunpodPodId ||
-                          Boolean(runpodBusy) ||
-                          runpodDownloading
+                          Boolean(runpodBusy)
                         }
                         onClick={() => void runRunpodAction("setup")}
                       >
@@ -1783,7 +2110,9 @@ export default function Home() {
                         ) : (
                           <Wrench className="h-3.5 w-3.5" />
                         )}
-                        {ko ? "Helper 초기화" : "Init helper"}
+                        {runpodConnection.helperReachable
+                          ? ko ? "Helper 업데이트" : "Update helper"
+                          : ko ? "Helper 초기화" : "Init helper"}
                       </Button>
                     )}
                   <Button
@@ -1793,8 +2122,7 @@ export default function Home() {
                     className="gap-1.5"
                     disabled={
                       !selectedRunpodPodId ||
-                      Boolean(runpodBusy) ||
-                      runpodDownloading
+                      Boolean(runpodBusy)
                     }
                     onClick={() => void runRunpodAction("status")}
                   >
@@ -1812,8 +2140,7 @@ export default function Home() {
                     className="gap-1.5"
                     disabled={
                       !selectedRunpodPodId ||
-                      Boolean(runpodBusy) ||
-                      runpodDownloading
+                      Boolean(runpodBusy)
                     }
                     onClick={() => void runRunpodAction("check")}
                   >
@@ -1825,6 +2152,67 @@ export default function Home() {
                     {ko ? "파일 체크" : "Files"}
                   </Button>
                 </div>
+                {requiredComfyVersion && runpodConnection.checked && (
+                  <div
+                    className={`space-y-2 rounded-md border p-2 ${
+                      comfyVersionOutdated || !currentComfyVersion
+                        ? "border-yellow-500/30 bg-yellow-500/10"
+                        : "border-green-500/30 bg-green-500/10"
+                    }`}
+                  >
+                    <div className="flex items-start gap-1.5 text-xs">
+                      {comfyVersionOutdated || !currentComfyVersion ? (
+                        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-yellow-600" />
+                      ) : (
+                        <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-green-600" />
+                      )}
+                      <span className="font-semibold">
+                        {ko
+                          ? `이 모델은 ComfyUI v${formatComfyVersion(requiredComfyVersion)} 이상이 필요합니다`
+                          : `This model needs ComfyUI v${formatComfyVersion(requiredComfyVersion)}+`}
+                        {" · "}
+                        {ko ? "현재 " : "now "}
+                        {currentComfyVersion
+                          ? `v${runpodConnection.comfyVersion}`
+                          : ko ? "확인 불가" : "unknown"}
+                      </span>
+                    </div>
+                    {comfyVersionOutdated && (
+                      <p className="text-xs text-muted-foreground">
+                        {ko
+                          ? "int8 체크포인트는 상위 버전 ComfyUI에서만 로드됩니다. 아래 버튼으로 업데이트하면 pod의 ComfyUI를 최신 고정 버전으로 올리고 자동 재시작합니다."
+                          : "int8 checkpoints only load on a newer ComfyUI. The button upgrades the pod's ComfyUI to the pinned version and restarts it automatically."}
+                      </p>
+                    )}
+                    {(comfyVersionOutdated || !currentComfyVersion) && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="w-full gap-1.5"
+                        disabled={
+                          !selectedRunpodPodId ||
+                          comfyUpgradeBusy ||
+                          !runpodConnection.helperReachable ||
+                          !runpodPodRunning
+                        }
+                        onClick={() => void upgradeRunpodComfy()}
+                      >
+                        {comfyUpgradeBusy ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <DownloadCloud className="h-3.5 w-3.5" />
+                        )}
+                        {ko ? "ComfyUI 버전업 & 재시작" : "Upgrade ComfyUI & restart"}
+                      </Button>
+                    )}
+                    {comfyUpgradeStatus && (
+                      <p className="text-xs text-muted-foreground break-words">
+                        {comfyUpgradeStatus}
+                      </p>
+                    )}
+                  </div>
+                )}
                 {runpodConnection.checked && !runpodPodRunning && (
                   <p className="flex items-start gap-1.5 rounded-md bg-yellow-500/10 px-2 py-1.5 text-xs text-yellow-700 dark:text-yellow-500">
                     <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -1846,14 +2234,13 @@ export default function Home() {
                         className="h-7 gap-1 px-2 text-[11px]"
                         disabled={
                           Boolean(runpodBusy) ||
-                          runpodDownloading ||
                           !runpodMissingFiles.some(
                             (item) => canDownloadRunpodMissingFile(item)
                           )
                         }
                         onClick={() => void runRunpodAction("download")}
                       >
-                        {runpodBusy === "download" || runpodDownloading ? (
+                        {runpodBusy === "download" ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         ) : (
                           <DownloadCloud className="h-3.5 w-3.5" />
@@ -1862,85 +2249,90 @@ export default function Home() {
                       </Button>
                     </div>
                     <div className="space-y-1">
-                      {runpodMissingFiles.map((item) => (
-                        <div
-                          key={item.path}
-                          className="rounded bg-background/80 px-2 py-1 text-xs"
-                        >
-                          <div className="truncate font-medium">{item.path}</div>
-                          {!canDownloadRunpodMissingFile(item) && (
-                            <div className="text-[11px] text-muted-foreground">
-                              {ko
-                                ? "다운로드 출처가 없어 자동 다운로드할 수 없습니다."
-                                : "No download source is available."}
+                      {runpodMissingFiles.map((item) => {
+                        const dl = selectedRunpodPodId
+                          ? downloadManagerEntries[
+                              runpodDownloadEntryId(selectedRunpodPodId, item.path)
+                            ]
+                          : undefined;
+                        return (
+                          <div
+                            key={item.path}
+                            className="rounded bg-background/80 px-2 py-1 text-xs"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="min-w-0 truncate font-medium">
+                                {item.path}
+                              </span>
+                              {dl?.status === "downloading" && (
+                                <span className="flex shrink-0 items-center gap-1 text-primary">
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                  {dl.percent !== null
+                                    ? `${Math.round(dl.percent)}%`
+                                    : ko
+                                      ? "받는 중"
+                                      : "downloading"}
+                                </span>
+                              )}
+                              {dl?.status === "complete" && (
+                                <span className="flex shrink-0 items-center gap-1 text-emerald-600 dark:text-emerald-500">
+                                  <CheckCircle2 className="h-3 w-3" />
+                                  {ko ? "완료" : "done"}
+                                </span>
+                              )}
+                              {dl?.status === "error" && (
+                                <span className="shrink-0 font-medium text-destructive">
+                                  {ko ? "실패" : "failed"}
+                                </span>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      ))}
+                            {!canDownloadRunpodMissingFile(item) && (
+                              <div className="text-[11px] text-muted-foreground">
+                                {ko
+                                  ? "다운로드 출처가 없어 자동 다운로드할 수 없습니다."
+                                  : "No download source is available."}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
-                    {runpodDownloadProgress && (
-                      <div className="space-y-1 rounded bg-background/80 px-2 py-2 text-xs">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="truncate text-muted-foreground">
-                            {ko ? "다운로드 진행" : "Download progress"}
-                            {runpodDownloadProgress.currentPath
-                              ? ` · ${runpodDownloadProgress.currentPath}`
-                              : ""}
-                          </span>
-                          <span className="shrink-0 tabular-nums">
-                            {runpodDownloadProgress.completed}/{runpodDownloadProgress.total}
-                          </span>
-                        </div>
-                        <div className="h-2 overflow-hidden rounded-full bg-muted">
-                          <div
-                            className="h-full rounded-full bg-primary transition-all"
-                            style={{
-                              width: `${Math.round(
-                                (runpodDownloadProgress.completed /
-                                  Math.max(runpodDownloadProgress.total, 1)) *
-                                  100
-                              )}%`,
-                            }}
-                          />
-                        </div>
-                        <div className="flex items-center justify-between gap-2 text-muted-foreground">
-                          <span className="truncate">
-                            {runpodDownloadProgress.totalBytes > 0
-                              ? `${formatBytes(runpodDownloadProgress.downloadedBytes)} / ${formatBytes(runpodDownloadProgress.totalBytes)}`
-                              : formatBytes(runpodDownloadProgress.downloadedBytes)}
-                          </span>
-                          <span className="shrink-0 tabular-nums">
-                            {runpodDownloadProgress.filePercent}%
-                          </span>
-                        </div>
-                        <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                          <div
-                            className="h-full rounded-full bg-emerald-500 transition-all"
-                            style={{
-                              width: `${Math.max(0, Math.min(100, runpodDownloadProgress.filePercent))}%`,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
-                {(runpodDownloadMessage || runpodStatus) && (
-                  <p className="text-xs text-muted-foreground">
-                    {runpodDownloadMessage || runpodStatus}
+                {runpodDownloading ? (
+                  <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    {ko
+                      ? "다운로드가 백그라운드에서 진행 중입니다. "
+                      : "Downloading in the background. "}
+                    <Link
+                      href="/downloads"
+                      className="font-semibold text-primary underline-offset-2 hover:underline"
+                    >
+                      {ko ? "다운로드 매니저에서 확인" : "Open Download Manager"}
+                    </Link>
                   </p>
+                ) : (
+                  (runpodDownloadMessage || runpodStatus) && (
+                    <p className="text-xs text-muted-foreground">
+                      {runpodDownloadMessage || runpodStatus}
+                    </p>
+                  )
                 )}
               </div>
             </EditorSection>
           )}
 
           <EditorSection title={ko ? "가져오기" : "Import"} description={ko ? "Civitai URL이나 이미지 메타데이터에서 프롬프트와 설정을 가져옵니다." : "Import prompts and settings from Civitai or image metadata."}>
-          <CivitaiImport />
-          <MetadataImport />
+          <CivitaiImport generationTarget={generationTarget} />
+          <MetadataImport generationTarget={generationTarget} />
           </EditorSection>
 
           <EditorSection title={ko ? "모델" : "Models"} description={ko ? "기본 모델과 LoRA, 임베딩을 선택합니다." : "Choose the base model, LoRA, and embeddings."}>
-            <ModelSelector />
+            <ModelSelector
+              generationTarget={generationTarget}
+              runpodPodId={generationTarget === "runpod" ? selectedRunpodPodId : ""}
+            />
           </EditorSection>
 
           <EditorSection title={ko ? "구성" : "Composition"} description={ko ? "생성 모드와 프롬프트, 참조 이미지를 설정합니다." : "Set the generation mode, prompt, and visual references."}>
@@ -2223,10 +2615,45 @@ export default function Home() {
                     <FieldHelp className="mb-2" label={ko ? "캐릭터 참조" : "Character Reference"} help={ko ? "참조 인물의 얼굴 특징과 정체성을 새 이미지에서 유지하도록 돕습니다." : "Helps preserve the referenced person's facial features and identity in the new image."} />
                     <ImageUpload
                       label={ko ? "캐릭터 이미지" : "Character Image"}
-                      description={ko ? "캐릭터 참조 이미지를 업로드하세요" : "Drop or click to upload character reference"}
+                      description={ko ? "업로드 · 붙여넣기(⌘/Ctrl+V) · 갤러리에서 선택" : "Upload, paste (⌘/Ctrl+V), or pick from gallery"}
                       value={params.character_image}
                       onChange={(url) => setParams({ character_image: url })}
+                      galleryImages={images}
+                      galleryHasMore={imagesNextCursor !== null}
+                      galleryLoadingMore={isLoadingMoreImages}
+                      galleryTotal={imagesTotal}
+                      onLoadMoreGallery={() => {
+                        if (imagesNextCursor !== null) {
+                          void fetchImagePage(imagesNextCursor);
+                        }
+                      }}
                     />
+                    {params.character_image && (
+                      <div className="mt-2">
+                        <div className="mb-2 flex items-center justify-between">
+                          <FieldHelp
+                            label={ko ? "아이덴티티 강도" : "Identity Strength"}
+                            help={ko ? "참조 인물의 얼굴을 얼마나 강하게 유지할지 조절합니다(PuLID). 높을수록 얼굴이 더 정확히 재현되지만 프롬프트·포즈 반영이 줄 수 있습니다. 권장 0.7–1.0. SDXL/Illustrious 계열에서만 적용됩니다." : "How strongly to preserve the reference face (PuLID). Higher reproduces the face more faithfully but follows the prompt/pose less. Sweet spot 0.7–1.0. SDXL/Illustrious checkpoints only."}
+                          />
+                          <span className="text-xs font-mono">
+                            {params.character_reference_strength.toFixed(2)}
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min={0}
+                          max={2}
+                          step={0.05}
+                          value={params.character_reference_strength}
+                          onChange={(e) =>
+                            setParams({
+                              character_reference_strength: parseFloat(e.target.value),
+                            })
+                          }
+                          className="w-full accent-primary"
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -2282,7 +2709,51 @@ export default function Home() {
         {/* Generate Button */}
         <div className="p-4 border-t border-border">
           {status.state === "error" && (
-            <p className="text-xs text-destructive mb-2">{status.message}</p>
+            <div className="mb-2 space-y-2">
+              <pre className="max-h-48 select-text overflow-auto whitespace-pre-wrap break-words rounded border border-destructive/30 bg-destructive/5 p-2 text-[11px] leading-relaxed text-destructive">
+                {status.message}
+              </pre>
+              {isPulidInstallableError(status.message) && (
+                <div className="rounded-md border border-primary/40 bg-primary/5 p-2.5">
+                  <p className="mb-2 text-xs text-foreground">
+                    {ko
+                      ? "PuLID를 설치하면 캐릭터 참조(얼굴 일관성) 생성을 사용할 수 있습니다."
+                      : "Install PuLID to enable Character Reference (identity) generation."}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={pulidInstall.running}
+                      onClick={() => void installPulid("local")}
+                    >
+                      {ko ? "로컬에 설치" : "Install locally"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={pulidInstall.running || !selectedRunpodPodId}
+                      title={
+                        !selectedRunpodPodId
+                          ? ko
+                            ? "RunPod 대상을 먼저 선택하세요"
+                            : "Select a RunPod target first"
+                          : undefined
+                      }
+                      onClick={() => void installPulid("runpod")}
+                    >
+                      {ko ? "RunPod에 설치" : "Install on RunPod"}
+                    </Button>
+                  </div>
+                  {pulidInstall.message && (
+                    <p className="mt-2 break-words text-xs text-muted-foreground">
+                      {pulidInstall.running ? "⏳ " : ""}
+                      {pulidInstall.message}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
           )}
           {status.state === "completed" && (
             <p className="text-xs text-green-500 mb-2">{status.message}</p>
@@ -2301,17 +2772,27 @@ export default function Home() {
             }
           >
             <Button
-              className="relative w-full overflow-hidden"
+              className="relative w-full cursor-pointer overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/40 hover:brightness-110"
               size="lg"
               onClick={generate}
               disabled={
+                isSubmitting ||
                 !params.prompt.trim() ||
                 Boolean(generationModeError) ||
                 runpodTargetMissing
               }
             >
-              <span className="relative z-10 drop-shadow-sm">
-                {isGenerating || queuedJobCount > 0 ? "Add to Queue" : "Generate"}
+              <span className="relative z-10 flex items-center justify-center gap-2 drop-shadow-sm">
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {ko ? "카드 등록 중..." : "Registering card..."}
+                  </>
+                ) : isGenerating || queuedJobCount > 0 ? (
+                  "Add to Queue"
+                ) : (
+                  "Generate"
+                )}
               </span>
             </Button>
 

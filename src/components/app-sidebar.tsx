@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
-import { Bookmark, BrainCircuit, Film, Images, Languages, Layers3, Search, Settings } from "lucide-react";
+import { Bookmark, BrainCircuit, DownloadCloud, Film, Images, Languages, Layers3, Search, Settings } from "lucide-react";
 import { useStore, type AppLanguage } from "@/lib/store";
+import { useDownloadManagerStore } from "@/lib/download-manager-store";
 
 const NAV_ITEMS = [
   { href: "/", labels: { ko: "이미지 생성", en: "Image Generation" }, icon: Images },
@@ -12,6 +13,7 @@ const NAV_ITEMS = [
   { href: "/interrogate", labels: { ko: "프롬프트 추출", en: "Prompt Extraction" }, icon: Search },
   { href: "/models", labels: { ko: "모델", en: "Models" }, icon: Layers3 },
   { href: "/lora-training", labels: { ko: "LoRA 훈련", en: "LoRA Training" }, icon: BrainCircuit },
+  { href: "/downloads", labels: { ko: "다운로드 매니저", en: "Downloads" }, icon: DownloadCloud },
   { href: "/scrap", labels: { ko: "스크랩", en: "Scrap" }, icon: Bookmark },
   { href: "/settings", labels: { ko: "설정", en: "Settings" }, icon: Settings },
 ];
@@ -31,6 +33,12 @@ export function AppSidebar() {
   const pathname = usePathname();
   const language = useStore((state) => state.language);
   const setLanguage = useStore((state) => state.setLanguage);
+  const activeDownloads = useDownloadManagerStore(
+    (state) =>
+      Object.values(state.entries).filter(
+        (entry) => entry.status === "downloading"
+      ).length
+  );
 
   const labels = LANGUAGE_LABELS[language];
 
@@ -62,6 +70,8 @@ export function AppSidebar() {
             (item.href !== "/" && pathname.startsWith(item.href));
           const Icon = item.icon;
 
+          const showBadge = item.href === "/downloads" && activeDownloads > 0;
+
           return (
             <Link
               key={item.href}
@@ -72,8 +82,20 @@ export function AppSidebar() {
                   : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
               }`}
             >
-              <Icon className="h-4 w-4" />
-              <span className="min-w-0 truncate">{item.labels[language]}</span>
+              <Icon className="h-4 w-4 shrink-0" />
+              <span className="min-w-0 flex-1 truncate">{item.labels[language]}</span>
+              {showBadge && (
+                <span
+                  className={`inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-[11px] font-bold tabular-nums ${
+                    active
+                      ? "bg-primary-foreground/20 text-primary-foreground"
+                      : "bg-primary text-primary-foreground"
+                  }`}
+                  aria-label={`${activeDownloads} active downloads`}
+                >
+                  {activeDownloads}
+                </span>
+              )}
             </Link>
           );
         })}

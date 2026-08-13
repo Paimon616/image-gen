@@ -25,6 +25,12 @@
       "name": "ComfyUI-Impact-Subpack",
       "repo": "https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git",
       "ref": "50c7b71a6a224734cc9b21963c6d1926816a97f1"
+    },
+    {
+      "$comment": "PuLID (SDXL) identity reference — provides PulidModelLoader / PulidInsightFaceLoader / PulidEvaClipLoader / ApplyPulid used by the character-reference feature. Its requirements.txt (insightface, facexlib, onnxruntime, timm) is pip-installed by the provisioner. The SDXL weight (pulid_v1.1.safetensors) is a model file, not a node — fetch it with: npm run setup:pulid",
+      "name": "PuLID_ComfyUI",
+      "repo": "https://github.com/cubiq/PuLID_ComfyUI.git",
+      "ref": "93e0c4c226b87b23c0009d671978bad0e77289ff"
     }
   ]
 }

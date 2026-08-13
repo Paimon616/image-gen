@@ -19,6 +19,12 @@ import {
   isAnimaCheckpointName,
   isKrea2CheckpointName,
 } from "./comfyui-model-files";
+import {
+  compareComfyVersions,
+  formatComfyVersion,
+  parseComfyVersion,
+  requiredComfyVersionForCheckpoint,
+} from "./comfy-version";
 import { getRunpodCheckpointCapabilities } from "./runpod";
 import { normalizeGenerationSeed } from "./types";
 import type { VideoPipelineLoraSlot } from "./video-pipelines";
@@ -694,11 +700,53 @@ async function buildAnimaWorkflow(params: GenerationParams, checkpoint: string) 
   return workflow;
 }
 
+// int8 checkpoints need a minimum ComfyUI version (see comfy-version.ts). On an
+// older build the UNETLoader throws a bare `KeyError: 'int8_tensorwise'`; detect
+// the mismatch up front so the user gets an actionable message instead.
+async function getComfyUiVersion(options?: ComfyClientOptions) {
+  try {
+    const res = await comfyFetch("/system_stats", { cache: "no-store" }, options);
+    const data = (await res.json()) as { system?: { comfyui_version?: unknown } };
+    return parseComfyVersion(data?.system?.comfyui_version);
+  } catch {
+    return null;
+  }
+}
+
+async function assertComfyVersionForCheckpoint(
+  checkpoint: string,
+  options?: ComfyClientOptions
+) {
+  const required = requiredComfyVersionForCheckpoint(checkpoint);
+  if (!required) return;
+
+  const version = await getComfyUiVersion(options);
+  // If the version can't be determined (network hiccup, old build without the
+  // field), don't block — the job proceeds and any real incompatibility still
+  // surfaces from ComfyUI as before.
+  if (!version) return;
+
+  if (compareComfyVersions(version, required) < 0) {
+    const current = formatComfyVersion(version);
+    const needed = formatComfyVersion(required);
+    throw new Error(
+      `이 int8 체크포인트는 ComfyUI ${needed} 이상이 필요합니다 (현재 ${current}). ` +
+        `ComfyUI를 업데이트한 뒤 다시 시도하거나, fp8 버전(예: krea2_turbo_fp8_scaled)을 사용하세요. ` +
+        `(This int8 checkpoint requires ComfyUI ${needed}+ for int8_tensorwise support; the pod is on ${current}. ` +
+        `Update ComfyUI or pick an fp8 build instead.)`
+    );
+  }
+}
+
 async function assertKrea2SupportFiles(
   checkpoint: string,
   krea2Workflow: "generic" | "refined" | "pornmaster" = "generic",
   options?: ComfyClientOptions
 ) {
+  // Runs against whichever ComfyUI executes the job (local or remote pod), so it
+  // must precede the remote early-return below.
+  await assertComfyVersionForCheckpoint(checkpoint, options);
+
   // Support files live on whichever ComfyUI runs the job. When building for a
   // remote pod (options.baseUrl set), the files are on the pod — presence is
   // verified separately by checkRunpodGenerationFiles — so a local-only gap must
@@ -1245,18 +1293,29 @@ async function addPulidWorkflowNodes(
   }
 
   const pulidFileOptions = comfyInputComboOptions(loaderRequired["pulid_file"]);
-  if (pulidFileOptions.length === 0) {
+  // cubiq PuLID_ComfyUI's IDEncoder loads the image_proj/ip_adapter-structured SDXL
+  // weight (ip-adapter_pulid_sdxl_fp16). Exclude FLUX weights, and de-prioritise the
+  // guozinan pulid_v1.x files: their id_adapter layout throws "Missing key(s) in
+  // state_dict for IDEncoder". Prefer an sdxl/ip-adapter file, else any non-v1 file.
+  const nonFlux = pulidFileOptions.filter((name) => !/flux/i.test(name));
+  const pulidFile =
+    nonFlux.find((name) => /ip-?adapter.*sdxl|pulid.*sdxl|sdxl/i.test(name)) ??
+    nonFlux.find((name) => !/pulid[_-]?v1\b/i.test(name)) ??
+    nonFlux[0];
+  if (!pulidFile) {
     throw new Error(
-      "PuLID 가중치 파일을 찾을 수 없습니다. 'ip-adapter_pulid_sdxl_fp16.safetensors'를 ComfyUI/models/pulid/ 에 넣어주세요. " +
-        "(No PuLID weights found — place 'ip-adapter_pulid_sdxl_fp16.safetensors' in ComfyUI/models/pulid/.)"
+      "SDXL용 PuLID 가중치를 찾을 수 없습니다. 'ip-adapter_pulid_sdxl_fp16.safetensors'를 ComfyUI/models/pulid/ 에 넣어주세요 (npm run setup:pulid). " +
+        "(No SDXL PuLID weights found — place 'ip-adapter_pulid_sdxl_fp16.safetensors' in ComfyUI/models/pulid/, e.g. `npm run setup:pulid`.)"
     );
   }
-  const pulidFile =
-    pulidFileOptions.find((name) => /sdxl/i.test(name)) ?? pulidFileOptions[0];
 
   const referenceImage = await resolveControlNetImage(reference, options);
   const insightInfo = await getComfyObjectInfoEntry("PulidInsightFaceLoader", options);
-  const provider = pickComfyCombo(insightInfo?.input?.required?.["provider"], "CUDA");
+  // Default InsightFace to the CPU execution provider: it works on every host
+  // (Apple Silicon / CPU-only boxes have no CUDA, and requesting CUDA there makes
+  // onnxruntime throw inside PulidInsightFaceLoader). The face pass is a single
+  // lightweight detection per image, so CPU costs little even on GPU pods.
+  const provider = pickComfyCombo(insightInfo?.input?.required?.["provider"], "CPU");
 
   // Reserved high IDs so PuLID never collides with LoRA/ControlNet/FaceDetailer nodes.
   workflow["200"] = {
@@ -1275,7 +1334,7 @@ async function addPulidWorkflowNodes(
 
   const weight = Number.isFinite(params.character_reference_strength)
     ? Math.min(Math.max(params.character_reference_strength, 0), 5)
-    : 0.9;
+    : 0.7;
   const applyInputs: Record<string, unknown> = {
     model: modelRef,
     pulid: ["200", 0],
@@ -1284,7 +1343,10 @@ async function addPulidWorkflowNodes(
     image: ["203", 0],
     weight,
     start_at: 0,
-    end_at: 1,
+    // Stop applying PuLID at 70% of the schedule so the base model restores fine
+    // detail in the final steps. Running it to 1.0 washes the image out (flat,
+    // painterly) — end_at is the single biggest quality lever for PuLID.
+    end_at: 0.7,
   };
   // "fidelity" biases toward matching the reference identity over stylization.
   if ("method" in applyRequired) {
@@ -1848,17 +1910,25 @@ function errorFromHistory(history: ComfyHistoryItem | undefined) {
     const nodeId = stringFromRecord(record, "node_id");
     const fallbackMessage =
       message[0] === "execution_interrupted" ? "execution_interrupted" : "execution_error";
-    const exceptionMessage =
-      stringFromRecord(record, "exception_message") ||
-      stringFromRecord(record, "exception_type") ||
-      fallbackMessage;
+    // ComfyUI often leaves exception_message empty and puts the real cause only in
+    // exception_type and the Python traceback, so surface all of it — a bare
+    // "node N error:" tells the user nothing actionable.
+    const exceptionType = stringFromRecord(record, "exception_type");
+    const exceptionMessage = stringFromRecord(record, "exception_message");
+    const rawTraceback = record["traceback"];
+    const tracebackText = Array.isArray(rawTraceback)
+      ? rawTraceback.filter((line): line is string => typeof line === "string").join("")
+      : stringFromRecord(record, "traceback");
+    const head =
+      [exceptionType, exceptionMessage].filter(Boolean).join(": ") || fallbackMessage;
+    const detail = tracebackText.trim() ? `${head}\n\n${tracebackText.trim()}` : head;
     const nodeLabel = [nodeType, nodeId ? `node ${nodeId}` : ""]
       .filter(Boolean)
       .join(" ");
 
     return nodeLabel
-      ? `ComfyUI ${nodeLabel} error: ${exceptionMessage}`
-      : `ComfyUI error: ${exceptionMessage}`;
+      ? `ComfyUI ${nodeLabel} error: ${detail}`
+      : `ComfyUI error: ${detail}`;
   }
 
   if (status?.status_str === "error") {

@@ -8,6 +8,9 @@ function publicSettings(settings: AppSettings) {
     huggingfaceApiKeyConfigured: Boolean(settings.huggingfaceApiKey),
     runpodApiKeyConfigured: Boolean(settings.runpodApiKey),
     runpodPods: settings.runpodPods,
+    // Host platform, so the client can hide backends that aren't supported
+    // here (AUTOMATIC1111 / Forge are not set up on macOS).
+    platform: process.platform,
   };
 }
 

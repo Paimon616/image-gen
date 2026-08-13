@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ChatMarkdown } from "@/components/chat-markdown";
 import type { GeneratedImage, GenerationParams } from "@/lib/types";
+import { readImageDataUrlForVision } from "@/lib/image-resize";
 
 type ChatRole = "user" | "assistant";
 
@@ -122,21 +123,6 @@ async function uploadImageFile(file: File) {
   }
 
   return data.url;
-}
-
-function readImageDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        resolve(reader.result);
-        return;
-      }
-      reject(new Error("Image read failed"));
-    };
-    reader.onerror = () => reject(new Error("Image read failed"));
-    reader.readAsDataURL(file);
-  });
 }
 
 function sanitizePatch(value: unknown): Partial<GenerationParams> {
@@ -514,7 +500,7 @@ export function PaimonChat({
       try {
         const [url, dataUrl] = await Promise.all([
           uploadImageFile(file),
-          readImageDataUrl(file),
+          readImageDataUrlForVision(file),
         ]);
         const attachment: PaimonAttachment = {
           id: crypto.randomUUID(),

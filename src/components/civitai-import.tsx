@@ -56,7 +56,11 @@ function importStatusText(
     : `${importScope}, matched local resources, and saved to Scrap.`;
 }
 
-export function CivitaiImport() {
+export function CivitaiImport({
+  generationTarget = "local",
+}: {
+  generationTarget?: "local" | "runpod";
+} = {}) {
   const {
     params,
     setParams,
@@ -280,6 +284,7 @@ export function CivitaiImport() {
       <CivitaiMissingResources
         resources={missingResources}
         language={language}
+        hidden={generationTarget === "runpod"}
         onDownloaded={(resource, downloadedPath) => {
           const path = localResourcePath(resource, downloadedPath);
 

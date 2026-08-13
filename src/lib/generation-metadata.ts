@@ -361,6 +361,9 @@ function normalizeParams(rawParams: Record<string, unknown>) {
       booleanValue(rawParams.prompt_weighting) ?? DEFAULT_PARAMS.prompt_weighting,
     style_image: stringValue(rawParams.style_image) || null,
     character_image: stringValue(rawParams.character_image) || null,
+    character_reference_strength:
+      numberValue(rawParams.character_reference_strength) ??
+      DEFAULT_PARAMS.character_reference_strength,
     source_image: stringValue(rawParams.source_image) || null,
     denoise_strength:
       numberValue(rawParams.denoise_strength ?? rawParams.denoisingStrength) ??

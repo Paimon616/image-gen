@@ -70,14 +70,45 @@ const DEFAULT_MODEL_CATALOG: Record<string, LocalModelMetadata> = {
   },
 };
 
+// Bundled upscalers that must always appear in the list, even before their
+// files are downloaded. The upscaler dropdown is fed purely from the catalog
+// (catalog-only entries show as available-to-download), but data/model-catalog
+// .json is a per-machine mutable file: the app rewrites it and pulls merge it
+// with a custom driver, so entries can silently drift away on a given machine.
+// Seeding these as a floor guarantees the initial setup always exposes them.
+// Local catalog entries win over these defaults — they are a floor, never an
+// override.
+const DEFAULT_UPSCALER_CATALOG: Record<string, LocalModelMetadata> = {
+  "upscale_models/remacri_original.safetensors": {
+    name: "Remacri",
+    version: "",
+    base_model: "Upscaler",
+    thumbnail_url: null,
+    civitai_url:
+      "https://civitai.red/models/147759/remacri?modelVersionId=164821",
+    source_url:
+      "https://civitai.red/models/147759/remacri?modelVersionId=164821",
+  },
+  "upscale_models/4x-UltraSharp.pth": {
+    name: "4x-Ultrasharp",
+    version: "4x-UltraSharp v1.0",
+    base_model: "Upscaler",
+    thumbnail_url: null,
+    civitai_url:
+      "https://civitai.red/models/116225/4x-ultrasharp?modelVersionId=125843",
+    source_url:
+      "https://civitai.red/models/116225/4x-ultrasharp?modelVersionId=125843",
+  },
+};
+
 async function readCatalog() {
   try {
-    return JSON.parse(await readFile(MODEL_CATALOG_PATH, "utf8")) as Record<
-      string,
-      LocalModelMetadata
-    >;
+    const fileCatalog = JSON.parse(
+      await readFile(MODEL_CATALOG_PATH, "utf8")
+    ) as Record<string, LocalModelMetadata>;
+    return { ...DEFAULT_UPSCALER_CATALOG, ...fileCatalog };
   } catch {
-    return DEFAULT_MODEL_CATALOG;
+    return { ...DEFAULT_UPSCALER_CATALOG, ...DEFAULT_MODEL_CATALOG };
   }
 }
 

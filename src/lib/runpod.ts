@@ -8,6 +8,7 @@ import { basename, dirname } from "path";
 import { promisify } from "util";
 import type { GenerationParams, ImportedCivitaiResource } from "@/lib/types";
 import { getRunpodPod, readSettings, type RunpodPodSettings } from "@/lib/settings";
+import { PULID_INSIGHTFACE, PULID_NODE_REPO, PULID_WEIGHT } from "@/lib/pulid-assets";
 import { parseCivitaiUrlIds } from "@/lib/civitai-url";
 import {
   RESOURCE_CATALOG_FOLDERS,
@@ -715,6 +716,7 @@ export async function fetchRunpodStatus(pod: RunpodPodSettings) {
   let comfyReachable = false;
   let comfyInitializing = false;
   let comfyError = "";
+  let comfyVersion = "";
 
   if (comfyUrl) {
     try {
@@ -723,7 +725,20 @@ export async function fetchRunpodStatus(pod: RunpodPodSettings) {
         signal: AbortSignal.timeout(5_000),
       });
       comfyReachable = response.ok;
-      if (!response.ok) {
+      if (response.ok) {
+        // /system_stats reports system.comfyui_version — surface it so the UI can
+        // show the running version and flag models that need a newer build.
+        try {
+          const stats = (await response.json()) as {
+            system?: { comfyui_version?: unknown };
+          };
+          if (typeof stats?.system?.comfyui_version === "string") {
+            comfyVersion = stats.system.comfyui_version;
+          }
+        } catch {
+          // Non-JSON body (proxy loading page): leave version unknown.
+        }
+      } else {
         comfyError = `ComfyUI HTTP ${response.status}`;
         // 502/503/504 from the RunPod proxy = proxy is up, ComfyUI not ready yet.
         if ([502, 503, 504].includes(response.status)) comfyInitializing = true;
@@ -738,11 +753,18 @@ export async function fetchRunpodStatus(pod: RunpodPodSettings) {
   let helperReachable = false;
   let helperInitializing = false;
   let helperError = "";
+  let helperOutdated = false;
   try {
     const helper = await fetchRunpodHelper(pod, "/api/runpod/helper/status", {
       signal: AbortSignal.timeout(5_000),
     });
     helperReachable = Boolean(helper.ok);
+    // Old helpers report no version; treat any mismatch as outdated so the user
+    // is prompted to redeploy (which enables newer features like the shared
+    // model catalog).
+    const helperVersion =
+      typeof helper.version === "string" ? helper.version : "";
+    helperOutdated = helperReachable && helperVersion !== RUNPOD_HELPER_VERSION;
   } catch (error) {
     const message = error instanceof Error ? error.message : "RunPod helper is not reachable.";
     if (message.includes("Unexpected token") || message.includes("<!DOCTYPE")) {
@@ -762,9 +784,11 @@ export async function fetchRunpodStatus(pod: RunpodPodSettings) {
     comfyReachable,
     comfyInitializing: comfyInitializing && !comfyReachable,
     comfyError,
+    comfyVersion,
     helperReachable,
     helperInitializing: helperInitializing && !helperReachable,
     helperError,
+    helperOutdated,
     podDesiredStatus: desiredStatus,
     podHostId: podSummary && "podHostId" in podSummary ? podSummary.podHostId : "",
     configuredPorts:
@@ -836,16 +860,28 @@ export async function ensureRunpodStatus(pod: RunpodPodSettings) {
 // pod's ComfyUI models dir. Shipped to the pod either over SSH (setupRunpodPod)
 // or, when the pod has no sshd, over the Jupyter kernel websocket
 // (deployRunpodHelperViaJupyter) — matching runpod-video.
+// Must equal HELPER_VERSION inside HELPER_SERVER_SOURCE. Bump both together when
+// the helper source changes so a pod running an older build is flagged as stale
+// (helperOutdated) and the user is offered a redeploy.
+export const RUNPOD_HELPER_VERSION = "5";
+
 const HELPER_SERVER_SOURCE = String.raw`
 import json
 import os
 import shutil
+import signal
+import socket
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+
+# Bumped whenever this helper source changes so the app can tell a running pod is
+# on an old build and offer to redeploy. Must equal RUNPOD_HELPER_VERSION below.
+HELPER_VERSION = "5"
 
 PORT = int(os.environ.get("IMAGE_GEN_HELPER_PORT", "3000"))
 HOST = os.environ.get("IMAGE_GEN_HELPER_HOST", "0.0.0.0")
@@ -914,6 +950,54 @@ def read_json(handler):
     data = handler.rfile.read(length) if length > 0 else b"{}"
     return json.loads(data.decode("utf-8") or "{}")
 
+# The pod's shared model metadata catalog. It lives on the persistent models
+# volume so a model one user downloads carries its name/thumbnail for everyone
+# else who lists models against this pod.
+CATALOG_FILE = MODELS_DIR / ".image-gen-catalog.json"
+
+def read_catalog():
+    try:
+        with open(CATALOG_FILE, "r", encoding="utf-8") as handle:
+            data = json.loads(handle.read() or "{}")
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+def merge_catalog(entries):
+    catalog = read_catalog()
+    if isinstance(entries, dict):
+        for key, value in entries.items():
+            if not key or not isinstance(value, dict) or not value.get("name"):
+                continue
+            existing = catalog.get(key)
+            catalog[key] = {**existing, **value} if isinstance(existing, dict) else value
+    MODELS_DIR.mkdir(parents=True, exist_ok=True)
+    tmp = Path(str(CATALOG_FILE) + ".tmp")
+    with open(tmp, "w", encoding="utf-8") as handle:
+        handle.write(json.dumps(catalog, indent=2))
+    tmp.replace(CATALOG_FILE)
+    return catalog
+
+MODEL_EXTS = (".safetensors", ".ckpt", ".pt", ".pth")
+
+# Physically enumerate every model file under a models subfolder (recursively),
+# returning folder-relative POSIX paths. This is the source of truth for "what is
+# actually on the pod", independent of ComfyUI's /object_info (which can be stale
+# until a restart) or the download-time catalog (which only knows app downloads).
+def list_model_files(folder):
+    root = MODELS_DIR / folder
+    if not root.is_dir():
+        return []
+    result = []
+    for path in root.rglob("*"):
+        if not path.is_file() or path.suffix.lower() not in MODEL_EXTS:
+            continue
+        rel = path.relative_to(root).as_posix()
+        if rel.startswith("put_") or path.name.startswith("."):
+            continue
+        result.append(rel)
+    return result
+
 def write_json(handler, status, data):
     body = json.dumps(data).encode("utf-8")
     handler.send_response(status)
@@ -962,18 +1046,108 @@ def checkpoint_capabilities(target):
     )
     return {"clip": clip, "vae": vae}
 
+def port_in_use(port):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(0.5)
+    try:
+        return sock.connect_ex(("127.0.0.1", int(port))) == 0
+    finally:
+        sock.close()
+
+def pid_alive(pid):
+    try:
+        os.kill(pid, 0)
+        return True
+    except Exception:
+        return False
+
+# Find the PID(s) of the running ComfyUI server. Matches a process running
+# main.py that is either bound to our port (in argv) or whose cwd is the ComfyUI
+# dir — robust to how it was launched (relative "main.py", supervisor, etc.).
+def comfyui_pids():
+    pids = []
+    proc = Path("/proc")
+    if not proc.exists():
+        return pids
+    comfy_dir = str(COMFYUI_DIR)
+    self_pid = os.getpid()
+    for item in proc.iterdir():
+        if not item.name.isdigit():
+            continue
+        pid = int(item.name)
+        if pid == self_pid:
+            continue
+        try:
+            cmdline = (item / "cmdline").read_bytes().decode("utf-8", "ignore")
+        except Exception:
+            continue
+        if "main.py" not in cmdline:
+            continue
+        matched = "--port" in cmdline and str(COMFYUI_PORT) in cmdline
+        if not matched:
+            try:
+                cwd = os.readlink(str(item / "cwd"))
+                matched = cwd == comfy_dir or cwd.startswith(comfy_dir + "/")
+            except Exception:
+                matched = False
+        if matched:
+            pids.append(pid)
+    return pids
+
+# Query the version the ComfyUI on our port is actually serving (from memory), as
+# opposed to what is on disk. "" when unreachable.
+def serving_comfy_version():
+    try:
+        with urllib.request.urlopen(
+            "http://127.0.0.1:%d/system_stats" % COMFYUI_PORT, timeout=5
+        ) as response:
+            data = json.loads(response.read().decode("utf-8", "ignore"))
+        return str(data.get("system", {}).get("comfyui_version", ""))
+    except Exception:
+        return ""
+
+def stop_comfyui():
+    pids = comfyui_pids()
+    for pid in pids:
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except Exception:
+            pass
+    # Best-effort belt-and-braces: kill by port and by argv pattern too.
+    os.system("fuser -k %d/tcp >/dev/null 2>&1 || true" % COMFYUI_PORT)
+    os.system("pkill -f 'main.py.*--port %d' >/dev/null 2>&1 || true" % COMFYUI_PORT)
+    # Wait for the port to free; escalate to SIGKILL if anything lingers.
+    for _ in range(30):
+        if not port_in_use(COMFYUI_PORT) and not any(pid_alive(p) for p in pids):
+            return
+        time.sleep(0.5)
+    for pid in comfyui_pids():
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except Exception:
+            pass
+    for _ in range(20):
+        if not port_in_use(COMFYUI_PORT):
+            return
+        time.sleep(0.5)
+
 def restart_comfyui():
     main_py = COMFYUI_DIR / "main.py"
     if not main_py.is_file():
         raise RuntimeError("ComfyUI main.py was not found: " + str(main_py))
 
-    python = COMFYUI_DIR / "venv/bin/python"
-    python_cmd = str(python) if python.exists() else shutil.which("python3")
+    python_cmd = comfy_python()
     if not python_cmd:
         raise RuntimeError("python3 was not found.")
 
-    os.system("pkill -f '/workspace/ComfyUI/main.py' >/dev/null 2>&1 || true")
-    os.system("fuser -k %d/tcp >/dev/null 2>&1 || true" % COMFYUI_PORT)
+    stop_comfyui()
+
+    # A process manager may respawn ComfyUI from the (now-updated) dir on its own.
+    # If the port is re-bound within a moment, don't double-launch — that instance
+    # already runs the new code. Otherwise launch it ourselves.
+    time.sleep(1)
+    if port_in_use(COMFYUI_PORT):
+        return None
 
     log = open("/workspace/image-gen-helper/comfyui-restart.log", "ab", buffering=0)
     process = subprocess.Popen(
@@ -1123,6 +1297,82 @@ def install_node_repos(repos, on_event):
                       "message": str(error)})
     return installed
 
+def comfyui_info():
+    version = ""
+    try:
+        text = (COMFYUI_DIR / "comfyui_version.py").read_text(encoding="utf-8")
+        import re as _re
+        match = _re.search(r"__version__\s*=\s*['\"]([^'\"]+)['\"]", text)
+        if match:
+            version = match.group(1)
+    except Exception:
+        version = ""
+    commit = ""
+    git = shutil.which("git")
+    if git and (COMFYUI_DIR / ".git").exists():
+        try:
+            commit = subprocess.check_output(
+                [git, "-C", str(COMFYUI_DIR), "rev-parse", "--short", "HEAD"],
+                stderr=subprocess.DEVNULL,
+            ).decode("utf-8", "ignore").strip()
+        except Exception:
+            commit = ""
+    is_git = bool(git and (COMFYUI_DIR / ".git").exists())
+    return {"version": version, "commit": commit, "dir": str(COMFYUI_DIR), "git": is_git}
+
+# Update the ComfyUI checkout to a pinned git ref, reinstall its requirements, and
+# restart the server. Streams progress so the caller's SSE stays alive through the
+# (multi-minute) pip step. int8 models need >= 0.27.0; the app pins the target ref.
+def upgrade_comfyui(ref, on_event):
+    git = shutil.which("git")
+    if not git:
+        raise RuntimeError("git is not available on this pod.")
+    if not (COMFYUI_DIR / ".git").exists():
+        raise RuntimeError(
+            "ComfyUI at %s is not a git checkout, so it cannot be updated automatically. "
+            "Reinstall ComfyUI from git or update it manually." % str(COMFYUI_DIR))
+    ref = str(ref or "").strip()
+    if not ref:
+        raise RuntimeError("No target ComfyUI ref was provided.")
+    emit = lambda line: on_event({"type": "log", "message": line})
+
+    on_event({"type": "status", "message": "fetching ComfyUI %s" % ref})
+    # Fetch the specific ref when possible (works for a commit SHA or a tag);
+    # fall back to a full fetch so branch names and shallow clones still resolve.
+    if stream_cmd([git, "-C", str(COMFYUI_DIR), "fetch", "--tags", "origin", ref],
+                  str(COMFYUI_DIR), emit) != 0:
+        stream_cmd([git, "-C", str(COMFYUI_DIR), "fetch", "--tags", "--all"],
+                   str(COMFYUI_DIR), emit)
+
+    on_event({"type": "status", "message": "checking out %s" % ref})
+    if stream_cmd([git, "-C", str(COMFYUI_DIR), "checkout", "-f", ref],
+                  str(COMFYUI_DIR), emit) != 0:
+        raise RuntimeError("git checkout %s failed." % ref)
+
+    py = comfy_python()
+    on_event({"type": "status", "message": "installing requirements (pip, may take minutes)"})
+    req = COMFYUI_DIR / "requirements.txt"
+    if req.is_file():
+        if stream_cmd([py, "-m", "pip", "install", "-r", str(req)],
+                      str(COMFYUI_DIR), emit) != 0:
+            raise RuntimeError("pip install of ComfyUI requirements failed.")
+
+    on_disk = comfyui_info().get("version", "")
+    on_event({"type": "status", "message": "restarting ComfyUI"})
+    pid = restart_comfyui()
+
+    # Verify the server actually came back on the new version — a checkout is
+    # worthless if the old process kept the port. Poll until it serves the
+    # on-disk version (or times out) and report whatever it truly serves.
+    on_event({"type": "status", "message": "waiting for ComfyUI to come back"})
+    served = ""
+    for _ in range(120):
+        served = serving_comfy_version()
+        if served and (not on_disk or served == on_disk):
+            break
+        time.sleep(1)
+    return {"pid": pid, "servedVersion": served, "diskVersion": on_disk}
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         sys.stdout.write(fmt % args + "\n")
@@ -1134,7 +1384,22 @@ class Handler(BaseHTTPRequestHandler):
                 "ok": True,
                 "message": "RunPod Image Gen helper ready",
                 "comfyModelsDir": str(MODELS_DIR),
+                "version": HELPER_VERSION,
             })
+            return
+        if self.path == "/api/runpod/helper/catalog":
+            write_json(self, 200, {"catalog": read_catalog()})
+            return
+        if self.path == "/api/runpod/helper/models":
+            write_json(self, 200, {
+                "checkpoints": list_model_files("checkpoints"),
+                "loras": list_model_files("loras"),
+                "diffusion_models": list_model_files("diffusion_models"),
+                "embeddings": list_model_files("embeddings"),
+            })
+            return
+        if self.path == "/api/runpod/helper/comfyui/info":
+            write_json(self, 200, comfyui_info())
             return
         write_json(self, 404, {"error": "Not found."})
 
@@ -1207,9 +1472,48 @@ class Handler(BaseHTTPRequestHandler):
                 except Exception as error:
                     send({"type": "error", "message": str(error)})
                 return
+            if self.path == "/api/runpod/helper/comfyui/upgrade/stream":
+                body = read_json(self)
+                ref = str(body.get("ref", "")).strip()
+                self.send_response(200)
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("Content-Type", "text/event-stream")
+                self.end_headers()
+                def send(event):
+                    self.wfile.write(("data: " + json.dumps(event) + "\n\n").encode("utf-8"))
+                    self.wfile.flush()
+                try:
+                    before = serving_comfy_version()
+                    result = upgrade_comfyui(ref, send)
+                    served = result.get("servedVersion", "")
+                    disk = result.get("diskVersion", "")
+                    # A checkout that doesn't take over the port is a failed upgrade;
+                    # tell the truth so the UI never shows a false "done".
+                    if disk and served and served != disk:
+                        send({"type": "error",
+                              "message": ("Updated files to %s but ComfyUI still serves %s "
+                                          "(the old process kept port %d). Restart the pod, "
+                                          "or stop ComfyUI and retry." )
+                                         % (disk, served, COMFYUI_PORT)})
+                    elif disk and not served:
+                        send({"type": "error",
+                              "message": ("Updated files to %s but ComfyUI did not come back "
+                                          "on port %d. Check the pod." ) % (disk, COMFYUI_PORT)})
+                    else:
+                        send({"type": "complete", "restarted": True,
+                              "pid": result.get("pid"),
+                              "previousVersion": before, "version": served or disk})
+                except Exception as error:
+                    send({"type": "error", "message": str(error)})
+                return
             if self.path == "/api/runpod/helper/restart-comfy":
                 pid = restart_comfyui()
                 write_json(self, 200, {"ok": True, "pid": pid})
+                return
+            if self.path == "/api/runpod/helper/catalog":
+                body = read_json(self)
+                entries = body.get("entries") if isinstance(body.get("entries"), dict) else {}
+                write_json(self, 200, {"ok": True, "catalog": merge_catalog(entries)})
                 return
             write_json(self, 404, {"error": "Not found."})
         except Exception as error:
@@ -1972,52 +2276,164 @@ async function mergePodCatalogIntoLocal(
   return changed;
 }
 
-// Lists the checkpoint / LoRA / embedding filenames present on the pod so the UI
-// can filter the model picker down to what the pod can load. Two sources feed it:
-// the pod's live ComfyUI /object_info (what it can load right now — Krea 2 lives
-// in diffusion_models via UNETLoader, so both loaders feed checkpoints) and the
-// pod's shared metadata catalog (models others downloaded, which is also merged
-// into this machine's local catalog so they appear in the list with thumbnails).
-export async function fetchRunpodModelCatalog(pod: RunpodPodSettings): Promise<{
+// A model that physically exists on the pod, shaped so the client can drop it
+// straight into its picker list. `path` is folder-relative (matches the local
+// asset `path`); metadata is resolved from the merged catalog when available.
+export interface RunpodModelDescriptor {
+  path: string;
+  name: string;
+  version: string;
+  base_model: string;
+  thumbnail_url: string | null;
+}
+
+// Physically enumerate every model file under the pod's models dirs (via the
+// helper's filesystem scan). This is the source of truth for "what is on the
+// pod", independent of ComfyUI's /object_info (stale until restart) and the
+// download catalog (app downloads only). Best-effort: an old helper without the
+// /models route yields empty lists and callers fall back to the other sources.
+async function fetchRunpodPhysicalModels(pod: RunpodPodSettings): Promise<{
   checkpoints: string[];
   loras: string[];
+  diffusion_models: string[];
   embeddings: string[];
 }> {
-  const [ckptNames, unetNames, loraNames, stored] = await Promise.all([
+  const empty = { checkpoints: [], loras: [], diffusion_models: [], embeddings: [] };
+  try {
+    const data = await fetchRunpodHelper(pod, "/api/runpod/helper/models", {
+      method: "GET",
+    });
+    const arr = (value: unknown) =>
+      Array.isArray(value)
+        ? value.filter((item): item is string => typeof item === "string")
+        : [];
+    return {
+      checkpoints: arr(data.checkpoints),
+      loras: arr(data.loras),
+      diffusion_models: arr(data.diffusion_models),
+      embeddings: arr(data.embeddings),
+    };
+  } catch {
+    return empty;
+  }
+}
+
+function humanizeModelFilename(path: string) {
+  const base = (path.split("/").pop() ?? path).replace(
+    /\.(ckpt|pt|pth|safetensors)$/i,
+    ""
+  );
+  const versionMatch = base.match(/(?:^|[-_])v(\d+(?:\.\d+)*)(?:$|[-_])/i);
+  const name = base
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return { name: name || base, version: versionMatch ? `v${versionMatch[1]}` : "" };
+}
+
+// Builds the pod's checkpoint / LoRA / embedding picker lists from every model
+// physically present on the pod. Metadata is auto-associated from the merged
+// catalog (pod shared catalog folded into the local catalog, plus any local
+// catalog entry with the same filename); unknown files fall back to a humanized
+// name. /object_info and the shared catalog are unioned in so the list stays
+// populated even when the helper's file scan is unavailable (old build).
+export async function fetchRunpodModelCatalog(pod: RunpodPodSettings): Promise<{
+  checkpoints: RunpodModelDescriptor[];
+  loras: RunpodModelDescriptor[];
+  embeddings: RunpodModelDescriptor[];
+}> {
+  const [ckptNames, unetNames, loraNames, stored, physical] = await Promise.all([
     comfyObjectOptions(pod, "CheckpointLoaderSimple", "ckpt_name"),
     comfyObjectOptions(pod, "UNETLoader", "unet_name"),
     comfyObjectOptions(pod, "LoraLoader", "lora_name"),
     fetchRunpodStoredCatalog(pod),
+    fetchRunpodPhysicalModels(pod),
   ]);
 
   await mergePodCatalogIntoLocal(stored);
 
-  // Fold the shared catalog's filenames into each folder's list so pod-only
-  // models pass the picker's "RunPod" filter even if ComfyUI hasn't re-scanned
-  // its model dirs yet (new files need a restart to show up in /object_info).
-  const checkpointNames = [...ckptNames, ...unetNames];
-  const loraFilenames = [...loraNames];
-  const embeddingFilenames: string[] = [];
+  // Resolve metadata from the merged local catalog, keyed by exact folder/path or,
+  // per the "same filename auto-registers" rule, by basename.
+  const local = await readModelCatalog();
+  const byBasename = new Map<string, CatalogEntry>();
+  for (const [key, entry] of Object.entries(local)) {
+    const basenameKey = (key.split("/").pop() ?? key).toLowerCase();
+    if (basenameKey && !byBasename.has(basenameKey)) byBasename.set(basenameKey, entry);
+  }
+  const resolveMeta = (folder: string, path: string) =>
+    local[`${folder}/${path}`] ??
+    byBasename.get((path.split("/").pop() ?? path).toLowerCase());
+
+  const toDescriptor = (folder: string, path: string): RunpodModelDescriptor => {
+    const meta = resolveMeta(folder, path);
+    const fallback = humanizeModelFilename(path);
+    return {
+      path,
+      name: meta?.name || fallback.name,
+      version: meta?.version || fallback.version,
+      base_model: meta?.base_model || "",
+      thumbnail_url: meta?.thumbnail_url ?? null,
+    };
+  };
+
+  const buildGroup = (
+    candidates: Array<{ folder: string; path: string }>
+  ): RunpodModelDescriptor[] => {
+    const seen = new Set<string>();
+    const out: RunpodModelDescriptor[] = [];
+    for (const { folder, path } of candidates) {
+      const norm = path.replaceAll("\\", "/");
+      const dedupeKey = norm.toLowerCase();
+      if (!norm || seen.has(dedupeKey)) continue;
+      seen.add(dedupeKey);
+      out.push(toDescriptor(folder, norm));
+    }
+    return out.sort((a, b) => a.name.localeCompare(b.name));
+  };
+
+  const storedCkpt: Array<{ folder: string; path: string }> = [];
+  const storedLora: Array<{ folder: string; path: string }> = [];
+  const storedEmb: Array<{ folder: string; path: string }> = [];
   for (const key of Object.keys(stored)) {
     const slash = key.indexOf("/");
     if (slash < 0) continue;
     const folder = key.slice(0, slash);
     const filename = key.slice(slash + 1);
     if (!filename) continue;
-    if (folder === "checkpoints") checkpointNames.push(filename);
+    if (folder === "checkpoints") storedCkpt.push({ folder, path: filename });
     else if (folder === "diffusion_models" && isKrea2CheckpointName(filename)) {
-      checkpointNames.push(filename);
-    } else if (folder === "loras") loraFilenames.push(filename);
-    else if (folder === "embeddings") embeddingFilenames.push(filename);
+      storedCkpt.push({ folder, path: filename });
+    } else if (folder === "loras") storedLora.push({ folder, path: filename });
+    else if (folder === "embeddings") storedEmb.push({ folder, path: filename });
   }
 
-  const dedupe = (names: string[]) =>
-    Array.from(new Set(names.map((name) => name.replaceAll("\\", "/"))));
+  const asCandidates = (folder: string, paths: string[]) =>
+    paths.map((path) => ({ folder, path }));
 
   return {
-    checkpoints: dedupe(checkpointNames),
-    loras: dedupe(loraFilenames),
-    embeddings: dedupe(embeddingFilenames),
+    checkpoints: buildGroup([
+      ...asCandidates("checkpoints", physical.checkpoints),
+      ...asCandidates(
+        "diffusion_models",
+        physical.diffusion_models.filter((path) => isKrea2CheckpointName(path))
+      ),
+      ...asCandidates("checkpoints", ckptNames),
+      ...asCandidates(
+        "diffusion_models",
+        unetNames.filter((path) => isKrea2CheckpointName(path))
+      ),
+      ...storedCkpt,
+    ]),
+    loras: buildGroup([
+      ...asCandidates("loras", physical.loras),
+      ...asCandidates("loras", loraNames),
+      ...storedLora,
+    ]),
+    embeddings: buildGroup([
+      ...asCandidates("embeddings", physical.embeddings),
+      ...storedEmb,
+    ]),
   };
 }
 
@@ -2452,6 +2868,194 @@ export async function streamRunpodNodeInstall(
   if (helperError) throw new Error(helperError);
 
   return installed;
+}
+
+// Install the PuLID node + SDXL weight onto a pod for the Character Reference
+// feature: reuse the generic node installer for the custom node, then ask the pod
+// helper to fetch the weight into models/pulid/. The node install's own terminal
+// "complete" is downgraded to a status so only the final event (after the weight
+// lands) signals done.
+export async function streamRunpodPulidInstall(
+  podId: string,
+  onEvent: (event: RunpodNodeInstallEvent) => void
+) {
+  const relay = (event: RunpodNodeInstallEvent) => {
+    if (event.type === "complete") {
+      onEvent({ type: "status", message: "Custom node installed — fetching the weight next..." });
+    } else {
+      onEvent(event);
+    }
+  };
+  await streamRunpodNodeInstall(
+    podId,
+    [{ name: PULID_NODE_REPO.name, url: PULID_NODE_REPO.url }],
+    relay,
+    true
+  );
+
+  const pod = await getRunpodPod(podId);
+  if (!pod) throw new Error("RunPod target was not found.");
+
+  onEvent({
+    type: "status",
+    message: `PuLID 가중치 다운로드 중 (${PULID_WEIGHT.fileName}, ~939MB)... (downloading weight)`,
+  });
+  await fetchRunpodHelper(pod, "/api/runpod/helper/download", {
+    method: "POST",
+    body: JSON.stringify({
+      targetFile: PULID_WEIGHT.targetFile,
+      downloadUrl: PULID_WEIGHT.downloadUrl,
+    }),
+  });
+
+  // InsightFace antelopev2 face models (PulidInsightFaceLoader needs these, and
+  // its own auto-download is unreliable). Fetch each ONNX into models/insightface.
+  for (const file of PULID_INSIGHTFACE.files) {
+    onEvent({ type: "status", message: `InsightFace 모델 다운로드 중: ${file}` });
+    await fetchRunpodHelper(pod, "/api/runpod/helper/download", {
+      method: "POST",
+      body: JSON.stringify({
+        targetFile: `${PULID_INSIGHTFACE.dir}/${file}`,
+        downloadUrl: `${PULID_INSIGHTFACE.baseUrl}/${file}?download=true`,
+      }),
+    });
+  }
+
+  onEvent({
+    type: "complete",
+    installed: [PULID_NODE_REPO.name, PULID_WEIGHT.fileName, "antelopev2"],
+    message: "PuLID 설치 완료. 다시 생성하세요. (PuLID installed on the pod — generate again.)",
+  });
+}
+
+export interface RunpodComfyUpgradeEvent {
+  type: "status" | "log" | "complete" | "error";
+  message?: string;
+  restarted?: boolean;
+  pid?: number | null;
+  previousVersion?: string;
+  version?: string;
+}
+
+// The ComfyUI git ref the pod should run, pinned in comfyui-config so setup and
+// in-place upgrades agree on one target. Currently a commit at or above 0.27.0,
+// which is the first ComfyUI to support int8_tensorwise checkpoints.
+export async function getPinnedComfyRef(): Promise<string> {
+  try {
+    const raw = await readFile("comfyui-config/comfyui-version.txt", "utf8");
+    return raw.trim();
+  } catch {
+    return "";
+  }
+}
+
+// Update the pod's ComfyUI to the pinned ref (git checkout + pip + restart) via
+// the helper, streaming progress back through onEvent. Mirrors the node-install
+// path, including the one-shot stale-helper redeploy for pods on an older build
+// that lacks this route.
+export async function streamRunpodComfyUpgrade(
+  podId: string,
+  onEvent: (event: RunpodComfyUpgradeEvent) => void,
+  ref?: string
+) {
+  const pod = await getRunpodPod(podId);
+  if (!pod) throw new Error("RunPod target was not found.");
+
+  const target = (ref || (await getPinnedComfyRef())).trim();
+  if (!target) throw new Error("No pinned ComfyUI ref is configured.");
+
+  const helperUrl = deriveHelperUrl(pod);
+  if (!helperUrl) throw new Error("RunPod Image Gen helper URL is not configured.");
+
+  // The upgrade's correctness depends on the helper's restart logic, so a stale
+  // helper must be redeployed first — not just when the route 404s, but whenever
+  // its version lags. (Older builds killed the wrong PID and left the old ComfyUI
+  // serving, so the upgrade appeared to succeed while the version never moved.)
+  try {
+    const status = await fetchRunpodHelper(pod, "/api/runpod/helper/status", {
+      signal: AbortSignal.timeout(5_000),
+    });
+    const version = typeof status.version === "string" ? status.version : "";
+    if (version !== RUNPOD_HELPER_VERSION) {
+      onEvent({
+        type: "status",
+        message: "Updating the pod helper to the current build before upgrading...",
+      });
+      await installRunpodHelper(pod);
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        await wait(3_000);
+        try {
+          await fetchRunpodHelper(pod, "/api/runpod/helper/status", {
+            signal: AbortSignal.timeout(5_000),
+          });
+          break;
+        } catch {
+          // Keep waiting for the redeployed helper to start serving.
+        }
+      }
+    }
+  } catch {
+    // Status probe failed; the 404 path below still covers a missing route.
+  }
+
+  const postUpgrade = () =>
+    fetch(`${helperUrl}/api/runpod/helper/comfyui/upgrade/stream`, {
+      method: "POST",
+      cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ref: target }),
+    });
+
+  let response = await postUpgrade();
+
+  // A pod on an older helper build lacks this route (404). Redeploy the current
+  // helper in place, wait for it to serve, then retry once.
+  if (response.status === 404) {
+    onEvent({
+      type: "status",
+      message: "Updating the pod helper to a build that supports ComfyUI upgrade...",
+    });
+    await installRunpodHelper(pod);
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      await wait(3_000);
+      try {
+        await fetchRunpodHelper(pod, "/api/runpod/helper/status", {
+          signal: AbortSignal.timeout(5_000),
+        });
+        break;
+      } catch {
+        // Keep waiting for the redeployed helper to start serving.
+      }
+    }
+    response = await postUpgrade();
+  }
+
+  if (!response.ok || !response.body) {
+    const text = await response.text();
+    throw new Error(text || `RunPod helper HTTP ${response.status}`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let helperError = "";
+  const handle = (raw: string) => {
+    if (!raw.startsWith("data:")) return;
+    const event = JSON.parse(raw.slice(5).trim()) as RunpodComfyUpgradeEvent;
+    if (event.type === "error") helperError = event.message || "ComfyUI upgrade failed.";
+    onEvent(event);
+  };
+
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split(/\r?\n/);
+    buffer = lines.pop() ?? "";
+    for (const line of lines) handle(line);
+  }
+  if (buffer) handle(buffer);
+  if (helperError) throw new Error(helperError);
 }
 
 // Custom-node packs a given image workflow variant needs, keyed by krea2_workflow.

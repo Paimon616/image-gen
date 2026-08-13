@@ -108,7 +108,11 @@ function paramsWithDownloadedResource(
   return params;
 }
 
-export function MetadataImport() {
+export function MetadataImport({
+  generationTarget = "local",
+}: {
+  generationTarget?: "local" | "runpod";
+} = {}) {
   const { setParams, language } = useStore();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [rawMetadata, setRawMetadata] = useState("");
@@ -234,6 +238,7 @@ export function MetadataImport() {
       <CivitaiMissingResources
         resources={missingResources}
         language={language}
+        hidden={generationTarget === "runpod"}
         onDownloaded={(resource, downloadedPath) => {
           const currentParams = useStore.getState().params;
           const nextParams = paramsWithDownloadedResource(

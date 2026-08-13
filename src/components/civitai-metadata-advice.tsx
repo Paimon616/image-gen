@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, CircleHelp, HelpCircle, Sparkles } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, CircleHelp, HelpCircle, Sparkles } from "lucide-react";
 import type {
   CivitaiGenerationRecommendation,
   CivitaiMetadataReport,
@@ -115,13 +115,16 @@ export function CivitaiMetadataAdvice({ report, recommendations, language, onApp
 
   return (
     <div className="mt-3 space-y-3 border-t border-border pt-3">
-      <details open className="rounded-md border border-border bg-background/60">
+      <details className="group rounded-md border border-border bg-background/60">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm font-medium">
           <span className="inline-flex items-center gap-2">
             {report.reproducibility === "low" ? <AlertTriangle className="h-4 w-4 text-amber-500" /> : <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
             {ko ? "메타데이터 완전성" : "Metadata completeness"}
           </span>
-          <span className="text-xs text-muted-foreground">{ko ? "재현 가능성" : "Reproducibility"}: {report.reproducibility.toUpperCase()}</span>
+          <span className="inline-flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">{ko ? "재현 가능성" : "Reproducibility"}: {report.reproducibility.toUpperCase()}</span>
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+          </span>
         </summary>
         <div className="space-y-3 border-t border-border p-3">
           <p className="text-xs text-muted-foreground">{summary}</p>
@@ -149,9 +152,12 @@ export function CivitaiMetadataAdvice({ report, recommendations, language, onApp
       </details>
 
       {recommendations && recommendations.length > 0 && (
-        <div>
-          <div className="mb-2 flex items-center gap-2 text-sm font-medium"><Sparkles className="h-4 w-4 text-primary" />{ko ? "추천 생성 설정" : "Recommended generation settings"}</div>
-          <div className="grid gap-2 lg:grid-cols-2">
+        <details className="group rounded-md border border-border bg-background/60">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm font-medium">
+            <span className="inline-flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" />{ko ? "추천 생성 설정" : "Recommended generation settings"}</span>
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="grid gap-2 border-t border-border p-3 lg:grid-cols-2">
             {recommendations.map((recommendation, index) => {
               const copy = RECOMMENDATION_COPY[recommendation.id]?.[language];
               const title = copy?.[0] ?? recommendation.title;
@@ -173,7 +179,7 @@ export function CivitaiMetadataAdvice({ report, recommendations, language, onApp
               );
             })}
           </div>
-        </div>
+        </details>
       )}
     </div>
   );

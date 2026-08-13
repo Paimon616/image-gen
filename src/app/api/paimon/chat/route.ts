@@ -207,8 +207,16 @@ async function resizeDataUrlForVision(dataUrl: string): Promise<string> {
       .webp({ quality: 82 })
       .toBuffer();
     return `data:image/webp;base64,${output.toString("base64")}`;
-  } catch {
+  } catch (error) {
     // Any decode/encode failure: fall back to the full-size image untouched.
+    // Most often this is a missing/broken native `sharp` binary on this PC — log
+    // it so the silent "not downscaled on some machines" case is diagnosable.
+    // The client already downscales clipboard/dataUrl attachments via <canvas>
+    // (src/lib/image-resize.ts), so this path stays a best-effort safety net.
+    console.warn(
+      "[paimon] vision downscale skipped (sharp unavailable?):",
+      error instanceof Error ? error.message : error
+    );
     return dataUrl;
   }
 }

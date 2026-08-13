@@ -18,6 +18,7 @@ FORGE_DIR="${FORGE_DIR:-$ROOT_DIR/stable-diffusion-webui-forge}"
 
 STARTED_PIDS=()
 CLEANED_UP=0
+BUILD_SKIPPED=0
 
 cleanup() {
   if [ "$CLEANED_UP" -eq 1 ]; then
@@ -107,15 +108,6 @@ kill_port() {
   return 0
 }
 
-# Also sweep stray next-server / python ComfyUI processes that may not be
-# holding the configured port anymore (e.g. crashed children). We only target
-# processes whose listening socket is one of our configured ports, to stay
-# surgical.
-kill_managed_ports() {
-  kill_port "$COMFYUI_PORT" "ComfyUI" || exit 1
-  kill_port "$IMAGE_GEN_PORT" "Image Gen" || exit 1
-}
-
 wait_for_port() {
   local name="$1"
   local port="$2"
@@ -171,33 +163,6 @@ open_url() {
   fi
 }
 
-start_service() {
-  local name="$1"
-  local port="$2"
-  local log_file="$3"
-  shift 3
-
-  # Always start fresh. Any lingering process on this port should already have
-  # been killed earlier, but double-check and clean again just in case something
-  # grabbed it between sweeps.
-  if port_listening "$port"; then
-    echo "$name port $port is unexpectedly busy; cleaning up before launch..."
-    kill_port "$port" "$name" || exit 1
-  fi
-
-  : >"$log_file"
-
-  echo "Starting $name..."
-  (
-    cd "$ROOT_DIR"
-    "$@"
-  ) >"$log_file" 2>&1 &
-
-  local pid="$!"
-  STARTED_PIDS+=("$pid")
-  wait_for_port "$name" "$port" "$pid" "$log_file"
-}
-
 wait_for_http() {
   local name="$1"
   local url="$2"
@@ -235,7 +200,39 @@ wait_for_http() {
   exit 1
 }
 
+http_ok() {
+  curl -fsS --max-time 5 "$1" >/dev/null 2>&1
+}
+
+# Rebuild only when something the build depends on has changed since the last
+# successful build. next writes .next/BUILD_ID at the end of a build, so we use
+# it as the completion marker and compare source mtimes against it. Set
+# FORCE_BUILD=1 to always rebuild. Sets BUILD_SKIPPED=1 when it reuses .next.
 build_image_gen() {
+  local build_id="$ROOT_DIR/.next/BUILD_ID"
+
+  if [ "${FORCE_BUILD:-0}" != "1" ] && [ -f "$build_id" ]; then
+    local sources=()
+    local p
+    for p in src public data package.json package-lock.json next.config.ts \
+             tsconfig.json postcss.config.mjs components.json; do
+      [ -e "$ROOT_DIR/$p" ] && sources+=("$ROOT_DIR/$p")
+    done
+
+    local newer=""
+    if [ "${#sources[@]}" -gt 0 ]; then
+      newer="$(find "${sources[@]}" -newer "$build_id" -type f -print -quit 2>/dev/null || true)"
+    fi
+
+    if [ -z "$newer" ]; then
+      echo "No source changes since last build; reusing existing .next build. (FORCE_BUILD=1 to rebuild.)"
+      BUILD_SKIPPED=1
+      return 0
+    fi
+    echo "Source change detected (${newer#$ROOT_DIR/}); rebuilding..."
+  fi
+
+  BUILD_SKIPPED=0
   echo "Building Image Gen for local launch..."
   (
     cd "$ROOT_DIR"
@@ -261,6 +258,20 @@ start_image_gen() {
   STARTED_PIDS+=("$pid")
   wait_for_port "Image Gen" "$IMAGE_GEN_PORT" "$pid" "$log_file"
   wait_for_http "Image Gen" "$IMAGE_GEN_URL" "$pid" "$log_file"
+}
+
+# If the build was reused (no source changes) and a healthy Image Gen is already
+# serving, reuse it too — that build is already what we'd relaunch. Otherwise
+# restart so a fresh build is actually served.
+maybe_start_image_gen() {
+  if [ "${FORCE_RESTART:-0}" != "1" ] \
+     && [ "${BUILD_SKIPPED:-0}" = "1" ] \
+     && http_ok "$IMAGE_GEN_URL"; then
+    echo "Image Gen already running and build unchanged; reusing it. (FORCE_RESTART=1 to restart.)"
+    return 0
+  fi
+
+  start_image_gen
 }
 
 # Locate an existing Homebrew, even if it is not yet on PATH (fresh installs on
@@ -380,7 +391,12 @@ fi
 # AUTOMATIC1111 / Forge are optional WebUI backends. Install them if missing so
 # the app can auto-launch them on demand. Set SKIP_WEBUI_SETUP=1 to opt out of
 # both. AUTOMATIC1111 is skipped by default here; set INSTALL_A1111=1 to enable.
-if [ "${SKIP_WEBUI_SETUP:-0}" != "1" ]; then
+#
+# macOS is not a supported target for either WebUI backend, so skip their setup
+# entirely there (the app also hides them from the backend list on macOS).
+if [ "$(uname -s)" = "Darwin" ]; then
+  echo "macOS detected; skipping AUTOMATIC1111 / Forge setup (unsupported on this platform)."
+elif [ "${SKIP_WEBUI_SETUP:-0}" != "1" ]; then
   if [ "${INSTALL_A1111:-0}" = "1" ]; then
     if [ ! -f "$A1111_DIR/.image-gen-ready" ] || [ ! -f "$A1111_DIR/extensions/adetailer/scripts/!adetailer.py" ]; then
       echo "AUTOMATIC1111 or ADetailer is not ready. Running setup (first run downloads PyTorch)..."
@@ -394,23 +410,19 @@ if [ "${SKIP_WEBUI_SETUP:-0}" != "1" ]; then
   fi
 fi
 
-# --- Fresh start: clean any leftover processes on our managed ports. ---
-echo "Cleaning up any previous local instances..."
-kill_managed_ports
-
-# Truncate old logs so the current run is easy to read.
-: >"$LOG_DIR/comfyui.log" 2>/dev/null || true
-: >"$LOG_DIR/image-gen.log" 2>/dev/null || true
-
+# Rebuild only when sources changed (sets BUILD_SKIPPED for the reuse check
+# below), then bring up Image Gen, reusing it if it is already healthy. Its
+# maybe_start handles its own port cleanup when it does need to restart, so there
+# is no upfront kill sweep to tear down a warm instance. Set FORCE_RESTART=1 to
+# force a restart.
+#
+# ComfyUI is intentionally NOT started here anymore. It is a heavy backend that
+# is only needed for local generation, so the app starts it on demand from the
+# in-app "Start ComfyUI" banner (see /api/comfyui/start). The launcher only
+# ensures it is installed (setup check above) so the app can launch it later.
 build_image_gen
 
-start_service "ComfyUI" "$COMFYUI_PORT" "$LOG_DIR/comfyui.log" npm run comfyui
-
-# Re-sweep the Image Gen port right before launch in case anything grabbed it
-# during the ComfyUI startup wait.
-kill_port "$IMAGE_GEN_PORT" "Image Gen" || exit 1
-
-start_image_gen
+maybe_start_image_gen
 
 echo "Opening $IMAGE_GEN_URL"
 open_url "$IMAGE_GEN_URL"

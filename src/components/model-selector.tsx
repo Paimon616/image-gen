@@ -111,6 +111,8 @@ export function AssetChoiceButton({
   );
 }
 
+type AssetLocationFilter = "all" | "local" | "runpod";
+
 export function AssetPickerDialog({
   title,
   description,
@@ -119,6 +121,8 @@ export function AssetPickerDialog({
   open,
   onOpenChange,
   onSelect,
+  runpodMode = false,
+  runpodPaths = null,
 }: {
   title: string;
   description: string;
@@ -127,9 +131,41 @@ export function AssetPickerDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSelect: (asset: LocalModelAsset) => void;
+  // When the image generator targets a RunPod, the picker can filter its list
+  // down to models that pod can actually load. `runpodPaths` holds the lowercased
+  // filenames present on the pod (null while unknown / not a RunPod target).
+  runpodMode?: boolean;
+  runpodPaths?: Set<string> | null;
 }) {
   const [query, setQuery] = useState("");
+  const [locationFilter, setLocationFilter] = useState<AssetLocationFilter>(
+    runpodMode ? "runpod" : "all"
+  );
+
+  // Reset to the mode-appropriate default whenever the picker opens or the
+  // target (local vs RunPod) changes, so it never lingers on a stale filter.
+  // Done during render (React's supported "reset on prop change" pattern)
+  // rather than in an effect, which would cause a wasted extra render.
+  const openStateKey = open ? (runpodMode ? "runpod" : "local") : "";
+  const [lastOpenStateKey, setLastOpenStateKey] = useState(openStateKey);
+  if (openStateKey !== lastOpenStateKey) {
+    setLastOpenStateKey(openStateKey);
+    if (open) setLocationFilter(runpodMode ? "runpod" : "all");
+  }
+
+  const isOnRunpod = (asset: LocalModelAsset) =>
+    runpodPaths?.has(asset.path.replaceAll("\\", "/").toLowerCase()) ?? false;
+
+  const locationFilters: Array<{ key: AssetLocationFilter; label: string }> = [
+    { key: "all", label: "All" },
+    { key: "local", label: "Local" },
+    { key: "runpod", label: "RunPod" },
+  ];
+
   const filteredAssets = assets.filter((asset) => {
+    if (locationFilter === "local" && asset.exists === false) return false;
+    if (locationFilter === "runpod" && !isOnRunpod(asset)) return false;
+
     const haystack = [
       asset.name,
       asset.version,
@@ -151,14 +187,15 @@ export function AssetPickerDialog({
 
         <div className="flex items-center gap-2 border-b border-border px-5 py-3">
           <div className="flex gap-1">
-            {["All", "Featured", "Recent", "Mine"].map((label, index) => (
+            {locationFilters.map(({ key, label }) => (
               <button
-                key={label}
+                key={key}
                 type="button"
-                className={`rounded-md px-3 py-1.5 text-xs font-medium ${
-                  index === 0
+                onClick={() => setLocationFilter(key)}
+                className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                  locationFilter === key
                     ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/70"
                 }`}
               >
                 {label}
@@ -320,12 +357,25 @@ function isKreaSliderLora(asset: LocalModelAsset | undefined, path: string) {
   );
 }
 
-export function ModelSelector() {
+export function ModelSelector({
+  generationTarget = "local",
+  runpodPodId = "",
+}: {
+  generationTarget?: "local" | "runpod";
+  runpodPodId?: string;
+} = {}) {
   const { params, setParams, language } = useStore();
   const ko = language === "ko";
   const currentModel = getModelConfig(params.model);
   const isLocal = currentModel.provider === "comfyui";
+  const runpodMode = generationTarget === "runpod" && Boolean(runpodPodId);
   const [pickerTarget, setPickerTarget] = useState<PickerTarget>(null);
+  // Models physically present on the pod, resolved to picker assets server-side.
+  const [runpodCatalog, setRunpodCatalog] = useState<{
+    checkpoints: LocalModelAsset[];
+    loras: LocalModelAsset[];
+    embeddings: LocalModelAsset[];
+  } | null>(null);
   const [localModels, setLocalModels] = useState<{
     checkpoints: string[];
     loras: string[];
@@ -373,12 +423,112 @@ export function ModelSelector() {
     };
   }, [refreshLocalModels]);
 
+  // Drop any stale pod catalog the moment the target (local vs RunPod, or which
+  // pod) changes, so the "RunPod" filter never shows another pod's models while
+  // the fresh list loads. Done during render, not in the fetch effect below.
+  const runpodCatalogKey = runpodMode ? runpodPodId : "";
+  const [loadedRunpodCatalogKey, setLoadedRunpodCatalogKey] =
+    useState(runpodCatalogKey);
+  if (runpodCatalogKey !== loadedRunpodCatalogKey) {
+    setLoadedRunpodCatalogKey(runpodCatalogKey);
+    setRunpodCatalog(null);
+  }
+
+  // When targeting a RunPod, pull every model physically present on the pod
+  // (already resolved to picker assets server-side) so the list shows all of
+  // them and the "RunPod" filter reflects what actually lives on the pod.
+  useEffect(() => {
+    if (!runpodMode) return;
+
+    let cancelled = false;
+    const toAssets = (items: unknown): LocalModelAsset[] =>
+      (Array.isArray(items) ? items : [])
+        .filter((item): item is Record<string, unknown> =>
+          Boolean(item) && typeof item === "object"
+        )
+        .map((item) => ({
+          path: String(item.path ?? ""),
+          name: String(item.name ?? item.path ?? ""),
+          version: String(item.version ?? ""),
+          base_model: String(item.base_model ?? ""),
+          thumbnail_url:
+            typeof item.thumbnail_url === "string" ? item.thumbnail_url : null,
+          exists: false,
+          risk: null,
+        }))
+        .filter((asset) => asset.path);
+
+    fetch(`/api/runpod/pods/${encodeURIComponent(runpodPodId)}/model-catalog`, {
+      cache: "no-store",
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        setRunpodCatalog({
+          checkpoints: toAssets(data.checkpoints),
+          loras: toAssets(data.loras),
+          embeddings: toAssets(data.embeddings),
+        });
+        // The endpoint folds pod-catalog metadata into this machine's local
+        // catalog; re-pull /api/models so those thumbnails/names show too.
+        refreshLocalModels();
+      })
+      .catch(() => {
+        if (!cancelled) setRunpodCatalog(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [runpodMode, runpodPodId, refreshLocalModels]);
+
+  // Merge pod-only models (not present in the local list) into each picker list,
+  // and build the lowercased path sets the "RunPod" filter checks against.
+  const mergePodAssets = (
+    localAssets: LocalModelAsset[],
+    podAssets: LocalModelAsset[] | undefined
+  ) => {
+    if (!podAssets || podAssets.length === 0) return localAssets;
+    const have = new Set(
+      localAssets.map((asset) => asset.path.replaceAll("\\", "/").toLowerCase())
+    );
+    const extra = podAssets.filter(
+      (asset) => !have.has(asset.path.replaceAll("\\", "/").toLowerCase())
+    );
+    if (extra.length === 0) return localAssets;
+    return [...localAssets, ...extra].sort((a, b) => a.name.localeCompare(b.name));
+  };
+
+  const checkpointAssets = mergePodAssets(
+    localModels.checkpointAssets,
+    runpodCatalog?.checkpoints
+  );
+  const loraAssets = mergePodAssets(localModels.loraAssets, runpodCatalog?.loras);
+  const embeddingAssets = mergePodAssets(
+    localModels.embeddingAssets,
+    runpodCatalog?.embeddings
+  );
+
+  const toPathSet = (assets: LocalModelAsset[] | undefined) =>
+    assets
+      ? new Set(
+          assets.map((asset) => asset.path.replaceAll("\\", "/").toLowerCase())
+        )
+      : null;
+  const runpodPathSets = runpodCatalog
+    ? {
+        checkpoints: toPathSet(runpodCatalog.checkpoints),
+        loras: toPathSet(runpodCatalog.loras),
+        embeddings: toPathSet(runpodCatalog.embeddings),
+      }
+    : null;
+
   const addEmptyLora = () => {
     setParams({ loras: [...params.loras, { path: "", scale: 0.8 }] });
   };
 
   const addLora = () => {
-    if (isLocal && localModels.loraAssets.length > 0) {
+    if (isLocal && loraAssets.length > 0) {
       setPickerTarget({ type: "lora-new" });
       return;
     }
@@ -402,7 +552,7 @@ export function ModelSelector() {
   };
 
   const addEmbedding = () => {
-    if (isLocal && localModels.embeddingAssets.length > 0) {
+    if (isLocal && embeddingAssets.length > 0) {
       setPickerTarget({ type: "embedding-new" });
       return;
     }
@@ -428,10 +578,7 @@ export function ModelSelector() {
   const findAsset = (assets: LocalModelAsset[], path: string) =>
     assets.find((asset) => asset.path === path);
 
-  const selectedCheckpoint = findAsset(
-    localModels.checkpointAssets,
-    params.model_name
-  );
+  const selectedCheckpoint = findAsset(checkpointAssets, params.model_name);
   const selectedCheckpointMissingFiles =
     selectedCheckpoint?.missing_required_files ??
     (/anima/i.test(params.model_name) ? localModels.animaMissingRequiredFiles : []);
@@ -448,13 +595,23 @@ export function ModelSelector() {
 
   const pickerAssets =
     pickerTarget?.type === "checkpoint"
-      ? localModels.checkpointAssets
+      ? checkpointAssets
       : pickerTarget?.type === "lora" || pickerTarget?.type === "lora-new"
-        ? localModels.loraAssets
+        ? loraAssets
         : pickerTarget?.type === "embedding" ||
             pickerTarget?.type === "embedding-new"
-          ? localModels.embeddingAssets
+          ? embeddingAssets
           : [];
+
+  const pickerRunpodPaths =
+    pickerTarget?.type === "checkpoint"
+      ? runpodPathSets?.checkpoints ?? null
+      : pickerTarget?.type === "lora" || pickerTarget?.type === "lora-new"
+        ? runpodPathSets?.loras ?? null
+        : pickerTarget?.type === "embedding" ||
+            pickerTarget?.type === "embedding-new"
+          ? runpodPathSets?.embeddings ?? null
+          : null;
 
   const pickerSelectedPath =
     pickerTarget?.type === "checkpoint"
@@ -515,7 +672,7 @@ export function ModelSelector() {
             Refresh
           </Button>
         </div>
-        {localModels.checkpointAssets.length > 0 ? (
+        {checkpointAssets.length > 0 ? (
           <AssetChoiceButton
             asset={selectedCheckpoint}
             placeholder="Select checkpoint"
@@ -570,10 +727,10 @@ export function ModelSelector() {
               )}
               {params.loras.map((lora, i) => (
                 <div key={i} className="space-y-2 rounded-md border border-border bg-background/60 p-2">
-                  {isLocal && localModels.loraAssets.length > 0 ? (
+                  {isLocal && loraAssets.length > 0 ? (
                     <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem_2rem]">
                       <AssetChoiceButton
-                        asset={findAsset(localModels.loraAssets, lora.path)}
+                        asset={findAsset(loraAssets, lora.path)}
                         placeholder="Select LoRA"
                         fallbackLabel={lora.path}
                         fallbackDescription="Imported LoRA"
@@ -584,7 +741,7 @@ export function ModelSelector() {
                         onChange={(value) => updateLora(i, "scale", value)}
                         min={
                           isKreaSliderLora(
-                            findAsset(localModels.loraAssets, lora.path),
+                            findAsset(loraAssets, lora.path),
                             lora.path
                           )
                             ? -5
@@ -592,7 +749,7 @@ export function ModelSelector() {
                         }
                         max={
                           isKreaSliderLora(
-                            findAsset(localModels.loraAssets, lora.path),
+                            findAsset(loraAssets, lora.path),
                             lora.path
                           )
                             ? 5
@@ -623,7 +780,7 @@ export function ModelSelector() {
                         onChange={(value) => updateLora(i, "scale", value)}
                         min={
                           isKreaSliderLora(
-                            findAsset(localModels.loraAssets, lora.path),
+                            findAsset(loraAssets, lora.path),
                             lora.path
                           )
                             ? -5
@@ -631,7 +788,7 @@ export function ModelSelector() {
                         }
                         max={
                           isKreaSliderLora(
-                            findAsset(localModels.loraAssets, lora.path),
+                            findAsset(loraAssets, lora.path),
                             lora.path
                           )
                             ? 5
@@ -675,9 +832,9 @@ export function ModelSelector() {
               {params.embeddings.map((embedding, i) => (
                 <div key={i} className="space-y-1.5">
                   <div className="flex gap-2">
-                    {isLocal && localModels.embeddingAssets.length > 0 ? (
+                    {isLocal && embeddingAssets.length > 0 ? (
                       <AssetChoiceButton
-                        asset={findAsset(localModels.embeddingAssets, embedding.path)}
+                        asset={findAsset(embeddingAssets, embedding.path)}
                         placeholder="Select embedding"
                         fallbackLabel={embedding.path}
                         fallbackDescription={
@@ -751,6 +908,8 @@ export function ModelSelector() {
         description="썸네일, 이름, 버전 기준으로 사용할 모델을 선택하세요."
         assets={pickerAssets}
         selectedPath={pickerSelectedPath}
+        runpodMode={runpodMode}
+        runpodPaths={pickerRunpodPaths}
         open={pickerTarget !== null}
         onOpenChange={(open) => {
           if (!open) setPickerTarget(null);

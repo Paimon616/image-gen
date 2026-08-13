@@ -1,5 +1,9 @@
 import { create } from "zustand";
 import type { MissingResource } from "@/lib/civitai-resource-matching";
+import {
+  localDownloadEntryId,
+  reportDownload,
+} from "@/lib/download-manager-store";
 
 export type DownloadStatus = "downloading" | "complete" | "error";
 
@@ -61,6 +65,24 @@ export const useDownloadStore = create<DownloadStoreState>((set, get) => ({
     const existing = get().downloads[key];
     if (existing?.status === "downloading") return;
 
+    const managerId = localDownloadEntryId(key);
+    const managerBase = {
+      label: resource.name,
+      sublabel: resource.versionName
+        ? `${resource.type} · ${resource.versionName}`
+        : resource.type,
+      target: "",
+      kind: "local" as const,
+    };
+    reportDownload(managerId, {
+      ...managerBase,
+      totalBytes: null,
+      percent: null,
+      downloadedBytes: 0,
+      status: "downloading",
+      message: "Starting download...",
+    });
+
     set((state) => ({
       downloads: {
         ...state.downloads,
@@ -102,15 +124,28 @@ export const useDownloadStore = create<DownloadStoreState>((set, get) => ({
       const handleEvent = (event: Record<string, unknown>) => {
         if (event.type === "status") {
           update({ message: String(event.message ?? "Working...") });
+          reportDownload(managerId, {
+            message: String(event.message ?? "Working..."),
+          });
           return;
         }
 
         if (event.type === "progress") {
+          const downloaded = Number(event.downloaded ?? 0);
+          const total =
+            typeof event.total === "number" ? Number(event.total) : null;
+          const percent =
+            typeof event.percent === "number" ? Number(event.percent) : null;
           update({
-            downloaded: Number(event.downloaded ?? 0),
-            total: typeof event.total === "number" ? Number(event.total) : null,
-            percent:
-              typeof event.percent === "number" ? Number(event.percent) : null,
+            downloaded,
+            total,
+            percent,
+            message: "Downloading...",
+          });
+          reportDownload(managerId, {
+            downloadedBytes: downloaded,
+            totalBytes: total,
+            percent,
             message: "Downloading...",
           });
           return;
@@ -125,6 +160,11 @@ export const useDownloadStore = create<DownloadStoreState>((set, get) => ({
                 : "";
 
           update({ percent: 100, message: "Complete", status: "complete", path });
+          reportDownload(managerId, {
+            percent: 100,
+            status: "complete",
+            message: path ? `Saved to ${path}` : "Complete",
+          });
 
           window.dispatchEvent(
             new CustomEvent("local-models-changed", {
@@ -165,6 +205,7 @@ export const useDownloadStore = create<DownloadStoreState>((set, get) => ({
           ? error.message
           : "Failed to download Civitai resource";
       update({ message, status: "error" });
+      reportDownload(managerId, { message, status: "error" });
     }
   },
 }));

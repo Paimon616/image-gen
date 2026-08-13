@@ -114,6 +114,9 @@ export function GenerationParams({ section = "output" }: {
     upscalers: string[];
     adetailerModels: string[];
   }>({ upscalers: [], adetailerModels: [] });
+  // AUTOMATIC1111 / Forge are not set up on macOS, so hide them from the
+  // backend list when the host is a Mac.
+  const [isMac, setIsMac] = useState(false);
 
   useEffect(() => {
     const loadLocalModels = () => {
@@ -139,6 +142,27 @@ export function GenerationParams({ section = "output" }: {
     return () =>
       window.removeEventListener("local-models-changed", loadLocalModels);
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/settings", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (active) setIsMac(data.platform === "darwin");
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // On macOS the WebUI backends aren't available; fall back to ComfyUI if a
+  // restored/imported value still points at one of them.
+  useEffect(() => {
+    if (isMac && (params.backend === "a1111" || params.backend === "forge")) {
+      setParams({ backend: "comfyui" });
+    }
+  }, [isMac, params.backend, setParams]);
 
   useEffect(() => {
     if (!isWebUi) return;
@@ -352,8 +376,12 @@ export function GenerationParams({ section = "output" }: {
           className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <option value="comfyui">ComfyUI (Krea / Wan / workflows)</option>
-          <option value="a1111">AUTOMATIC1111 v1.10.0 (Civitai SD 1.5 / SDXL)</option>
-          <option value="forge">ForgeUI (Forge / Illustrious compatibility)</option>
+          {!isMac && (
+            <>
+              <option value="a1111">AUTOMATIC1111 v1.10.0 (Civitai SD 1.5 / SDXL)</option>
+              <option value="forge">ForgeUI (Forge / Illustrious compatibility)</option>
+            </>
+          )}
         </select>
         {isWebUi && params.generation_mode === "pose_reference" && (
           <p className="mt-2 text-xs text-amber-600">

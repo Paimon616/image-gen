@@ -1,7 +1,8 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
-import { Download, DownloadCloud, ExternalLink, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { Check, Download, DownloadCloud, ExternalLink, Loader2 } from "lucide-react";
 import {
   RESOURCE_LABELS,
   type MissingResource,
@@ -10,11 +11,7 @@ import type { CivitaiLicenseInfo } from "@/lib/types";
 import { LicenseBadges } from "@/components/civitai-license-badges";
 import { CopyLinkButton } from "@/components/copy-link-button";
 import { Button } from "@/components/ui/button";
-import {
-  downloadResourceKey,
-  useDownloadStore,
-  type DownloadEntry,
-} from "@/lib/download-store";
+import { downloadResourceKey, useDownloadStore } from "@/lib/download-store";
 
 interface TokenState {
   configured: boolean;
@@ -26,6 +23,9 @@ interface CivitaiMissingResourcesProps {
   resources: MissingResource[];
   language?: "ko" | "en";
   onDownloaded?: (resource: MissingResource, path: string) => void;
+  // Missing *local* files are irrelevant when generating on a remote RunPod pod;
+  // pod-side presence is verified separately. Hide the banner in that case.
+  hidden?: boolean;
 }
 
 function missingResourceKey(resource: MissingResource, index: number) {
@@ -42,41 +42,17 @@ function canDownloadResource(resource: MissingResource, token: TokenState) {
   return token.valid && Boolean(resource.url && resource.modelVersionId);
 }
 
-function formatBytes(value: number) {
-  const units = ["B", "KB", "MB", "GB"];
-  let size = value;
-  let unit = 0;
-
-  while (size >= 1024 && unit < units.length - 1) {
-    size /= 1024;
-    unit += 1;
-  }
-
-  return `${size.toFixed(unit === 0 ? 0 : 1)} ${units[unit]}`;
-}
-
-function progressText(progress: DownloadEntry) {
-  if (progress.percent !== null) {
-    return progress.total
-      ? `${progress.percent}% · ${formatBytes(progress.downloaded)} / ${formatBytes(progress.total)}`
-      : `${progress.percent}%`;
-  }
-
-  if (progress.downloaded > 0) return formatBytes(progress.downloaded);
-  return progress.message;
-}
-
 export function CivitaiMissingResources({
   resources,
   language = "en",
   onDownloaded,
+  hidden = false,
 }: CivitaiMissingResourcesProps) {
   const [token, setToken] = useState<TokenState>({
     configured: false,
     valid: false,
     checked: false,
   });
-  const [downloadStatus, setDownloadStatus] = useState("");
   const [licenses, setLicenses] = useState<Record<number, CivitaiLicenseInfo>>({});
   const downloads = useDownloadStore((state) => state.downloads);
   const startDownload = useDownloadStore((state) => state.startDownload);
@@ -140,17 +116,11 @@ export function CivitaiMissingResources({
   }, [modelIdsKey]);
 
   const downloadResource = (resource: MissingResource) => {
-    setDownloadStatus("");
     void startDownload(
       downloadResourceKey(resource),
       resource,
       (downloadedResource, path) => {
         onDownloaded?.(downloadedResource, path);
-        setDownloadStatus(
-          language === "ko"
-            ? `다운로드 완료: ${path || downloadedResource.name}`
-            : `Downloaded: ${path || downloadedResource.name}`
-        );
       }
     );
   };
@@ -162,12 +132,16 @@ export function CivitaiMissingResources({
     const entry = downloads[downloadResourceKey(resource)];
     return entry?.status !== "downloading" && entry?.status !== "complete";
   });
+  const activeDownloadCount = resources.filter(
+    (resource) =>
+      downloads[downloadResourceKey(resource)]?.status === "downloading"
+  ).length;
 
   const downloadAll = () => {
     pendingDownloads.forEach((resource) => downloadResource(resource));
   };
 
-  if (resources.length === 0) return null;
+  if (hidden || resources.length === 0) return null;
 
   return (
     <div className="mt-3 rounded-md border border-dashed border-destructive/30 bg-destructive/10 p-3">
@@ -218,8 +192,8 @@ export function CivitaiMissingResources({
           const key = missingResourceKey(resource, index);
           const entry = downloads[downloadResourceKey(resource)];
           const downloading = entry?.status === "downloading";
+          const complete = entry?.status === "complete";
           const downloadable = canDownloadResource(resource, token);
-          const progressPercent = entry?.percent ?? 0;
           const license =
             typeof resource.modelId === "number"
               ? licenses[resource.modelId]
@@ -268,13 +242,15 @@ export function CivitaiMissingResources({
                       size="icon"
                       variant="outline"
                       className="h-7 w-7"
-                      disabled={downloading}
+                      disabled={downloading || complete}
                       onClick={() => downloadResource(resource)}
                       aria-label={`Download ${resource.name}`}
                       title="Download to ComfyUI models"
                     >
                       {downloading ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : complete ? (
+                        <Check className="h-3.5 w-3.5 text-emerald-500" />
                       ) : (
                         <Download className="h-3.5 w-3.5" />
                       )}
@@ -282,32 +258,42 @@ export function CivitaiMissingResources({
                   )}
                 </span>
               </div>
-              {license && <LicenseBadges license={license} language={language} />}
-              {entry && (
-                <div className="mt-1.5 grid gap-1">
-                  <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
-                    <div
-                      className={`h-full transition-all ${
-                        entry.status === "error" ? "bg-destructive" : "bg-primary"
-                      }`}
-                      style={{ width: `${progressPercent}%` }}
-                    />
-                  </div>
-                  <div className="text-[11px] text-muted-foreground">
-                    {entry.status === "complete"
-                      ? language === "ko"
-                        ? "완료"
-                        : "Complete"
-                      : progressText(entry)}
-                  </div>
+              {entry?.status === "downloading" && (
+                <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-primary">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  {entry.percent !== null
+                    ? `${Math.round(entry.percent)}%`
+                    : language === "ko"
+                      ? "받는 중"
+                      : "downloading"}
                 </div>
               )}
+              {entry?.status === "complete" && (
+                <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-500">
+                  <Check className="h-3 w-3" />
+                  {language === "ko" ? "완료" : "done"}
+                </div>
+              )}
+              {entry?.status === "error" && (
+                <div className="mt-1 text-[11px] font-medium text-destructive">
+                  {language === "ko" ? "실패" : "failed"}
+                </div>
+              )}
+              {license && <LicenseBadges license={license} language={language} />}
             </div>
           );
         })}
       </div>
-      {downloadStatus && (
-        <p className="mt-2 text-xs text-muted-foreground">{downloadStatus}</p>
+      {activeDownloadCount > 0 && (
+        <p className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          {language === "ko"
+            ? `${activeDownloadCount}개 다운로드가 백그라운드에서 진행 중입니다. `
+            : `${activeDownloadCount} download(s) running in the background. `}
+          <Link href="/downloads" className="font-semibold text-primary underline-offset-2 hover:underline">
+            {language === "ko" ? "다운로드 매니저에서 확인" : "Open Download Manager"}
+          </Link>
+        </p>
       )}
     </div>
   );
