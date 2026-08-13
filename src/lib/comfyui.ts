@@ -19,6 +19,7 @@ import {
   isAnimaCheckpointName,
   isKrea2CheckpointName,
 } from "./comfyui-model-files";
+import { getRunpodCheckpointCapabilities } from "./runpod";
 import { normalizeGenerationSeed } from "./types";
 import type { VideoPipelineLoraSlot } from "./video-pipelines";
 import { resolveVideoPipeline, resolveVideoWorkflowPath } from "./video-pipelines";
@@ -441,6 +442,7 @@ async function assertAnimaSupportFiles(checkpoint: string) {
 }
 
 async function buildAnimaWorkflow(params: GenerationParams, checkpoint: string) {
+  assertNoCharacterReference(params, "Anima");
   await assertAnimaSupportFiles(checkpoint);
 
   const loras = cleanLoras(params.loras);
@@ -717,6 +719,7 @@ async function buildKrea2Workflow(
   checkpoint: string,
   options?: ComfyClientOptions
 ) {
+  assertNoCharacterReference(params, "Krea 2");
   await assertKrea2SupportFiles(checkpoint, "generic", options);
 
   const loras = cleanLoras(params.loras);
@@ -1043,6 +1046,7 @@ async function buildKrea2PornmasterWorkflow(
   checkpoint: string,
   options?: ComfyClientOptions
 ) {
+  assertNoCharacterReference(params, "Krea 2 PornMaster");
   await assertKrea2SupportFiles(checkpoint, "pornmaster", options);
 
   const clownInfo = await getComfyObjectInfoEntry("ClownsharKSampler_Beta", options);
@@ -1209,6 +1213,106 @@ async function buildKrea2PornmasterWorkflow(
   return workflow;
 }
 
+// --- PuLID identity reference (character consistency) ------------------------
+// PuLID patches a face-identity embedding directly into the MODEL, so the same
+// person is reproduced across seeds, prompts, poses, and outfits — the thing a
+// fixed seed cannot do. This wires the cubiq PuLID node chain (SDXL family):
+//   PulidModelLoader ┐
+//   PulidEvaClipLoader ┤→ ApplyPulid(model) → patched MODEL → KSampler
+//   PulidInsightFaceLoader ┘   LoadImage(reference) ┘
+// Node/widget names vary across PuLID releases, so we introspect the live
+// /object_info schema and backfill required widgets from their defaults, the
+// same tactic used for the RES4LYF PornMaster graph above.
+async function addPulidWorkflowNodes(
+  workflow: Record<string, unknown>,
+  params: GenerationParams,
+  modelRef: [string, number],
+  options?: ComfyClientOptions
+): Promise<[string, number]> {
+  const reference = params.character_image?.trim();
+  if (!reference) return modelRef;
+
+  const applyInfo = await getComfyObjectInfoEntry("ApplyPulid", options);
+  const loaderInfo = await getComfyObjectInfoEntry("PulidModelLoader", options);
+  const applyRequired = applyInfo?.input?.required;
+  const loaderRequired = loaderInfo?.input?.required;
+
+  if (!applyRequired || !loaderRequired) {
+    throw new Error(
+      "캐릭터 참조(아이덴티티 유지)에는 PuLID 커스텀 노드가 필요합니다. ComfyUI Manager에서 'PuLID' (cubiq/PuLID_ComfyUI)를 설치한 뒤 다시 시도하거나, '캐릭터 이미지'를 비우고 생성하세요. " +
+        "(Character Reference needs the PuLID custom nodes — install 'PuLID' (cubiq/PuLID_ComfyUI) via ComfyUI Manager, or clear the character image.)"
+    );
+  }
+
+  const pulidFileOptions = comfyInputComboOptions(loaderRequired["pulid_file"]);
+  if (pulidFileOptions.length === 0) {
+    throw new Error(
+      "PuLID 가중치 파일을 찾을 수 없습니다. 'ip-adapter_pulid_sdxl_fp16.safetensors'를 ComfyUI/models/pulid/ 에 넣어주세요. " +
+        "(No PuLID weights found — place 'ip-adapter_pulid_sdxl_fp16.safetensors' in ComfyUI/models/pulid/.)"
+    );
+  }
+  const pulidFile =
+    pulidFileOptions.find((name) => /sdxl/i.test(name)) ?? pulidFileOptions[0];
+
+  const referenceImage = await resolveControlNetImage(reference, options);
+  const insightInfo = await getComfyObjectInfoEntry("PulidInsightFaceLoader", options);
+  const provider = pickComfyCombo(insightInfo?.input?.required?.["provider"], "CUDA");
+
+  // Reserved high IDs so PuLID never collides with LoRA/ControlNet/FaceDetailer nodes.
+  workflow["200"] = {
+    class_type: "PulidModelLoader",
+    inputs: { pulid_file: pulidFile },
+  };
+  workflow["201"] = {
+    class_type: "PulidInsightFaceLoader",
+    inputs: { provider },
+  };
+  workflow["202"] = { class_type: "PulidEvaClipLoader", inputs: {} };
+  workflow["203"] = {
+    class_type: "LoadImage",
+    inputs: { image: referenceImage },
+  };
+
+  const weight = Number.isFinite(params.character_reference_strength)
+    ? Math.min(Math.max(params.character_reference_strength, 0), 5)
+    : 0.9;
+  const applyInputs: Record<string, unknown> = {
+    model: modelRef,
+    pulid: ["200", 0],
+    eva_clip: ["202", 0],
+    face_analysis: ["201", 0],
+    image: ["203", 0],
+    weight,
+    start_at: 0,
+    end_at: 1,
+  };
+  // "fidelity" biases toward matching the reference identity over stylization.
+  if ("method" in applyRequired) {
+    applyInputs["method"] = pickComfyCombo(applyRequired["method"], "fidelity");
+  }
+  // Backfill any remaining required widget (version drift) from its schema default.
+  for (const [name, spec] of Object.entries(applyRequired)) {
+    if (name in applyInputs) continue;
+    const fallback = comfyInputDefault(spec);
+    if (fallback !== undefined) applyInputs[name] = fallback;
+  }
+
+  workflow["204"] = { class_type: "ApplyPulid", inputs: applyInputs };
+  return ["204", 0];
+}
+
+// PuLID here targets the SDXL/Illustrious node chain. FLUX-based Krea 2 and the
+// Anima stack need the separate PuLID-Flux nodes and a different apply path, so
+// fail loudly rather than silently dropping the reference the user uploaded.
+function assertNoCharacterReference(params: GenerationParams, family: string) {
+  if (params.character_image?.trim()) {
+    throw new Error(
+      `캐릭터 참조(PuLID 아이덴티티 유지)는 현재 SDXL/Illustrious 계열 체크포인트에서만 지원됩니다. ${family}에서는 '캐릭터 이미지'를 비우고 생성하세요. ` +
+        `(Character Reference (PuLID) is currently supported on SDXL/Illustrious checkpoints only — clear the character image to generate with ${family}.)`
+    );
+  }
+}
+
 async function buildDefaultWorkflow(params: GenerationParams, options?: ComfyClientOptions) {
   const checkpoint = params.model_name.trim() || "sd_xl_base_1.0.safetensors";
 
@@ -1218,7 +1322,15 @@ async function buildDefaultWorkflow(params: GenerationParams, options?: ComfyCli
       : buildKrea2Workflow(params, checkpoint, options);
   }
 
-  const checkpointCapabilities = await getCheckpointCapabilities(checkpoint);
+  // Detect a diffusion-only checkpoint (no bundled CLIP/VAE) BEFORE building a
+  // standard workflow, otherwise ComfyUI fails deep in the graph with a cryptic
+  // "clip input is invalid: None". In RunPod mode the checkpoint lives on the pod,
+  // so we must inspect it there — the local getCheckpointCapabilities can only see
+  // the local disk (it returns null for a remote file, silently skipping this
+  // guard). Falls back to the local read for local generation.
+  const checkpointCapabilities = options?.baseUrl
+    ? await getRunpodCheckpointCapabilities(options.baseUrl, checkpoint)
+    : await getCheckpointCapabilities(checkpoint);
 
   if (checkpointCapabilities?.clip === false) {
     if (isAnimaCheckpointName(checkpoint)) {
@@ -1226,8 +1338,12 @@ async function buildDefaultWorkflow(params: GenerationParams, options?: ComfyCli
     }
 
     throw new Error(
-      `${checkpoint} is a diffusion-only model without a bundled CLIP text encoder. ` +
-        "Use an SD/SDXL checkpoint in this generator, or move this file to ComfyUI/models/diffusion_models and run it with its matching ComfyUI blueprint."
+      options?.baseUrl
+        ? `${checkpoint} on the RunPod pod is a diffusion-only checkpoint — it has no bundled CLIP text encoder, ` +
+            "so it can't run in the standard workflow. Pick a full checkpoint that bundles CLIP (most SD/SDXL/Illustrious " +
+            "models do), or use a model this generator has a dedicated pipeline for (Krea 2, Anima)."
+        : `${checkpoint} is a diffusion-only model without a bundled CLIP text encoder. ` +
+            "Use an SD/SDXL checkpoint in this generator, or move this file to ComfyUI/models/diffusion_models and run it with its matching ComfyUI blueprint."
     );
   }
 
@@ -1270,6 +1386,10 @@ async function buildDefaultWorkflow(params: GenerationParams, options?: ComfyCli
     modelRef = [nodeId, 0];
     clipRef = [nodeId, 1];
   });
+
+  // Patch the identity into MODEL after LoRAs so PuLID sees the final weights and
+  // every downstream consumer (base + hires KSampler, FaceDetailer) inherits it.
+  modelRef = await addPulidWorkflowNodes(workflow, params, modelRef, options);
 
   if (params.clip_skip > 1) {
     workflow["20"] = {

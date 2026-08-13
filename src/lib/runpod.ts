@@ -19,6 +19,7 @@ import {
   PORNMASTER_CLIP_NAME,
   PORNMASTER_VAE_NAME,
   isKrea2CheckpointName,
+  type CheckpointCapabilities,
 } from "@/lib/comfyui-model-files";
 
 const execFileAsync = promisify(execFile);
@@ -74,12 +75,51 @@ function runpodBaseAssetForPath(path: string) {
   );
 }
 
-function deriveHelperUrl(pod: RunpodPodSettings) {
-  if (!pod.comfyUrl) return "";
-  return pod.comfyUrl
+function helperUrlFromComfyUrl(comfyUrl: string) {
+  if (!comfyUrl) return "";
+  return comfyUrl
     .replace(/\/$/, "")
     .replace(/-8188\.proxy\.runpod\.net/i, "-3000.proxy.runpod.net")
     .replace(/:8188\b/, ":3000");
+}
+
+function deriveHelperUrl(pod: RunpodPodSettings) {
+  return helperUrlFromComfyUrl(pod.comfyUrl);
+}
+
+// Read a checkpoint's baked-in CLIP / VAE presence FROM THE POD rather than the
+// local disk. In RunPod mode the checkpoint lives on the pod, so the local
+// getCheckpointCapabilities can't see it (it silently returns null and the
+// diffusion-only guard is skipped, leaking a cryptic ComfyUI "clip input is
+// invalid: None" error). This asks the pod helper to parse the safetensors
+// header. Returns null when the helper is old/unreachable or the file can't be
+// inspected, so callers degrade to today's behaviour instead of blocking.
+export async function getRunpodCheckpointCapabilities(
+  comfyUrl: string,
+  checkpointName: string
+): Promise<CheckpointCapabilities | null> {
+  if (!checkpointName.endsWith(".safetensors")) return null;
+  const helperUrl = helperUrlFromComfyUrl(comfyUrl);
+  if (!helperUrl) return null;
+
+  try {
+    const response = await fetch(`${helperUrl}/api/runpod/helper/model-capabilities`, {
+      method: "POST",
+      cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ file: `checkpoints/${checkpointName}` }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!response.ok) return null;
+    const data = (await response.json()) as {
+      capabilities?: { clip?: unknown; vae?: unknown } | null;
+    };
+    const caps = data.capabilities;
+    if (!caps || typeof caps !== "object") return null;
+    return { clip: Boolean(caps.clip), vae: Boolean(caps.vae) };
+  } catch {
+    return null;
+  }
 }
 
 async function fetchRunpodHelper(
@@ -883,6 +923,45 @@ def write_json(handler, status, data):
     handler.end_headers()
     handler.wfile.write(body)
 
+def safetensors_header_keys(target):
+    try:
+        with open(target, "rb") as handle:
+            size_bytes = handle.read(8)
+            if len(size_bytes) < 8:
+                return None
+            header_size = int.from_bytes(size_bytes, "little")
+            if header_size <= 0 or header_size > 64 * 1024 * 1024:
+                return None
+            header_bytes = handle.read(header_size)
+            if len(header_bytes) < header_size:
+                return None
+            header = json.loads(header_bytes.decode("utf-8"))
+            if not isinstance(header, dict):
+                return None
+            return [key for key in header.keys() if key != "__metadata__"]
+    except Exception:
+        return None
+
+def checkpoint_capabilities(target):
+    if not target.is_file() or not str(target).endswith(".safetensors"):
+        return None
+    keys = safetensors_header_keys(target)
+    if keys is None:
+        return None
+    clip = any(
+        key.startswith("conditioner.embedders.")
+        or key.startswith("cond_stage_model.")
+        or key.startswith("clip_l.")
+        or key.startswith("clip_g.")
+        or ("text_model" in key)
+        for key in keys
+    )
+    vae = any(
+        key.startswith("first_stage_model.") or key.startswith("vae.")
+        for key in keys
+    )
+    return {"clip": clip, "vae": vae}
+
 def restart_comfyui():
     main_py = COMFYUI_DIR / "main.py"
     if not main_py.is_file():
@@ -1067,6 +1146,16 @@ class Handler(BaseHTTPRequestHandler):
                 write_json(self, 200, {"files": [
                     {"path": path, "exists": model_path(path).is_file()} for path in files
                 ]})
+                return
+            if self.path == "/api/runpod/helper/model-capabilities":
+                body = read_json(self)
+                target = model_path(body.get("file", ""))
+                exists = target.is_file()
+                write_json(self, 200, {
+                    "exists": exists,
+                    "size": target.stat().st_size if exists else 0,
+                    "capabilities": checkpoint_capabilities(target) if exists else None,
+                })
                 return
             if self.path == "/api/runpod/helper/download":
                 body = read_json(self)
@@ -1505,8 +1594,10 @@ interface CatalogEntry {
   name?: string;
   version?: string;
   base_model?: string;
+  thumbnail_url?: string | null;
   civitai_url?: string | null;
   source_url?: string | null;
+  tags?: string[];
 }
 
 async function readModelCatalog() {
@@ -1522,6 +1613,26 @@ async function writeModelCatalog(catalog: Record<string, CatalogEntry>) {
   await writeFile("data/model-catalog.json", JSON.stringify(catalog, null, 2));
 }
 
+function catalogEntryFromResource(
+  existing: CatalogEntry,
+  filename: string,
+  resource: ImportedCivitaiResource
+): CatalogEntry {
+  return {
+    ...existing,
+    name: resource.name || existing.name || filename,
+    version: resource.versionName || existing.version || "",
+    base_model: resource.baseModel || existing.base_model || "",
+    thumbnail_url: resource.thumbnailUrl || existing.thumbnail_url || null,
+    civitai_url: resource.url || existing.civitai_url || null,
+    source_url: resource.url || existing.source_url || null,
+    tags:
+      resource.tags && resource.tags.length > 0
+        ? resource.tags
+        : existing.tags ?? [],
+  };
+}
+
 async function upsertCatalogResource(
   catalog: Record<string, CatalogEntry>,
   folder: string,
@@ -1529,16 +1640,64 @@ async function upsertCatalogResource(
   resource: ImportedCivitaiResource
 ) {
   const key = `${folder}/${filename}`;
-  const existing = catalog[key] ?? {};
-  catalog[key] = {
-    ...existing,
-    name: resource.name || existing.name || filename,
-    version: resource.versionName || existing.version || "",
-    base_model: resource.baseModel || existing.base_model || "",
-    civitai_url: resource.url || existing.civitai_url || null,
-    source_url: resource.url || existing.source_url || null,
-  };
+  catalog[key] = catalogEntryFromResource(catalog[key] ?? {}, filename, resource);
   await writeModelCatalog(catalog);
+}
+
+// The pod stores a shared metadata catalog next to its ComfyUI models so that a
+// model one person downloads carries its thumbnail/name for everyone else. It
+// lives on the pod's persistent volume; the helper exposes it at
+// /api/runpod/helper/catalog. These calls are best-effort: an old helper (no
+// such route) or an unreachable pod simply yields an empty/no-op result.
+const RUNPOD_MODELS_PREFIX = "/workspace/ComfyUI/models/";
+
+function podCatalogKeyFromTargetFile(targetFile: string) {
+  return targetFile.startsWith(RUNPOD_MODELS_PREFIX)
+    ? targetFile.slice(RUNPOD_MODELS_PREFIX.length).replace(/^\/+/, "")
+    : targetFile.replace(/^\/+/, "");
+}
+
+async function fetchRunpodStoredCatalog(
+  pod: RunpodPodSettings
+): Promise<Record<string, CatalogEntry>> {
+  try {
+    const data = await fetchRunpodHelper(pod, "/api/runpod/helper/catalog", {
+      method: "GET",
+    });
+    return data && typeof data.catalog === "object" && data.catalog
+      ? (data.catalog as Record<string, CatalogEntry>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+async function pushRunpodStoredCatalog(
+  pod: RunpodPodSettings,
+  entries: Record<string, CatalogEntry>
+) {
+  if (Object.keys(entries).length === 0) return;
+  try {
+    await fetchRunpodHelper(pod, "/api/runpod/helper/catalog", {
+      method: "POST",
+      body: JSON.stringify({ entries }),
+    });
+  } catch {
+    // Best-effort: never fail a download because the catalog write failed.
+  }
+}
+
+// After a resource lands on the pod, record its metadata in the pod's shared
+// catalog so other users see the model (with its thumbnail) in their picker.
+async function recordRunpodDownloadInCatalog(
+  pod: RunpodPodSettings,
+  targetFile: string,
+  resource: ImportedCivitaiResource
+) {
+  const key = podCatalogKeyFromTargetFile(targetFile);
+  if (!key) return;
+  const entry = catalogEntryFromResource({}, basename(key), resource);
+  await pushRunpodStoredCatalog(pod, { [key]: entry });
 }
 
 function resourceFromCatalog(
@@ -1768,6 +1927,100 @@ async function comfyObjectOptions(
   return [];
 }
 
+// Folds the pod's shared metadata catalog into this machine's local
+// data/model-catalog.json: any model another user downloaded to the pod becomes
+// a known catalog entry here (with its thumbnail/name), so /api/models surfaces
+// it as a not-locally-present asset. Only fills gaps on entries we already have,
+// so a user's own edited metadata is never clobbered. Returns true if it wrote.
+async function mergePodCatalogIntoLocal(
+  stored: Record<string, CatalogEntry>
+): Promise<boolean> {
+  const keys = Object.keys(stored);
+  if (keys.length === 0) return false;
+
+  const local = await readModelCatalog();
+  let changed = false;
+
+  for (const key of keys) {
+    const incoming = stored[key];
+    if (!incoming || typeof incoming !== "object" || !incoming.name) continue;
+    const existing = local[key];
+    if (!existing) {
+      local[key] = incoming;
+      changed = true;
+      continue;
+    }
+    // Fill only empty fields on entries we already track.
+    const merged: CatalogEntry = {
+      ...existing,
+      base_model: existing.base_model || incoming.base_model || "",
+      thumbnail_url: existing.thumbnail_url || incoming.thumbnail_url || null,
+      civitai_url: existing.civitai_url || incoming.civitai_url || null,
+      source_url: existing.source_url || incoming.source_url || null,
+      tags:
+        existing.tags && existing.tags.length > 0
+          ? existing.tags
+          : incoming.tags ?? [],
+    };
+    if (JSON.stringify(merged) !== JSON.stringify(existing)) {
+      local[key] = merged;
+      changed = true;
+    }
+  }
+
+  if (changed) await writeModelCatalog(local);
+  return changed;
+}
+
+// Lists the checkpoint / LoRA / embedding filenames present on the pod so the UI
+// can filter the model picker down to what the pod can load. Two sources feed it:
+// the pod's live ComfyUI /object_info (what it can load right now — Krea 2 lives
+// in diffusion_models via UNETLoader, so both loaders feed checkpoints) and the
+// pod's shared metadata catalog (models others downloaded, which is also merged
+// into this machine's local catalog so they appear in the list with thumbnails).
+export async function fetchRunpodModelCatalog(pod: RunpodPodSettings): Promise<{
+  checkpoints: string[];
+  loras: string[];
+  embeddings: string[];
+}> {
+  const [ckptNames, unetNames, loraNames, stored] = await Promise.all([
+    comfyObjectOptions(pod, "CheckpointLoaderSimple", "ckpt_name"),
+    comfyObjectOptions(pod, "UNETLoader", "unet_name"),
+    comfyObjectOptions(pod, "LoraLoader", "lora_name"),
+    fetchRunpodStoredCatalog(pod),
+  ]);
+
+  await mergePodCatalogIntoLocal(stored);
+
+  // Fold the shared catalog's filenames into each folder's list so pod-only
+  // models pass the picker's "RunPod" filter even if ComfyUI hasn't re-scanned
+  // its model dirs yet (new files need a restart to show up in /object_info).
+  const checkpointNames = [...ckptNames, ...unetNames];
+  const loraFilenames = [...loraNames];
+  const embeddingFilenames: string[] = [];
+  for (const key of Object.keys(stored)) {
+    const slash = key.indexOf("/");
+    if (slash < 0) continue;
+    const folder = key.slice(0, slash);
+    const filename = key.slice(slash + 1);
+    if (!filename) continue;
+    if (folder === "checkpoints") checkpointNames.push(filename);
+    else if (folder === "diffusion_models" && isKrea2CheckpointName(filename)) {
+      checkpointNames.push(filename);
+    } else if (folder === "loras") loraFilenames.push(filename);
+    else if (folder === "embeddings") embeddingFilenames.push(filename);
+  }
+
+  const dedupe = (names: string[]) =>
+    Array.from(new Set(names.map((name) => name.replaceAll("\\", "/"))));
+
+  return {
+    checkpoints: dedupe(checkpointNames),
+    loras: dedupe(loraFilenames),
+    embeddings: dedupe(embeddingFilenames),
+  };
+}
+
 async function requiredComfyCatalogs(params: GenerationParams) {
   const catalogs: Array<{
     label: string;
@@ -1976,6 +2229,7 @@ export async function downloadRunpodResource(
     method: "POST",
     body: JSON.stringify({ targetFile, downloadUrl, token: tokenValue }),
   });
+  await recordRunpodDownloadInCatalog(pod, targetFile, resource);
   return String(data.path || targetFile);
 }
 
@@ -2080,6 +2334,8 @@ export async function streamRunpodResourceDownload(
         : `RunPod download did not complete: ${checkPath}`
     );
   }
+
+  await recordRunpodDownloadInCatalog(pod, targetFile, resource);
 
   return targetFile;
 }
