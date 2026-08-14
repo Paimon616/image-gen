@@ -50,168 +50,168 @@
       ],
       "situations": [
         {
-          "id": "09caaa07-e7ce-457b-8d17-f2b2f1b0b7eb",
-          "name": "진찰실 첫 마주침",
-          "description": "환자가 진찰실에 들어서자 유하린이 의자에 앉아 미소로 맞이한다. 손을 들어 인사하며 환자를 바라본다.",
-          "prompt": "1girl, 1male, sitting on chair, smiling, raising hand in greeting, looking at viewer, eye level, upper body shot, soft smile, welcoming",
+          "id": "14c64fcd-7514-470a-b063-3e6867430d44",
+          "name": "첫인사",
+          "description": "유하린이 진찰실에서 환자를 맞이하며 다정하게 미소 짓는다. 양손을 앞으로 모으고 정면을 바라보며 환자를 반기는 자세. 상반신 샷, 눈높이, 부드러운 눈빛.",
+          "prompt": "1girl, 1boy, patient entering, greeting, hands clasped in front, standing, upper body, eye level, gentle smile, soft gaze, looking at viewer",
           "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
           "backgroundId": "ae7887cc-3f00-48e9-a9b3-ef62cd080d19"
         },
         {
-          "id": "c014b6b4-e59b-4473-b6e7-88d23e23bcaf",
+          "id": "42d14446-91fa-4ef8-a4aa-ed1170feb037",
           "name": "맥박 체크",
-          "description": "유하린이 환자의 손목을 잡고 맥박을 체크하며 가까이 얼굴을 들이민다. 집중하는 표정.",
-          "prompt": "1girl, 1male, leaning forward, holding patient's wrist, close face, focused expression, eye level, close-up, soft lighting",
+          "description": "환자의 손목을 잡고 맥박을 재는 유하린. 진찰실 침대 옆에 서서 한 손으로 환자의 손목을 감싸고 다른 손으로 시계를 본다. 상반신, 약간 위에서 내려다보는 앵글, 집중된 표정.",
+          "prompt": "1girl, 1boy, patient, holding patient's wrist, taking pulse, standing beside bed, upper body, from above, focused expression, looking at watch",
           "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
           "backgroundId": "ae7887cc-3f00-48e9-a9b3-ef62cd080d19"
         },
         {
-          "id": "40f989ab-a944-4c64-8298-74f173c1c915",
+          "id": "890fa546-5e12-437d-8343-dded533f6d2c",
           "name": "혈압 측정",
-          "description": "환자의 팔에 혈압계를 감으며 무릎을 꿇고 앉아 있는 유하린. 위를 올려다보며 다정한 미소.",
-          "prompt": "1girl, 1male, kneeling on floor, wrapping blood pressure cuff, looking up, gentle smile, from above, cowboy shot",
+          "description": "환자의 팔에 혈압계를 감고 있는 유하린. 환자 옆에 앉아 양손으로 혈압계 커프를 조정한다. 클로즈업, 손과 팔에 초점, 진지한 표정.",
+          "prompt": "1girl, 1boy, patient, attaching blood pressure cuff, sitting beside patient, close-up, hands on cuff, serious expression",
           "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
           "backgroundId": "ae7887cc-3f00-48e9-a9b3-ef62cd080d19"
         },
         {
-          "id": "d473b4ae-73cc-45da-8563-9c92d6a1b4b4",
-          "name": "청진기 사용",
-          "description": "유하린이 청진기를 환자의 가슴에 대고 귀를 기울인다. 상체를 숙인 자세, 가슴골이 드러남.",
-          "prompt": "1girl, 1male, bending over, stethoscope on patient's chest, listening, cleavage visible, side view, upper body, eye level",
+          "id": "441aa181-8fc1-4d33-9e53-1a6c26b04e8b",
+          "name": "복도 안내",
+          "description": "병원 복도에서 환자에게 길을 안내하는 유하린. 손짓으로 앞을 가리키며 옆으로 돌아서서 환자를 바라본다. 전신, 약간 뒤에서 찍은 앵글, 다정한 미소.",
+          "prompt": "1girl, 1boy, patient, guiding, pointing forward, half-turned, full body, from behind, gentle smile, looking back at patient",
+          "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
+          "backgroundId": "f26ba217-95c5-4f50-909d-c79ee44c26b3"
+        },
+        {
+          "id": "b6f702f8-9e1d-4d17-b18e-af3630204efb",
+          "name": "대기 중 말걸기",
+          "description": "복도 벽에 기대어 환자와 대화하는 유하린. 팔짱을 끼고 다리를 교차하며 편안한 자세. 상반신, 측면 앵글, 부드러운 미소, 눈을 마주침.",
+          "prompt": "1girl, 1boy, patient, leaning against wall, arms crossed, legs crossed, upper body, side view, soft smile, eye contact",
+          "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
+          "backgroundId": "f26ba217-95c5-4f50-909d-c79ee44c26b3"
+        },
+        {
+          "id": "ac42bb53-e77b-46ed-965d-87d78906d568",
+          "name": "개인 병실 방문",
+          "description": "개인 병실 침대 옆에 서서 환자의 이마에 손을 얹고 열을 체크하는 유하린. 상체를 숙여 환자 가까이 다가간다. 상반신, 눈높이, 걱정스러운 표정.",
+          "prompt": "1girl, 1boy, patient lying in bed, checking temperature, hand on forehead, leaning over, upper body, eye level, concerned expression",
+          "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
+          "backgroundId": "e9c7772c-5266-4e7a-bf3d-294a7f159606"
+        },
+        {
+          "id": "52ba4d93-49c8-4df7-8935-8aa550cc1d19",
+          "name": "주사 놓기",
+          "description": "환자의 팔에 주사기를 준비하는 유하린. 한 손으로 환자의 팔을 잡고 다른 손으로 주사기를 든다. 앉은 자세, 상반신, 클로즈업, 집중된 표정.",
+          "prompt": "1girl, 1boy, patient, preparing injection, holding patient's arm, holding syringe, sitting, upper body, close-up, focused expression",
+          "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
+          "backgroundId": "e9c7772c-5266-4e7a-bf3d-294a7f159606"
+        },
+        {
+          "id": "3cc2d9ae-a089-4324-aec3-751e65c03d71",
+          "name": "약 설명",
+          "description": "환자에게 약통을 보여주며 설명하는 유하린. 책상 앞에 앉아 약통을 손에 들고 환자 쪽으로 몸을 기울인다. 상반신, 약간 낮은 앵글, 친절한 미소.",
+          "prompt": "1girl, 1boy, patient, explaining medication, holding pill bottle, leaning forward, sitting at desk, upper body, from below, friendly smile",
           "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
           "backgroundId": "ae7887cc-3f00-48e9-a9b3-ef62cd080d19"
         },
         {
-          "id": "bb9d145c-80d4-483f-9173-e655eb19e320",
-          "name": "복도에서 안내",
-          "description": "병원 복도에서 유하린이 환자를 앞서 걸어가며 손짓으로 안내한다. 뒤돌아보며 미소.",
-          "prompt": "1girl, walking forward, gesturing with hand, looking back over shoulder, smiling, full body, from behind, side angle",
+          "id": "058d60d5-275e-4695-8273-7483720e8cf5",
+          "name": "치료실 준비",
+          "description": "치료실에서 침대 시트를 정리하는 유하린. 침대 옆에 서서 시트를 펴고 있다. 전신, 측면, 일하는 표정, 부드러운 분위기.",
+          "prompt": "1girl, smoothing bed sheet, standing beside bed, full body, side view, working expression, soft atmosphere",
           "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
-          "backgroundId": "f26ba217-95c5-4f50-909d-c79ee44c26b3"
+          "backgroundId": "3bded568-6321-43b5-9c92-3815dd2beaee"
         },
         {
-          "id": "c3a2d175-b55c-477c-aecd-36ecc45d4f60",
-          "name": "복도 벽에 기대어",
-          "description": "유하린이 복도 벽에 기대어 팔짱을 끼고 환자를 기다린다. 도발적인 눈빛.",
-          "prompt": "1girl, leaning against wall, arms crossed, confident gaze, looking at viewer, full body, eye level, provocative smile",
+          "id": "fb76cf8e-cf66-42b7-83e5-d3b6cae0f12b",
+          "name": "환자 안심시키기",
+          "description": "치료실 침대에 누운 환자의 손을 잡고 안심시키는 유하린. 침대 가장자리에 앉아 두 손으로 환자의 손을 감싼다. 상반신, 눈높이, 다정한 눈빛, 미소.",
+          "prompt": "1girl, 1boy, patient lying on bed, holding patient's hand, reassuring, sitting on edge of bed, upper body, eye level, warm expression, smiling",
           "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
-          "backgroundId": "f26ba217-95c5-4f50-909d-c79ee44c26b3"
+          "backgroundId": "3bded568-6321-43b5-9c92-3815dd2beaee"
         },
         {
-          "id": "a6f52007-d65d-4d76-92be-9d1b1727ddf4",
-          "name": "개인 병실 침대에 앉아",
-          "description": "개인 병실 침대 가장자리에 앉아 다리를 꼰 유하린. 손으로 침대를 톡톡 두르며 환자를 부른다.",
-          "prompt": "1girl, sitting on bed edge, legs crossed, patting bed with hand, beckoning, looking at viewer, eye level, cowboy shot",
+          "id": "101d8f81-2539-401b-9f9c-bb26d886f411",
+          "name": "마사지 치료",
+          "description": "환자의 어깨를 마사지하는 유하린. 환자 뒤에 서서 양손으로 어깨를 주무른다. 상반신, 뒤에서 본 앵글, 집중된 표정, 부드러운 터치.",
+          "prompt": "1girl, 1boy, patient, massaging shoulders, standing behind patient, hands on shoulders, upper body, from behind, focused expression, gentle touch",
           "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
-          "backgroundId": "e9c7772c-5266-4e7a-bf3d-294a7f159606"
+          "backgroundId": "3bded568-6321-43b5-9c92-3815dd2beaee"
         },
         {
-          "id": "1d3d4ffa-8391-423b-a36b-71fa7a4f0c29",
-          "name": "무릎 꿇고 구강 치료",
-          "description": "침대 앞에 무릎을 꿇고 환자의 성기에 입을 가져가는 유하린. 위를 올려다보며 유혹적인 눈빛.",
-          "prompt": "1girl, 1male, kneeling on floor, performing oral sex, looking up, seductive eyes, from above, close-up, dynamic angle",
-          "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
-          "backgroundId": "e9c7772c-5266-4e7a-bf3d-294a7f159606"
+          "id": "5dc7e205-3351-4a8b-b0ce-4f97ba392ffe",
+          "name": "알몸 진찰 준비",
+          "description": "간호사 모자와 하이힐만 신은 유하린이 치료실에서 환자를 기다린다. 침대 옆에 서서 팔짱을 끼고 약간 고개를 숙인 자세. 전신, 정면, 약간 부끄러운 듯한 미소.",
+          "prompt": "1girl, wearing only nurse cap and white high heels, standing beside bed, arms crossed, slight head tilt, full body, front view, shy smile, waiting",
+          "outfitId": "010f1517-5309-4a29-8d0b-58cdc9d7e6c9",
+          "backgroundId": "3bded568-6321-43b5-9c92-3815dd2beaee"
         },
         {
-          "id": "a0b95f52-8d21-4fe5-b1e6-86dbd2b77fea",
+          "id": "8a6ce62c-4947-4909-9f2b-c88685a5173e",
+          "name": "민감한 부위 검사",
+          "description": "환자의 발기 상태를 확인하는 유하린. 침대 옆에 무릎을 꿇고 한 손으로 환자의 성기를 살며시 만지며 다른 손으로 차트를 든다. 상반신, 낮은 앵글, 집중된 표정, 전문적인 태도.",
+          "prompt": "1girl, 1boy, patient, examining erection, kneeling beside bed, one hand touching penis, other hand holding chart, upper body, from below, focused expression, professional demeanor",
+          "outfitId": "010f1517-5309-4a29-8d0b-58cdc9d7e6c9",
+          "backgroundId": "3bded568-6321-43b5-9c92-3815dd2beaee"
+        },
+        {
+          "id": "089a78c0-a978-496e-9693-7ac50919e66a",
+          "name": "구강 자극",
+          "description": "침대에 누운 환자의 성기를 입으로 자극하는 유하린. 침대 가장자리에 엎드려 상체를 숙이고 입을 벌린 자세. 측면, 전신, 관능적인 표정, 눈을 감거나 올려다봄.",
+          "prompt": "1girl, 1boy, patient, performing oral sex, kneeling, leaning over, mouth open, from side, full body, sensual expression, eyes closed or looking up",
+          "outfitId": "010f1517-5309-4a29-8d0b-58cdc9d7e6c9",
+          "backgroundId": "3bded568-6321-43b5-9c92-3815dd2beaee"
+        },
+        {
+          "id": "b55e7b07-d43c-43b6-9898-0671f21f9ee7",
           "name": "손으로 자극",
-          "description": "침대에 누운 환자 옆에 앉아 손으로 환자를 자극하는 유하린. 환자의 얼굴을 바라보며 부드럽게 웃음.",
-          "prompt": "1girl, 1male, sitting beside lying patient, handjob, looking at patient's face, soft smile, side view, cowboy shot",
+          "description": "환자의 성기를 손으로 자극하는 유하린. 침대 옆에 앉아 한 손으로 환자의 성기를 잡고 다른 손으로 자신의 가슴을 만진다. 상반신, 약간 위에서 내려다보는 앵글, 유혹적인 미소.",
+          "prompt": "1girl, 1boy, patient, handjob, sitting beside bed, one hand on penis, other hand touching own breast, upper body, from above, seductive smile",
+          "outfitId": "010f1517-5309-4a29-8d0b-58cdc9d7e6c9",
+          "backgroundId": "3bded568-6321-43b5-9c92-3815dd2beaee"
+        },
+        {
+          "id": "7a181abe-5ede-4c5a-9529-b8a56af3abaf",
+          "name": "69 자세",
+          "description": "환자와 69 자세를 취하는 유하린. 환자 위에 엎드려 자신의 성기를 환자 얼굴 가까이 대고, 자신의 입으로 환자의 성기를 자극한다. 전신, 측면, 관능적인 분위기.",
+          "prompt": "1girl, 1boy, patient, 69 position, lying on top of patient, face near penis, own vagina near patient's face, full body, side view, erotic atmosphere",
+          "outfitId": "010f1517-5309-4a29-8d0b-58cdc9d7e6c9",
+          "backgroundId": "3bded568-6321-43b5-9c92-3815dd2beaee"
+        },
+        {
+          "id": "840fd9f5-cf59-47f4-b494-b0175b0521a0",
+          "name": "삽입 직전",
+          "description": "환자 위에 올라탄 유하린. 양손으로 환자의 가슴을 짚고 성기를 자신의 질 입구에 가져다 댄다. 전신, 정면, 약간 위에서 내려다보는 앵글, 절정 직전의 표정.",
+          "prompt": "1girl, 1boy, patient, cowgirl position, hands on patient's chest, penis at vaginal entrance, full body, front view, from above, about to insert, anticipating expression",
+          "outfitId": "010f1517-5309-4a29-8d0b-58cdc9d7e6c9",
+          "backgroundId": "3bded568-6321-43b5-9c92-3815dd2beaee"
+        },
+        {
+          "id": "94fabcf7-6ffc-4e60-af84-8d42b539fb84",
+          "name": "후배위",
+          "description": "네 발로 기어 다니는 유하린을 뒤에서 환자가 삽입하는 자세. 유하린은 침대 위에 엎드려 엉덩이를 들어 올리고 고개를 돌려 환자를 바라본다. 전신, 뒤에서, 쾌락에 찡그린 표정.",
+          "prompt": "1girl, 1boy, patient, doggy style, on all fours, ass up, face turned back to look at patient, full body, from behind, pleasure expression, grimacing",
+          "outfitId": "010f1517-5309-4a29-8d0b-58cdc9d7e6c9",
+          "backgroundId": "3bded568-6321-43b5-9c92-3815dd2beaee"
+        },
+        {
+          "id": "984f7f0d-13ec-478f-91ab-f5a5d9c6af97",
+          "name": "사정 후 돌봄",
+          "description": "치료 후 환자의 이마를 닦아주고 부드럽게 쓰다듬는 유하린. 침대 옆에 앉아 환자의 머리를 쓰다듬으며 다정한 미소를 짓는다. 상반신, 눈높이, 편안한 분위기.",
+          "prompt": "1girl, 1boy, patient, aftercare, wiping forehead, stroking hair, sitting beside bed, upper body, eye level, gentle smile, relaxed atmosphere",
           "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
           "backgroundId": "e9c7772c-5266-4e7a-bf3d-294a7f159606"
         },
         {
-          "id": "418ab15c-0746-4659-b8fe-751899592548",
-          "name": "치료실에서 등 뒤로",
-          "description": "치료실에서 유하린이 환자 뒤에 서서 어깨를 마사지하며 귀에 속삭인다. 등 뒤에서 안은 자세.",
-          "prompt": "1girl, 1male, standing behind patient, massaging shoulders, whispering into ear, intimate, close embrace, from behind, upper body",
+          "id": "471da46e-9feb-4a86-9e8e-621a2e61e517",
+          "name": "치료 기록",
+          "description": "진찰실 책상에 앉아 차트에 기록을 남기는 유하린. 펜을 들고 차트를 보며 미소 짓는다. 상반신, 약간 측면, 차분한 표정, 전문적인 분위기.",
+          "prompt": "1girl, writing in chart, sitting at desk, holding pen, looking at chart, smiling, upper body, slight side view, calm expression, professional atmosphere",
           "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
-          "backgroundId": "3bded568-6321-43b5-9c92-3815dd2beaee"
-        },
-        {
-          "id": "18a7e3b4-ccd1-4e71-b395-e484ec5f93ea",
-          "name": "치료실 침대에 엎드려",
-          "description": "치료실 침대에 엎드린 환자의 등 위에 올라탄 유하린. 상체를 숙여 등 마사지. 손바닥으로 문지름.",
-          "prompt": "1girl, 1male, lying on top of patient's back, prone, massaging back with hands, leaning forward, side view, full body, from above",
-          "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
-          "backgroundId": "3bded568-6321-43b5-9c92-3815dd2beaee"
-        },
-        {
-          "id": "c687e58f-c238-4f58-89db-6294af35f81d",
-          "name": "치료실에서 다리 벌리기",
-          "description": "치료실 침대에 누워 다리를 벌린 환자 사이에 서서 내려다보는 유하린. 장갑 낀 손으로 성기를 만질 준비.",
-          "prompt": "1girl, 1male, standing between patient's spread legs, looking down, gloved hands reaching, from above, cowboy shot, clinical",
-          "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
-          "backgroundId": "3bded568-6321-43b5-9c92-3815dd2beaee"
-        },
-        {
-          "id": "82c576c5-eaf7-4e1f-ad11-9cbc4561d6b3",
-          "name": "알몸으로 진찰실에서",
-          "description": "간호사 모자와 힐만 신고 진찰실 의자에 앉아 다리를 꼰 유하린. 손가락으로 입술을 터치하며 유혹.",
-          "prompt": "1girl, sitting on chair, legs crossed, touching lips with finger, seductive gaze, eye level, full body, soft lighting",
-          "outfitId": "010f1517-5309-4a29-8d0b-58cdc9d7e6c9",
           "backgroundId": "ae7887cc-3f00-48e9-a9b3-ef62cd080d19"
-        },
-        {
-          "id": "b304b040-1605-445d-899e-bc8b63013ada",
-          "name": "알몸으로 복도 걷기",
-          "description": "알몸에 간호사 모자와 힐만 신고 병원 복도를 걸어가는 유하린. 뒤돌아보며 윙크.",
-          "prompt": "1girl, walking, nude except cap and heels, looking back, winking, full body, from behind, side view, dynamic pose",
-          "outfitId": "010f1517-5309-4a29-8d0b-58cdc9d7e6c9",
-          "backgroundId": "f26ba217-95c5-4f50-909d-c79ee44c26b3"
-        },
-        {
-          "id": "7c5a624b-9c1e-4f89-a609-94ad7efd2c2f",
-          "name": "알몸으로 개인 병실 침대에 누워",
-          "description": "개인 병실 침대에 알몸으로 누워 환자를 기다리는 유하린. 한쪽 다리를 들어 올리며 손짓.",
-          "prompt": "1girl, lying on bed, nude, one leg raised, beckoning with hand, looking at viewer, from below, full body, intimate lighting",
-          "outfitId": "010f1517-5309-4a29-8d0b-58cdc9d7e6c9",
-          "backgroundId": "e9c7772c-5266-4e7a-bf3d-294a7f159606"
-        },
-        {
-          "id": "874a1fe6-ec8d-49a0-b544-cf79928ad3fb",
-          "name": "알몸으로 치료실에서 네발기기",
-          "description": "치료실 침대 위에서 네발로 기는 유하린. 뒤를 돌아보며 도발적인 표정. 엉덩이를 높이 듦.",
-          "prompt": "1girl, on all fours on bed, nude, looking back over shoulder, provocative expression, raised hips, from behind, full body, low angle",
-          "outfitId": "010f1517-5309-4a29-8d0b-58cdc9d7e6c9",
-          "backgroundId": "3bded568-6321-43b5-9c92-3815dd2beaee"
-        },
-        {
-          "id": "b60d0679-394c-472d-bd8e-ec2fbfe6d9d9",
-          "name": "알몸으로 진찰실에서 엎드려",
-          "description": "진찰실 진료대에 엎드려 있는 유하린. 간호사 모자만 쓰고 엉덩이를 살짝 들었다. 환자를 기다리는 자세.",
-          "prompt": "1girl, prone on examination table, nude except nurse cap, slight arch of back, waiting, side view, full body, eye level",
-          "outfitId": "010f1517-5309-4a29-8d0b-58cdc9d7e6c9",
-          "backgroundId": "ae7887cc-3f00-48e9-a9b3-ef62cd080d19"
-        },
-        {
-          "id": "c51a1a12-11ed-4ce4-ba67-0bd499a8c334",
-          "name": "알몸으로 복도 벽에 손 짚고",
-          "description": "복도 벽에 손을 짚고 상체를 숙인 유하린. 뒤에서 바라보는 구도, 힐만 신고 있음. 유혹적인 자세.",
-          "prompt": "1girl, leaning against wall, hands on wall, bending forward, nude except cap and heels, looking back, from behind, cowboy shot",
-          "outfitId": "010f1517-5309-4a29-8d0b-58cdc9d7e6c9",
-          "backgroundId": "f26ba217-95c5-4f50-909d-c79ee44c26b3"
-        },
-        {
-          "id": "7495135f-841d-44fe-ae9a-2303f4cdc720",
-          "name": "알몸으로 개인 병실 의자에 앉아 다리 벌리기",
-          "description": "개인 병실 의자에 앉아 다리를 크게 벌린 유하린. 손으로 자신의 가슴을 만지며 환자를 응시.",
-          "prompt": "1girl, sitting on chair, legs spread wide, touching own breast, looking at viewer, from front, full body, low angle, dim light",
-          "outfitId": "010f1517-5309-4a29-8d0b-58cdc9d7e6c9",
-          "backgroundId": "e9c7772c-5266-4e7a-bf3d-294a7f159606"
-        },
-        {
-          "id": "5498f0a0-6052-4950-a344-4d73f2264483",
-          "name": "알몸으로 치료실에서 무릎 꿇고 손 내밀기",
-          "description": "치료실 바닥에 무릎을 꿇고 두 손을 내밀어 환자를 기다리는 유하린. 정면을 바라보며 순종적인 표정.",
-          "prompt": "1girl, kneeling on floor, hands extended forward, looking up, submissive expression, eye level, upper body, soft pink lighting",
-          "outfitId": "010f1517-5309-4a29-8d0b-58cdc9d7e6c9",
-          "backgroundId": "3bded568-6321-43b5-9c92-3815dd2beaee"
         }
       ],
       "createdAt": 1786695445952,
-      "updatedAt": 1786708188971
+      "updatedAt": 1786709501146
     }
   ]
 }
