@@ -27,9 +27,14 @@ import { CharacterPaimonChat } from "@/components/character-paimon-chat";
 import {
   composeCharacterPrompt,
   type Character,
+  type CharacterBackground,
   type CharacterOutfit,
   type CharacterSituation,
 } from "@/lib/types";
+
+// Native <select> styling to match the app's inputs (mirrors app-sidebar).
+const SELECT_CLASS =
+  "h-8 w-full rounded-md border border-border bg-background px-2 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30";
 
 interface GeneratedImageLite {
   id: string;
@@ -334,8 +339,59 @@ export function CharacterStudio() {
   const removeOutfit = useCallback(
     (outfitId: string) => {
       if (!selected) return;
+      // Drop the reference from any situation that pointed at this outfit.
       patchSelected({
         outfits: selected.outfits.filter((outfit) => outfit.id !== outfitId),
+        situations: selected.situations.map((situation) =>
+          situation.outfitId === outfitId
+            ? { ...situation, outfitId: null }
+            : situation
+        ),
+      });
+    },
+    [patchSelected, selected]
+  );
+
+  // ---- Backgrounds ----
+
+  const addBackground = useCallback(() => {
+    if (!selected) return;
+    const background: CharacterBackground = {
+      id: crypto.randomUUID(),
+      name: `배경 ${selected.backgrounds.length + 1}`,
+      description: "",
+      prompt: "",
+    };
+    patchSelected({ backgrounds: [...selected.backgrounds, background] });
+  }, [patchSelected, selected]);
+
+  const updateBackground = useCallback(
+    (backgroundId: string, patch: Partial<CharacterBackground>) => {
+      if (!selected) return;
+      patchSelected({
+        backgrounds: selected.backgrounds.map((background) =>
+          background.id === backgroundId
+            ? { ...background, ...patch }
+            : background
+        ),
+      });
+    },
+    [patchSelected, selected]
+  );
+
+  const removeBackground = useCallback(
+    (backgroundId: string) => {
+      if (!selected) return;
+      // Drop the reference from any situation that pointed at this background.
+      patchSelected({
+        backgrounds: selected.backgrounds.filter(
+          (background) => background.id !== backgroundId
+        ),
+        situations: selected.situations.map((situation) =>
+          situation.backgroundId === backgroundId
+            ? { ...situation, backgroundId: null }
+            : situation
+        ),
       });
     },
     [patchSelected, selected]
@@ -350,6 +406,8 @@ export function CharacterStudio() {
       name: `상황 ${selected.situations.length + 1}`,
       description: "",
       prompt: "",
+      outfitId: selected.outfits[0]?.id ?? null,
+      backgroundId: selected.backgrounds[0]?.id ?? null,
     };
     patchSelected({ situations: [...selected.situations, situation] });
   }, [patchSelected, selected]);
@@ -612,6 +670,27 @@ export function CharacterStudio() {
                       />
                     </div>
                   </SectionCard>
+
+                  <SectionCard
+                    title="시놉시스"
+                    description="캐릭터의 이야기·설정을 자유롭게 적어두세요. 파이몬이 이 내용을 참고해 상황을 대량으로 만들 수 있어요. (예: “시놉시스를 참고해서 상황 80개 만들어줘”)"
+                  >
+                    <div className="space-y-1.5">
+                      <Label htmlFor="character-synopsis" className="text-xs text-muted-foreground">
+                        시놉시스
+                      </Label>
+                      <Textarea
+                        id="character-synopsis"
+                        value={selected.synopsis}
+                        onChange={(event) =>
+                          patchSelected({ synopsis: event.target.value })
+                        }
+                        placeholder="예: 남쪽 바다의 작은 섬에서 자란 엘프. 여름 내내 해변과 항구, 밤의 축제를 오가며…"
+                        rows={6}
+                        className="text-sm"
+                      />
+                    </div>
+                  </SectionCard>
                 </TabsContent>
 
                 {/* 아이덴티티 */}
@@ -701,21 +780,65 @@ export function CharacterStudio() {
                 <TabsContent value="background" className="space-y-4">
                   <SectionCard
                     title="배경"
-                    description="캐릭터가 주로 등장하는 환경/장소를 묘사하세요. 인물 태그는 넣지 마세요."
+                    description="여러 배경을 등록할 수 있어요. 상황 탭에서 각 상황에 맞는 배경을 고를 수 있습니다. 인물 태그는 넣지 마세요."
                   >
-                    <FieldPair
-                      description={selected.backgroundDescription}
-                      prompt={selected.backgroundPrompt}
-                      descriptionPlaceholder="예: 노을 지는 해변, 잔잔한 파도, 야자수…"
-                      promptPlaceholder="sunset beach, calm waves, palm trees…"
-                      minRows={5}
-                      onDescriptionChange={(value) =>
-                        patchSelected({ backgroundDescription: value })
-                      }
-                      onPromptChange={(value) =>
-                        patchSelected({ backgroundPrompt: value })
-                      }
-                    />
+                    <div className="space-y-3">
+                      {selected.backgrounds.length === 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          등록된 배경이 없어요.
+                        </p>
+                      )}
+                      {selected.backgrounds.map((background) => (
+                        <div
+                          key={background.id}
+                          className="space-y-3 rounded-md border border-border bg-background p-3"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Input
+                              value={background.name}
+                              onChange={(event) =>
+                                updateBackground(background.id, {
+                                  name: event.target.value,
+                                })
+                              }
+                              placeholder="배경 이름 (예: 해변, 야간 항구)"
+                              className="h-8"
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => removeBackground(background.id)}
+                              aria-label="배경 삭제"
+                            >
+                              <Trash2 />
+                            </Button>
+                          </div>
+                          <FieldPair
+                            description={background.description}
+                            prompt={background.prompt}
+                            descriptionPlaceholder="예: 노을 지는 해변, 잔잔한 파도, 야자수…"
+                            promptPlaceholder="sunset beach, calm waves, palm trees…"
+                            onDescriptionChange={(value) =>
+                              updateBackground(background.id, {
+                                description: value,
+                              })
+                            }
+                            onPromptChange={(value) =>
+                              updateBackground(background.id, { prompt: value })
+                            }
+                          />
+                        </div>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addBackground}
+                      >
+                        <Plus /> 배경 추가
+                      </Button>
+                    </div>
                   </SectionCard>
                 </TabsContent>
 
@@ -757,6 +880,53 @@ export function CharacterStudio() {
                               <Trash2 />
                             </Button>
                           </div>
+                          <div className="grid gap-3 md:grid-cols-2">
+                            <div className="space-y-1.5">
+                              <Label className="text-xs text-muted-foreground">
+                                의상
+                              </Label>
+                              <select
+                                className={SELECT_CLASS}
+                                value={situation.outfitId ?? ""}
+                                onChange={(event) =>
+                                  updateSituation(situation.id, {
+                                    outfitId: event.target.value || null,
+                                  })
+                                }
+                              >
+                                <option value="">자동 (첫 의상)</option>
+                                {selected.outfits.map((outfit) => (
+                                  <option key={outfit.id} value={outfit.id}>
+                                    {outfit.name || "이름 없는 의상"}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs text-muted-foreground">
+                                배경
+                              </Label>
+                              <select
+                                className={SELECT_CLASS}
+                                value={situation.backgroundId ?? ""}
+                                onChange={(event) =>
+                                  updateSituation(situation.id, {
+                                    backgroundId: event.target.value || null,
+                                  })
+                                }
+                              >
+                                <option value="">자동 (첫 배경)</option>
+                                {selected.backgrounds.map((background) => (
+                                  <option
+                                    key={background.id}
+                                    value={background.id}
+                                  >
+                                    {background.name || "이름 없는 배경"}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
                           <FieldPair
                             description={situation.description}
                             prompt={situation.prompt}
@@ -786,7 +956,7 @@ export function CharacterStudio() {
 
                   <SectionCard
                     title="조합 프롬프트 미리보기"
-                    description="아이덴티티 + 첫 의상 + 배경 + 첫 상황을 합친 결과예요. 이미지 생성 파이몬에서 이 캐릭터를 불러올 수 있어요."
+                    description="아이덴티티 + 첫 상황(그 상황이 고른 의상·배경) + 상황을 합친 결과예요. 이미지 생성 파이몬에서 이 캐릭터를 불러올 수 있어요."
                   >
                     <Textarea
                       readOnly

@@ -244,8 +244,13 @@ interface PaimonCharacter {
   summary: string;
   appearancePrompt: string;
   outfits: { name: string; prompt: string }[];
-  backgroundPrompt: string;
-  situations: { name: string; prompt: string }[];
+  backgrounds: { name: string; prompt: string }[];
+  situations: {
+    name: string;
+    prompt: string;
+    outfitName?: string;
+    backgroundName?: string;
+  }[];
 }
 
 // Loads the user's saved characters as a compact library so Paimon can compose a
@@ -259,26 +264,50 @@ async function loadCharacterLibrary(): Promise<PaimonCharacter[]> {
       .filter(
         (character) =>
           character.appearancePrompt.trim() ||
-          character.backgroundPrompt.trim() ||
+          character.backgrounds.some((background) => background.prompt.trim()) ||
           character.outfits.some((outfit) => outfit.prompt.trim()) ||
           character.situations.some((situation) => situation.prompt.trim())
       )
       .slice(0, 30)
-      .map((character) => ({
-        name: character.name,
-        summary: character.summary,
-        appearancePrompt: character.appearancePrompt,
-        outfits: character.outfits
-          .filter((outfit) => outfit.prompt.trim())
-          .map((outfit) => ({ name: outfit.name, prompt: outfit.prompt })),
-        backgroundPrompt: character.backgroundPrompt,
-        situations: character.situations
-          .filter((situation) => situation.prompt.trim())
-          .map((situation) => ({
-            name: situation.name,
-            prompt: situation.prompt,
-          })),
-      }));
+      .map((character) => {
+        // Resolve each situation's outfit/background id to a name so Paimon can
+        // pair them without knowing the internal ids.
+        const outfitNameById = new Map(
+          character.outfits.map((outfit) => [outfit.id, outfit.name])
+        );
+        const backgroundNameById = new Map(
+          character.backgrounds.map((background) => [
+            background.id,
+            background.name,
+          ])
+        );
+        return {
+          name: character.name,
+          summary: character.summary,
+          appearancePrompt: character.appearancePrompt,
+          outfits: character.outfits
+            .filter((outfit) => outfit.prompt.trim())
+            .map((outfit) => ({ name: outfit.name, prompt: outfit.prompt })),
+          backgrounds: character.backgrounds
+            .filter((background) => background.prompt.trim())
+            .map((background) => ({
+              name: background.name,
+              prompt: background.prompt,
+            })),
+          situations: character.situations
+            .filter((situation) => situation.prompt.trim())
+            .map((situation) => ({
+              name: situation.name,
+              prompt: situation.prompt,
+              outfitName: situation.outfitId
+                ? outfitNameById.get(situation.outfitId)
+                : undefined,
+              backgroundName: situation.backgroundId
+                ? backgroundNameById.get(situation.backgroundId)
+                : undefined,
+            })),
+        };
+      });
   } catch {
     return [];
   }

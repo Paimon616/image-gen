@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ChatMarkdown } from "@/components/chat-markdown";
 import type {
   Character,
+  CharacterBackground,
   CharacterOutfit,
   CharacterSituation,
 } from "@/lib/types";
@@ -72,7 +73,7 @@ function normalizeOutfits(value: unknown): CharacterOutfit[] {
     }));
 }
 
-function normalizeSituations(value: unknown): CharacterSituation[] {
+function normalizeBackgrounds(value: unknown): CharacterBackground[] {
   if (!Array.isArray(value)) return [];
   return value
     .filter(
@@ -87,18 +88,70 @@ function normalizeSituations(value: unknown): CharacterSituation[] {
     }));
 }
 
+// Paimon rarely knows the internal UUIDs, so a situation may reference an outfit/
+// background by id OR by name (as outfitId/outfitName, backgroundId/
+// backgroundName). Resolve any of those against the known list to a real id.
+function resolveRef(
+  item: Record<string, unknown>,
+  idKey: string,
+  nameKey: string,
+  list: { id: string; name: string }[]
+): string | null {
+  const idValue = item[idKey];
+  if (typeof idValue === "string" && list.some((entry) => entry.id === idValue)) {
+    return idValue;
+  }
+  const candidates = [item[nameKey], idValue].filter(
+    (candidate): candidate is string =>
+      typeof candidate === "string" && candidate.trim().length > 0
+  );
+  for (const candidate of candidates) {
+    const match = list.find(
+      (entry) =>
+        entry.name.trim().toLowerCase() === candidate.trim().toLowerCase()
+    );
+    if (match) return match.id;
+  }
+  return null;
+}
+
+function normalizeSituations(
+  value: unknown,
+  outfits: { id: string; name: string }[],
+  backgrounds: { id: string; name: string }[]
+): CharacterSituation[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter(
+      (item): item is Record<string, unknown> =>
+        Boolean(item) && typeof item === "object" && !Array.isArray(item)
+    )
+    .map((item) => ({
+      id: typeof item.id === "string" && item.id ? item.id : crypto.randomUUID(),
+      name: typeof item.name === "string" ? item.name : "",
+      description: typeof item.description === "string" ? item.description : "",
+      prompt: typeof item.prompt === "string" ? item.prompt : "",
+      outfitId: resolveRef(item, "outfitId", "outfitName", outfits),
+      backgroundId: resolveRef(item, "backgroundId", "backgroundName", backgrounds),
+    }));
+}
+
 const STRING_KEYS: (keyof Character)[] = [
   "name",
   "summary",
+  "synopsis",
   "appearanceDescription",
   "appearancePrompt",
-  "backgroundDescription",
-  "backgroundPrompt",
 ];
 
 // Keep only known character fields, coercing arrays through the normalizers so
-// Paimon-authored outfits/situations always carry a client id.
-function sanitizePatch(value: unknown): Partial<Character> {
+// Paimon-authored outfits/backgrounds/situations always carry a client id.
+// `character` supplies the existing outfits/backgrounds so a situation can be
+// linked to them even when the patch doesn't re-send those arrays.
+function sanitizePatch(
+  value: unknown,
+  character: Character
+): Partial<Character> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   const record = value as Record<string, unknown>;
   const patch: Partial<Character> = {};
@@ -109,8 +162,20 @@ function sanitizePatch(value: unknown): Partial<Character> {
     }
   }
   if ("outfits" in record) patch.outfits = normalizeOutfits(record.outfits);
-  if ("situations" in record)
-    patch.situations = normalizeSituations(record.situations);
+  if ("backgrounds" in record)
+    patch.backgrounds = normalizeBackgrounds(record.backgrounds);
+
+  // Situations reference outfits/backgrounds by id or name — resolve against the
+  // merged set (patch overrides existing) so references resolve either way.
+  const outfitsForRefs = patch.outfits ?? character.outfits;
+  const backgroundsForRefs = patch.backgrounds ?? character.backgrounds;
+  if ("situations" in record) {
+    patch.situations = normalizeSituations(
+      record.situations,
+      outfitsForRefs,
+      backgroundsForRefs
+    );
+  }
 
   return patch;
 }
@@ -314,7 +379,7 @@ export function CharacterPaimonChat({
 
         if (streamError) throw new Error(streamError);
 
-        const patch = sanitizePatch(done?.characterPatch);
+        const patch = sanitizePatch(done?.characterPatch, characterRef.current);
         const applied = Object.keys(patch).length > 0;
         if (applied) onApplyPatch(patch);
 

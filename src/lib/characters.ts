@@ -5,6 +5,7 @@ import { join } from "path";
 import {
   createEmptyCharacter,
   type Character,
+  type CharacterBackground,
   type CharacterOutfit,
   type CharacterSituation,
 } from "@/lib/types";
@@ -18,7 +19,10 @@ const MAX_SUMMARY_LENGTH = 200;
 // runaway payload can't bloat the JSON file unbounded.
 const MAX_TEXT_LENGTH = 8000;
 const MAX_OUTFITS = 40;
-const MAX_SITUATIONS = 40;
+const MAX_BACKGROUNDS = 40;
+// Situations can be batch-generated from a synopsis (e.g. "make 80 situations"),
+// so this cap is deliberately higher than outfits/backgrounds.
+const MAX_SITUATIONS = 200;
 
 interface CharactersData {
   characters: Character[];
@@ -68,6 +72,28 @@ function normalizeOutfits(value: unknown): CharacterOutfit[] {
     }));
 }
 
+function normalizeBackgrounds(value: unknown): CharacterBackground[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is Record<string, unknown> =>
+      Boolean(item) && typeof item === "object" && !Array.isArray(item)
+    )
+    .slice(0, MAX_BACKGROUNDS)
+    .map((item) => ({
+      id: isValidCharacterId(item.id) ? (item.id as string) : randomUUID(),
+      name: str(item.name, MAX_NAME_LENGTH).trim(),
+      description: str(item.description, MAX_TEXT_LENGTH),
+      prompt: str(item.prompt, MAX_TEXT_LENGTH),
+    }));
+}
+
+// A situation's outfitId/backgroundId reference other records on the same
+// character; keep only well-formed ids and default anything else to null so a
+// dangling reference can't be persisted.
+function normalizeRefId(value: unknown): string | null {
+  return isValidCharacterId(value) ? (value as string) : null;
+}
+
 function normalizeSituations(value: unknown): CharacterSituation[] {
   if (!Array.isArray(value)) return [];
   return value
@@ -80,7 +106,18 @@ function normalizeSituations(value: unknown): CharacterSituation[] {
       name: str(item.name, MAX_NAME_LENGTH).trim(),
       description: str(item.description, MAX_TEXT_LENGTH),
       prompt: str(item.prompt, MAX_TEXT_LENGTH),
+      outfitId: normalizeRefId(item.outfitId),
+      backgroundId: normalizeRefId(item.backgroundId),
     }));
+}
+
+// Older records stored a single background as backgroundDescription/
+// backgroundPrompt. Fold those into the backgrounds[] list on read.
+function legacyBackgrounds(record: Record<string, unknown>): unknown[] {
+  const description = str(record.backgroundDescription, MAX_TEXT_LENGTH);
+  const prompt = str(record.backgroundPrompt, MAX_TEXT_LENGTH);
+  if (!description.trim() && !prompt.trim()) return [];
+  return [{ name: "배경 1", description, prompt }];
 }
 
 function normalizeCharacter(raw: unknown): Character | null {
@@ -92,12 +129,16 @@ function normalizeCharacter(raw: unknown): Character | null {
     id: record.id as string,
     name: normalizeCharacterName(record.name),
     summary: str(record.summary, MAX_SUMMARY_LENGTH),
+    synopsis: str(record.synopsis, MAX_TEXT_LENGTH),
     thumbnail: normalizeThumbnail(record.thumbnail),
     appearanceDescription: str(record.appearanceDescription, MAX_TEXT_LENGTH),
     appearancePrompt: str(record.appearancePrompt, MAX_TEXT_LENGTH),
     outfits: normalizeOutfits(record.outfits),
-    backgroundDescription: str(record.backgroundDescription, MAX_TEXT_LENGTH),
-    backgroundPrompt: str(record.backgroundPrompt, MAX_TEXT_LENGTH),
+    backgrounds: normalizeBackgrounds(
+      Array.isArray(record.backgrounds)
+        ? record.backgrounds
+        : legacyBackgrounds(record)
+    ),
     situations: normalizeSituations(record.situations),
     createdAt:
       typeof record.createdAt === "number" ? record.createdAt : Date.now(),
@@ -193,6 +234,10 @@ export function updateCharacter(
         "summary" in record
           ? str(record.summary, MAX_SUMMARY_LENGTH)
           : existing.summary,
+      synopsis:
+        "synopsis" in record
+          ? str(record.synopsis, MAX_TEXT_LENGTH)
+          : existing.synopsis,
       thumbnail:
         "thumbnail" in record
           ? normalizeThumbnail(record.thumbnail)
@@ -209,14 +254,10 @@ export function updateCharacter(
         "outfits" in record
           ? normalizeOutfits(record.outfits)
           : existing.outfits,
-      backgroundDescription:
-        "backgroundDescription" in record
-          ? str(record.backgroundDescription, MAX_TEXT_LENGTH)
-          : existing.backgroundDescription,
-      backgroundPrompt:
-        "backgroundPrompt" in record
-          ? str(record.backgroundPrompt, MAX_TEXT_LENGTH)
-          : existing.backgroundPrompt,
+      backgrounds:
+        "backgrounds" in record
+          ? normalizeBackgrounds(record.backgrounds)
+          : existing.backgrounds,
       situations:
         "situations" in record
           ? normalizeSituations(record.situations)

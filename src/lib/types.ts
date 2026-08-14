@@ -159,11 +159,23 @@ export interface CharacterOutfit {
   prompt: string;
 }
 
+export interface CharacterBackground {
+  id: string;
+  name: string;
+  description: string;
+  prompt: string;
+}
+
 export interface CharacterSituation {
   id: string;
   name: string;
   description: string;
   prompt: string;
+  // Which registered outfit/background this situation pairs with. null = 자동
+  // (composition falls back to the first entry). Lets a single character have
+  // many situations that each pick their own wardrobe and setting.
+  outfitId: string | null;
+  backgroundId: string | null;
 }
 
 export interface Character {
@@ -171,6 +183,9 @@ export interface Character {
   name: string;
   // 간단 정보 shown under the name in the list.
   summary: string;
+  // 기본정보 — a longer synopsis/story that Paimon can read to generate
+  // situations (and choose fitting outfits/backgrounds for each).
+  synopsis: string;
   // Image URL string (e.g. "/api/uploads/<file>") or null. Mirrors how uploads
   // are referenced everywhere else in the app.
   thumbnail: string | null;
@@ -179,9 +194,8 @@ export interface Character {
   appearancePrompt: string;
   // 아이덴티티 — one or more wardrobes.
   outfits: CharacterOutfit[];
-  // 배경.
-  backgroundDescription: string;
-  backgroundPrompt: string;
+  // 배경 — one or more environments/settings.
+  backgrounds: CharacterBackground[];
   // 상황.
   situations: CharacterSituation[];
   createdAt: number;
@@ -200,12 +214,12 @@ export function createEmptyCharacter(name: string): Omit<
   return {
     name,
     summary: "",
+    synopsis: "",
     thumbnail: null,
     appearanceDescription: "",
     appearancePrompt: "",
     outfits: [],
-    backgroundDescription: "",
-    backgroundPrompt: "",
+    backgrounds: [],
     situations: [],
   };
 }
@@ -216,24 +230,31 @@ export function createEmptyCharacter(name: string): Omit<
 export function composeCharacterPrompt(
   character: Pick<
     Character,
-    | "appearancePrompt"
-    | "outfits"
-    | "backgroundPrompt"
-    | "situations"
+    "appearancePrompt" | "outfits" | "backgrounds" | "situations"
   >,
-  options?: { outfitId?: string; situationId?: string }
+  options?: { outfitId?: string; backgroundId?: string; situationId?: string }
 ): string {
-  const outfit =
-    character.outfits.find((item) => item.id === options?.outfitId) ??
-    character.outfits[0];
   const situation =
     character.situations.find((item) => item.id === options?.situationId) ??
     character.situations[0];
 
+  // A situation carries its own outfit/background choice; an explicit option
+  // overrides it, and both fall back to the first registered entry.
+  const outfitId = options?.outfitId ?? situation?.outfitId ?? undefined;
+  const outfit =
+    character.outfits.find((item) => item.id === outfitId) ??
+    character.outfits[0];
+
+  const backgroundId =
+    options?.backgroundId ?? situation?.backgroundId ?? undefined;
+  const background =
+    character.backgrounds.find((item) => item.id === backgroundId) ??
+    character.backgrounds[0];
+
   return [
     character.appearancePrompt,
     outfit?.prompt,
-    character.backgroundPrompt,
+    background?.prompt,
     situation?.prompt,
   ]
     .map((part) => (typeof part === "string" ? part.trim() : ""))

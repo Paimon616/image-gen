@@ -1,0 +1,32 @@
+{
+  "characters": [
+    {
+      "id": "3a53180c-753a-4d63-948f-4eaed80e3116",
+      "name": "유하린",
+      "summary": "발기부전 치료 간호사",
+      "thumbnail": "/api/images/739b5ec8-5876-4239-b33a-3830632b2b83.png",
+      "appearanceDescription": "한국인 성인 여성, 아름다운 얼굴, 짙은 갈색 눈, 검은 머리카락을 높은 포니테일로 묶고 가르마를 탄 중앙, 옆머리, 곱슬 앞머리가 있음. 도자기처럼 하얗고 고운 피부, 윤기 있고 촉촉한 피부, 큰 가슴, 탄력 있는 곡선미, 두꺼운 허벅지, 가느다란 허리, 부드러운 미소, 다정한 눈빛.",
+      "appearancePrompt": "1girl, korean, adult woman, beautiful, dark brown eyes, black hair, high ponytail, center part, sidelocks, curly bangs, porcelain skin, fair skin, glossy skin, dewy skin, big breasts, curvy, thick thighs, slim waist, soft smile, gentle eyes",
+      "outfits": [
+        {
+          "id": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
+          "name": "간호사 유니폼",
+          "description": "흰색 간호사 유니폼, 짧은 드레스 스타일, 간호사 모자에 적십자 문양, 가슴골이 드러남, 흰색 스타킹, 흰색 힐.",
+          "prompt": "nurse cap, white nurse uniform, short nurse dress, cleavage, red cross motif, white stockings, white heels"
+        }
+      ],
+      "backgroundDescription": "진찰실, 의료용 캐비닛, 부드러운 주변 조명, 깨끗한 분위기.",
+      "backgroundPrompt": "examination room, medical cabinet, soft ambient light, clean atmosphere",
+      "situations": [
+        {
+          "id": "d70dd6df-acbd-4fce-9876-94b7a8081e12",
+          "name": "진찰실에서",
+          "description": "의자에 앉아 약간 앞으로 숙이고 다리를 꼰 상태, 위에서 내려다보는 각도, 시청자를 바라보며 부드러운 미소와 다정한 눈빛, 친밀한 아이컨택, 클로즈업, 얕은 심도.",
+          "prompt": "sitting on a stool, leaning forward slightly, legs crossed, from above, looking at viewer, soft smile, gentle eyes, intimate eye contact, close-up, depth of field, soft diffused lighting, flat lighting, front light, softbox light"
+        }
+      ],
+      "createdAt": 1786695445952,
+      "updatedAt": 1786695600232
+    }
+  ]
+}

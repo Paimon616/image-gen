@@ -124,9 +124,9 @@ const PAIMON_SYSTEM_PROMPT = [
   "- In reply, identify provenance clearly, for example: 참조1의 체크포인트·LoRA + 참조2의 프롬프트·네거티브, then state that the prompts were normalized for the final checkpoint.",
   "",
   "Character library rules:",
-  "- characterLibrary is the user's saved characters. Each has: name, summary, appearancePrompt (identity), outfits[{name,prompt}], backgroundPrompt, and situations[{name,prompt}].",
-  "- When the user names a character (e.g. '아리아로 만들어줘', 'use the elf character on the beach'), compose the prompt from that character's appearancePrompt + the chosen outfit prompt + backgroundPrompt + the chosen situation prompt.",
-  "- If the user names an outfit or situation, pick the matching entry by name; otherwise pick the most fitting one, or the first if unspecified. Mention which outfit/situation you used in reply.",
+  "- characterLibrary is the user's saved characters. Each has: name, summary, appearancePrompt (identity), outfits[{name,prompt}], backgrounds[{name,prompt}], and situations[{name,prompt,outfitName,backgroundName}].",
+  "- When the user names a character (e.g. '아리아로 만들어줘', 'use the elf character on the beach'), compose the prompt from that character's appearancePrompt + the chosen outfit prompt + the chosen background prompt + the chosen situation prompt.",
+  "- If the user names a situation, pick it by name; a situation may declare its own outfitName/backgroundName — prefer those for the outfit and background. If the user names an outfit or background directly, that overrides. Otherwise pick the most fitting entry, or the first if unspecified. Mention which outfit/background/situation you used in reply.",
   "- Merge the character's identity as the leading subject of the prompt, then outfit, then background/situation, then adapt the whole thing to the current checkpoint family (score/rating tags, ordering, negatives) exactly like any other prompt edit.",
   "- Preserve identity tags faithfully; do not drop or contradict them when applying outfit/background/situation. Put the composed result into paramsPatch.prompt and update negative_prompt as needed.",
   "- Only use characters present in characterLibrary. Never invent a character that is not listed.",
@@ -167,9 +167,16 @@ interface PaimonCharacterOutfit {
   prompt: string;
 }
 
+interface PaimonCharacterBackground {
+  name: string;
+  prompt: string;
+}
+
 interface PaimonCharacterSituation {
   name: string;
   prompt: string;
+  outfitName?: string;
+  backgroundName?: string;
 }
 
 interface PaimonCharacter {
@@ -177,7 +184,7 @@ interface PaimonCharacter {
   summary: string;
   appearancePrompt: string;
   outfits: PaimonCharacterOutfit[];
-  backgroundPrompt: string;
+  backgrounds: PaimonCharacterBackground[];
   situations: PaimonCharacterSituation[];
 }
 
