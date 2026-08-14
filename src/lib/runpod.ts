@@ -15,10 +15,13 @@ import {
   searchCivitaiResourceByFilename,
 } from "@/lib/civitai-resource-search";
 import {
+  ANIMA_CLIP_NAME,
+  ANIMA_VAE_NAME,
   KREA2_CLIP_NAME,
   KREA2_VAE_NAME,
   PORNMASTER_CLIP_NAME,
   PORNMASTER_VAE_NAME,
+  isAnimaCheckpointName,
   isKrea2CheckpointName,
   type CheckpointCapabilities,
 } from "@/lib/comfyui-model-files";
@@ -49,6 +52,12 @@ const RUNPOD_BASE_ASSETS = [
   {
     path: `/workspace/ComfyUI/models/vae/${KREA2_VAE_NAME}`,
     url: `https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/vae/${KREA2_VAE_NAME}`,
+  },
+  {
+    // Anima's external text encoder (Qwen3-0.6B base). Its VAE is qwen_image_vae,
+    // the same file as KREA2_VAE_NAME above, so no separate VAE entry is needed.
+    path: `/workspace/ComfyUI/models/text_encoders/${ANIMA_CLIP_NAME}`,
+    url: `https://huggingface.co/circlestone-labs/Anima/resolve/main/split_files/text_encoders/${ANIMA_CLIP_NAME}`,
   },
   {
     // PornMaster Krea2 workflow stack (abliterated int8 Qwen3-VL + Wan 2.1 VAE).
@@ -2066,7 +2075,8 @@ function resourceFromImportedResources(
 
 async function namesForParams(
   params: GenerationParams,
-  importedResources: ImportedCivitaiResource[] = []
+  importedResources: ImportedCivitaiResource[] = [],
+  needsAnimaSupport = false
 ) {
   const catalog = await readModelCatalog();
   const names: Array<{
@@ -2099,6 +2109,13 @@ async function namesForParams(
       const pornmaster = params.krea2_workflow === "pornmaster";
       push("other", "text_encoders", pornmaster ? PORNMASTER_CLIP_NAME : KREA2_CLIP_NAME);
       push("vae", "vae", pornmaster ? PORNMASTER_VAE_NAME : KREA2_VAE_NAME);
+    } else if (needsAnimaSupport) {
+      // Anima loads an external Qwen3-0.6B text encoder + Qwen-Image VAE that the
+      // diffusion-only checkpoint does not bundle. The caller gates this on the pod's
+      // actual capabilities so SDXL merges whose name merely contains "anima" (e.g.
+      // riMix, revAnimated) are not flagged for files they never use.
+      push("other", "text_encoders", ANIMA_CLIP_NAME);
+      push("vae", "vae", ANIMA_VAE_NAME);
     }
   }
   (params.loras ?? []).forEach((lora) => {
@@ -2138,7 +2155,20 @@ export async function checkRunpodGenerationFiles(
   params: GenerationParams,
   importedResources: ImportedCivitaiResource[] = []
 ) {
-  const resources = await namesForParams(params, importedResources);
+  // An Anima checkpoint routes to the dedicated Anima pipeline only when it is
+  // Anima-named AND ships no bundled CLIP (diffusion-only) — the same gate
+  // buildDefaultWorkflow uses. Only then does the pod need the external Qwen3-0.6B
+  // text encoder + Qwen-Image VAE, so probe the pod's capabilities before requiring
+  // them (avoids false "missing file" flags for CLIP-bundling SDXL/Anima merges).
+  const checkpointName = params.model_name.trim();
+  const needsAnimaSupport =
+    checkpointName.length > 0 &&
+    !isKrea2CheckpointName(checkpointName) &&
+    isAnimaCheckpointName(checkpointName) &&
+    (await getRunpodCheckpointCapabilities(pod.comfyUrl, checkpointName))?.clip ===
+      false;
+
+  const resources = await namesForParams(params, importedResources, needsAnimaSupport);
   if (resources.length === 0) return [];
 
   const files = resources.map((resource) => `${resource.folder}/${resource.name}`);

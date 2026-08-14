@@ -437,7 +437,18 @@ async function cleanControlnets(params: GenerationParams) {
   return resolved satisfies ResolvedControlNetConfig[];
 }
 
-async function assertAnimaSupportFiles(checkpoint: string) {
+async function assertAnimaSupportFiles(
+  checkpoint: string,
+  options?: ComfyClientOptions
+) {
+  // The Anima CLIP/VAE support files live on whichever ComfyUI runs the job. When
+  // building for a remote pod (options.baseUrl set), they are on the pod, not the
+  // local disk, so a local-only gap must not block the build. Only check the local
+  // filesystem for local generation. Mirrors assertKrea2SupportFiles' remote skip —
+  // without this, RunPod Anima jobs wrongly throw "Anima generation requires these
+  // additional files" even when the pod has them.
+  if (options?.baseUrl) return;
+
   const missing = await getMissingRequiredModelFiles(checkpoint);
 
   if (missing.length > 0) {
@@ -447,9 +458,13 @@ async function assertAnimaSupportFiles(checkpoint: string) {
   }
 }
 
-async function buildAnimaWorkflow(params: GenerationParams, checkpoint: string) {
+async function buildAnimaWorkflow(
+  params: GenerationParams,
+  checkpoint: string,
+  options?: ComfyClientOptions
+) {
   assertNoCharacterReference(params, "Anima");
-  await assertAnimaSupportFiles(checkpoint);
+  await assertAnimaSupportFiles(checkpoint, options);
 
   const loras = cleanLoras(params.loras);
   const controlnets = await cleanControlnets(params);
@@ -1396,7 +1411,7 @@ async function buildDefaultWorkflow(params: GenerationParams, options?: ComfyCli
 
   if (checkpointCapabilities?.clip === false) {
     if (isAnimaCheckpointName(checkpoint)) {
-      return buildAnimaWorkflow(params, checkpoint);
+      return buildAnimaWorkflow(params, checkpoint, options);
     }
 
     throw new Error(
