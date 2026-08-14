@@ -1,13 +1,4 @@
 {
-  "2004": {
-    "inputs": {
-      "image": ""
-    },
-    "class_type": "LoadImage",
-    "_meta": {
-      "title": "이미지 로드"
-    }
-  },
   "4852": {
     "inputs": {
       "filename_prefix": "output",
@@ -105,21 +96,6 @@
     "class_type": "CLIPLoader",
     "_meta": {
       "title": "Load CLIP - Text Encoder"
-    }
-  },
-  "5014:4990": {
-    "inputs": {
-      "resize_type": "scale longer dimension",
-      "resize_type.longer_size": 1536,
-      "scale_method": "lanczos",
-      "input": [
-        "2004",
-        0
-      ]
-    },
-    "class_type": "ResizeImageMaskNode",
-    "_meta": {
-      "title": "이미지/마스크 크기 조정"
     }
   },
   "5014:2612": {
@@ -227,19 +203,6 @@
       "title": "number of frames"
     }
   },
-  "5514:3336": {
-    "inputs": {
-      "img_compression": 18,
-      "image": [
-        "5014:4990",
-        0
-      ]
-    },
-    "class_type": "LTXVPreprocess",
-    "_meta": {
-      "title": "LTXV 전처리"
-    }
-  },
   "5514:3059": {
     "inputs": {
       "width": 960,
@@ -289,32 +252,10 @@
       "title": "LTXV 빈 latent 오디오"
     }
   },
-  "5514:3159": {
-    "inputs": {
-      "strength": 0.7,
-      "bypass": false,
-      "vae": [
-        "5575:5571",
-        0
-      ],
-      "image": [
-        "5514:3336",
-        0
-      ],
-      "latent": [
-        "5514:3059",
-        0
-      ]
-    },
-    "class_type": "LTXVImgToVideoInplace",
-    "_meta": {
-      "title": "LTXVImgToVideoInplace"
-    }
-  },
   "5514:4528": {
     "inputs": {
       "video_latent": [
-        "5514:3159",
+        "5514:3059",
         0
       ],
       "audio_latent": [
@@ -435,32 +376,10 @@
       "title": "LTXVLatentUpsampler"
     }
   },
-  "5517:4970": {
-    "inputs": {
-      "strength": 1,
-      "bypass": false,
-      "vae": [
-        "5575:5571",
-        0
-      ],
-      "image": [
-        "5014:4990",
-        0
-      ],
-      "latent": [
-        "5517:4975",
-        0
-      ]
-    },
-    "class_type": "LTXVImgToVideoInplace",
-    "_meta": {
-      "title": "LTXVImgToVideoInplace"
-    }
-  },
   "5517:4969": {
     "inputs": {
       "video_latent": [
-        "5517:4970",
+        "5517:4975",
         0
       ],
       "audio_latent": [

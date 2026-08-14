@@ -28,16 +28,40 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+// Sampler and scheduler are independent ComfyUI KSampler inputs, so they are
+// selected separately. Values are the raw ComfyUI names sent to the backend.
 const SAMPLER_PRESETS = [
-  { label: "Euler a", sampler: "euler_ancestral", scheduler: "normal" },
-  { label: "Euler", sampler: "euler", scheduler: "normal" },
-  { label: "Heun", sampler: "heun", scheduler: "normal" },
-  { label: "LMS", sampler: "lms", scheduler: "normal" },
-  { label: "DDIM", sampler: "ddim", scheduler: "normal" },
-  { label: "DPM++ 2M Karras", sampler: "dpmpp_2m", scheduler: "karras" },
-  { label: "DPM++ SDE Karras", sampler: "dpmpp_sde", scheduler: "karras" },
-  { label: "DPM++ 2M SDE Karras", sampler: "dpmpp_2m_sde", scheduler: "karras" },
-  { label: "UniPC", sampler: "uni_pc", scheduler: "normal" },
+  { label: "Euler a", sampler: "euler_ancestral" },
+  { label: "Euler", sampler: "euler" },
+  { label: "Heun", sampler: "heun" },
+  { label: "DPM2", sampler: "dpm_2" },
+  { label: "DPM2 a", sampler: "dpm_2_ancestral" },
+  { label: "LMS", sampler: "lms" },
+  { label: "DPM++ 2S a", sampler: "dpmpp_2s_ancestral" },
+  { label: "DPM++ SDE", sampler: "dpmpp_sde" },
+  { label: "DPM++ 2M", sampler: "dpmpp_2m" },
+  { label: "DPM++ 2M SDE", sampler: "dpmpp_2m_sde" },
+  { label: "DPM++ 3M SDE", sampler: "dpmpp_3m_sde" },
+  { label: "DDPM", sampler: "ddpm" },
+  { label: "LCM", sampler: "lcm" },
+  { label: "res_multistep", sampler: "res_multistep" },
+  { label: "res_multistep a", sampler: "res_multistep_ancestral" },
+  { label: "Gradient estimation", sampler: "gradient_estimation" },
+  { label: "ER SDE", sampler: "er_sde" },
+  { label: "UniPC", sampler: "uni_pc" },
+  { label: "UniPC BH2", sampler: "uni_pc_bh2" },
+  { label: "DDIM", sampler: "ddim" },
+] as const;
+const SCHEDULER_PRESETS = [
+  { label: "Normal", scheduler: "normal" },
+  { label: "Karras", scheduler: "karras" },
+  { label: "Exponential", scheduler: "exponential" },
+  { label: "SGM Uniform", scheduler: "sgm_uniform" },
+  { label: "Simple", scheduler: "simple" },
+  { label: "DDIM Uniform", scheduler: "ddim_uniform" },
+  { label: "Beta", scheduler: "beta" },
+  { label: "Linear Quadratic", scheduler: "linear_quadratic" },
+  { label: "KL Optimal", scheduler: "kl_optimal" },
 ] as const;
 const ASPECT_PRESETS = [
   { id: "free", label: "Free", labelKo: "자유", width: null, height: null },
@@ -209,7 +233,6 @@ export function GenerationParams({ section = "output" }: {
   const controlnets = params.controlnets ?? [];
   const hiresEnabled = params.hires_upscale > 1;
   const hiresPreset = getHiresPreset(params.model_name);
-  const selectedSamplerValue = `${params.sampler_name}:${params.scheduler}`;
   const selectedPreset = ASPECT_PRESETS.find((size) => size.id === aspectMode);
   const adetailerModels = isWebUi
     ? webuiOptions.adetailerModels
@@ -597,18 +620,32 @@ export function GenerationParams({ section = "output" }: {
             <div>
               <FieldHelp className="mb-2" label={ko ? "샘플러" : "Sampler"} help={ko ? "노이즈를 이미지로 변환하는 샘플링 알고리즘을 선택합니다." : "Choose the sampling algorithm that turns noise into an image."} />
               <select
-                value={selectedSamplerValue}
-                onChange={(e) => {
-                  const [sampler_name, scheduler] = e.target.value.split(":");
-                  setParams({ sampler_name, scheduler });
-                }}
+                value={params.sampler_name}
+                onChange={(e) => setParams({ sampler_name: e.target.value })}
                 className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
               >
+                {SAMPLER_PRESETS.every((preset) => preset.sampler !== params.sampler_name) && (
+                  <option value={params.sampler_name}>{params.sampler_name}</option>
+                )}
                 {SAMPLER_PRESETS.map((preset) => (
-                  <option
-                    key={`${preset.sampler}:${preset.scheduler}`}
-                    value={`${preset.sampler}:${preset.scheduler}`}
-                  >
+                  <option key={preset.sampler} value={preset.sampler}>
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <FieldHelp className="mb-2" label={ko ? "스케줄러" : "Scheduler"} help={ko ? "스텝별 노이즈 제거 강도(시그마) 스케줄을 정합니다. 같은 샘플러라도 스케줄러가 다르면 디테일과 질감이 달라집니다." : "Sets the per-step noise (sigma) schedule. The same sampler yields different detail and texture depending on the scheduler."} />
+              <select
+                value={params.scheduler}
+                onChange={(e) => setParams({ scheduler: e.target.value })}
+                className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
+                {SCHEDULER_PRESETS.every((preset) => preset.scheduler !== params.scheduler) && (
+                  <option value={params.scheduler}>{params.scheduler}</option>
+                )}
+                {SCHEDULER_PRESETS.map((preset) => (
+                  <option key={preset.scheduler} value={preset.scheduler}>
                     {preset.label}
                   </option>
                 ))}

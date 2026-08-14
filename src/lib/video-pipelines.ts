@@ -510,7 +510,7 @@ const ltx25I2vControls: VideoPipelineControl[] = [
     max: 20,
     step: 1,
     group: "core",
-    help: "생성할 영상 길이(초)입니다. node 5512 → 프레임 수 = 1 + floor(fps×초/8)×8(항상 8n+1)로 환산됩니다. LTX-2.5 공식 권장 범위는 6~20초입니다. 길수록 VRAM과 시간이 크게 증가합니다.",
+    help: "생성할 영상 길이(초)입니다. 프레임 수 = 1 + floor(fps×초/8)×8(항상 8n+1). ⚠️ LTX-2.5 안정 범위는 6~20초이고 품질 최상은 6~10초입니다. 20초를 넘기면 모델이 코헤런스를 잃어 구간별로 뭉개지므로 최대 20초로 제한됩니다(30초 등은 자동으로 20초로 clamp).",
     patches: [{ nodeId: "5512", input: "value" }],
   },
   {
@@ -602,6 +602,91 @@ const ltx25I2vControls: VideoPipelineControl[] = [
   },
 ];
 
+// LTX-2.5 text-to-video: the same two-stage distilled workflow with the image
+// conditioning branch removed (no LoadImage / resize / preprocess / ImgToVideoInplace);
+// the empty latent feeds the sampler directly, so generation is driven purely by the
+// text prompt. Same distilled transformer + DiffVAE + 8-step/CFG=1 config as the i2v
+// pipeline, so the image-only controls (image guide, cond. size, upscale guide) are dropped.
+const ltx25T2vControls: VideoPipelineControl[] = [
+  {
+    key: "seed",
+    label: "Seed",
+    type: "number",
+    defaultValue: 43,
+    min: 0,
+    step: 1,
+    group: "core",
+    help: "두 pass의 RandomNoise seed(node 5516:4832 / 5517:4967)입니다. 같은 seed·같은 프롬프트면 동일하게 재생성됩니다.",
+    patches: [
+      { nodeId: "5516:4832", input: "noise_seed" },
+      { nodeId: "5517:4967", input: "noise_seed" },
+    ],
+  },
+  {
+    key: "duration_seconds",
+    label: "Duration (sec)",
+    type: "number",
+    defaultValue: 5,
+    min: 1,
+    max: 20,
+    step: 1,
+    group: "core",
+    help: "생성할 영상 길이(초)입니다. 프레임 수 = 1 + floor(fps×초/8)×8(항상 8n+1). ⚠️ LTX-2.5 안정 범위 6~20초, 품질 최상 6~10초. 20초 초과 시 구간 붕괴가 생겨 최대 20초로 clamp됩니다. t2v는 이미지 앵커가 없어 특히 짧은 길이(≤10초)를 권장합니다.",
+    patches: [{ nodeId: "5512", input: "value" }],
+  },
+  {
+    key: "fps",
+    label: "FPS",
+    type: "number",
+    defaultValue: 24,
+    min: 8,
+    max: 60,
+    step: 1,
+    group: "core",
+    help: "재생 프레임레이트(node 5511)입니다. 공식 권장 24~25fps.",
+    patches: [{ nodeId: "5511", input: "value" }],
+  },
+  {
+    key: "width",
+    label: "Base Width",
+    type: "number",
+    defaultValue: 960,
+    min: 512,
+    max: 1280,
+    step: 32,
+    group: "resize",
+    help: "1차 pass 기본 latent 가로(node 5514:3059). 32의 배수. 최종은 2차 x2 업스케일로 약 2배(예: 960→1920). 16:9는 960×544, 9:16 세로는 544×960.",
+    patches: [{ nodeId: "5514:3059", input: "width" }],
+  },
+  {
+    key: "height",
+    label: "Base Height",
+    type: "number",
+    defaultValue: 544,
+    min: 512,
+    max: 1280,
+    step: 32,
+    group: "resize",
+    help: "1차 pass 기본 latent 세로(node 5514:3059). 32의 배수. 최종 해상도는 값의 약 2배입니다.",
+    patches: [{ nodeId: "5514:3059", input: "height" }],
+  },
+  {
+    key: "cfg",
+    label: "CFG",
+    type: "number",
+    defaultValue: 1,
+    min: 1,
+    max: 8,
+    step: 0.1,
+    group: "conditioning",
+    help: "두 pass의 CFGGuider 값(node 5516:4828 / 5517:4964). LTX-2.5 distilled는 8-step 고정 스케줄에서 CFG=1로 설계됐으니 1 권장.",
+    patches: [
+      { nodeId: "5516:4828", input: "cfg" },
+      { nodeId: "5517:4964", input: "cfg" },
+    ],
+  },
+];
+
 const BUILTIN_VIDEO_PIPELINES: VideoPipelineDefinition[] = [
   {
     id: "ltx25-i2v-two-stage",
@@ -616,6 +701,18 @@ const BUILTIN_VIDEO_PIPELINES: VideoPipelineDefinition[] = [
     canvas: NO_CANVAS_SUPPORT,
     defaults: defaultsFromControls(ltx25I2vControls),
     controls: ltx25I2vControls,
+  },
+  {
+    id: "ltx25-t2v-two-stage",
+    label: "LTX-2.5 - T2V (two-stage, high quality)",
+    description:
+      "공식 Lightricks LTX-2.5 텍스트→비디오 2-stage distilled 워크플로우(bf16). 시작 이미지 없이 프롬프트만으로 생성하며, 1차 생성 후 latent x2 업스케일 + 재샘플로 고해상도(예: 960×544 → ~1920×1088), 오디오까지 함께 생성됩니다. bf16 기준 80GB급 GPU 권장.",
+    workflowPath: "workflows/ltx25-t2v-two-stage.json",
+    mode: "t2v",
+    embedsAudio: true,
+    canvas: NO_CANVAS_SUPPORT,
+    defaults: defaultsFromControls(ltx25T2vControls),
+    controls: ltx25T2vControls,
   },
   {
     id: "sulphur-ltx23-i2v-distilled-fast",

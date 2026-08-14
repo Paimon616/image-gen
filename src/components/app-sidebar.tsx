@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
-import { Bookmark, BrainCircuit, DownloadCloud, Film, Images, Languages, Layers3, Search, Settings } from "lucide-react";
+import { Bookmark, BrainCircuit, Clapperboard, DownloadCloud, Film, Images, Languages, Layers3, Search, Settings } from "lucide-react";
 import { useStore, type AppLanguage } from "@/lib/store";
 import { useDownloadManagerStore } from "@/lib/download-manager-store";
 
 const NAV_ITEMS = [
   { href: "/", labels: { ko: "이미지 생성", en: "Image Generation" }, icon: Images },
   { href: "/video", labels: { ko: "비디오 생성", en: "Video Generation" }, icon: Film },
+  { href: "/video/seedance", labels: { ko: "SeeDance 생성", en: "SeeDance" }, icon: Clapperboard },
   { href: "/interrogate", labels: { ko: "프롬프트 추출", en: "Prompt Extraction" }, icon: Search },
   { href: "/models", labels: { ko: "모델", en: "Models" }, icon: Layers3 },
   { href: "/lora-training", labels: { ko: "LoRA 훈련", en: "LoRA Training" }, icon: BrainCircuit },
@@ -42,6 +43,18 @@ export function AppSidebar() {
 
   const labels = LANGUAGE_LABELS[language];
 
+  // Pick a single active item: the longest href that matches the current path,
+  // so `/video/seedance` highlights the SeeDance item rather than both it and
+  // the parent `/video` item.
+  const activeHref = NAV_ITEMS.reduce<string | null>((best, item) => {
+    const matches =
+      pathname === item.href ||
+      (item.href !== "/" && pathname.startsWith(`${item.href}/`));
+    if (!matches) return best;
+    if (!best || item.href.length > best.length) return item.href;
+    return best;
+  }, null);
+
   useEffect(() => {
     document.documentElement.lang = language;
   }, [language]);
@@ -65,9 +78,7 @@ export function AppSidebar() {
       </div>
       <div className="flex flex-col gap-1.5 p-2">
         {NAV_ITEMS.map((item) => {
-          const active =
-            pathname === item.href ||
-            (item.href !== "/" && pathname.startsWith(item.href));
+          const active = item.href === activeHref;
           const Icon = item.icon;
 
           const showBadge = item.href === "/downloads" && activeDownloads > 0;

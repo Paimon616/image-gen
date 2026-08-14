@@ -1718,7 +1718,8 @@
         "Image",
         "RentCivit"
       ]
-    }
+    },
+    "source_url": "https://civitai.red/models/827184/wai-illustrious-sdxl?modelVersionId=1761560"
   },
   "checkpoints/waiIllustriousSDXL_v160.safetensors": {
     "name": "WAI-illustrious-SDXL",
@@ -2870,8 +2871,8 @@
     "version": "v1.0",
     "base_model": "Anima",
     "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/91519397-ca49-4771-a3d6-c06bbae06b25/original=true/127347641.jpeg",
-    "civitai_url": "https://civitai.com/models/2540444/anima-highresaesthetic-boost",
-    "source_url": "https://civitai.com/models/2540444/anima-highresaesthetic-boost",
+    "civitai_url": "https://civitai.red/models/2540444/anima-highres-aesthetic-boost?modelVersionId=2855073",
+    "source_url": "https://civitai.red/models/2540444/anima-highres-aesthetic-boost?modelVersionId=2855073",
     "tags": [
       "anime",
       "style"
@@ -4675,7 +4676,8 @@
         "Rent",
         "Sell"
       ]
-    }
+    },
+    "source_url": "https://civitai.red/models/991144/flower-boy-style?modelVersionId=1110407"
   },
   "loras/hassakuXLIllustrious_v22.safetensors": {
     "name": "Hassaku XL (Illustrious)",
@@ -7591,7 +7593,8 @@
     "base_model": "Krea 2",
     "civitai_url": "https://civitai.red/models/2723583/krea2-turbo-fp8?modelVersionId=3060999",
     "source_url": "https://civitai.red/models/2723583/krea2-turbo-fp8?modelVersionId=3060999",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/5513863c-49e7-4030-93cb-b005d4bba68b/original=true/134583021.jpeg"
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/5513863c-49e7-4030-93cb-b005d4bba68b/original=true/134583021.jpeg",
+    "tags": []
   },
   "loras/bloomgirls-ultrarealism-krea2_4k.safetensors": {
     "name": "[Krea 2] BloomGirls UltraRealism",
@@ -8457,5 +8460,142 @@
     "source_url": "https://civitai.red/models/2726029/krea-2-turbo-official-comfy-org-checkpoints-krea2?modelVersionId=3091481",
     "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/8940b90b-7d94-435f-9b1a-7551b8aef713/original=true/135529120.jpeg",
     "tags": []
+  },
+  "diffusion_models/krea2TurboOfficialComfy_krea2TurboInt8.safetensors": {
+    "name": "Krea 2 Turbo Official Comfy-Org Checkpoints (Krea2)",
+    "version": "krea2_turbo_int8_convrot",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2726029/krea-2-turbo-official-comfy-org-checkpoints-krea2?modelVersionId=3091481",
+    "source_url": "https://civitai.red/models/2726029/krea-2-turbo-official-comfy-org-checkpoints-krea2?modelVersionId=3091481",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/8940b90b-7d94-435f-9b1a-7551b8aef713/original=true/135529120.jpeg",
+    "tags": []
+  },
+  "loras/Nijireol Krea2 v1 Ep5.safetensors": {
+    "name": "NijiReol | Semi-realistic Niji Style [Anima/Krea2/NAI/Z-Image]",
+    "version": "Krea2 v1.0",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2384767/nijireol-semi-realistic-niji-style-anima-krea2-nai-z-image?modelVersionId=3146836",
+    "source_url": "https://civitai.red/models/2384767/nijireol-semi-realistic-niji-style-anima-krea2-nai-z-image?modelVersionId=3146836",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/67020358-423d-4256-ba05-b695243c3543/original=true/137254220.jpeg",
+    "tags": [
+      "Nijireol"
+    ]
+  },
+  "loras/1SR9GTB6V2FV7S1C5VW8HJD7T0.safetensors": {
+    "name": "Intimate Kiss Anime Men",
+    "version": "V1",
+    "base_model": "Anima",
+    "civitai_url": "https://civitai.red/models/2717644/intimate-kiss-anime-men?modelVersionId=3053748",
+    "source_url": "https://civitai.red/models/2717644/intimate-kiss-anime-men?modelVersionId=3053748",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/a18284f5-f22f-4c18-b397-5b4012df3d0e/original=true/134386433.jpeg",
+    "tags": [
+      "ikamn"
+    ]
+  },
+  "checkpoints/postbanixl_v2.safetensors": {
+    "name": "PostBanIXL",
+    "version": "V2",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/1947875/postbanixl?modelVersionId=2322440",
+    "source_url": "https://civitai.red/models/1947875/postbanixl?modelVersionId=2322440",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/c8094130-fd94-499f-b7e0-c5e41ad8b86e/original=true/106472900.jpeg",
+    "tags": []
+  },
+  "text_encoders/qwen_3_06b_base.safetensors": {
+    "name": "qwen_3_06b_base.safetensors",
+    "version": "",
+    "base_model": "",
+    "thumbnail_url": null,
+    "civitai_url": "https://huggingface.co/circlestone-labs/Anima/resolve/main/split_files/text_encoders/qwen_3_06b_base.safetensors",
+    "source_url": "https://huggingface.co/circlestone-labs/Anima/resolve/main/split_files/text_encoders/qwen_3_06b_base.safetensors",
+    "tags": []
+  },
+  "loras/Implants2.safetensors": {
+    "name": "Breast Implants - PonyXL",
+    "version": "v1.0",
+    "base_model": "Pony",
+    "civitai_url": "https://civitai.red/models/536195/breast-implants-ponyxl?modelVersionId=596072",
+    "source_url": "https://civitai.red/models/536195/breast-implants-ponyxl?modelVersionId=596072",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/4cac77fb-fe77-4f6a-bb8d-738fa113a2c0/original=true/17052392.jpeg",
+    "tags": [
+      "breast implants",
+      "fake tits",
+      "unaligned breasts",
+      "perfectly round breasts"
+    ]
+  },
+  "loras/FLMFX.safetensors": {
+    "name": "[BSS] - Styles for illustrious - FilmFX (Realism)",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/1747744/bss-styles-for-illustrious-filmfx-realism?modelVersionId=1978018",
+    "source_url": "https://civitai.red/models/1747744/bss-styles-for-illustrious-filmfx-realism?modelVersionId=1978018",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/9507dc78-23ac-4b73-a1bd-ab69df0c35f5/original=true/92105595.mp4",
+    "tags": []
+  },
+  "checkpoints/divingIllustriousReal_proVAE.safetensors": {
+    "name": "Diving-Illustrious Real-Asian",
+    "version": "Pro+VAE",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/1562047/diving-illustrious-real-asian?modelVersionId=2359917",
+    "source_url": "https://civitai.red/models/1562047/diving-illustrious-real-asian?modelVersionId=2359917",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/c3642bcb-de37-4ce9-9d62-4ee986ebbf9c/original=true/108200847.jpeg",
+    "tags": []
+  },
+  "loras/Yuri_유리 - (Not Real).safetensors": {
+    "name": "Yuri \"유리\" - (Not Real)",
+    "version": "Yuri \"유리\" - (Not Real) V1",
+    "base_model": "SDXL 1.0",
+    "civitai_url": "https://civitai.red/models/2837515/yuri-not-real?modelVersionId=3202647",
+    "source_url": "https://civitai.red/models/2837515/yuri-not-real?modelVersionId=3202647",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/f36a5c75-c804-4cc7-abb2-13c3d2c53087/original=true/139317590.jpeg",
+    "tags": []
+  },
+  "loras/Add_color_PDXLv1.safetensors": {
+    "name": "Add Color - Slider",
+    "version": "Pony",
+    "base_model": "Pony",
+    "thumbnail_url": null,
+    "civitai_url": "https://civitai.red/models/1327644/add-color-slider?modelVersionId=1498957",
+    "source_url": "https://civitai.red/models/1327644/add-color-slider?modelVersionId=1498957",
+    "tags": []
+  },
+  "loras/Midjourney Image Enhancer XL v1.safetensors": {
+    "name": "Midjourney Image Enhancer XL/ILL Extreme",
+    "version": "XL v1.0",
+    "base_model": "SDXL 1.0",
+    "thumbnail_url": null,
+    "civitai_url": "https://civitai.red/models/542447/midjourney-image-enhancer-xl-ill-extreme?modelVersionId=603123",
+    "source_url": "https://civitai.red/models/542447/midjourney-image-enhancer-xl-ill-extreme?modelVersionId=603123",
+    "tags": []
+  },
+  "checkpoints/moody-pro-signature-004_00001_.safetensors": {
+    "name": "Moody Pro Mix",
+    "version": "Collector's Edition: 典藏版",
+    "base_model": "ZImageTurbo",
+    "civitai_url": "https://civitai.red/models/620406/moody-pro-mix?modelVersionId=3161628",
+    "source_url": "https://civitai.red/models/620406/moody-pro-mix?modelVersionId=3161628",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/a6fa6d2d-21fc-4801-ab90-5e0334e77a61/original=true/137713342.mp4",
+    "tags": []
+  },
+  "checkpoints/moodyProMix_collectorsEdition.safetensors": {
+    "name": "Moody Pro Mix",
+    "version": "Collector's Edition: 典藏版",
+    "base_model": "ZImageTurbo",
+    "civitai_url": "https://civitai.red/models/620406/moody-pro-mix?modelVersionId=3161628",
+    "source_url": "https://civitai.red/models/620406/moody-pro-mix?modelVersionId=3161628",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/a6fa6d2d-21fc-4801-ab90-5e0334e77a61/original=true/137713342.mp4",
+    "tags": []
+  },
+  "loras/MYD6GFCHY25BF3G7WNRH7ZM450.safetensors": {
+    "name": "Jubjub pro",
+    "version": "V1",
+    "base_model": "ZImageTurbo",
+    "civitai_url": "https://civitai.red/models/2834209/jubjub-pro?modelVersionId=3198437",
+    "source_url": "https://civitai.red/models/2834209/jubjub-pro?modelVersionId=3198437",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/72574ca3-1293-403f-b2f1-0c4361cd4328/original=true/139095431.jpeg",
+    "tags": [
+      "jubjub"
+    ]
   }
 }

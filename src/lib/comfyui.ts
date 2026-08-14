@@ -2342,8 +2342,16 @@ function applyVideoPipelineSettingsToWorkflow(
   };
 
   for (const control of pipeline.controls) {
-    const value = settings[control.key];
+    let value = settings[control.key];
     if (value === undefined) continue;
+
+    // Clamp numeric controls to their declared [min, max]. Some models degrade
+    // hard outside their supported range (e.g. LTX-2.5 loses coherence past ~20s),
+    // and the client does not always clamp typed input, so enforce it here.
+    if (control.type === "number" && typeof value === "number") {
+      if (typeof control.min === "number" && value < control.min) value = control.min;
+      if (typeof control.max === "number" && value > control.max) value = control.max;
+    }
 
     for (const patch of control.patches) {
       const node = workflow[patch.nodeId];
