@@ -147,6 +147,100 @@ export interface WorkspaceSummary extends Workspace {
   count: number;
 }
 
+// A character is a reusable subject: its identity (appearance + wardrobe),
+// backgrounds, and situations are authored once here and later composed into an
+// image-generation prompt. Every prompt-bearing field is paired with a
+// natural-language `description` (what the user wrote / Paimon narrated) and a
+// `prompt` (the tag/prompt text actually fed to the model), both editable.
+export interface CharacterOutfit {
+  id: string;
+  name: string;
+  description: string;
+  prompt: string;
+}
+
+export interface CharacterSituation {
+  id: string;
+  name: string;
+  description: string;
+  prompt: string;
+}
+
+export interface Character {
+  id: string;
+  name: string;
+  // 간단 정보 shown under the name in the list.
+  summary: string;
+  // Image URL string (e.g. "/api/uploads/<file>") or null. Mirrors how uploads
+  // are referenced everywhere else in the app.
+  thumbnail: string | null;
+  // 아이덴티티 — detailed appearance.
+  appearanceDescription: string;
+  appearancePrompt: string;
+  // 아이덴티티 — one or more wardrobes.
+  outfits: CharacterOutfit[];
+  // 배경.
+  backgroundDescription: string;
+  backgroundPrompt: string;
+  // 상황.
+  situations: CharacterSituation[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+// The list view only needs the light fields; the full Character is loaded for
+// editing. Kept identical to Character for now (the file store returns whole
+// records) but named separately so the list contract can slim down later.
+export type CharacterSummary = Character;
+
+export function createEmptyCharacter(name: string): Omit<
+  Character,
+  "id" | "createdAt" | "updatedAt"
+> {
+  return {
+    name,
+    summary: "",
+    thumbnail: null,
+    appearanceDescription: "",
+    appearancePrompt: "",
+    outfits: [],
+    backgroundDescription: "",
+    backgroundPrompt: "",
+    situations: [],
+  };
+}
+
+// Composes a character's identity + a chosen outfit + background + situation
+// into a single generation prompt. Missing/empty parts are skipped. Used both
+// by the client picker and reported to the image-gen Paimon as a hint.
+export function composeCharacterPrompt(
+  character: Pick<
+    Character,
+    | "appearancePrompt"
+    | "outfits"
+    | "backgroundPrompt"
+    | "situations"
+  >,
+  options?: { outfitId?: string; situationId?: string }
+): string {
+  const outfit =
+    character.outfits.find((item) => item.id === options?.outfitId) ??
+    character.outfits[0];
+  const situation =
+    character.situations.find((item) => item.id === options?.situationId) ??
+    character.situations[0];
+
+  return [
+    character.appearancePrompt,
+    outfit?.prompt,
+    character.backgroundPrompt,
+    situation?.prompt,
+  ]
+    .map((part) => (typeof part === "string" ? part.trim() : ""))
+    .filter(Boolean)
+    .join(", ");
+}
+
 export interface ImageGenerationStatus {
   state: "queued" | "waiting" | "generating" | "completed" | "canceled" | "error";
   progress: number;

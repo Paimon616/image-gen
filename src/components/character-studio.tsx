@@ -1,0 +1,920 @@
+"use client";
+
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import {
+  Clipboard,
+  Images as ImagesIcon,
+  Loader2,
+  Plus,
+  Trash2,
+  Upload,
+  UserRound,
+  X,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CharacterPaimonChat } from "@/components/character-paimon-chat";
+import {
+  composeCharacterPrompt,
+  type Character,
+  type CharacterOutfit,
+  type CharacterSituation,
+} from "@/lib/types";
+
+interface GeneratedImageLite {
+  id: string;
+  url: string;
+  thumbnailUrl?: string;
+  filename: string;
+}
+
+async function uploadImageFile(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch("/api/upload", { method: "POST", body: formData });
+  const data = (await res.json()) as { url?: string; error?: string };
+  if (!res.ok || !data.url) throw new Error(data.error || "업로드 실패");
+  return data.url;
+}
+
+// A natural-language description + a generation prompt for one concept, both
+// editable — the core "각 입력란마다 자연어 묘사 및 프롬프트" building block.
+function FieldPair({
+  descriptionLabel = "자연어 묘사",
+  promptLabel = "프롬프트",
+  description,
+  prompt,
+  descriptionPlaceholder,
+  promptPlaceholder,
+  onDescriptionChange,
+  onPromptChange,
+  minRows = 3,
+}: {
+  descriptionLabel?: string;
+  promptLabel?: string;
+  description: string;
+  prompt: string;
+  descriptionPlaceholder?: string;
+  promptPlaceholder?: string;
+  onDescriptionChange: (value: string) => void;
+  onPromptChange: (value: string) => void;
+  minRows?: number;
+}) {
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">{descriptionLabel}</Label>
+        <Textarea
+          value={description}
+          onChange={(event) => onDescriptionChange(event.target.value)}
+          placeholder={descriptionPlaceholder}
+          rows={minRows}
+          className="text-sm"
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">{promptLabel}</Label>
+        <Textarea
+          value={prompt}
+          onChange={(event) => onPromptChange(event.target.value)}
+          placeholder={promptPlaceholder}
+          rows={minRows}
+          className="font-mono text-[13px]"
+        />
+      </div>
+    </div>
+  );
+}
+
+function SectionCard({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="space-y-3 rounded-lg border border-border bg-card p-4">
+      <div>
+        <h3 className="text-sm font-semibold">{title}</h3>
+        {description && (
+          <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+export function CharacterStudio() {
+  const [characters, setCharacters] = useState<Character[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [thumbBusy, setThumbBusy] = useState(false);
+  const [thumbError, setThumbError] = useState("");
+
+  const charactersRef = useRef<Character[]>([]);
+  const saveTimers = useRef<Map<string, number>>(new Map());
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Keep a ref of the latest characters so debounced save timers read fresh data
+  // without needing to be recreated on every edit.
+  useEffect(() => {
+    charactersRef.current = characters;
+  }, [characters]);
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const res = await fetch("/api/characters", { cache: "no-store" });
+        const data = (await res.json()) as { characters?: Character[] };
+        if (!active) return;
+        const list = data.characters ?? [];
+        setCharacters(list);
+        setSelectedId((current) => current ?? list[0]?.id ?? null);
+      } catch {
+        // Leave the list empty on failure; the empty state guides the user.
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const timers = saveTimers.current;
+    return () => {
+      timers.forEach((id) => window.clearTimeout(id));
+      timers.clear();
+    };
+  }, []);
+
+  const selected = useMemo(
+    () => characters.find((character) => character.id === selectedId) ?? null,
+    [characters, selectedId]
+  );
+
+  const scheduleSave = useCallback((id: string) => {
+    const timers = saveTimers.current;
+    const existing = timers.get(id);
+    if (existing) window.clearTimeout(existing);
+    timers.set(
+      id,
+      window.setTimeout(() => {
+        timers.delete(id);
+        const character = charactersRef.current.find((item) => item.id === id);
+        if (!character) return;
+        void fetch(`/api/characters/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(character),
+        }).catch(() => {});
+      }, 600)
+    );
+  }, []);
+
+  const patchCharacter = useCallback(
+    (id: string, patch: Partial<Character>) => {
+      setCharacters((prev) =>
+        prev.map((character) =>
+          character.id === id
+            ? { ...character, ...patch, updatedAt: Date.now() }
+            : character
+        )
+      );
+      scheduleSave(id);
+    },
+    [scheduleSave]
+  );
+
+  const patchSelected = useCallback(
+    (patch: Partial<Character>) => {
+      if (!selectedId) return;
+      patchCharacter(selectedId, patch);
+    },
+    [patchCharacter, selectedId]
+  );
+
+  const createCharacter = useCallback(async () => {
+    setCreating(true);
+    try {
+      const res = await fetch("/api/characters", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "새 캐릭터" }),
+      });
+      const data = (await res.json()) as { character?: Character; error?: string };
+      if (!res.ok || !data.character) throw new Error(data.error || "생성 실패");
+      setCharacters((prev) => [...prev, data.character as Character]);
+      setSelectedId(data.character.id);
+    } catch {
+      // Silent: the button re-enables and the user can retry.
+    } finally {
+      setCreating(false);
+    }
+  }, []);
+
+  const deleteCharacter = useCallback(
+    async (id: string) => {
+      if (!window.confirm("이 캐릭터를 삭제할까요?")) return;
+      const timer = saveTimers.current.get(id);
+      if (timer) {
+        window.clearTimeout(timer);
+        saveTimers.current.delete(id);
+      }
+      setCharacters((prev) => prev.filter((character) => character.id !== id));
+      setSelectedId((current) => {
+        if (current !== id) return current;
+        const remaining = charactersRef.current.filter(
+          (character) => character.id !== id
+        );
+        return remaining[0]?.id ?? null;
+      });
+      await fetch(`/api/characters/${id}`, { method: "DELETE" }).catch(() => {});
+    },
+    []
+  );
+
+  // ---- Thumbnail sources ----
+
+  const applyThumbnail = useCallback(
+    (url: string) => {
+      patchSelected({ thumbnail: url });
+    },
+    [patchSelected]
+  );
+
+  const handleUploadFile = useCallback(
+    async (file: File | undefined | null) => {
+      if (!file || !selectedId) return;
+      setThumbBusy(true);
+      setThumbError("");
+      try {
+        const url = await uploadImageFile(file);
+        applyThumbnail(url);
+      } catch (err) {
+        setThumbError(err instanceof Error ? err.message : "업로드 실패");
+      } finally {
+        setThumbBusy(false);
+      }
+    },
+    [applyThumbnail, selectedId]
+  );
+
+  const handlePasteThumbnail = useCallback(async () => {
+    if (!selectedId) return;
+    setThumbBusy(true);
+    setThumbError("");
+    try {
+      if (!navigator.clipboard?.read) {
+        throw new Error("이 브라우저에서는 클립보드 읽기를 지원하지 않아요.");
+      }
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        const type = item.types.find((t) => t.startsWith("image/"));
+        if (!type) continue;
+        const blob = await item.getType(type);
+        const file = new File([blob], "clipboard", { type });
+        const url = await uploadImageFile(file);
+        applyThumbnail(url);
+        return;
+      }
+      throw new Error("클립보드에 이미지가 없어요.");
+    } catch (err) {
+      setThumbError(
+        err instanceof Error ? err.message : "클립보드 이미지를 가져오지 못했어요."
+      );
+    } finally {
+      setThumbBusy(false);
+    }
+  }, [applyThumbnail, selectedId]);
+
+  // ---- Outfits ----
+
+  const addOutfit = useCallback(() => {
+    if (!selected) return;
+    const outfit: CharacterOutfit = {
+      id: crypto.randomUUID(),
+      name: `의상 ${selected.outfits.length + 1}`,
+      description: "",
+      prompt: "",
+    };
+    patchSelected({ outfits: [...selected.outfits, outfit] });
+  }, [patchSelected, selected]);
+
+  const updateOutfit = useCallback(
+    (outfitId: string, patch: Partial<CharacterOutfit>) => {
+      if (!selected) return;
+      patchSelected({
+        outfits: selected.outfits.map((outfit) =>
+          outfit.id === outfitId ? { ...outfit, ...patch } : outfit
+        ),
+      });
+    },
+    [patchSelected, selected]
+  );
+
+  const removeOutfit = useCallback(
+    (outfitId: string) => {
+      if (!selected) return;
+      patchSelected({
+        outfits: selected.outfits.filter((outfit) => outfit.id !== outfitId),
+      });
+    },
+    [patchSelected, selected]
+  );
+
+  // ---- Situations ----
+
+  const addSituation = useCallback(() => {
+    if (!selected) return;
+    const situation: CharacterSituation = {
+      id: crypto.randomUUID(),
+      name: `상황 ${selected.situations.length + 1}`,
+      description: "",
+      prompt: "",
+    };
+    patchSelected({ situations: [...selected.situations, situation] });
+  }, [patchSelected, selected]);
+
+  const updateSituation = useCallback(
+    (situationId: string, patch: Partial<CharacterSituation>) => {
+      if (!selected) return;
+      patchSelected({
+        situations: selected.situations.map((situation) =>
+          situation.id === situationId
+            ? { ...situation, ...patch }
+            : situation
+        ),
+      });
+    },
+    [patchSelected, selected]
+  );
+
+  const removeSituation = useCallback(
+    (situationId: string) => {
+      if (!selected) return;
+      patchSelected({
+        situations: selected.situations.filter(
+          (situation) => situation.id !== situationId
+        ),
+      });
+    },
+    [patchSelected, selected]
+  );
+
+  const combinedPrompt = useMemo(
+    () => (selected ? composeCharacterPrompt(selected) : ""),
+    [selected]
+  );
+
+  return (
+    <div className="flex h-screen min-w-0 flex-1">
+      {/* Left: character list */}
+      <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-border bg-sidebar">
+        <div className="flex items-center justify-between border-b border-sidebar-border px-4 py-3">
+          <h2 className="text-sm font-bold">캐릭터</h2>
+          <Button
+            type="button"
+            size="sm"
+            onClick={createCharacter}
+            disabled={creating}
+          >
+            {creating ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <Plus />
+            )}
+            새 캐릭터
+          </Button>
+        </div>
+        <div className="flex-1 space-y-1 overflow-y-auto p-2">
+          {loading ? (
+            <div className="flex items-center gap-2 px-2 py-4 text-xs text-muted-foreground">
+              <Loader2 className="size-3 animate-spin" /> 불러오는 중
+            </div>
+          ) : characters.length === 0 ? (
+            <p className="px-2 py-4 text-xs text-muted-foreground">
+              아직 캐릭터가 없어요. &quot;새 캐릭터&quot;로 시작하세요.
+            </p>
+          ) : (
+            characters.map((character) => {
+              const active = character.id === selectedId;
+              return (
+                <button
+                  key={character.id}
+                  type="button"
+                  onClick={() => setSelectedId(character.id)}
+                  className={`group flex w-full items-center gap-3 rounded-md border p-2 text-left transition-colors ${
+                    active
+                      ? "border-primary/30 bg-primary/10"
+                      : "border-transparent hover:bg-sidebar-accent"
+                  }`}
+                >
+                  <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
+                    {character.thumbnail ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={character.thumbnail}
+                        alt={character.name}
+                        className="size-full object-cover"
+                      />
+                    ) : (
+                      <UserRound className="size-5 text-muted-foreground" />
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold">
+                      {character.name || "이름 없음"}
+                    </span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {character.summary || "간단 정보 없음"}
+                    </span>
+                  </span>
+                  <span
+                    role="button"
+                    tabIndex={-1}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void deleteCharacter(character.id);
+                    }}
+                    className="shrink-0 rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+                    aria-label="캐릭터 삭제"
+                    title="삭제"
+                  >
+                    <Trash2 className="size-4" />
+                  </span>
+                </button>
+              );
+            })
+          )}
+        </div>
+      </aside>
+
+      {/* Right: character settings */}
+      <main className="flex h-screen min-w-0 flex-1 flex-col">
+        {!selected ? (
+          <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-muted-foreground">
+            {loading
+              ? "불러오는 중…"
+              : "왼쪽에서 캐릭터를 선택하거나 새로 만들어 설정을 편집하세요."}
+          </div>
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="border-b border-border px-6 py-4">
+              <h1 className="text-lg font-bold">
+                {selected.name || "이름 없는 캐릭터"}
+              </h1>
+              <p className="text-xs text-muted-foreground">
+                각 입력란은 자연어 묘사와 프롬프트를 함께 편집할 수 있어요. 변경
+                사항은 자동 저장됩니다.
+              </p>
+            </div>
+
+            <Tabs
+              defaultValue="basic"
+              className="flex min-h-0 flex-1 flex-col gap-0"
+            >
+              <div className="border-b border-border px-6 py-3">
+                <TabsList>
+                  <TabsTrigger value="basic">기본정보</TabsTrigger>
+                  <TabsTrigger value="identity">아이덴티티</TabsTrigger>
+                  <TabsTrigger value="background">배경</TabsTrigger>
+                  <TabsTrigger value="situation">상황</TabsTrigger>
+                </TabsList>
+              </div>
+
+              <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+                {/* 기본정보 */}
+                <TabsContent value="basic" className="space-y-4">
+                  <SectionCard
+                    title="썸네일"
+                    description="생성된 이미지에서 선택하거나, 파일 업로드 또는 클립보드에서 붙여넣을 수 있어요."
+                  >
+                    <div className="flex items-start gap-4">
+                      <span className="flex size-28 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
+                        {selected.thumbnail ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={selected.thumbnail}
+                            alt={selected.name}
+                            className="size-full object-cover"
+                          />
+                        ) : (
+                          <UserRound className="size-10 text-muted-foreground" />
+                        )}
+                      </span>
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setGalleryOpen(true)}
+                            disabled={thumbBusy}
+                          >
+                            <ImagesIcon /> 생성된 이미지
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={thumbBusy}
+                          >
+                            <Upload /> 업로드
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handlePasteThumbnail}
+                            disabled={thumbBusy}
+                          >
+                            <Clipboard /> 클립보드
+                          </Button>
+                          {selected.thumbnail && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => applyThumbnail("")}
+                              disabled={thumbBusy}
+                            >
+                              <X /> 제거
+                            </Button>
+                          )}
+                        </div>
+                        {thumbBusy && (
+                          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Loader2 className="size-3 animate-spin" /> 처리 중…
+                          </p>
+                        )}
+                        {thumbError && (
+                          <p className="text-xs text-destructive">{thumbError}</p>
+                        )}
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(event) => {
+                            void handleUploadFile(event.target.files?.[0]);
+                            event.target.value = "";
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </SectionCard>
+
+                  <SectionCard title="이름 · 간단 정보">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="character-name" className="text-xs text-muted-foreground">
+                        이름
+                      </Label>
+                      <Input
+                        id="character-name"
+                        value={selected.name}
+                        onChange={(event) =>
+                          patchSelected({ name: event.target.value })
+                        }
+                        placeholder="캐릭터 이름"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="character-summary" className="text-xs text-muted-foreground">
+                        간단 정보
+                      </Label>
+                      <Input
+                        id="character-summary"
+                        value={selected.summary}
+                        onChange={(event) =>
+                          patchSelected({ summary: event.target.value })
+                        }
+                        placeholder="예: 은발의 엘프 궁수, 20대 초반"
+                      />
+                    </div>
+                  </SectionCard>
+                </TabsContent>
+
+                {/* 아이덴티티 */}
+                <TabsContent value="identity" className="space-y-4">
+                  <SectionCard
+                    title="외형"
+                    description="캐릭터의 고정된 외형(얼굴, 머리, 체형, 특징)을 묘사하세요."
+                  >
+                    <FieldPair
+                      description={selected.appearanceDescription}
+                      prompt={selected.appearancePrompt}
+                      descriptionPlaceholder="예: 은빛 긴 생머리, 청록색 눈동자, 뾰족한 귀, 날씬한 체형…"
+                      promptPlaceholder="silver long hair, teal eyes, elf ears, slender…"
+                      minRows={5}
+                      onDescriptionChange={(value) =>
+                        patchSelected({ appearanceDescription: value })
+                      }
+                      onPromptChange={(value) =>
+                        patchSelected({ appearancePrompt: value })
+                      }
+                    />
+                  </SectionCard>
+
+                  <SectionCard
+                    title="의상"
+                    description="여러 의상을 등록할 수 있어요. 외형이 아닌 옷·액세서리만 넣으세요."
+                  >
+                    <div className="space-y-3">
+                      {selected.outfits.length === 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          등록된 의상이 없어요.
+                        </p>
+                      )}
+                      {selected.outfits.map((outfit) => (
+                        <div
+                          key={outfit.id}
+                          className="space-y-3 rounded-md border border-border bg-background p-3"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Input
+                              value={outfit.name}
+                              onChange={(event) =>
+                                updateOutfit(outfit.id, {
+                                  name: event.target.value,
+                                })
+                              }
+                              placeholder="의상 이름 (예: 기본 의상, 수영복)"
+                              className="h-8"
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => removeOutfit(outfit.id)}
+                              aria-label="의상 삭제"
+                            >
+                              <Trash2 />
+                            </Button>
+                          </div>
+                          <FieldPair
+                            description={outfit.description}
+                            prompt={outfit.prompt}
+                            descriptionPlaceholder="예: 하늘색 여름 원피스와 밀짚모자…"
+                            promptPlaceholder="light blue summer dress, straw hat…"
+                            onDescriptionChange={(value) =>
+                              updateOutfit(outfit.id, { description: value })
+                            }
+                            onPromptChange={(value) =>
+                              updateOutfit(outfit.id, { prompt: value })
+                            }
+                          />
+                        </div>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addOutfit}
+                      >
+                        <Plus /> 의상 추가
+                      </Button>
+                    </div>
+                  </SectionCard>
+                </TabsContent>
+
+                {/* 배경 */}
+                <TabsContent value="background" className="space-y-4">
+                  <SectionCard
+                    title="배경"
+                    description="캐릭터가 주로 등장하는 환경/장소를 묘사하세요. 인물 태그는 넣지 마세요."
+                  >
+                    <FieldPair
+                      description={selected.backgroundDescription}
+                      prompt={selected.backgroundPrompt}
+                      descriptionPlaceholder="예: 노을 지는 해변, 잔잔한 파도, 야자수…"
+                      promptPlaceholder="sunset beach, calm waves, palm trees…"
+                      minRows={5}
+                      onDescriptionChange={(value) =>
+                        patchSelected({ backgroundDescription: value })
+                      }
+                      onPromptChange={(value) =>
+                        patchSelected({ backgroundPrompt: value })
+                      }
+                    />
+                  </SectionCard>
+                </TabsContent>
+
+                {/* 상황 */}
+                <TabsContent value="situation" className="space-y-4">
+                  <SectionCard
+                    title="상황"
+                    description="캐릭터가 처한 장면/행동을 등록하세요. 예: 바닷물에 떠서 평화롭게 수영한다."
+                  >
+                    <div className="space-y-3">
+                      {selected.situations.length === 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          등록된 상황이 없어요.
+                        </p>
+                      )}
+                      {selected.situations.map((situation) => (
+                        <div
+                          key={situation.id}
+                          className="space-y-3 rounded-md border border-border bg-background p-3"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Input
+                              value={situation.name}
+                              onChange={(event) =>
+                                updateSituation(situation.id, {
+                                  name: event.target.value,
+                                })
+                              }
+                              placeholder="상황 이름 (예: 해변에서 수영)"
+                              className="h-8"
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => removeSituation(situation.id)}
+                              aria-label="상황 삭제"
+                            >
+                              <Trash2 />
+                            </Button>
+                          </div>
+                          <FieldPair
+                            description={situation.description}
+                            prompt={situation.prompt}
+                            descriptionPlaceholder="예: 바닷물에 등을 대고 떠서 평화롭게 수영한다…"
+                            promptPlaceholder="floating on back in the sea, peaceful, swimming…"
+                            onDescriptionChange={(value) =>
+                              updateSituation(situation.id, {
+                                description: value,
+                              })
+                            }
+                            onPromptChange={(value) =>
+                              updateSituation(situation.id, { prompt: value })
+                            }
+                          />
+                        </div>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addSituation}
+                      >
+                        <Plus /> 상황 추가
+                      </Button>
+                    </div>
+                  </SectionCard>
+
+                  <SectionCard
+                    title="조합 프롬프트 미리보기"
+                    description="아이덴티티 + 첫 의상 + 배경 + 첫 상황을 합친 결과예요. 이미지 생성 파이몬에서 이 캐릭터를 불러올 수 있어요."
+                  >
+                    <Textarea
+                      readOnly
+                      value={combinedPrompt}
+                      placeholder="각 탭을 채우면 조합 프롬프트가 여기 표시됩니다."
+                      rows={4}
+                      className="font-mono text-[13px]"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={!combinedPrompt}
+                      onClick={() => {
+                        void navigator.clipboard?.writeText(combinedPrompt);
+                      }}
+                    >
+                      <Clipboard /> 복사
+                    </Button>
+                  </SectionCard>
+                </TabsContent>
+              </div>
+            </Tabs>
+          </div>
+        )}
+      </main>
+
+      {selected && (
+        <CharacterPaimonChat
+          key={selected.id}
+          character={selected}
+          onApplyPatch={patchSelected}
+        />
+      )}
+
+      {galleryOpen && (
+        <GalleryPicker
+          onClose={() => setGalleryOpen(false)}
+          onPick={(url) => {
+            applyThumbnail(url);
+            setGalleryOpen(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function GalleryPicker({
+  onClose,
+  onPick,
+}: {
+  onClose: () => void;
+  onPick: (url: string) => void;
+}) {
+  const [images, setImages] = useState<GeneratedImageLite[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const res = await fetch("/api/images?limit=60", { cache: "no-store" });
+        const data = (await res.json()) as { images?: GeneratedImageLite[] };
+        if (active) setImages(data.images ?? []);
+      } catch {
+        if (active) setImages([]);
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="flex max-h-[80vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="flex items-center justify-between border-b border-border px-4 py-3">
+          <h3 className="text-sm font-semibold">생성된 이미지에서 선택</h3>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            onClick={onClose}
+            aria-label="닫기"
+          >
+            <X />
+          </Button>
+        </header>
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+          {loading ? (
+            <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" /> 불러오는 중
+            </div>
+          ) : images.length === 0 ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">
+              생성된 이미지가 없어요.
+            </p>
+          ) : (
+            <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
+              {images.map((image) => (
+                <button
+                  key={image.id || image.filename}
+                  type="button"
+                  onClick={() => onPick(image.url)}
+                  className="aspect-square overflow-hidden rounded-md border border-border transition-transform hover:scale-[1.03] hover:border-primary/50"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={image.thumbnailUrl || image.url}
+                    alt=""
+                    className="size-full object-cover"
+                    loading="lazy"
+                  />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
-import { Bookmark, BrainCircuit, Clapperboard, DownloadCloud, Film, Images, Languages, Layers3, Search, Settings } from "lucide-react";
+import { Bookmark, BrainCircuit, Clapperboard, DownloadCloud, Film, Images, Languages, Layers3, Search, Settings, UserRound } from "lucide-react";
 import { useStore, type AppLanguage } from "@/lib/store";
 import { useDownloadManagerStore } from "@/lib/download-manager-store";
 
 const NAV_ITEMS = [
+  { href: "/characters", labels: { ko: "캐릭터 생성", en: "Character Creation" }, icon: UserRound },
   { href: "/", labels: { ko: "이미지 생성", en: "Image Generation" }, icon: Images },
   { href: "/video", labels: { ko: "비디오 생성", en: "Video Generation" }, icon: Film },
   { href: "/video/seedance", labels: { ko: "SeeDance 생성", en: "SeeDance" }, icon: Clapperboard },

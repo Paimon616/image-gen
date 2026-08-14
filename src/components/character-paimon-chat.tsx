@@ -13,7 +13,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ChatMarkdown } from "@/components/chat-markdown";
-import type { Character, GeneratedImage, GenerationParams } from "@/lib/types";
+import type {
+  Character,
+  CharacterOutfit,
+  CharacterSituation,
+} from "@/lib/types";
 import { readImageDataUrlForVision } from "@/lib/image-resize";
 
 type ChatRole = "user" | "assistant";
@@ -24,284 +28,115 @@ interface ChatMessage {
   content: string;
 }
 
-export interface PaimonAttachment {
+export interface CharacterPaimonAttachment {
   id: string;
   kind: "clipboard_image" | "gallery_image";
   label: string;
   url?: string;
   dataUrl?: string;
-  metadata?: Partial<GeneratedImage>;
 }
 
-interface PaimonChatProps {
-  params: GenerationParams;
-  onApplyParams: (patch: Partial<GenerationParams>) => void;
-  attachments: PaimonAttachment[];
-  onAttachmentsChange: (attachments: PaimonAttachment[]) => void;
-}
-
-interface PaimonModelAsset {
-  path: string;
-  name: string;
-  version?: string;
-  base_model?: string;
-  tags?: string[];
-}
-
-interface PaimonModelContext {
-  currentCheckpoint?: PaimonModelAsset;
-  compatibleLoras: PaimonModelAsset[];
-  checkpoints: PaimonModelAsset[];
+interface CharacterPaimonChatProps {
+  character: Character;
+  onApplyPatch: (patch: Partial<Character>) => void;
 }
 
 const INTRO_MESSAGE: ChatMessage = {
   id: "intro",
   role: "assistant",
   content:
-    "파이몬이에요. 현재 입력값과 참조 이미지를 읽고 이미지·영상 프롬프트, 모델 설정, LoRA, 업스케일을 바로 고쳐드릴게요.",
+    "파이몬이에요. 어떤 캐릭터를 만들지 이야기해 주세요. 외형·의상·배경·상황을 알맞은 칸에 자동으로 채워드릴게요. 성인/NSFW 묘사도 가능해요.",
 };
-
-const EDITABLE_PARAM_KEYS = new Set<keyof GenerationParams>([
-  "backend",
-  "model",
-  "model_name",
-  "prompt",
-  "negative_prompt",
-  "num_inference_steps",
-  "guidance_scale",
-  "width",
-  "height",
-  "num_images",
-  "output_format",
-  "generation_mode",
-  "seed",
-  "sampler_name",
-  "scheduler",
-  "clip_skip",
-  "vae_name",
-  "upscale_model_name",
-  "hires_upscale",
-  "hires_steps",
-  "hires_denoise",
-  "img2img_resize",
-  "adetailer_enabled",
-  "adetailer_model",
-  "adetailer_checkpoint",
-  "adetailer_prompt",
-  "adetailer_negative_prompt",
-  "adetailer_use_steps",
-  "adetailer_steps",
-  "adetailer_confidence",
-  "adetailer_mask_blur",
-  "adetailer_noise_multiplier",
-  "adetailer_inpaint_only_masked",
-  "adetailer_loras",
-  "adetailer_denoise",
-  "loras",
-  "embeddings",
-  "controlnets",
-  "prompt_weighting",
-  "style_image",
-  "character_image",
-  "source_image",
-  "denoise_strength",
-  "pose_reference_image",
-  "pose_reference_model",
-  "pose_reference_strength",
-  "enable_safety_checker",
-]);
 
 async function uploadImageFile(file: File) {
   const formData = new FormData();
   formData.append("file", file);
-
   const res = await fetch("/api/upload", { method: "POST", body: formData });
   const data = (await res.json()) as { url?: string; error?: string };
-
-  if (!res.ok || !data.url) {
-    throw new Error(data.error || "Upload failed");
-  }
-
+  if (!res.ok || !data.url) throw new Error(data.error || "Upload failed");
   return data.url;
 }
 
-function sanitizePatch(value: unknown): Partial<GenerationParams> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return {};
-  }
+function normalizeOutfits(value: unknown): CharacterOutfit[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter(
+      (item): item is Record<string, unknown> =>
+        Boolean(item) && typeof item === "object" && !Array.isArray(item)
+    )
+    .map((item) => ({
+      id: typeof item.id === "string" && item.id ? item.id : crypto.randomUUID(),
+      name: typeof item.name === "string" ? item.name : "",
+      description: typeof item.description === "string" ? item.description : "",
+      prompt: typeof item.prompt === "string" ? item.prompt : "",
+    }));
+}
 
-  const patch: Partial<GenerationParams> = {};
+function normalizeSituations(value: unknown): CharacterSituation[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter(
+      (item): item is Record<string, unknown> =>
+        Boolean(item) && typeof item === "object" && !Array.isArray(item)
+    )
+    .map((item) => ({
+      id: typeof item.id === "string" && item.id ? item.id : crypto.randomUUID(),
+      name: typeof item.name === "string" ? item.name : "",
+      description: typeof item.description === "string" ? item.description : "",
+      prompt: typeof item.prompt === "string" ? item.prompt : "",
+    }));
+}
 
-  Object.entries(value).forEach(([key, nextValue]) => {
-    if (EDITABLE_PARAM_KEYS.has(key as keyof GenerationParams)) {
-      (patch as Record<string, unknown>)[key] = nextValue;
+const STRING_KEYS: (keyof Character)[] = [
+  "name",
+  "summary",
+  "appearanceDescription",
+  "appearancePrompt",
+  "backgroundDescription",
+  "backgroundPrompt",
+];
+
+// Keep only known character fields, coercing arrays through the normalizers so
+// Paimon-authored outfits/situations always carry a client id.
+function sanitizePatch(value: unknown): Partial<Character> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const record = value as Record<string, unknown>;
+  const patch: Partial<Character> = {};
+
+  for (const key of STRING_KEYS) {
+    if (typeof record[key] === "string") {
+      (patch as Record<string, unknown>)[key] = record[key];
     }
-  });
+  }
+  if ("outfits" in record) patch.outfits = normalizeOutfits(record.outfits);
+  if ("situations" in record)
+    patch.situations = normalizeSituations(record.situations);
 
   return patch;
 }
 
-function compactAsset(asset: unknown): PaimonModelAsset | null {
-  if (!asset || typeof asset !== "object" || Array.isArray(asset)) {
-    return null;
-  }
-
-  const record = asset as Record<string, unknown>;
-  if (typeof record.path !== "string" || typeof record.name !== "string") {
-    return null;
-  }
-
-  return {
-    path: record.path,
-    name: record.name,
-    version: typeof record.version === "string" ? record.version : "",
-    base_model:
-      typeof record.base_model === "string" ? record.base_model : "",
-    tags: Array.isArray(record.tags)
-      ? record.tags.filter((tag): tag is string => typeof tag === "string")
-      : [],
-  };
-}
-
-function isPaimonModelAsset(
-  asset: PaimonModelAsset | null
-): asset is PaimonModelAsset {
-  return Boolean(asset);
-}
-
-function normalizeFamily(value: string | undefined) {
-  const lower = (value ?? "").toLowerCase();
-
-  if (/pony|pdxl/.test(lower)) return "pony";
-  if (/illustrious|ilxl/.test(lower)) return "illustrious";
-  if (/noob/.test(lower)) return "noobai";
-  if (/anima/.test(lower)) return "anima";
-  if (/flux/.test(lower)) return "flux";
-  if (/krea/.test(lower)) return "krea";
-  if (/sdxl|xl/.test(lower)) return "sdxl";
-  if (/sd\s*1\.?5|sd15|1\.5/.test(lower)) return "sd15";
-
-  return lower.trim();
-}
-
-function sameFamily(left: string | undefined, right: string | undefined) {
-  const leftFamily = normalizeFamily(left);
-  const rightFamily = normalizeFamily(right);
-
-  if (!leftFamily || !rightFamily) return false;
-  if (leftFamily === rightFamily) return true;
-
-  return (
-    (leftFamily === "illustrious" && rightFamily === "noobai") ||
-    (leftFamily === "noobai" && rightFamily === "illustrious")
-  );
-}
-
-async function loadModelContext(
-  params: GenerationParams
-): Promise<PaimonModelContext> {
-  try {
-    const res = await fetch("/api/models", { cache: "no-store" });
-    const data = await res.json();
-    const checkpointAssets: unknown[] = Array.isArray(data.checkpointAssets)
-      ? data.checkpointAssets
-      : [];
-    const loraAssets: unknown[] = Array.isArray(data.loraAssets)
-      ? data.loraAssets
-      : [];
-    const checkpoints = checkpointAssets
-      .map(compactAsset)
-      .filter(isPaimonModelAsset);
-    const loras = loraAssets
-      .map(compactAsset)
-      .filter(isPaimonModelAsset);
-    const currentCheckpoint = checkpoints.find(
-      (asset) => asset.path === params.model_name
-    );
-    const currentFamily =
-      currentCheckpoint?.base_model ||
-      currentCheckpoint?.path ||
-      params.model_name;
-    const compatibleLoras = loras
-      .filter((asset) => sameFamily(currentFamily, asset.base_model || asset.path))
-      .slice(0, 40);
-
-    return {
-      currentCheckpoint,
-      compatibleLoras,
-      checkpoints: checkpoints.slice(0, 80),
-    };
-  } catch {
-    return {
-      compatibleLoras: [],
-      checkpoints: [],
-    };
-  }
-}
-
-interface PaimonCharacter {
-  name: string;
-  summary: string;
-  appearancePrompt: string;
-  outfits: { name: string; prompt: string }[];
-  backgroundPrompt: string;
-  situations: { name: string; prompt: string }[];
-}
-
-// Loads the user's saved characters as a compact library so Paimon can compose a
-// character's identity + outfit + background + situation into the prompt. Only
-// prompt-bearing fields are sent; failures degrade to an empty library.
-async function loadCharacterLibrary(): Promise<PaimonCharacter[]> {
-  try {
-    const res = await fetch("/api/characters", { cache: "no-store" });
-    const data = (await res.json()) as { characters?: Character[] };
-    return (data.characters ?? [])
-      .filter(
-        (character) =>
-          character.appearancePrompt.trim() ||
-          character.backgroundPrompt.trim() ||
-          character.outfits.some((outfit) => outfit.prompt.trim()) ||
-          character.situations.some((situation) => situation.prompt.trim())
-      )
-      .slice(0, 30)
-      .map((character) => ({
-        name: character.name,
-        summary: character.summary,
-        appearancePrompt: character.appearancePrompt,
-        outfits: character.outfits
-          .filter((outfit) => outfit.prompt.trim())
-          .map((outfit) => ({ name: outfit.name, prompt: outfit.prompt })),
-        backgroundPrompt: character.backgroundPrompt,
-        situations: character.situations
-          .filter((situation) => situation.prompt.trim())
-          .map((situation) => ({
-            name: situation.name,
-            prompt: situation.prompt,
-          })),
-      }));
-  } catch {
-    return [];
-  }
-}
-
-export function PaimonChat({
-  params,
-  onApplyParams,
-  attachments,
-  onAttachmentsChange,
-}: PaimonChatProps) {
+export function CharacterPaimonChat({
+  character,
+  onApplyPatch,
+}: CharacterPaimonChatProps) {
   const [open, setOpen] = useState(false);
   const [renderPanel, setRenderPanel] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([INTRO_MESSAGE]);
+  const [attachments, setAttachments] = useState<CharacterPaimonAttachment[]>(
+    []
+  );
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
-  const previousAttachmentIds = useRef(
-    new Set(attachments.map((attachment) => attachment.id))
-  );
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const closeTimeoutRef = useRef<number | null>(null);
+
+  // Always send Paimon the freshest character without re-creating sendMessage.
+  const characterRef = useRef(character);
+  useEffect(() => {
+    characterRef.current = character;
+  }, [character]);
 
   const openPanel = useCallback(() => {
     if (closeTimeoutRef.current !== null) {
@@ -324,11 +159,8 @@ export function PaimonChat({
   }, []);
 
   const togglePanel = useCallback(() => {
-    if (open) {
-      closePanel();
-      return;
-    }
-    openPanel();
+    if (open) closePanel();
+    else openPanel();
   }, [closePanel, open, openPanel]);
 
   useEffect(() => {
@@ -339,14 +171,6 @@ export function PaimonChat({
     };
   }, []);
 
-  useEffect(() => {
-    const hasNewAttachment = attachments.some(
-      (attachment) => !previousAttachmentIds.current.has(attachment.id)
-    );
-    if (hasNewAttachment) openPanel();
-    previousAttachmentIds.current = new Set(attachments.map(({ id }) => id));
-
-  }, [attachments, openPanel]);
   useEffect(() => {
     scrollRef.current?.scrollTo({
       top: scrollRef.current.scrollHeight,
@@ -362,6 +186,12 @@ export function PaimonChat({
         .map(({ role, content }) => ({ role, content })),
     [messages]
   );
+
+  const removeAttachment = useCallback((attachmentId: string) => {
+    setAttachments((current) =>
+      current.filter((attachment) => attachment.id !== attachmentId)
+    );
+  }, []);
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -410,19 +240,15 @@ export function PaimonChat({
       };
 
       try {
-        const [modelContext, characterLibrary] = await Promise.all([
-          loadModelContext(params),
-          loadCharacterLibrary(),
-        ]);
-        const res = await fetch("/api/paimon/chat", {
+        const res = await fetch("/api/paimon/character", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            currentParams: params,
-            modelContext,
-            characterLibrary,
+            character: characterRef.current,
             attachments: attachments.map((attachment, index) => ({
-              ...attachment,
+              kind: attachment.kind,
+              url: attachment.url,
+              dataUrl: attachment.dataUrl,
               referenceId: `참조${index + 1}`,
             })),
             messages: [...compactMessages, userMessage].map(
@@ -432,10 +258,11 @@ export function PaimonChat({
         });
 
         const contentType = res.headers.get("Content-Type") ?? "";
-
-        // Non-streaming error responses (missing key, upstream failure) come
-        // back as JSON.
-        if (!res.ok || !res.body || !contentType.includes("text/event-stream")) {
+        if (
+          !res.ok ||
+          !res.body ||
+          !contentType.includes("text/event-stream")
+        ) {
           const data = await res.json().catch(() => null);
           throw new Error(data?.error || "파이몬 호출에 실패했습니다.");
         }
@@ -446,7 +273,7 @@ export function PaimonChat({
         let streamedText = "";
         let done: {
           reply?: string;
-          paramsPatch?: unknown;
+          characterPatch?: unknown;
           attachmentNotice?: string;
         } | null = null;
         let streamError = "";
@@ -461,14 +288,13 @@ export function PaimonChat({
 
           for (const rawEvent of events) {
             if (!rawEvent.trim()) continue;
-
-            const eventLine = rawEvent
-              .split("\n")
-              .find((line) => line.startsWith("event:"));
-            const dataLine = rawEvent
-              .split("\n")
-              .find((line) => line.startsWith("data:"));
-            const event = eventLine?.slice("event:".length).trim() ?? "message";
+            const lines = rawEvent.split("\n");
+            const event =
+              lines
+                .find((line) => line.startsWith("event:"))
+                ?.slice("event:".length)
+                .trim() ?? "message";
+            const dataLine = lines.find((line) => line.startsWith("data:"));
             const payload = dataLine
               ? JSON.parse(dataLine.slice("data:".length).trim())
               : null;
@@ -488,22 +314,19 @@ export function PaimonChat({
 
         if (streamError) throw new Error(streamError);
 
-        const patch = sanitizePatch(done?.paramsPatch);
+        const patch = sanitizePatch(done?.characterPatch);
         const applied = Object.keys(patch).length > 0;
-        if (applied) {
-          onApplyParams(patch);
-        }
+        if (applied) onApplyPatch(patch);
 
         const finalContent =
           done?.reply ||
           streamedText ||
           done?.attachmentNotice ||
           (applied
-            ? "요청을 반영해서 현재 생성 정보를 수정했어요."
+            ? "요청을 반영해서 캐릭터 설정을 수정했어요."
             : "이번에는 반영할 내용을 만들지 못했어요. 조금 더 구체적으로 다시 요청해 주세요.");
         setAssistantContent(finalContent);
       } catch (err) {
-        // Drop an empty placeholder so a failed turn doesn't leave a blank bubble.
         if (placeholderAdded) {
           setMessages((current) =>
             current.filter(
@@ -518,21 +341,15 @@ export function PaimonChat({
         setStatus("");
       }
     },
-    [attachments, compactMessages, loading, onApplyParams, params]
+    [attachments, compactMessages, loading, onApplyPatch]
   );
-
-  const removeAttachment = useCallback((attachmentId: string) => {
-    onAttachmentsChange(
-      attachments.filter((attachment) => attachment.id !== attachmentId)
-    );
-  }, [attachments, onAttachmentsChange]);
 
   const resetChat = useCallback(() => {
     setMessages([INTRO_MESSAGE]);
-    onAttachmentsChange([]);
+    setAttachments([]);
     setInput("");
     setError("");
-  }, [onAttachmentsChange]);
+  }, []);
 
   const handlePaste = useCallback(
     async (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
@@ -540,7 +357,6 @@ export function PaimonChat({
         item.type.startsWith("image/")
       );
       const file = imageItem?.getAsFile();
-
       if (!file) return;
 
       event.preventDefault();
@@ -551,30 +367,35 @@ export function PaimonChat({
           uploadImageFile(file),
           readImageDataUrlForVision(file),
         ]);
-        const attachment: PaimonAttachment = {
-          id: crypto.randomUUID(),
-          kind: "clipboard_image",
-          label: "클립보드 이미지",
-          url,
-          dataUrl,
-        };
-
-        onAttachmentsChange([...attachments, attachment].slice(-6));
+        setAttachments((current) =>
+          [
+            ...current,
+            {
+              id: crypto.randomUUID(),
+              kind: "clipboard_image" as const,
+              label: "클립보드 이미지",
+              url,
+              dataUrl,
+            },
+          ].slice(-6)
+        );
         setMessages((current) => [
           ...current,
           {
             id: crypto.randomUUID(),
             role: "assistant",
-            content: "클립보드 이미지가 채팅에 첨부됐어요.",
+            content:
+              "참조 이미지가 첨부됐어요. 이 이미지를 바탕으로 외형을 묘사해 드릴까요?",
           },
         ]);
+        openPanel();
       } catch (err) {
         setError(err instanceof Error ? err.message : "이미지 업로드 실패");
       } finally {
         setLoading(false);
       }
     },
-    [attachments, onAttachmentsChange]
+    [openPanel]
   );
 
   const lastMessage = messages[messages.length - 1];
@@ -601,7 +422,9 @@ export function PaimonChat({
               <div className="min-w-0">
                 <h3 className="truncate text-sm font-semibold">Paimon 파이몬</h3>
                 <p className="truncate text-[11px] text-muted-foreground">
-                  현재 화면을 읽고 생성 정보를 수정합니다
+                  {character.name
+                    ? `"${character.name}" 캐릭터 설정을 채웁니다`
+                    : "대화로 캐릭터 설정을 채웁니다"}
                 </p>
               </div>
             </div>
@@ -632,27 +455,30 @@ export function PaimonChat({
           {attachments.length > 0 && (
             <div className="flex gap-2 overflow-x-auto border-b border-border px-3 py-2">
               <span className="shrink-0 self-center text-[10px] text-muted-foreground">
-                대화에서 참조1, 참조2로 지칭
+                참조1, 참조2로 지칭
               </span>
               {attachments.map((attachment, index) => (
                 <div
                   key={attachment.id}
                   className="relative flex w-24 shrink-0 flex-col overflow-hidden rounded-md border border-border bg-secondary text-[11px]"
-                  title={attachment.url || attachment.metadata?.filename || ""}
                 >
                   <div className="relative h-16 w-full bg-muted">
-                    {attachment.url || attachment.metadata?.thumbnailUrl ? (
+                    {attachment.url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={attachment.metadata?.thumbnailUrl || (attachment.kind === "gallery_image" && attachment.metadata?.filename ? `/api/images/thumb/${attachment.metadata.filename}` : attachment.url)}
+                        src={attachment.url}
                         alt={`${attachment.label} 미리보기`}
                         className="h-full w-full object-cover"
                       />
                     ) : (
-                      <span className="flex h-full items-center justify-center text-muted-foreground"><ImagePlus className="size-5" /></span>
+                      <span className="flex h-full items-center justify-center text-muted-foreground">
+                        <ImagePlus className="size-5" />
+                      </span>
                     )}
-                    <span className="absolute bottom-1 left-1 rounded bg-background/85 px-1 py-0.5 font-semibold shadow-sm backdrop-blur-sm">참조{index + 1}</span>
+                    <span className="absolute bottom-1 left-1 rounded bg-background/85 px-1 py-0.5 font-semibold shadow-sm backdrop-blur-sm">
+                      참조{index + 1}
+                    </span>
                   </div>
-                  <span className="truncate px-1.5 py-1 text-muted-foreground">{attachment.metadata?.filename || attachment.label}</span>
                   <button
                     type="button"
                     className="absolute right-1 top-1 rounded-full bg-background/85 p-1 text-muted-foreground shadow-sm backdrop-blur-sm hover:bg-background hover:text-foreground"
@@ -674,7 +500,6 @@ export function PaimonChat({
                 message.role === "assistant" &&
                 index === messages.length - 1 &&
                 message.content.length > 0;
-
               return (
                 <div
                   key={message.id}
@@ -718,14 +543,9 @@ export function PaimonChat({
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 onPaste={handlePaste}
-                placeholder="엘프 여자를 만들어줘"
+                placeholder="바닷가에서 수영하는 은발 엘프 여성을 만들어줘"
                 className="max-h-28 min-h-10 resize-none text-sm"
                 onKeyDown={(event) => {
-                  // A Korean/Japanese/Chinese IME fires a confirming Enter
-                  // (isComposing / keyCode 229) to commit the last syllable
-                  // before the real submit Enter. Sending on that keystroke
-                  // clears the input mid-composition, so the just-committed
-                  // character reappears in the empty field. Ignore it.
                   if (
                     event.key === "Enter" &&
                     !event.shiftKey &&
@@ -753,9 +573,7 @@ export function PaimonChat({
         type="button"
         size="icon-lg"
         className={`size-12 rounded-full shadow-xl transition-[transform,background-color,box-shadow] duration-200 ease-out hover:scale-105 ${
-          open
-            ? "rotate-3 shadow-2xl ring-2 ring-primary/25"
-            : "rotate-0"
+          open ? "rotate-3 shadow-2xl ring-2 ring-primary/25" : "rotate-0"
         } motion-reduce:transform-none motion-reduce:transition-none`}
         onClick={togglePanel}
         aria-label="Open Paimon"

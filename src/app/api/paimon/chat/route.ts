@@ -17,7 +17,7 @@ const PAIMON_VISION_FALLBACK_MODELS = [
 ];
 const PAIMON_SYSTEM_PROMPT = [
   "You are Paimon, an AI assistant embedded in a local image and video generation UI.",
-  "Adult-oriented aesthetics such as sensual cinematic mood, romance, swimwear, lingerie, artistic nudity, boudoir, and pin-up framing may be handled when allowed by the user's local workflow.",
+  "Handle mature visual styling at a high level when it is part of the user's local workflow, while keeping wording focused on composition, lighting, pose, wardrobe, mood, and generation settings.",
   "Stay focused on supported generation outputs. Do not discuss policy or boundaries proactively; when a request cannot be fulfilled, respond briefly and redirect to the closest usable visual alternative.",
   "Read the current GenerationParams and attachments, then directly propose edits.",
   "When attachmentVisualAnalysis is present, treat it as the observed visual content of the corresponding attachments and use it to answer image-reference requests.",
@@ -122,6 +122,14 @@ const PAIMON_SYSTEM_PROMPT = [
   "- Do not copy seed, dimensions, sampler, scheduler, ControlNet, source images, or other settings unless the user explicitly assigns those fields.",
   "- If a named reference or required metadata field is missing, explain exactly what is unavailable and do not fabricate it.",
   "- In reply, identify provenance clearly, for example: 참조1의 체크포인트·LoRA + 참조2의 프롬프트·네거티브, then state that the prompts were normalized for the final checkpoint.",
+  "",
+  "Character library rules:",
+  "- characterLibrary is the user's saved characters. Each has: name, summary, appearancePrompt (identity), outfits[{name,prompt}], backgroundPrompt, and situations[{name,prompt}].",
+  "- When the user names a character (e.g. '아리아로 만들어줘', 'use the elf character on the beach'), compose the prompt from that character's appearancePrompt + the chosen outfit prompt + backgroundPrompt + the chosen situation prompt.",
+  "- If the user names an outfit or situation, pick the matching entry by name; otherwise pick the most fitting one, or the first if unspecified. Mention which outfit/situation you used in reply.",
+  "- Merge the character's identity as the leading subject of the prompt, then outfit, then background/situation, then adapt the whole thing to the current checkpoint family (score/rating tags, ordering, negatives) exactly like any other prompt edit.",
+  "- Preserve identity tags faithfully; do not drop or contradict them when applying outfit/background/situation. Put the composed result into paramsPatch.prompt and update negative_prompt as needed.",
+  "- Only use characters present in characterLibrary. Never invent a character that is not listed.",
 
 ].join("\n");
 interface PaimonMessage {
@@ -151,11 +159,34 @@ interface PaimonModelContext {
   checkpoints?: PaimonModelAsset[];
 }
 
+// A compact snapshot of the user's saved characters, sent so Paimon can compose
+// a character's identity + outfit + background + situation into the prompt when
+// the user references one by name.
+interface PaimonCharacterOutfit {
+  name: string;
+  prompt: string;
+}
+
+interface PaimonCharacterSituation {
+  name: string;
+  prompt: string;
+}
+
+interface PaimonCharacter {
+  name: string;
+  summary: string;
+  appearancePrompt: string;
+  outfits: PaimonCharacterOutfit[];
+  backgroundPrompt: string;
+  situations: PaimonCharacterSituation[];
+}
+
 interface PaimonRequest {
   messages?: PaimonMessage[];
   currentParams?: GenerationParams | VideoGenerationParams;
   attachments?: PaimonAttachment[];
   modelContext?: PaimonModelContext;
+  characterLibrary?: PaimonCharacter[];
 }
 
 interface OpenRouterTextPart { type: "text"; text: string; }
@@ -168,7 +199,11 @@ const LOCAL_IMAGE_PATHS = ["/api/uploads/", "/api/images/"];
 // into any prompt, so we don't dump hundreds of thousands of junk tokens into
 // the payload. Keep the short `url` path as a lightweight reference marker.
 function redactAttachments(attachments: PaimonAttachment[]) {
-  return attachments.map(({ dataUrl: _dataUrl, ...rest }) => rest);
+  return attachments.map((attachment) => {
+    const { dataUrl, ...rest } = attachment;
+    void dataUrl;
+    return rest;
+  });
 }
 
 function validateImageDataUrl(dataUrl: string) {
@@ -277,6 +312,9 @@ async function analyzeAttachments(
   if (!(body.attachments ?? []).some((attachment) => attachment.url)) return "";
   const fallbackAnalysis = (reason: string) => {
     const attachments = body.attachments ?? [];
+    const safeReason = isSensitiveInputError(reason)
+      ? "The vision model declined the reference image analysis."
+      : reason;
     const summaries = attachments.map((attachment, index) => {
       const referenceId = attachment.referenceId || `참조${index + 1}`;
       const params = attachment.metadata?.params;
@@ -306,7 +344,7 @@ async function analyzeAttachments(
     });
 
     return [
-      `Visual pixels unavailable for automatic analysis: ${reason}`,
+      `Visual pixels unavailable for automatic analysis: ${safeReason}`,
       "This is not a blocking error. Continue the assistant task using attachment metadata, currentParams, modelContext, and the user's explicit text.",
       "If metadata.params exists for a reference, it is authoritative for model_name, loras, embeddings, prompt, negative_prompt, sampler, scheduler, seed, steps, CFG, and dimensions.",
       "If metadata is absent, still update prompt/negative_prompt from the user's text and preserve existing model settings unless the user asks to change them.",
@@ -321,7 +359,7 @@ async function analyzeAttachments(
       "Analyze every attached reference image for another image or video generation assistant.",
       "Describe visible content objectively and focus on reusable generation attributes.",
       "If a detail is not useful for supported generation, summarize it at a high level and continue with visual attributes.",
-      "For each referenceId, report subjects, anatomy, clothing or nudity, pose, action, expression, camera angle, framing, composition, environment, lighting, colors, style, motion cues, and important spatial relationships.",
+      "For each referenceId, report subjects, clothing coverage, pose, action, expression, camera angle, framing, composition, environment, lighting, colors, style, motion cues, and important spatial relationships.",
       "Keep references separate and do not infer generation settings that are not visually observable.",
       `Attachment metadata: ${JSON.stringify(redactAttachments(body.attachments ?? []))}`,
     ].join("\n"),
@@ -437,6 +475,17 @@ function sse(event: string, data: unknown) {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
 
+function isSensitiveInputError(message: string) {
+  return /may contain sensitive information|sensitive information|content\[\d+\]/i.test(message);
+}
+
+function paimonErrorMessage(message: string) {
+  if (isSensitiveInputError(message)) {
+    return "파이몬이 첨부 이미지 또는 프롬프트 일부를 분석 모델에 보낼 수 없어 차단되었습니다. 민감한 세부 묘사를 줄이거나 첨부 없이 다시 요청해 주세요.";
+  }
+  return message;
+}
+
 export async function POST(req: NextRequest) {
   const apiKey = process.env.OPENROUTER_API_KEY;
 
@@ -516,6 +565,7 @@ export async function POST(req: NextRequest) {
                     attachments: redactAttachments(body.attachments ?? []),
                     attachmentVisualAnalysis,
                     modelContext: body.modelContext ?? null,
+                    characterLibrary: body.characterLibrary ?? [],
                     conversation: messages,
                   }),
                 },
@@ -525,8 +575,9 @@ export async function POST(req: NextRequest) {
 
           if (!upstream.ok || !upstream.body) {
             const errorData = await upstream.json().catch(() => null);
+            const rawMessage = errorData?.error?.message ?? "OpenRouter request failed.";
             send("error", {
-              error: errorData?.error?.message ?? "OpenRouter request failed.",
+              error: paimonErrorMessage(rawMessage),
             });
             return;
           }
@@ -590,8 +641,9 @@ export async function POST(req: NextRequest) {
 
           send("done", { reply, paramsPatch, attachmentNotice, shouldGenerate });
         } catch (error) {
+          const message = error instanceof Error ? error.message : "Paimon failed.";
           send("error", {
-            error: error instanceof Error ? error.message : "Paimon failed.",
+            error: paimonErrorMessage(message),
           });
         } finally {
           controller.close();
@@ -607,8 +659,9 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Paimon failed.";
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Paimon failed." },
+      { error: paimonErrorMessage(message) },
       { status: 500 }
     );
   }
