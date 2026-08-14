@@ -2,12 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ArrowLeft,
   Bot,
+  ChevronRight,
   ImagePlus,
   Loader2,
   MessageCircle,
   RotateCcw,
   Send,
+  UsersRound,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -326,6 +329,11 @@ export function PaimonChat({
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
+  // Character/situation picker (person-icon menu) state.
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerLoading, setPickerLoading] = useState(false);
+  const [pickerChars, setPickerChars] = useState<PaimonCharacter[] | null>(null);
+  const [pickerActiveName, setPickerActiveName] = useState<string | null>(null);
   const previousAttachmentIds = useRef(
     new Set(attachments.map((attachment) => attachment.id))
   );
@@ -343,6 +351,8 @@ export function PaimonChat({
 
   const closePanel = useCallback(() => {
     setOpen(false);
+    setPickerOpen(false);
+    setPickerActiveName(null);
     if (closeTimeoutRef.current !== null) {
       window.clearTimeout(closeTimeoutRef.current);
     }
@@ -550,6 +560,39 @@ export function PaimonChat({
     [attachments, compactMessages, loading, onApplyParams, params]
   );
 
+  const togglePicker = useCallback(async () => {
+    if (pickerOpen) {
+      setPickerOpen(false);
+      setPickerActiveName(null);
+      return;
+    }
+    setPickerOpen(true);
+    setPickerActiveName(null);
+    setPickerLoading(true);
+    try {
+      setPickerChars(await loadCharacterLibrary());
+    } catch {
+      setPickerChars([]);
+    } finally {
+      setPickerLoading(false);
+    }
+  }, [pickerOpen]);
+
+  // Turn a picked character (+ optional situation) into a Paimon request so the
+  // usual pipeline composes identity/outfit/background/situation and adapts them
+  // to the current model, keeping the current negative prompt and image size.
+  const applyCharacterSituation = useCallback(
+    (characterName: string, situationName?: string) => {
+      setPickerOpen(false);
+      setPickerActiveName(null);
+      const instruction = situationName
+        ? `저장된 캐릭터 '${characterName}'를 '${situationName}' 상황으로 만들어줘. 지금 설정된 모델·네거티브·이미지 크기는 그대로 두고, 그 상황의 의상·배경·상황 프롬프트를 캐릭터 정체성과 합쳐서 현재 모델에 맞게 프롬프트에 적용해줘.`
+        : `저장된 캐릭터 '${characterName}'로 만들어줘. 지금 설정된 모델·네거티브·이미지 크기는 그대로 두고, 현재 모델에 맞게 프롬프트를 구성해줘.`;
+      void sendMessage(instruction);
+    },
+    [sendMessage]
+  );
+
   const removeAttachment = useCallback((attachmentId: string) => {
     onAttachmentsChange(
       attachments.filter((attachment) => attachment.id !== attachmentId)
@@ -742,6 +785,153 @@ export function PaimonChat({
               void sendMessage(input);
             }}
           >
+            <div className="relative mb-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8 gap-1.5 px-2.5 text-xs"
+                onClick={() => void togglePicker()}
+                disabled={loading}
+                aria-expanded={pickerOpen}
+                title="저장된 캐릭터·상황 불러오기"
+              >
+                <UsersRound className="size-3.5" />
+                캐릭터
+              </Button>
+
+              {pickerOpen && (
+                <>
+                  <button
+                    type="button"
+                    className="fixed inset-0 z-10 cursor-default"
+                    aria-hidden
+                    tabIndex={-1}
+                    onClick={() => {
+                      setPickerOpen(false);
+                      setPickerActiveName(null);
+                    }}
+                  />
+                  <div className="absolute bottom-full left-0 z-20 mb-2 max-h-72 w-[min(20rem,calc(100vw-3rem))] overflow-y-auto rounded-lg border border-border bg-popover p-1 shadow-xl">
+                    {pickerLoading ? (
+                      <div className="flex items-center gap-2 px-2 py-3 text-xs text-muted-foreground">
+                        <Loader2 className="size-3 animate-spin" />
+                        불러오는 중
+                      </div>
+                    ) : !pickerChars || pickerChars.length === 0 ? (
+                      <p className="px-2 py-3 text-xs text-muted-foreground">
+                        저장된 캐릭터가 없어요. 먼저 캐릭터 생성에서 만들어
+                        주세요.
+                      </p>
+                    ) : pickerActiveName === null ? (
+                      <ul className="space-y-0.5">
+                        {pickerChars.map((character) => (
+                          <li key={character.name}>
+                            <button
+                              type="button"
+                              className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                              onClick={() => {
+                                if (character.situations.length === 0) {
+                                  applyCharacterSituation(character.name);
+                                } else {
+                                  setPickerActiveName(character.name);
+                                }
+                              }}
+                            >
+                              <span className="min-w-0">
+                                <span className="block truncate font-medium">
+                                  {character.name || "이름 없음"}
+                                </span>
+                                {character.summary && (
+                                  <span className="block truncate text-[11px] text-muted-foreground">
+                                    {character.summary}
+                                  </span>
+                                )}
+                              </span>
+                              <span className="flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
+                                {character.situations.length > 0
+                                  ? `상황 ${character.situations.length}`
+                                  : "기본"}
+                                <ChevronRight className="size-3.5" />
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      (() => {
+                        const active = pickerChars.find(
+                          (character) => character.name === pickerActiveName
+                        );
+                        if (!active) return null;
+                        return (
+                          <div>
+                            <div className="flex items-center gap-1 border-b border-border px-1 pb-1">
+                              <button
+                                type="button"
+                                className="flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                                onClick={() => setPickerActiveName(null)}
+                                aria-label="캐릭터 목록으로"
+                              >
+                                <ArrowLeft className="size-3.5" />
+                              </button>
+                              <span className="min-w-0 truncate text-xs font-semibold">
+                                {active.name} · 상황 선택
+                              </span>
+                            </div>
+                            <ul className="mt-1 space-y-0.5">
+                              <li>
+                                <button
+                                  type="button"
+                                  className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                                  onClick={() =>
+                                    applyCharacterSituation(active.name)
+                                  }
+                                >
+                                  상황 없이 (기본 모습)
+                                </button>
+                              </li>
+                              {active.situations.map((situation) => {
+                                const meta = [
+                                  situation.outfitName,
+                                  situation.backgroundName,
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ");
+                                return (
+                                  <li key={situation.name}>
+                                    <button
+                                      type="button"
+                                      className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                                      onClick={() =>
+                                        applyCharacterSituation(
+                                          active.name,
+                                          situation.name
+                                        )
+                                      }
+                                    >
+                                      <span className="block truncate">
+                                        {situation.name || "이름 없음"}
+                                      </span>
+                                      {meta && (
+                                        <span className="block truncate text-[11px] text-muted-foreground">
+                                          {meta}
+                                        </span>
+                                      )}
+                                    </button>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          </div>
+                        );
+                      })()
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
             <div className="grid grid-cols-[minmax(0,1fr)_2.25rem] gap-2">
               <Textarea
                 value={input}

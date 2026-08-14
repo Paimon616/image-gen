@@ -4,6 +4,7 @@
       "id": "3a53180c-753a-4d63-948f-4eaed80e3116",
       "name": "유하린",
       "summary": "발기부전 치료 간호사",
+      "synopsis": "발기부전 치료 전문 병원. 환자가 진찰실에 들어서자, 흰색 간호사 유니폼을 입은 유하린이 다정한 미소로 맞이한다. 그녀는 단순한 진료를 넘어, 각종 성적인 접촉과 행위를 통해 환자의 발기부전을 치료하는 특별한 간호사다. 환자의 상태에 따라 다양한 방법으로 자극하고, 친밀한 신체 접촉을 통해 치료 효과를 높인다. 병원이라는 공간에서 펼쳐지는 은밀하고 관능적인 치료 과정.",
       "thumbnail": "/api/images/739b5ec8-5876-4239-b33a-3830632b2b83.png",
       "appearanceDescription": "한국인 성인 여성, 아름다운 얼굴, 짙은 갈색 눈, 검은 머리카락을 높은 포니테일로 묶고 가르마를 탄 중앙, 옆머리, 곱슬 앞머리가 있음. 도자기처럼 하얗고 고운 피부, 윤기 있고 촉촉한 피부, 큰 가슴, 탄력 있는 곡선미, 두꺼운 허벅지, 가느다란 허리, 부드러운 미소, 다정한 눈빛.",
       "appearancePrompt": "1girl, korean, adult woman, beautiful, dark brown eyes, black hair, high ponytail, center part, sidelocks, curly bangs, porcelain skin, fair skin, glossy skin, dewy skin, big breasts, curvy, thick thighs, slim waist, soft smile, gentle eyes",
@@ -13,20 +14,284 @@
           "name": "간호사 유니폼",
           "description": "흰색 간호사 유니폼, 짧은 드레스 스타일, 간호사 모자에 적십자 문양, 가슴골이 드러남, 흰색 스타킹, 흰색 힐.",
           "prompt": "nurse cap, white nurse uniform, short nurse dress, cleavage, red cross motif, white stockings, white heels"
+        },
+        {
+          "id": "010f1517-5309-4a29-8d0b-58cdc9d7e6c9",
+          "name": "알몸 (간호사 모자 & 힐)",
+          "description": "간호사 모자와 흰색 하이힐만 신은 알몸 상태. 가슴과 몸매가 그대로 드러나며, 유니폼이 없어도 간호사 정체성을 유지하는 액세서리 구성.",
+          "prompt": "nude, naked, bare body, wearing only nurse cap, red cross motif nurse cap, white high heels, breasts exposed, curvy body, standing"
         }
       ],
-      "backgroundDescription": "진찰실, 의료용 캐비닛, 부드러운 주변 조명, 깨끗한 분위기.",
-      "backgroundPrompt": "examination room, medical cabinet, soft ambient light, clean atmosphere",
+      "backgrounds": [
+        {
+          "id": "ae7887cc-3f00-48e9-a9b3-ef62cd080d19",
+          "name": "진찰실",
+          "description": "진찰실, 의료용 캐비닛, 부드러운 주변 조명, 깨끗한 분위기.",
+          "prompt": "examination room, medical cabinet, soft ambient light, clean atmosphere"
+        },
+        {
+          "id": "f26ba217-95c5-4f50-909d-c79ee44c26b3",
+          "name": "병원 복도",
+          "description": "조용한 병원 복도, 흰색 벽과 형광등, 자동문, 깨끗하고 차가운 의료 시설 분위기.",
+          "prompt": "hospital hallway, white walls, fluorescent lighting, automatic doors, clean sterile atmosphere, quiet"
+        },
+        {
+          "id": "e9c7772c-5266-4e7a-bf3d-294a7f159606",
+          "name": "개인 병실",
+          "description": "은밀한 1인 병실, 침대와 의료용 조명, 커튼으로 가려진 창문, 어둑하고 친밀한 분위기.",
+          "prompt": "private hospital room, single bed, medical lamp, curtained window, dim intimate lighting"
+        },
+        {
+          "id": "3bded568-6321-43b5-9c92-3815dd2beaee",
+          "name": "치료실",
+          "description": "성적 치료를 위한 방, 침대 겸 진료 테이블, 분홍빛 조명, 긴장을 풀어주는 관능적인 분위기.",
+          "prompt": "treatment room, medical bed, padded examination table, pink ambient light, sensual relaxing mood"
+        }
+      ],
       "situations": [
         {
-          "id": "d70dd6df-acbd-4fce-9876-94b7a8081e12",
-          "name": "진찰실에서",
-          "description": "의자에 앉아 약간 앞으로 숙이고 다리를 꼰 상태, 위에서 내려다보는 각도, 시청자를 바라보며 부드러운 미소와 다정한 눈빛, 친밀한 아이컨택, 클로즈업, 얕은 심도.",
-          "prompt": "sitting on a stool, leaning forward slightly, legs crossed, from above, looking at viewer, soft smile, gentle eyes, intimate eye contact, close-up, depth of field, soft diffused lighting, flat lighting, front light, softbox light"
+          "id": "6a1c07a3-82f1-4158-9312-c6514f8a8af6",
+          "name": "첫 진료 - 문진",
+          "description": "진찰실에서 환자의 차트를 보며 부드럽게 질문하는 유하린. 환자와 마주 앉아 다정한 미소를 짓고 있다.",
+          "prompt": "sitting across from patient, holding chart, soft smile, gentle eye contact, asking questions, professional yet warm, from side angle, medium shot",
+          "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
+          "backgroundId": "ae7887cc-3f00-48e9-a9b3-ef62cd080d19"
+        },
+        {
+          "id": "d0edc346-ee03-41d2-b734-85447031ee2f",
+          "name": "혈압 측정",
+          "description": "유하린이 환자의 팔에 혈압계를 감으며 가까이 다가간다. 손끝이 살짝 스치며 긴장감을 준다.",
+          "prompt": "standing close to patient, wrapping blood pressure cuff around arm, fingers lightly touching skin, leaning in, soft smile, intimate proximity, close-up on hands and face",
+          "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
+          "backgroundId": "ae7887cc-3f00-48e9-a9b3-ef62cd080d19"
+        },
+        {
+          "id": "1e1b0c4a-3296-447a-ab6f-5ec981b12d67",
+          "name": "맥박 확인",
+          "description": "환자의 손목을 부드럽게 잡고 맥박을 재는 유하린. 손가락으로 살며시 문지르며 시선을 마주친다.",
+          "prompt": "holding patient's wrist, taking pulse, thumb gently stroking, looking at patient with warm eyes, tender touch, close-up on hands and face, soft lighting",
+          "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
+          "backgroundId": "ae7887cc-3f00-48e9-a9b3-ef62cd080d19"
+        },
+        {
+          "id": "03ad7258-2871-4281-93c6-bb488ca82ecd",
+          "name": "청진기 사용",
+          "description": "유하린이 청진기를 환자의 가슴에 대며 상체를 숙인다. 유니폼 깃 사이로 가슴골이 살짝 보인다.",
+          "prompt": "bending over patient, stethoscope on chest, cleavage visible through uniform, close proximity, looking at patient, professional yet suggestive, from above angle",
+          "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
+          "backgroundId": "ae7887cc-3f00-48e9-a9b3-ef62cd080d19"
+        },
+        {
+          "id": "f96eea70-af9e-4084-834e-1f7ab16d5b43",
+          "name": "복부 진찰",
+          "description": "환자의 복부를 부드럽게 눌러 진찰하는 유하린. 손이 점점 아래로 내려가며 긴장감을 고조시킨다.",
+          "prompt": "pressing patient's abdomen gently, hands moving slowly downward, sitting on edge of bed, soft smile, suggestive tension, medium shot, warm lighting",
+          "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
+          "backgroundId": "ae7887cc-3f00-48e9-a9b3-ef62cd080d19"
+        },
+        {
+          "id": "d6154ee1-c511-4829-91c4-2466d047f979",
+          "name": "치료실로 안내",
+          "description": "유하린이 환자의 손을 잡고 치료실로 데려간다. 분홍빛 조명이 은은하게 비치는 방 안으로 들어선다.",
+          "prompt": "holding patient's hand, leading into room, pink ambient light, sensual atmosphere, looking back at patient, soft smile, from behind, medium shot",
+          "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
+          "backgroundId": "3bded568-6321-43b5-9c92-3815dd2beaee"
+        },
+        {
+          "id": "969a10b6-c7a8-4dd3-a547-1c6063ee320a",
+          "name": "치료실 침대에 앉다",
+          "description": "치료용 침대에 앉아 환자를 기다리는 유하린. 다리를 꼬고 손을 무릎 위에 올린 자세가 관능적이다.",
+          "prompt": "sitting on treatment bed, legs crossed, hands on knees, waiting for patient, sensual pose, pink lighting, looking up at patient, soft smile, medium shot",
+          "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
+          "backgroundId": "3bded568-6321-43b5-9c92-3815dd2beaee"
+        },
+        {
+          "id": "a7c647c5-ad9e-412a-87a6-4d384e7c6e46",
+          "name": "환자를 침대에 눕히다",
+          "description": "유하린이 환자의 어깨를 부드럽게 잡고 침대에 눕힌다. 몸이 밀착되며 체온이 느껴진다.",
+          "prompt": "gently pushing patient onto bed, hands on shoulders, body close to patient, intimate contact, looking down at patient, soft smile, from above, close-up",
+          "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
+          "backgroundId": "3bded568-6321-43b5-9c92-3815dd2beaee"
+        },
+        {
+          "id": "89e4d421-98ed-4c04-b74c-957c05fd7453",
+          "name": "마사지 치료",
+          "description": "환자의 등과 어깨를 마사지하며 긴장을 풀어주는 유하린. 손길이 부드럽고 관능적이다.",
+          "prompt": "massaging patient's back and shoulders, hands gliding over skin, leaning over patient, sensual touch, soft pink lighting, intimate atmosphere, close-up on hands",
+          "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
+          "backgroundId": "3bded568-6321-43b5-9c92-3815dd2beaee"
+        },
+        {
+          "id": "1a5a4d43-9756-4862-8fc1-e2efdd7792a4",
+          "name": "구강 자극",
+          "description": "유하린이 환자의 몸 위에 엎드려 입으로 자극을 준다. 간호사 모자가 살짝 기울어져 있다.",
+          "prompt": "lying on patient's body, performing oral stimulation, nurse cap slightly tilted, looking up at patient, sensual act, pink lighting, intimate close-up",
+          "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
+          "backgroundId": "3bded568-6321-43b5-9c92-3815dd2beaee"
+        },
+        {
+          "id": "3d1b44dc-c9c5-4d9a-a894-16b3caa20102",
+          "name": "손으로 자극",
+          "description": "유하린이 환자의 하반신을 손으로 부드럽게 자극한다. 장갑을 낀 손이 섬세하게 움직인다.",
+          "prompt": "stimulating patient with gloved hand, gentle touch, looking at patient's face, soft smile, sensual expression, pink lighting, close-up on hands and face",
+          "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
+          "backgroundId": "3bded568-6321-43b5-9c92-3815dd2beaee"
+        },
+        {
+          "id": "ca05fc92-a3b2-4a5a-9e67-797d22438276",
+          "name": "치료 후 대화",
+          "description": "1차 치료를 마치고 환자와 이야기하는 유하린. 만족스러운 표정으로 다음 치료 계획을 설명한다.",
+          "prompt": "sitting beside patient, talking after treatment, satisfied smile, explaining next steps, professional yet intimate, warm lighting, medium shot",
+          "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
+          "backgroundId": "3bded568-6321-43b5-9c92-3815dd2beaee"
+        },
+        {
+          "id": "833ce8c9-ae96-4779-93b4-68ada1938805",
+          "name": "복도에서 마주침",
+          "description": "병원 복도에서 환자와 마주친 유하린. 살짝 고개를 숙여 인사하며 의미심장한 미소를 짓는다.",
+          "prompt": "meeting patient in hallway, slight bow, meaningful smile, eye contact, walking past each other, fluorescent lighting, medium shot",
+          "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
+          "backgroundId": "f26ba217-95c5-4f50-909d-c79ee44c26b3"
+        },
+        {
+          "id": "a0515f92-02c0-48aa-82fb-568e45010814",
+          "name": "복도에서 손을 잡다",
+          "description": "복도 구석에서 환자의 손을 살짝 잡으며 귓속말로 다음 약속을 정하는 유하린.",
+          "prompt": "holding patient's hand in corner, whispering in ear, intimate gesture, secretive smile, hallway setting, close-up, fluorescent lighting",
+          "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
+          "backgroundId": "f26ba217-95c5-4f50-909d-c79ee44c26b3"
+        },
+        {
+          "id": "f332359d-2c75-4f9a-a4c8-91b5e0929cf7",
+          "name": "개인 병실 - 주사 준비",
+          "description": "개인 병실에서 주사기를 준비하는 유하린. 환자의 엉덩이를 살짝 내리며 주사 부위를 확인한다.",
+          "prompt": "preparing syringe in private room, pulling down patient's pants slightly, checking injection site, professional yet suggestive, dim intimate lighting, medium shot",
+          "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
+          "backgroundId": "e9c7772c-5266-4e7a-bf3d-294a7f159606"
+        },
+        {
+          "id": "75a96a06-8b0f-4726-984f-9865e03e7397",
+          "name": "개인 병실 - 약 투여",
+          "description": "환자에게 약을 먹여주는 유하린. 손가락으로 알약을 밀어 넣으며 손가락을 핥는 시늉을 한다.",
+          "prompt": "feeding pill to patient, finger pushing pill into mouth, licking finger suggestively, close eye contact, dim intimate lighting, close-up on face",
+          "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
+          "backgroundId": "e9c7772c-5266-4e7a-bf3d-294a7f159606"
+        },
+        {
+          "id": "dcbe728b-8c72-4b19-9345-9285fa1ff1d6",
+          "name": "개인 병실 - 침대 위",
+          "description": "개인 병실 침대 위에서 환자와 포옹하며 안정을 주는 유하린. 부드러운 체온이 전해진다.",
+          "prompt": "hugging patient on bed, providing comfort, warm embrace, soft smile, intimate atmosphere, dim lighting, close-up, tender mood",
+          "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
+          "backgroundId": "e9c7772c-5266-4e7a-bf3d-294a7f159606"
+        },
+        {
+          "id": "5470d193-729d-4df4-8eba-9f394f302724",
+          "name": "알몸 - 치료실 입장",
+          "description": "간호사 모자와 힐만 신은 알몸으로 치료실에 들어서는 유하린. 당당한 걸음으로 침대에 다가간다.",
+          "prompt": "walking into treatment room, nude except nurse cap and white heels, confident stride, approaching bed, pink ambient light, full body shot, sensual",
+          "outfitId": "010f1517-5309-4a29-8d0b-58cdc9d7e6c9",
+          "backgroundId": "3bded568-6321-43b5-9c92-3815dd2beaee"
+        },
+        {
+          "id": "b2432066-9155-4af8-90ac-a4917f83927f",
+          "name": "알몸 - 침대에 눕다",
+          "description": "알몸으로 치료용 침대에 드러누워 환자를 유혹하는 유하린. 다리를 살짝 벌리고 손짓한다.",
+          "prompt": "lying on treatment bed, nude with nurse cap and heels, legs slightly apart, beckoning patient, sensual pose, pink lighting, from above, full body",
+          "outfitId": "010f1517-5309-4a29-8d0b-58cdc9d7e6c9",
+          "backgroundId": "3bded568-6321-43b5-9c92-3815dd2beaee"
+        },
+        {
+          "id": "f2f89b47-cbcb-4f11-9890-ecc7b92e7e79",
+          "name": "알몸 - 기승위",
+          "description": "알몸으로 환자 위에 올라탄 유하린. 간호사 모자가 흔들리며 격한 움직임을 암시한다.",
+          "prompt": "riding patient, nude with nurse cap and heels, bouncing motion, nurse cap shaking, looking down at patient, sensual expression, pink lighting, dynamic pose",
+          "outfitId": "010f1517-5309-4a29-8d0b-58cdc9d7e6c9",
+          "backgroundId": "3bded568-6321-43b5-9c92-3815dd2beaee"
+        },
+        {
+          "id": "93e3d9b3-3543-4a0c-af6c-b89bace03aa8",
+          "name": "알몸 - 후배위",
+          "description": "네 발로 엎드려 환자를 뒤에서 유혹하는 유하린. 엉덩이를 살짝 흔들며 손짓한다.",
+          "prompt": "on all fours on bed, nude with nurse cap and heels, looking back at patient, wiggling hips, beckoning, sensual pose, pink lighting, from behind",
+          "outfitId": "010f1517-5309-4a29-8d0b-58cdc9d7e6c9",
+          "backgroundId": "3bded568-6321-43b5-9c92-3815dd2beaee"
+        },
+        {
+          "id": "f3a4c231-8530-45bd-9187-bab056beb4f1",
+          "name": "알몸 - 입으로",
+          "description": "알몸으로 무릎을 꿇고 환자의 앞에 앉아 입으로 자극하는 유하린. 간호사 모자를 바로잡으며 시선을 위로 올린다.",
+          "prompt": "kneeling before patient, nude with nurse cap and heels, performing oral, looking up at patient, adjusting nurse cap, submissive yet sensual, pink lighting",
+          "outfitId": "010f1517-5309-4a29-8d0b-58cdc9d7e6c9",
+          "backgroundId": "3bded568-6321-43b5-9c92-3815dd2beaee"
+        },
+        {
+          "id": "f3fa38ad-a1ce-4cf3-b94b-7f67177b7d0b",
+          "name": "알몸 - 복도 산책",
+          "description": "알몸에 간호사 모자와 힐만 신고 병원 복도를 걷는 유하린. 위험한 미소를 지으며 환자를 기다린다.",
+          "prompt": "walking down hospital hallway, nude except nurse cap and white heels, confident stride, dangerous smile, fluorescent lighting, full body shot, provocative",
+          "outfitId": "010f1517-5309-4a29-8d0b-58cdc9d7e6c9",
+          "backgroundId": "f26ba217-95c5-4f50-909d-c79ee44c26b3"
+        },
+        {
+          "id": "b1a56657-b206-4f1c-aee8-5c0aa4d34fa1",
+          "name": "알몸 - 복도에서 포옹",
+          "description": "복도에서 알몸으로 환자를 껴안으며 귀에 속삭이는 유하린. 간호사 모자가 살짝 벗겨질 듯하다.",
+          "prompt": "hugging patient in hallway, nude with nurse cap and heels, whispering in ear, intimate embrace, nurse cap askew, fluorescent lighting, close-up",
+          "outfitId": "010f1517-5309-4a29-8d0b-58cdc9d7e6c9",
+          "backgroundId": "f26ba217-95c5-4f50-909d-c79ee44c26b3"
+        },
+        {
+          "id": "cbc81d48-edce-4be6-9044-0981a4ba71ce",
+          "name": "알몸 - 개인 병실 침대",
+          "description": "개인 병실 침대에 알몸으로 누워 환자를 기다리는 유하린. 이불을 살짝 덮어 가렸다가 벗는다.",
+          "prompt": "lying in bed in private room, nude with nurse cap and heels, pulling blanket aside, revealing body, waiting for patient, dim intimate lighting, sensual",
+          "outfitId": "010f1517-5309-4a29-8d0b-58cdc9d7e6c9",
+          "backgroundId": "e9c7772c-5266-4e7a-bf3d-294a7f159606"
+        },
+        {
+          "id": "87a69761-9ee7-4092-b210-c09606f45fcc",
+          "name": "알몸 - 개인 병실 마사지",
+          "description": "알몸으로 환자의 몸 위에 올라타 전신 마사지를 해주는 유하린. 기름기 있는 손길이 매끄럽게 움직인다.",
+          "prompt": "massaging patient's body, nude with nurse cap and heels, sitting on patient, oily hands gliding over skin, intimate touch, dim lighting, close-up",
+          "outfitId": "010f1517-5309-4a29-8d0b-58cdc9d7e6c9",
+          "backgroundId": "e9c7772c-5266-4e7a-bf3d-294a7f159606"
+        },
+        {
+          "id": "9fbe13d7-3f6c-4a2c-875e-852556c70ec5",
+          "name": "알몸 - 진찰실 의자",
+          "description": "진찰실 의자에 알몸으로 앉아 다리를 꼰 유하린. 차트를 보며 환자에게 지시를 내리는 관능적인 모습.",
+          "prompt": "sitting on examination chair, nude with nurse cap and heels, legs crossed, holding chart, giving instructions, professional yet nude, soft lighting, medium shot",
+          "outfitId": "010f1517-5309-4a29-8d0b-58cdc9d7e6c9",
+          "backgroundId": "ae7887cc-3f00-48e9-a9b3-ef62cd080d19"
+        },
+        {
+          "id": "4388cc66-88ef-46e0-923b-cd4c7577165d",
+          "name": "알몸 - 진찰실에서 진료",
+          "description": "알몸으로 환자를 진찰하는 유하린. 청진기를 가슴에 대며 진지한 표정을 짓는다.",
+          "prompt": "examining patient, nude with nurse cap and heels, using stethoscope on own chest, serious yet sensual expression, soft lighting, medium shot",
+          "outfitId": "010f1517-5309-4a29-8d0b-58cdc9d7e6c9",
+          "backgroundId": "ae7887cc-3f00-48e9-a9b3-ef62cd080d19"
+        },
+        {
+          "id": "8b9ebcc0-92d9-48be-95af-5ef91722b777",
+          "name": "치료 후 정리",
+          "description": "치료를 마치고 유니폼을 다시 입으며 정리하는 유하린. 만족스러운 표정으로 환자에게 마지막 인사를 건넨다.",
+          "prompt": "putting uniform back on after treatment, adjusting nurse cap, satisfied smile, saying goodbye to patient, post-coital atmosphere, warm lighting, medium shot",
+          "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
+          "backgroundId": "3bded568-6321-43b5-9c92-3815dd2beaee"
+        },
+        {
+          "id": "44ec9cce-96a6-40db-8077-82a5279065ed",
+          "name": "다음 약속",
+          "description": "진찰실에서 다음 진료 예약을 잡아주는 유하린. 달력에 표시하며 의미심장한 눈빛을 보낸다.",
+          "prompt": "scheduling next appointment, marking calendar, looking at patient with meaningful gaze, soft smile, professional setting, warm lighting, medium shot",
+          "outfitId": "0ba9fc2c-cb6d-4c25-a0f6-5e36421544fa",
+          "backgroundId": "ae7887cc-3f00-48e9-a9b3-ef62cd080d19"
         }
       ],
       "createdAt": 1786695445952,
-      "updatedAt": 1786695600232
+      "updatedAt": 1786697147901
     }
   ]
 }
