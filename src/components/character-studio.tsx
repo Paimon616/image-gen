@@ -117,23 +117,44 @@ function TabCount({ count }: { count: number }) {
 }
 
 // Add / clear-all buttons that live on the right of the tab row. The clear
-// button only appears once there's at least one item to remove.
+// button only appears once there's at least one item to remove. An optional
+// secondary clear button (used by the situation tab to wipe only its images)
+// renders when its count is > 0.
 function TabActions({
   addLabel,
   onAdd,
   count,
   onClear,
+  secondaryClearLabel,
+  secondaryClearCount,
+  onSecondaryClear,
 }: {
   addLabel: string;
   onAdd: () => void;
   count: number;
   onClear: () => void;
+  secondaryClearLabel?: string;
+  secondaryClearCount?: number;
+  onSecondaryClear?: () => void;
 }) {
   return (
     <div className="flex shrink-0 items-center gap-2">
       <Button type="button" variant="outline" size="sm" onClick={onAdd}>
         <Plus /> {addLabel}
       </Button>
+      {secondaryClearLabel &&
+        onSecondaryClear &&
+        (secondaryClearCount ?? 0) > 0 && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onSecondaryClear}
+            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+          >
+            <Trash2 /> {secondaryClearLabel} ({secondaryClearCount})
+          </Button>
+        )}
       {count > 0 && (
         <Button
           type="button"
@@ -666,6 +687,37 @@ export function CharacterStudio() {
     patchSelected({ situations: [] });
   }, [patchSelected, selected]);
 
+  // Unlink every situation image at once — keeps the situations themselves but
+  // strips all their generated-image thumbnails. Mirrors removeSituationImage's
+  // semantics (unlink, not file delete) across the whole map.
+  const clearAllSituationImages = useCallback(async () => {
+    if (!selectedId) return;
+    const images = Object.values(situationImages).flat();
+    if (images.length === 0) return;
+    if (
+      !window.confirm(
+        `상황 이미지 ${images.length}개를 모두 삭제할까요? 상황은 유지되고 이미지 연결만 해제돼요.`
+      )
+    )
+      return;
+    setSituationImages({});
+    await Promise.all(
+      images.map((image) =>
+        fetch(
+          `/api/characters/${selectedId}/images?filename=${encodeURIComponent(
+            image.filename
+          )}`,
+          { method: "DELETE" }
+        ).catch(() => {})
+      )
+    );
+  }, [selectedId, situationImages]);
+
+  const situationImageCount = useMemo(
+    () => Object.values(situationImages).reduce((n, arr) => n + arr.length, 0),
+    [situationImages]
+  );
+
   const combinedPrompt = useMemo(
     () => (selected ? composeCharacterPrompt(selected) : ""),
     [selected]
@@ -835,6 +887,9 @@ export function CharacterStudio() {
                     onAdd={addSituation}
                     count={selected.situations.length}
                     onClear={clearSituations}
+                    secondaryClearLabel="이미지만 모두 삭제"
+                    secondaryClearCount={situationImageCount}
+                    onSecondaryClear={clearAllSituationImages}
                   />
                 )}
               </div>
