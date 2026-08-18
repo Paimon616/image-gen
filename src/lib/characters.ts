@@ -140,6 +140,14 @@ function normalizeCharacter(raw: unknown): Character | null {
         : legacyBackgrounds(record)
     ),
     situations: normalizeSituations(record.situations),
+    // Legacy records have no `order`; fall back to createdAt so their existing
+    // relative order (the old sort key) is preserved on first read.
+    order:
+      typeof record.order === "number"
+        ? record.order
+        : typeof record.createdAt === "number"
+          ? record.createdAt
+          : Date.now(),
     createdAt:
       typeof record.createdAt === "number" ? record.createdAt : Date.now(),
     updatedAt:
@@ -187,7 +195,7 @@ function mutate<T>(
 
 export async function listCharacters(): Promise<Character[]> {
   const { characters } = await readData();
-  return [...characters].sort((a, b) => a.createdAt - b.createdAt);
+  return [...characters].sort((a, b) => a.order - b.order);
 }
 
 export async function getCharacter(id: string): Promise<Character | null> {
@@ -197,17 +205,44 @@ export async function getCharacter(id: string): Promise<Character | null> {
 
 export function createCharacter(name: string): Promise<Character> {
   const now = Date.now();
-  const character: Character = {
-    id: randomUUID(),
-    ...createEmptyCharacter(name),
-    createdAt: now,
-    updatedAt: now,
-  };
+  return mutate((data) => {
+    // Append after the current last item so new characters land at the bottom.
+    const maxOrder = data.characters.reduce(
+      (max, item) => Math.max(max, item.order),
+      -1
+    );
+    const character: Character = {
+      id: randomUUID(),
+      ...createEmptyCharacter(name),
+      order: maxOrder + 1,
+      createdAt: now,
+      updatedAt: now,
+    };
+    return {
+      data: { characters: [...data.characters, character] },
+      result: character,
+    };
+  });
+}
 
-  return mutate((data) => ({
-    data: { characters: [...data.characters, character] },
-    result: character,
-  }));
+// Reassign `order` to match the given id sequence. Ids not present are ignored;
+// any character missing from the list keeps its relative position at the end.
+export function reorderCharacters(ids: unknown): Promise<Character[]> {
+  const idList = Array.isArray(ids)
+    ? ids.filter((id): id is string => isValidCharacterId(id))
+    : [];
+  const rank = new Map(idList.map((id, index) => [id, index]));
+  return mutate((data) => {
+    const sorted = [...data.characters].sort((a, b) => {
+      const ra = rank.get(a.id) ?? Number.MAX_SAFE_INTEGER;
+      const rb = rank.get(b.id) ?? Number.MAX_SAFE_INTEGER;
+      if (ra !== rb) return ra - rb;
+      // Stable fallback for un-ranked characters: keep their prior order.
+      return a.order - b.order;
+    });
+    const reordered = sorted.map((item, index) => ({ ...item, order: index }));
+    return { data: { characters: reordered }, result: reordered };
+  });
 }
 
 // Partial merge (settings-style): only the fields present in `patch` are

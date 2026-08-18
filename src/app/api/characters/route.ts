@@ -1,5 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { createCharacter, listCharacters, normalizeCharacterName } from "@/lib/characters";
+import {
+  createCharacter,
+  listCharacters,
+  normalizeCharacterName,
+  reorderCharacters,
+} from "@/lib/characters";
 
 export async function GET() {
   try {
@@ -29,6 +34,23 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json(
       { error: "Failed to create character" },
+      { status: 500 }
+    );
+  }
+}
+
+// Reorder the character list: body is `{ ids: string[] }` in the desired order.
+export async function PUT(request: NextRequest) {
+  const body = (await request.json().catch(() => null)) as {
+    ids?: unknown;
+  } | null;
+
+  try {
+    const characters = await reorderCharacters(body?.ids);
+    return NextResponse.json({ characters });
+  } catch {
+    return NextResponse.json(
+      { error: "Failed to reorder characters" },
       { status: 500 }
     );
   }

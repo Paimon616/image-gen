@@ -203,6 +203,9 @@ export interface Character {
   backgrounds: CharacterBackground[];
   // 상황.
   situations: CharacterSituation[];
+  // Manual position in the character list (ascending). Legacy records without
+  // this fall back to createdAt so their relative order is preserved on read.
+  order: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -214,7 +217,7 @@ export type CharacterSummary = Character;
 
 export function createEmptyCharacter(name: string): Omit<
   Character,
-  "id" | "createdAt" | "updatedAt"
+  "id" | "order" | "createdAt" | "updatedAt"
 > {
   return {
     name,

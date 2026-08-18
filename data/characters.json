@@ -215,7 +215,7 @@
     },
     {
       "id": "344a0e18-294a-4819-9a38-d84320e2c59d",
-      "name": "하지현",
+      "name": "하지연",
       "summary": "상사의 와이프",
       "synopsis": "박부장은 건설회사에서 못된 성격으로 유명하다. 그리고 하지현은 그런 박부장의 아내다. 남편의 괴롭힘에 시달리던 회사 직원 김대리는 어느 날 우연히 하지현이 다른 남자와 만나는 외도 현장을 목격한다. 김대리는 이를 이용해 박부장에게 복수하기로 마음먹고, 하지현에게 접근해 그녀와의 관계를 강요한다. 하지현은 처음에는 거부하지만, 자신의 비밀이 남편에게 알려질 것을 두려워해 결국 김대리의 요구를 받아들인다. 이후 두 사람은 은밀한 만남을 이어가며, 김대리는 박부장에게 복수하는 동시에 하지현을 완전히 소유하려 한다. 하지현은 점점 이 관계에 익숙해져 가지만, 언젠가 남편에게 발각될까 늘 불안해한다.",
       "thumbnail": "/api/images/5a1a0830-ff6d-4a71-8f5e-4839dbbeffc1.png",
@@ -223,483 +223,954 @@
       "appearancePrompt": "brown hair, thin bangs, low side-swept updo, white lace ribbon, rounded oval face, small chin, wide almond-shaped eyes, brown eyes, thin parallel eyebrows, delicate nose bridge, small nose tip, thin upper lip, soft lower lip, fair skin, pale pink cheeks, subtle eye makeup, slim figure, slightly large bust",
       "outfits": [
         {
-          "id": "8255e06c-e2c9-4608-9f14-068e55974be1",
+          "id": "8a30ec82-96e8-4a28-8bcc-9c9c09a0901f",
+          "name": "외출복",
+          "description": "하지현이 외출할 때 입는 정장 스타일. 베이지색 트렌치코트 안에 흰색 블라우스, 진한 네이비 H라인 스커트, 베이지색 펌프스. 가방은 브라운 가죽 토트백.",
+          "prompt": "beige double-breasted trench coat, knee-length, white silk blouse, pointed collar, dark navy H-line skirt, knee-length, beige leather pumps, 5cm heel, brown leather tote bag, elegant office lady style"
+        },
+        {
+          "id": "0ef498cf-72aa-47dc-8ea8-5ee6353bd307",
           "name": "평상복",
-          "description": "베이지색 니트 가디건, 흰색 면 블라우스, 진청색 스키니 진, 갈색 가죽 플랫 슈즈, 작은 은색 목걸이, 손목시계",
-          "prompt": "beige knit cardigan, white cotton blouse, dark blue skinny jeans, brown leather flat shoes, small silver necklace, wristwatch"
+          "description": "집에서 편하게 입는 캐주얼 복장. 아이보리색 오버사이즈 니트 스웨터, 연청색 스트레이트 진, 베이지색 털 슬리퍼. 머리는 풀어헤친 상태.",
+          "prompt": "ivory oversized cable-knit wool sweater, loose fit, mid-thigh length, light blue straight-leg denim jeans, ankle-length, beige fleece slippers, hair down, casual homewear"
         },
         {
-          "id": "b9c5b9cf-75b0-4133-8b32-d9e51f0d627a",
+          "id": "deb85b98-893d-4840-ae33-763a2d316144",
           "name": "속옷",
-          "description": "검은색 레이스 브라렛, 검은색 레이스 삼각 팬티, 얇은 가터 벨트, 검은색 스타킹, 침실 분위기",
-          "prompt": "black lace bralette, black lace triangle panties, thin garter belt, black stockings, bedroom atmosphere"
+          "description": "블랙 레이스 란제리 세트. 반컵 브라에 허리까지 내려오는 시스루 가운, 스트링 팬티. 가터벨트와 스타킹 착용.",
+          "prompt": "black lace demi-cup bra, sheer black lace babydoll, waist-length, black string panty, black garter belt, black sheer thigh-high stockings, seductive lingerie"
         },
         {
-          "id": "4ce7ab9a-00b8-4240-9c69-25435a49dbb0",
+          "id": "b732d24b-6673-4adf-abec-c5858e559ba0",
           "name": "알몸",
-          "description": "옷을 입지 않은 상태, 전신 노출, 자연스러운 포즈, 은밀한 분위기",
-          "prompt": "nude, no clothes, full body exposure, natural pose, intimate atmosphere"
-        },
-        {
-          "id": "9978106a-1529-46bb-a392-943235932c9e",
-          "name": "잠옷",
-          "description": "연분홍색 실크 잠옷 세트, 반팔 단추 상의, 반바지, 부드러운 소재, 편안한 홈웨어",
-          "prompt": "pale pink silk pajama set, short-sleeve button-up top, shorts, soft fabric, comfortable homewear"
-        },
-        {
-          "id": "0186142b-1f53-4531-ad39-756d6bd13ed9",
-          "name": "사무복",
-          "description": "흰색 블라우스, 검은색 펜슬 스커트, 검은색 블레이저, 누드색 펌프스, 작은 금색 귀걸이",
-          "prompt": "white blouse, black pencil skirt, black blazer, nude pumps, small gold earrings"
-        },
-        {
-          "id": "ec919870-5e70-4d9a-8167-36974550f0ed",
-          "name": "운동복",
-          "description": "검은색 요가 레깅스, 흰색 탱크탑, 흰색 운동화, 머리 묶음",
-          "prompt": "black yoga leggings, white tank top, white sneakers, hair tied back"
-        },
-        {
-          "id": "7b2a1d70-8a2c-40fa-81ef-79dbb99188fd",
-          "name": "섹시 란제리",
-          "description": "검은색 레이스 베이비돌, 매칭 팬티, 시스루 스타킹, 가터 벨트",
-          "prompt": "black lace babydoll, matching thong, sheer stockings, garter belt"
-        },
-        {
-          "id": "bdf5ffcc-7a57-4dd4-94e3-0c1a3a041d9a",
-          "name": "비즈니스 캐주얼",
-          "description": "네이비 블루 니트 스웨터, 베이지색 슬랙스, 갈색 로퍼, 은색 목걸이",
-          "prompt": "navy blue knit sweater, beige trousers, brown loafers, silver necklace"
+          "description": "옷을 전혀 입지 않은 상태. 완전 누드. 머리는 풀어헤치거나 업두 상태.",
+          "prompt": "nude, completely naked, no clothes, bare skin, fair skin, slim figure, slightly large bust, brown hair down or updo, natural pose"
         }
       ],
-      "backgrounds": [],
+      "backgrounds": [
+        {
+          "id": "6073e82f-2e70-46ad-93a5-10f2ff39678d",
+          "name": "부장 집 - 거실",
+          "description": "고급 아파트의 넓은 거실. 어두운 우드 톤 마루 바닥, 크림색 벽지, 진한 갈색 가죽 소파, 유리 탁자. 저녁 시간, 커튼이 쳐져 있고 은은한 간접조명만 켜져 있다. 차분하고 약간 음산한 분위기.",
+          "prompt": "luxury apartment living room, dark wood parquet floor, cream wallpaper, dark brown leather sofa, glass coffee table, evening, curtains drawn, dim indirect lighting, calm slightly somber atmosphere"
+        },
+        {
+          "id": "18480d21-f78a-4108-8e9f-c9f77cb42a65",
+          "name": "부장 집 - 침실",
+          "description": "부부 침실. 넓은 퀸사이즈 침대, 진한 네이비 침대보, 화이트 우드 침대 프레임. 화장대와 거울, 은은한 스탠드 조명. 침대 옆에는 작은 테이블과 램프. 조용하고 폐쇄적인 분위기.",
+          "prompt": "master bedroom, queen-size bed, dark navy bedspread, white wood bed frame, vanity table with mirror, soft stand lamp, bedside table with lamp, quiet enclosed atmosphere"
+        },
+        {
+          "id": "c2ecc027-1c38-4961-b960-69e6bf6e96c4",
+          "name": "사무실 - 부장실",
+          "description": "건설회사 부장실. 고급스러운 다크월넛 책상, 가죽 회전의자, 벽면 서류장, 형광등과 책상 스탠드 조명. 낮 시간, 약간 어수선한 서류 더미. 권위적이고 딱딱한 분위기.",
+          "prompt": "construction company department head office, dark walnut desk, leather swivel chair, wall filing cabinet, fluorescent ceiling light, desk lamp, daytime, scattered documents, authoritative rigid atmosphere"
+        },
+        {
+          "id": "c95df079-f868-4d40-a71f-63adf81c701a",
+          "name": "사무실 - 일반 사무실",
+          "description": "건설회사 일반 사무실. 여러 개의 회색 책상과 검은색 사무용 의자, 흰색 칸막이, 형광등 조명, 창문으로 들어오는 햇빛. 낮 시간, 분주한 업무 분위기.",
+          "prompt": "general office, multiple gray desks, black office chairs, white partitions, fluorescent lighting, sunlight from windows, daytime, busy work atmosphere"
+        },
+        {
+          "id": "187bab77-e105-48ae-9a59-af6559feda88",
+          "name": "야외 - 밤늦은 공원",
+          "description": "한적한 동네 공원, 늦은 밤. 어두운 아스팔트 산책로, 녹슨 철제 벤치, 큰 나무 그늘, 희미한 가로등 불빛. 주변은 조용하고 인적이 드물다. 은밀하고 약간 위험한 분위기.",
+          "prompt": "quiet neighborhood park, late night, dark asphalt path, rusty iron bench, large tree shade, dim streetlamp light, deserted, no people around, intimate slightly dangerous atmosphere"
+        }
+      ],
       "situations": [
         {
-          "id": "58a5ddde-daff-4a8d-9ff7-c871c23a5451",
-          "name": "자동차 뒷좌석에서의 구강 성교",
-          "description": "하지현이 자동차 뒷좌석에 앉아, 김대리가 옆에서 그녀의 성기를 구강으로 자극. 그녀는 머리를 뒤로 젖히고, 손으로 시트를 잡음. 상반신 샷, 측면.",
-          "prompt": "sitting in back seat, head tilted back, hands gripping seat, receiving oral sex from 1male beside her, upper body shot, side view, night, street lights, wearing beige knit cardigan, white cotton blouse",
-          "outfitId": "8255e06c-e2c9-4608-9f14-068e55974be1",
-          "backgroundId": null
+          "id": "38ebb243-b003-478a-91d3-a2f05b6c3071",
+          "name": "거실 소파에서의 첫 밀회",
+          "description": "김대리가 부장 집 거실로 몰래 들어와 하지현과 만난다. 하지현은 외출복을 입고 소파에 앉아 불안해하며 김대리를 기다린다. 김대리가 다가와 그녀의 손을 잡고 소파로 끌어당긴다. 하지현은 저항하지만 결국 김대리의 품에 안긴다. 은밀하고 긴장된 분위기.",
+          "prompt": "1boy, 1girl, ha jihyeon sitting on dark brown leather sofa, wearing beige trench coat and white blouse, looking up nervously, 1male standing in front, reaching out to grab her hand, pulling her up, full body shot, eye level, from side, dim indirect lighting, evening, intimate tense atmosphere",
+          "outfitId": "8a30ec82-96e8-4a28-8bcc-9c9c09a0901f",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
         },
         {
-          "id": "43f5eac3-2afb-499f-8578-4ebf00d3df03",
-          "name": "욕실 샤워기 아래에서의 정사",
-          "description": "하지현이 샤워기 아래 서서, 김대리가 뒤에서 삽입. 물이 몸에 흐르고, 그녀는 두 손을 벽에 짚음. 전신 샷, 뒤에서.",
-          "prompt": "standing under shower, water flowing, hands on wall, being penetrated from behind by 1male, full body shot, from behind, steam, soft lighting, wearing nude, no clothes",
-          "outfitId": "4ce7ab9a-00b8-4240-9c69-25435a49dbb0",
-          "backgroundId": null
+          "id": "deaf9621-4dc0-4d30-ab80-bad5c2a5659e",
+          "name": "침실 침대 위에서의 격정",
+          "description": "하지현이 속옷 차림으로 침대에 누워 있다. 김대리가 그 위에 올라타 그녀의 손목을 침대 위로 누른다. 하지현은 고개를 돌리며 부끄러워하지만 몸은 반응한다. 침대보가 구겨지고 스탠드 불빛이 두 사람을 비춘다.",
+          "prompt": "1boy, 1girl, ha jihyeon lying on queen-size bed, wearing black lace lingerie, wrists pinned above head by 1male, 1male on top, straddling her, looking down, ha jihyeon turning face away, blushing, dark navy bedspread wrinkled, full body shot, from above, dim stand lamp light, enclosed atmosphere",
+          "outfitId": "deb85b98-893d-4840-ae33-763a2d316144",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
         },
         {
-          "id": "33e9592d-3de5-48b8-8a25-ac530ab4e341",
-          "name": "거실 소파에서의 구강 성교",
-          "description": "하지현이 거실 소파에 앉아, 김대리가 무릎 꿇고 그녀의 성기를 구강으로 자극. 그녀는 한 손으로 그의 머리를 잡고, 다른 손으로 소파를 잡음. 상반신 샷, 위에서.",
-          "prompt": "sitting on grey sofa, one hand on partner's head, other hand on sofa, receiving oral sex from 1male kneeling, upper body shot, from above, warm lighting, evening, wearing black lace babydoll, matching thong",
-          "outfitId": "7b2a1d70-8a2c-40fa-81ef-79dbb99188fd",
-          "backgroundId": null
+          "id": "5ed91f7c-b7a1-4a52-bdb5-3aabc1b628ff",
+          "name": "부장실 책상 위에서의 은밀한 행위",
+          "description": "퇴근 후 텅 빈 부장실. 하지현이 외출복을 입고 다크월넛 책상 위에 엎드려 있다. 스커트가 허리까지 걷어 올려지고 김대리가 뒤에서 그녀의 허리를 잡는다. 하지현은 두 손으로 책상 가장자리를 움켜쥐고 고개를 숙인다. 형광등 불빛 아래 권위적인 공간이 음란하게 변한다.",
+          "prompt": "1boy, 1girl, ha jihyeon lying face down on dark walnut desk, wearing beige trench coat and white blouse, skirt hiked up to waist, 1male behind, hands on her hips, ha jihyeon gripping desk edge with both hands, head down, full body shot, from side, fluorescent ceiling light, scattered documents, authoritative atmosphere turned lewd",
+          "outfitId": "8a30ec82-96e8-4a28-8bcc-9c9c09a0901f",
+          "backgroundId": "c2ecc027-1c38-4961-b960-69e6bf6e96c4"
         },
         {
-          "id": "bb705ce9-0856-4f0c-ab23-2f973806a1e7",
-          "name": "회의실 테이블 아래 구강 성교",
-          "description": "하지현이 회의실 테이블 아래에 숨어 무릎 꿇고, 김대리의 성기를 입으로 봉사. 테이블 위에는 서류와 커피잔. 상반신 샷, 낮은 각도.",
-          "prompt": "kneeling under conference table, performing oral sex on 1male, documents and coffee cup on table above, upper body shot, low angle, fluorescent lighting, daytime, wearing white blouse, black pencil skirt",
-          "outfitId": "0186142b-1f53-4531-ad39-756d6bd13ed9",
-          "backgroundId": null
+          "id": "e939dd5c-1ffe-4fd5-ad01-7a4cb273d635",
+          "name": "공원 벤치에서의 야외 섹스",
+          "description": "늦은 밤 공원. 하지현이 평상복 차림으로 녹슨 철제 벤치에 앉아 있다. 김대리가 그녀의 위에 올라타 바지를 내린다. 하지현은 두 팔로 벤치 등받이를 잡고 하늘을 올려다본다. 가로등 불빛이 희미하게 비추고 주변은 캄캄하다.",
+          "prompt": "1boy, 1girl, ha jihyeon sitting on rusty iron bench, wearing ivory sweater and light blue jeans, 1male on top, pulling down her jeans, ha jihyeon gripping bench backrest with both arms, looking up at sky, full body shot, from front, dim streetlamp light, night, deserted park, intimate dangerous atmosphere",
+          "outfitId": "0ef498cf-72aa-47dc-8ea8-5ee6353bd307",
+          "backgroundId": "187bab77-e105-48ae-9a59-af6559feda88"
         },
         {
-          "id": "9efc4e9e-a2f9-4456-9eaa-ded23396cd71",
-          "name": "침실에서의 정사 6",
-          "description": "하지현이 침대에 엎드려 누워, 김대리가 그녀 위에 엎드려 삽입. 그녀는 베개를 껴안고, 그는 그녀의 등에 키스. 전신 샷, 위에서.",
-          "prompt": "lying face down on bed, 1male on top, penetrating, kissing her back, full body shot, from above, dim lighting, night, wearing pale pink silk pajama set",
-          "outfitId": "9978106a-1529-46bb-a392-943235932c9e",
-          "backgroundId": null
+          "id": "032bcaa7-db71-4bf2-bed7-256ff3eff0fe",
+          "name": "거실 바닥에서의 구강성교",
+          "description": "하지현이 무릎을 꿇고 거실 우드 마루 바닥에 앉아 있다. 김대리가 그녀 앞에 서서 바지를 내린다. 하지현은 두 손으로 그의 허벅지를 잡고 입을 벌린다. 간접조명이 그녀의 얼굴을 은은하게 비춘다. 커튼이 쳐져 있고 조용하다.",
+          "prompt": "1boy, 1girl, ha jihyeon kneeling on dark wood floor, wearing black lace lingerie, 1male standing in front, pants down, ha jihyeon holding his thighs with both hands, mouth open, upper body shot, from side, dim indirect lighting, evening, curtains drawn, intimate submissive atmosphere",
+          "outfitId": "deb85b98-893d-4840-ae33-763a2d316144",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
         },
         {
-          "id": "dbdcd3ad-8329-45a9-b20c-33aa5d05ff39",
-          "name": "엘리베이터에서의 정사 2",
-          "description": "하지현이 엘리베이터 바닥에 앉아, 김대리가 위에서 삽입. 그녀는 두 다리를 벌리고, 손으로 바닥을 짚음. 전신 샷, 위에서.",
-          "prompt": "sitting on elevator floor, legs spread, hands on floor, being penetrated by 1male on top, full body shot, from above, bright lighting, mirrored walls, wearing black lace bralette, black lace triangle panties",
-          "outfitId": "b9c5b9cf-75b0-4133-8b32-d9e51f0d627a",
-          "backgroundId": null
+          "id": "34c7608c-11f8-4653-b74c-d27d6a47488d",
+          "name": "침실 화장대 앞에서의 후배위",
+          "description": "하지현이 화장대 앞에 서서 두 손으로 화장대 가장자리를 잡고 상체를 숙인다. 김대리가 뒤에서 그녀의 허리를 잡고 있다. 거울에 비친 하지현의 얼굴은 붉게 물들어 있다. 스탠드 불빛이 그녀의 등을 비춘다.",
+          "prompt": "1boy, 1girl, ha jihyeon standing in front of vanity table, leaning forward, both hands gripping table edge, wearing black lace lingerie, 1male behind, hands on her hips, reflection in mirror shows her flushed face, full body shot, from behind, stand lamp light, quiet enclosed atmosphere",
+          "outfitId": "deb85b98-893d-4840-ae33-763a2d316144",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
         },
         {
-          "id": "cc870d16-75e3-4598-bd42-32d9df78a076",
-          "name": "옥상에서의 정사 2",
-          "description": "하지현이 옥상 바닥에 등을 대고 누워, 김대리가 위에서 삽입. 그녀는 두 팔을 벌리고, 별을 바라봄. 전신 샷, 위에서.",
-          "prompt": "lying on back on rooftop floor, arms spread, looking at stars, being penetrated by 1male on top, full body shot, from above, night, city view, wearing black yoga leggings, white tank top",
-          "outfitId": "ec919870-5e70-4d9a-8167-36974550f0ed",
-          "backgroundId": null
+          "id": "30c3119f-0224-40c0-b9bc-3f0bb2dfe920",
+          "name": "사무실 책상 아래에서의 비밀",
+          "description": "낮 시간 부장실. 하지현이 외출복을 입고 다크월넛 책상 아래에 숨어 있다. 김대리가 의자에 앉아 있고, 하지현은 그의 무릎 사이에 무릎을 꿇고 있다. 그녀의 손이 그의 바지 지퍼 쪽으로 움직인다. 형광등 불빛, 긴장된 표정.",
+          "prompt": "1boy, 1girl, ha jihyeon kneeling under dark walnut desk, wearing beige trench coat and white blouse, 1male sitting in leather swivel chair, ha jihyeon's hand reaching toward his zipper, upper body shot, from side, fluorescent light, daytime, nervous secretive atmosphere",
+          "outfitId": "8a30ec82-96e8-4a28-8bcc-9c9c09a0901f",
+          "backgroundId": "c2ecc027-1c38-4961-b960-69e6bf6e96c4"
         },
         {
-          "id": "b83c0118-9846-403d-aa37-c126c3cff098",
-          "name": "호텔 방에서의 정사 3",
-          "description": "하지현이 호텔 침대에 앉아, 김대리가 서서 그녀의 다리를 어깨에 올리고 삽입. 그녀는 두 손으로 침대를 잡음. 전신 샷, 정면.",
-          "prompt": "sitting on hotel bed, legs on partner's shoulders, being penetrated by 1male standing, hands gripping bed, full body shot, front view, dim lighting, night, wearing nude, no clothes",
-          "outfitId": "4ce7ab9a-00b8-4240-9c69-25435a49dbb0",
-          "backgroundId": null
+          "id": "6d50452c-bb24-4c7f-a442-31174ed1f588",
+          "name": "거실 소파에서의 69体位",
+          "description": "하지현과 김대리가 거실 소파 위에서 서로 반대 방향으로 누워 있다. 하지현이 위에 올라타 김대리의 허리 위에 엎드린다. 그녀의 얼굴은 그의 하반신 쪽을 향하고, 그녀의 다리는 그의 어깨 위에 걸쳐진다. 간접조명, 은밀한 분위기.",
+          "prompt": "1boy, 1girl, ha jihyeon lying on top of 1male on dark brown leather sofa, reverse direction, face near his groin, legs over his shoulders, wearing black lace lingerie, full body shot, from side, dim indirect lighting, evening, intimate atmosphere",
+          "outfitId": "deb85b98-893d-4840-ae33-763a2d316144",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
         },
         {
-          "id": "ccedd46c-4b09-44a9-9218-8d603024609f",
-          "name": "사무실 복도에서의 정사",
-          "description": "하지현이 사무실 복도 벽에 기대어 서서, 김대리가 앞에서 삽입. 그녀는 한 손으로 그의 넥타이를 잡고, 다른 손으로 입을 막음. 전신 샷, 측면.",
-          "prompt": "leaning against office corridor wall, one hand on partner's tie, other hand covering mouth, being penetrated by 1male in front, full body shot, side view, fluorescent lighting, daytime, wearing white blouse, black pencil skirt, black blazer",
-          "outfitId": "0186142b-1f53-4531-ad39-756d6bd13ed9",
-          "backgroundId": null
+          "id": "b6ed8616-56ff-489f-91a2-0f121166389f",
+          "name": "침실에서의 정상위",
+          "description": "하지현이 침대에 등을 대고 누워 있다. 김대리가 그녀 위에 올라타 두 팔로 상체를 지탱한다. 하지현의 다리는 그의 허리를 감싸고 있다. 그녀의 두 손은 침대보를 움켜쥐고 있다. 네이비 침대보, 스탠드 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon lying on back on queen-size bed, wearing black lace lingerie, 1male on top, supporting himself on arms, ha jihyeon's legs wrapped around his waist, hands gripping dark navy bedspread, full body shot, from front, stand lamp light, enclosed atmosphere",
+          "outfitId": "deb85b98-893d-4840-ae33-763a2d316144",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
         },
         {
-          "id": "df05cc3b-28e5-4f81-afa2-84c6d10a4571",
-          "name": "자동차 지붕 위의 정사",
-          "description": "하지현이 자동차 지붕 위에 엎드려, 김대리가 뒤에서 삽입. 그녀는 두 손으로 지붕을 잡고, 바람에 머리카락 흩날림. 전신 샷, 뒤에서.",
-          "prompt": "lying face down on car roof, hands gripping roof, hair blowing, being penetrated from behind by 1male, full body shot, from behind, night, street lights, wearing beige knit cardigan, white cotton blouse",
-          "outfitId": "8255e06c-e2c9-4608-9f14-068e55974be1",
-          "backgroundId": null
+          "id": "629be0a1-d968-43b1-ba54-8b92e87b6ef7",
+          "name": "공원 나무 그늘에서의 스탠딩 섹스",
+          "description": "밤 공원 큰 나무 그늘 아래. 하지현이 나무에 등을 기대고 서 있다. 평상복 차림으로 한쪽 다리를 들어 김대리의 허리에 감싼다. 김대리가 그녀의 엉덩이를 받쳐 들어 올린다. 하지현은 두 팔로 그의 목을 감싸고 얼굴을 가까이 댄다. 가로등 불빛이 희미하게 비춘다.",
+          "prompt": "1boy, 1girl, ha jihyeon leaning against large tree, wearing ivory sweater and light blue jeans, one leg wrapped around 1male's waist, 1male holding her hips, lifting her, ha jihyeon's arms around his neck, faces close, full body shot, from side, dim streetlamp light, night, deserted park, intimate atmosphere",
+          "outfitId": "0ef498cf-72aa-47dc-8ea8-5ee6353bd307",
+          "backgroundId": "187bab77-e105-48ae-9a59-af6559feda88"
         },
         {
-          "id": "42840fff-b13c-400e-ae8c-d61a4aba2db9",
-          "name": "욕실 변기 위의 정사",
-          "description": "하지현이 욕실 변기 위에 앉아, 김대리가 앞에서 삽입. 그녀는 두 다리를 그의 허리에 감고, 키스. 상반신 샷, 정면.",
-          "prompt": "sitting on toilet, legs wrapped around partner's waist, kissing, being penetrated, upper body shot, front view, soft lighting, wearing nude, no clothes",
-          "outfitId": "4ce7ab9a-00b8-4240-9c69-25435a49dbb0",
-          "backgroundId": null
+          "id": "699c785d-12ef-4db7-9137-d0cb543aa24a",
+          "name": "거실 카펫 위에서의 애무",
+          "description": "하지현이 알몸으로 거실 카펫 위에 등을 대고 누워 있다. 김대리가 그녀 옆에 앉아 한 손으로 그녀의 가슴을 쓰다듬고 다른 손으로 허벅지를 더듬는다. 하지현은 두 팔을 머리 위로 올리고 눈을 감고 신음한다. 간접조명, 은은한 분위기.",
+          "prompt": "1boy, 1girl, ha jihyeon lying on back on dark wood floor, completely naked, 1male sitting beside, one hand caressing her breast, other hand on her thigh, ha jihyeon arms above head, eyes closed, moaning, full body shot, from above, dim indirect lighting, evening, intimate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
         },
         {
-          "id": "60213d22-5463-42e4-8cfa-bd3be11612e5",
-          "name": "거실 소파에서의 정사 2",
-          "description": "하지현이 거실 소파에 엎드려, 김대리가 뒤에서 삽입. 그녀는 팔을 소파 등받이에 걸침. 전신 샷, 뒤에서.",
-          "prompt": "lying face down on sofa, arms over backrest, being penetrated from behind by 1male, full body shot, from behind, warm lighting, evening, wearing black lace babydoll, matching thong",
-          "outfitId": "7b2a1d70-8a2c-40fa-81ef-79dbb99188fd",
-          "backgroundId": null
+          "id": "ce28569c-8a7a-482b-92b2-0c3a8834f27b",
+          "name": "침실에서의 후배위 (개자세)",
+          "description": "하지현이 침대 위에 네 발로 엎드려 있다. 김대리가 그녀 뒤에서 무릎을 꿇고 그녀의 엉덩이를 잡는다. 하지현은 고개를 숙이고 두 팔로 침대를 짚는다. 네이비 침대보가 구겨지고 스탠드 불빛이 그녀의 등을 비춘다.",
+          "prompt": "1boy, 1girl, ha jihyeon on all fours on queen-size bed, completely naked, 1male kneeling behind, hands on her hips, ha jihyeon head down, arms supporting on bed, full body shot, from side, stand lamp light, dark navy bedspread wrinkled, enclosed atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
         },
         {
-          "id": "22061e6c-e45e-40ce-817e-07577cb89c2c",
-          "name": "호텔 방에서의 정사 4",
-          "description": "하지현이 호텔 침대에 옆으로 누워, 김대리가 뒤에서 스푼 자세로 삽입. 그녀는 그의 손을 잡고, 눈을 감음. 전신 샷, 측면.",
-          "prompt": "lying on side in hotel bed, spooning, holding hands, being penetrated from behind, eyes closed, full body shot, side view, dim lighting, night, wearing black lace bralette, black lace triangle panties",
-          "outfitId": "b9c5b9cf-75b0-4133-8b32-d9e51f0d627a",
-          "backgroundId": null
+          "id": "ac343eba-dc2b-4120-bf35-98c5c22ee884",
+          "name": "사무실 책상 위에서의 애무",
+          "description": "퇴근 후 부장실. 하지현이 외출복을 입고 다크월넛 책상 위에 앉아 있다. 김대리가 그녀 앞에 서서 블라우스 단추를 풀고 가슴을 드러낸다. 하지현은 두 손으로 책상 가장자리를 잡고 고개를 뒤로 젖힌다. 형광등 불빛, 긴장된 분위기.",
+          "prompt": "1boy, 1girl, ha jihyeon sitting on dark walnut desk, wearing beige trench coat, white blouse unbuttoned, breasts exposed, 1male standing in front, unbuttoning her blouse, ha jihyeon gripping desk edge, head tilted back, upper body shot, from front, fluorescent light, daytime, tense atmosphere",
+          "outfitId": "8a30ec82-96e8-4a28-8bcc-9c9c09a0901f",
+          "backgroundId": "c2ecc027-1c38-4961-b960-69e6bf6e96c4"
         },
         {
-          "id": "c63f8359-f21f-47e9-b5e7-f397e395abab",
-          "name": "유사 성행위 1: 스트립쇼",
-          "description": "하지현이 침실에서 천천히 옷을 벗으며, 블라우스 단추를 풀고 스커트를 내림. 그녀는 관객(김대리)을 바라보며 유혹적인 미소. 전신 샷, 정면.",
-          "prompt": "slowly undressing in bedroom, unbuttoning blouse, pushing down skirt, looking at viewer with seductive smile, full body shot, front view, dim lighting, night, wearing white blouse, black pencil skirt, black blazer",
-          "outfitId": "0186142b-1f53-4531-ad39-756d6bd13ed9",
-          "backgroundId": null
+          "id": "22cbfd60-aa6b-4756-8890-052f96bbd837",
+          "name": "거실 소파에서의 핸드잡",
+          "description": "하지현이 거실 소파에 앉아 있다. 김대리가 그녀 옆에 앉아 있고, 하지현의 손이 그의 바지 위를 더듬는다. 그녀는 고개를 숙이고 손을 움직이며 부끄러운 표정을 짓는다. 간접조명, 은밀한 분위기.",
+          "prompt": "1boy, 1girl, ha jihyeon sitting on dark brown leather sofa, wearing black lace lingerie, 1male sitting beside, ha jihyeon's hand on his crotch, moving hand, looking down with shy expression, upper body shot, from side, dim indirect lighting, evening, intimate atmosphere",
+          "outfitId": "deb85b98-893d-4840-ae33-763a2d316144",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
         },
         {
-          "id": "196b6a5c-24e0-4e4f-a7f4-de65510ae253",
-          "name": "유사 성행위 2: 침대 위에서의 키스",
-          "description": "하지현이 침대에 누워 김대리와 열정적으로 키스. 그녀의 손은 그의 머리카락을 감싸고, 다리는 엉킴. 상반신 샷, 측면.",
-          "prompt": "lying on bed, passionately kissing 1male, hands in his hair, legs intertwined, upper body shot, side view, dim lighting, night, wearing pale pink silk pajama set",
-          "outfitId": "9978106a-1529-46bb-a392-943235932c9e",
-          "backgroundId": null
+          "id": "0c0872cd-80b0-4795-8def-3a4028384855",
+          "name": "침실 바닥에서의 구강성교",
+          "description": "하지현이 침실 바닥에 무릎을 꿇고 앉아 있다. 김대리가 그녀 앞에 서 있다. 하지현은 두 손으로 그의 엉덩이를 잡고 입을 벌려 그의 성기를 받아들인다. 스탠드 불빛이 그녀의 옆모습을 비춘다. 조용하고 폐쇄적인 분위기.",
+          "prompt": "1boy, 1girl, ha jihyeon kneeling on dark wood floor, completely naked, 1male standing in front, ha jihyeon holding his hips with both hands, mouth open, performing oral, upper body shot, from side, stand lamp light, quiet enclosed atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
         },
         {
-          "id": "de6355d0-86a1-460a-b3f0-cf355d01943b",
-          "name": "유사 성행위 3: 거실에서의 핑거링",
-          "description": "하지현이 거실 소파에 앉아, 김대리가 그녀의 팬티 안으로 손을 넣어 클리토리스를 자극. 그녀는 머리를 뒤로 젖히고 신음. 상반신 샷, 정면.",
-          "prompt": "sitting on grey sofa, 1male's hand inside her panties, fingering her clitoris, head tilted back, moaning, upper body shot, front view, warm lighting, evening, wearing beige knit cardigan, white cotton blouse, dark blue skinny jeans",
-          "outfitId": "8255e06c-e2c9-4608-9f14-068e55974be1",
-          "backgroundId": null
+          "id": "84b8051f-1511-4b08-bd1c-9651acec9d79",
+          "name": "공원 벤치에서의 핑거링",
+          "description": "늦은 밤 공원 벤치. 하지현이 평상복을 입고 벤치에 앉아 있다. 김대리가 그녀 옆에 앉아 한 손을 그녀의 스커트 안으로 넣는다. 하지현은 두 손으로 벤치를 잡고 고개를 뒤로 젖히며 숨을 헐떡인다. 가로등 불빛, 은밀한 분위기.",
+          "prompt": "1boy, 1girl, ha jihyeon sitting on rusty iron bench, wearing ivory sweater and light blue jeans, 1male sitting beside, hand inside her jeans, ha jihyeon gripping bench, head tilted back, gasping, upper body shot, from front, dim streetlamp light, night, intimate atmosphere",
+          "outfitId": "0ef498cf-72aa-47dc-8ea8-5ee6353bd307",
+          "backgroundId": "187bab77-e105-48ae-9a59-af6559feda88"
         },
         {
-          "id": "be6a20da-510a-4128-b47c-afde241d5424",
-          "name": "유사 성행위 4: 호텔 방에서의 애무",
-          "description": "하지현이 호텔 침대에 엎드려, 김대리가 그녀의 등과 엉덩이를 마사지하며 점점 내려감. 그녀는 눈을 감고 편안한 표정. 전신 샷, 위에서.",
-          "prompt": "lying face down on hotel bed, 1male massaging her back and buttocks, eyes closed, relaxed expression, full body shot, from above, dim lighting, night, wearing nude, no clothes",
-          "outfitId": "4ce7ab9a-00b8-4240-9c69-25435a49dbb0",
-          "backgroundId": null
+          "id": "b0faec13-058c-43dd-bca1-b0adb28f7e09",
+          "name": "거실에서의 스탠딩 섹스 (벽면)",
+          "description": "하지현이 거실 벽에 등을 기대고 서 있다. 알몸으로 한쪽 다리를 들어 김대리의 허리에 감싼다. 김대리가 그녀의 엉덩이를 받쳐 들고 벽에 밀착시킨다. 하지현은 두 팔로 그의 어깨를 잡고 얼굴을 가까이 댄다. 간접조명, 은밀한 분위기.",
+          "prompt": "1boy, 1girl, ha jihyeon leaning against cream wallpaper wall, completely naked, one leg wrapped around 1male's waist, 1male holding her hips, pressing her against wall, ha jihyeon's arms on his shoulders, faces close, full body shot, from side, dim indirect lighting, evening, intimate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
         },
         {
-          "id": "d90483f2-97f5-40fc-98d3-f3df326a7099",
-          "name": "유사 성행위 5: 사무실 책상 위에서의 노출",
-          "description": "하지현이 사무실 책상 위에 앉아, 스커트를 허리까지 걷어 올리고 다리를 벌려 팬티를 드러냄. 그녀는 손가락으로 입술을 만지며 유혹. 상반신 샷, 정면.",
-          "prompt": "sitting on office desk, skirt hiked up to waist, legs spread, showing panties, finger on lips, seductive look, upper body shot, front view, fluorescent lighting, daytime, wearing white blouse, black pencil skirt",
-          "outfitId": "0186142b-1f53-4531-ad39-756d6bd13ed9",
-          "backgroundId": null
+          "id": "59131045-5c98-4379-ad58-74c03358c5f7",
+          "name": "침실에서의 나신 포옹",
+          "description": "하지현과 김대리가 침대 위에 알몸으로 포옹하며 누워 있다. 하지현이 그의 가슴에 얼굴을 묻고 두 팔로 그의 허리를 감싼다. 김대리가 그녀의 등을 쓰다듬는다. 네이비 침대보, 스탠드 불빛, 조용하고 다정한 분위기.",
+          "prompt": "1boy, 1girl, ha jihyeon lying on queen-size bed, completely naked, hugging 1male, face buried in his chest, arms around his waist, 1male caressing her back, full body shot, from side, stand lamp light, dark navy bedspread, quiet affectionate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
         },
         {
-          "id": "b6eb56f2-e606-4ef2-8e50-ad0d8aac8b3b",
-          "name": "유사 성행위 6: 자동차 안에서의 손길",
-          "description": "하지현이 자동차 조수석에 앉아, 김대리가 그녀의 가슴을 만지고 그녀는 그의 손을 잡음. 그녀는 입술을 깨물며 흥분한 표정. 상반신 샷, 측면.",
-          "prompt": "sitting in passenger seat, 1male touching her breast, she holds his hand, biting lip, excited expression, upper body shot, side view, night, street lights, wearing beige knit cardigan, white cotton blouse",
-          "outfitId": "8255e06c-e2c9-4608-9f14-068e55974be1",
-          "backgroundId": null
+          "id": "2e0c31eb-4544-43de-87d1-9c2a2d404c51",
+          "name": "사무실 책상 아래에서의 구강성교",
+          "description": "낮 시간 부장실. 하지현이 외출복을 입고 다크월넛 책상 아래에 무릎을 꿇고 있다. 김대리가 의자에 앉아 있고, 하지현이 그의 바지를 내리고 입을 벌린다. 그녀의 두 손은 그의 무릎을 잡고 있다. 형광등 불빛, 긴장된 분위기.",
+          "prompt": "1boy, 1girl, ha jihyeon kneeling under dark walnut desk, wearing beige trench coat and white blouse, 1male sitting in leather swivel chair, pants down, ha jihyeon mouth open, hands on his knees, upper body shot, from side, fluorescent light, daytime, secretive atmosphere",
+          "outfitId": "8a30ec82-96e8-4a28-8bcc-9c9c09a0901f",
+          "backgroundId": "c2ecc027-1c38-4961-b960-69e6bf6e96c4"
         },
         {
-          "id": "9e727867-c54a-4843-8483-a044f8f6c9aa",
-          "name": "유사 성행위 7: 욕실에서의 바디워시",
-          "description": "하지현이 욕실에서 샤워 중, 김대리가 뒤에서 그녀의 몸에 바디워시를 바르며 가슴과 엉덩이를 씻어줌. 그녀는 눈을 감고 몸을 맡김. 전신 샷, 뒤에서.",
-          "prompt": "showering in bathroom, 1male behind her applying body wash on her breasts and buttocks, eyes closed, relaxed, full body shot, from behind, steam, soft lighting, wearing nude, no clothes",
-          "outfitId": "4ce7ab9a-00b8-4240-9c69-25435a49dbb0",
-          "backgroundId": null
+          "id": "0050eca0-3be5-4ac0-99e1-9badaee58dda",
+          "name": "거실 소파에서의 역상위",
+          "description": "하지현이 거실 소파에 앉아 있는 김대리의 위에 올라탄다. 그녀는 속옷 차림으로 그의 허리에 다리를 걸치고 상체를 숙여 그의 가슴에 입을 맞춘다. 김대리는 그녀의 엉덩이를 두 손으로 잡는다. 간접조명, 은밀한 분위기.",
+          "prompt": "1boy, 1girl, ha jihyeon straddling 1male on dark brown leather sofa, wearing black lace lingerie, legs around his waist, leaning forward to kiss his chest, 1male holding her hips, full body shot, from front, dim indirect lighting, evening, intimate atmosphere",
+          "outfitId": "deb85b98-893d-4840-ae33-763a2d316144",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
         },
         {
-          "id": "58f757c2-2f23-44bd-b270-c3db0005c175",
-          "name": "유사 성행위 8: 거실에서의 란제리 자랑",
-          "description": "하지현이 거실에 서서 검은색 레이스 란제리를 입고 포즈를 취하며 김대리를 바라봄. 한 손은 허리에, 다른 손은 머리카락을 만짐. 전신 샷, 정면.",
-          "prompt": "standing in living room, wearing black lace babydoll and thong, posing with hand on hip, other hand touching hair, looking at viewer, full body shot, front view, warm lighting, evening",
-          "outfitId": "7b2a1d70-8a2c-40fa-81ef-79dbb99188fd",
-          "backgroundId": null
+          "id": "7aa72dbd-4897-498d-98cd-f6960d4c1a16",
+          "name": "침실에서의 나신 애무 (등을 대고)",
+          "description": "하지현이 침대에 등을 대고 누워 있다. 김대리가 그녀 옆에 누워 한 손으로 그녀의 가슴을 만지고 다른 손으로 허벅지 안쪽을 쓰다듬는다. 하지현은 두 손을 머리 위로 올리고 눈을 감고 있다. 스탠드 불빛, 조용한 분위기.",
+          "prompt": "1boy, 1girl, ha jihyeon lying on back on queen-size bed, completely naked, 1male lying beside, one hand on her breast, other hand on inner thigh, ha jihyeon arms above head, eyes closed, full body shot, from above, stand lamp light, quiet atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
         },
         {
-          "id": "bfca70c6-3ccd-440e-9b9d-90e182282fbc",
-          "name": "유사 성행위 9: 엘리베이터에서의 몸 접촉",
-          "description": "하지현이 엘리베이터 안에서 김대리와 마주 서서, 그의 몸에 밀착되어 가슴이 그의 가슴에 닿음. 그녀는 그의 넥타이를 잡고 위를 올려다봄. 상반신 샷, 정면.",
-          "prompt": "standing close to 1male in elevator, chest pressed against his, holding his tie, looking up, upper body shot, front view, bright lighting, mirrored walls, wearing navy blue knit sweater, beige trousers",
-          "outfitId": "bdf5ffcc-7a57-4dd4-94e3-0c1a3a041d9a",
-          "backgroundId": null
+          "id": "9d1ddb7b-5fc5-4ff2-b5d0-ffa0773a881a",
+          "name": "공원에서의 키스와 애무",
+          "description": "밤 공원 벤치. 하지현이 평상복을 입고 벤치에 앉아 있다. 김대리가 그녀 옆에 앉아 그녀의 얼굴을 두 손으로 감싸고 키스한다. 하지현의 손은 그의 가슴을 더듬는다. 가로등 불빛, 은밀하고 로맨틱한 분위기.",
+          "prompt": "1boy, 1girl, ha jihyeon sitting on rusty iron bench, wearing ivory sweater and light blue jeans, 1male sitting beside, holding her face, kissing, ha jihyeon's hand on his chest, upper body shot, from side, dim streetlamp light, night, intimate romantic atmosphere",
+          "outfitId": "0ef498cf-72aa-47dc-8ea8-5ee6353bd307",
+          "backgroundId": "187bab77-e105-48ae-9a59-af6559feda88"
         },
         {
-          "id": "1097343c-3294-4a66-9e4d-35f9cf9c3f4f",
-          "name": "유사 성행위 10: 옥상에서의 백허그",
-          "description": "하지현이 옥상 난간 앞에 서서, 김대리가 뒤에서 그녀를 껴안고 목에 키스. 그녀는 눈을 감고 그의 손을 잡음. 전신 샷, 뒤에서.",
-          "prompt": "standing at rooftop railing, 1male hugging her from behind, kissing her neck, eyes closed, holding his hands, full body shot, from behind, night, city view, wearing black yoga leggings, white tank top",
-          "outfitId": "ec919870-5e70-4d9a-8167-36974550f0ed",
-          "backgroundId": null
+          "id": "0ed0db20-fdf8-4771-92eb-9367aaf4dee6",
+          "name": "거실에서의 도그스타일",
+          "description": "하지현이 거실 소파 팔걸이에 상체를 기대고 네 발로 서 있다. 김대리가 뒤에서 그녀의 엉덩이를 잡고 있다. 하지현은 고개를 숙이고 두 손으로 소파를 움켜쥔다. 간접조명, 은밀한 분위기.",
+          "prompt": "1boy, 1girl, ha jihyeon leaning over dark brown leather sofa armrest, on all fours, wearing black lace lingerie, 1male behind, hands on her hips, ha jihyeon head down, gripping sofa, full body shot, from side, dim indirect lighting, evening, intimate atmosphere",
+          "outfitId": "deb85b98-893d-4840-ae33-763a2d316144",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
         },
         {
-          "id": "2465d8e3-4148-408e-91b4-28432cce56ff",
-          "name": "유사 성행위 11: 침실에서의 페티시 플레이",
-          "description": "하지현이 침대에 무릎 꿇고, 손목에 실크 스카프로 묶인 채 김대리를 바라봄. 그녀는 입술을 깨물며 복종적인 표정. 상반신 샷, 정면.",
-          "prompt": "kneeling on bed, wrists tied with silk scarf, looking at 1male, biting lip, submissive expression, upper body shot, front view, dim lighting, night, wearing black lace bralette, black lace triangle panties",
-          "outfitId": "b9c5b9cf-75b0-4133-8b32-d9e51f0d627a",
-          "backgroundId": null
+          "id": "03d6ba7c-5611-4f73-ad59-698bab5ec3bd",
+          "name": "침실에서의 나신 키스",
+          "description": "하지현과 김대리가 침대 위에 알몸으로 마주보며 누워 있다. 하지현이 그의 얼굴에 손을 대고 키스한다. 그녀의 다리는 그의 다리와 엉켜 있다. 네이비 침대보, 스탠드 불빛, 조용하고 다정한 분위기.",
+          "prompt": "1boy, 1girl, ha jihyeon lying on queen-size bed, completely naked, facing 1male, hand on his face, kissing, legs entangled, full body shot, from side, stand lamp light, dark navy bedspread, quiet affectionate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
         },
         {
-          "id": "e5058969-1e73-42d4-b9cb-3edb2f08838b",
-          "name": "유사 성행위 12: 호텔 방에서의 마사지",
-          "description": "하지현이 호텔 침대에 엎드려, 김대리가 그녀의 등에 오일을 바르고 마사지. 그녀는 눈을 감고 편안한 표정. 전신 샷, 위에서.",
-          "prompt": "lying face down on hotel bed, 1male applying oil on her back, massaging, eyes closed, relaxed, full body shot, from above, dim lighting, night, wearing nude, no clothes",
-          "outfitId": "4ce7ab9a-00b8-4240-9c69-25435a49dbb0",
-          "backgroundId": null
+          "id": "a6d9a5f3-12c6-4d7e-8233-a10606d0e2f1",
+          "name": "사무실 책상 위에서의 후배위",
+          "description": "퇴근 후 부장실. 하지현이 외출복을 입고 다크월넛 책상 위에 엎드려 있다. 스커트가 허리까지 올라가고 김대리가 뒤에서 그녀의 허리를 잡는다. 하지현은 두 팔로 책상을 짚고 고개를 숙인다. 형광등 불빛, 권위적인 공간.",
+          "prompt": "1boy, 1girl, ha jihyeon lying face down on dark walnut desk, wearing beige trench coat and white blouse, skirt hiked up, 1male behind, hands on her hips, ha jihyeon arms supporting on desk, head down, full body shot, from side, fluorescent light, authoritative atmosphere",
+          "outfitId": "8a30ec82-96e8-4a28-8bcc-9c9c09a0901f",
+          "backgroundId": "c2ecc027-1c38-4961-b960-69e6bf6e96c4"
         },
         {
-          "id": "57a5db73-c7f0-4497-bc44-4645dc09e3d9",
-          "name": "유사 성행위 13: 사무실에서의 치마 속 손",
-          "description": "하지현이 사무실 의자에 앉아, 김대리가 그녀의 치마 속으로 손을 넣어 팬티를 만짐. 그녀는 놀란 표정으로 주변을 살핌. 상반신 샷, 측면.",
-          "prompt": "sitting on office chair, 1male's hand under her skirt, touching her panties, surprised look, glancing around, upper body shot, side view, fluorescent lighting, daytime, wearing white blouse, black pencil skirt",
-          "outfitId": "0186142b-1f53-4531-ad39-756d6bd13ed9",
-          "backgroundId": null
+          "id": "5d6c684f-d00e-41b9-a2fd-970f675c445c",
+          "name": "거실 바닥에서의 나신 애무",
+          "description": "하지현이 알몸으로 거실 바닥에 등을 대고 누워 있다. 김대리가 그녀 옆에 앉아 한 손으로 그녀의 배를 쓰다듬고 다른 손으로 그녀의 손을 잡는다. 하지현은 눈을 뜨고 그를 바라본다. 간접조명, 조용하고 다정한 분위기.",
+          "prompt": "1boy, 1girl, ha jihyeon lying on back on dark wood floor, completely naked, 1male sitting beside, one hand caressing her belly, other hand holding hers, ha jihyeon looking at him, eyes open, full body shot, from above, dim indirect lighting, evening, quiet affectionate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
         },
         {
-          "id": "51bee510-1e6e-45b4-97f3-dc9adf8470a3",
-          "name": "유사 성행위 14: 자동차 안에서의 키스와 애무",
-          "description": "하지현이 자동차 뒷좌석에 앉아 김대리와 깊은 키스, 그의 손이 그녀의 블라우스 안으로 들어가 가슴을 만짐. 그녀는 그의 손을 잡고 신음. 상반신 샷, 정면.",
-          "prompt": "sitting in back seat, deep kissing 1male, his hand inside her blouse touching her breast, she holds his hand, moaning, upper body shot, front view, night, street lights, wearing beige knit cardigan, white cotton blouse",
-          "outfitId": "8255e06c-e2c9-4608-9f14-068e55974be1",
-          "backgroundId": null
+          "id": "4b0a4d6b-1b86-4608-b6a9-7139c770ea76",
+          "name": "침실에서의 정상위 (다리 벌림)",
+          "description": "하지현이 침대에 등을 대고 누워 두 다리를 벌리고 있다. 김대리가 그녀 사이에 무릎을 꿇고 상체를 숙여 그녀의 가슴에 입을 맞춘다. 하지현은 두 손으로 그의 머리를 감싼다. 스탠드 불빛, 조용한 분위기.",
+          "prompt": "1boy, 1girl, ha jihyeon lying on back on queen-size bed, legs spread, completely naked, 1male kneeling between her legs, leaning down to kiss her breast, ha jihyeon holding his head with both hands, full body shot, from front, stand lamp light, quiet atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
         },
         {
-          "id": "040da6db-9997-4726-9fa5-5b3c1e7c1f77",
-          "name": "유사 성행위 15: 욕실 거울 앞에서의 나체",
-          "description": "하지현이 욕실 거울 앞에 서서, 알몸으로 자신의 몸을 바라보며 손으로 가슴과 엉덩이를 만짐. 그녀는 거울 속 자신과 눈을 마주침. 전신 샷, 정면(거울).",
-          "prompt": "standing naked in front of bathroom mirror, touching her own breasts and buttocks, looking at her reflection, full body shot, front view via mirror, soft lighting, steam, wearing nude, no clothes",
-          "outfitId": "4ce7ab9a-00b8-4240-9c69-25435a49dbb0",
-          "backgroundId": null
+          "id": "2de911c0-06d9-441a-90e4-22ce07fe5fb8",
+          "name": "공원에서의 스탠딩 키스",
+          "description": "밤 공원 산책로. 하지현이 평상복을 입고 서 있다. 김대리가 그녀 앞에 서서 두 손으로 그녀의 허리를 잡고 키스한다. 하지현은 두 팔로 그의 목을 감싸고 키스에 응한다. 가로등 불빛, 은밀하고 로맨틱한 분위기.",
+          "prompt": "1boy, 1girl, ha jihyeon standing on dark asphalt path, wearing ivory sweater and light blue jeans, 1male in front, holding her waist, kissing, ha jihyeon arms around his neck, kissing back, full body shot, from side, dim streetlamp light, night, intimate romantic atmosphere",
+          "outfitId": "0ef498cf-72aa-47dc-8ea8-5ee6353bd307",
+          "backgroundId": "187bab77-e105-48ae-9a59-af6559feda88"
         },
         {
-          "id": "83f3cd8b-804b-4251-aa6b-c02364840b07",
-          "name": "유사 성행위 16: 거실 소파에서의 펠라티오 준비",
-          "description": "하지현이 거실 소파에 무릎 꿇고, 김대리의 바지 지퍼를 내리며 위를 올려다봄. 그녀는 혀로 입술을 핥음. 상반신 샷, 낮은 각도.",
-          "prompt": "kneeling on living room sofa, unzipping 1male's pants, looking up, licking lips, upper body shot, low angle, warm lighting, evening, wearing black lace babydoll, matching thong",
-          "outfitId": "7b2a1d70-8a2c-40fa-81ef-79dbb99188fd",
-          "backgroundId": null
+          "id": "b9d51edb-e236-4cab-8711-6ef9bf41b71c",
+          "name": "거실 소파에서의 나신 포옹",
+          "description": "하지현이 알몸으로 거실 소파에 앉아 있다. 김대리가 그녀 옆에 앉아 그녀를 두 팔로 감싸 안는다. 하지현은 그의 가슴에 기대어 눈을 감는다. 간접조명, 조용하고 다정한 분위기.",
+          "prompt": "1boy, 1girl, ha jihyeon sitting on dark brown leather sofa, completely naked, 1male sitting beside, hugging her with both arms, ha jihyeon leaning against his chest, eyes closed, upper body shot, from side, dim indirect lighting, evening, quiet affectionate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
         },
         {
-          "id": "8ebda65d-2798-4b7d-a899-daf222b08dda",
-          "name": "유사 성행위 17: 호텔 로비에서의 유혹",
-          "description": "하지현이 호텔 로비 소파에 앉아, 다리를 꼬고 김대리를 바라보며 손가락으로 자신의 다리를 타고 올라감. 그녀는 미소. 상반신 샷, 정면.",
-          "prompt": "sitting on lobby sofa, legs crossed, tracing finger up her own thigh, looking at 1male, smiling, upper body shot, front view, chandelier lighting, evening, wearing navy blue knit sweater, beige trousers",
-          "outfitId": "bdf5ffcc-7a57-4dd4-94e3-0c1a3a041d9a",
-          "backgroundId": null
+          "id": "bdfd0a90-3080-4366-8c76-9a91fd640012",
+          "name": "침실에서의 나신 애무 (옆으로 누워)",
+          "description": "하지현과 김대리가 침대 위에 옆으로 누워 있다. 하지현이 그의 품에 안겨 있고, 김대리가 한 손으로 그녀의 가슴을 만지며 다른 손으로 허리를 감싼다. 하지현은 고개를 돌려 그를 바라본다. 스탠드 불빛, 조용한 분위기.",
+          "prompt": "1boy, 1girl, ha jihyeon lying on side on queen-size bed, completely naked, in 1male's arms, 1male's hand on her breast, other arm around her waist, ha jihyeon turning head to look at him, full body shot, from side, stand lamp light, quiet atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
         },
         {
-          "id": "3b120c6a-3327-497f-a7d1-a57d221692b5",
-          "name": "유사 성행위 18: 옥상에서의 스트리핑",
-          "description": "하지현이 옥상에서 천천히 운동복 상의를 벗어 브라를 드러내고, 바람에 머리카락 흩날림. 그녀는 김대리를 바라보며 유혹. 전신 샷, 정면.",
-          "prompt": "slowly removing tank top on rooftop, revealing bra, hair blowing in wind, looking at 1male seductively, full body shot, front view, night, city view, wearing black yoga leggings, white tank top",
-          "outfitId": "ec919870-5e70-4d9a-8167-36974550f0ed",
-          "backgroundId": null
+          "id": "b1aece0f-44be-4e87-8beb-070471e800b2",
+          "name": "사무실 책상 위에서의 핑거링",
+          "description": "퇴근 후 부장실. 하지현이 외출복을 입고 다크월넛 책상 위에 앉아 있다. 스커트가 허벅지까지 올라가고 김대리가 그녀 앞에 서서 손을 스커트 안으로 넣는다. 하지현은 두 손으로 책상 가장자리를 잡고 고개를 뒤로 젖힌다. 형광등 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon sitting on dark walnut desk, wearing beige trench coat and white blouse, skirt hiked up, 1male standing in front, hand inside her skirt, ha jihyeon gripping desk edge, head tilted back, upper body shot, from front, fluorescent light, tense atmosphere",
+          "outfitId": "8a30ec82-96e8-4a28-8bcc-9c9c09a0901f",
+          "backgroundId": "c2ecc027-1c38-4961-b960-69e6bf6e96c4"
         },
         {
-          "id": "7a101a48-af3d-47e1-8d7e-0c2b7e241bd2",
-          "name": "유사 성행위 19: 침실에서의 바운드 플레이",
-          "description": "하지현이 침대에 엎드려, 손목과 발목이 침대 기둥에 묶임. 그녀는 뒤돌아 김대리를 바라보며 기대와 두려움 섞인 표정. 전신 샷, 위에서.",
-          "prompt": "lying face down on bed, wrists and ankles tied to bedposts, looking back at 1male, mixed expression of anticipation and fear, full body shot, from above, dim lighting, night, wearing pale pink silk pajama set",
-          "outfitId": "9978106a-1529-46bb-a392-943235932c9e",
-          "backgroundId": null
+          "id": "a628f740-ad23-4956-9aaf-6e2286aebe9b",
+          "name": "거실에서의 나신 스탠딩 섹스",
+          "description": "하지현이 거실 벽에 등을 기대고 서 있다. 알몸으로 두 다리를 들어 김대리의 허리에 감싼다. 김대리가 그녀의 엉덩이를 받쳐 들고 벽에 밀착시킨다. 하지현은 두 팔로 그의 어깨를 잡고 얼굴을 가까이 댄다. 간접조명.",
+          "prompt": "1boy, 1girl, ha jihyeon leaning against cream wallpaper wall, completely naked, both legs wrapped around 1male's waist, 1male holding her hips, pressing her against wall, ha jihyeon's arms on his shoulders, faces close, full body shot, from side, dim indirect lighting, evening, intimate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
         },
         {
-          "id": "a2a10219-63dd-41ca-a734-bf50d694861e",
-          "name": "유사 성행위 20: 회의실 테이블 위의 노출",
-          "description": "하지현이 회의실 테이블 위에 앉아, 블라우스 단추를 모두 풀고 브라를 드러냄. 그녀는 다리를 벌리고 손으로 가슴을 만짐. 상반신 샷, 정면.",
-          "prompt": "sitting on conference table, blouse fully unbuttoned, bra exposed, legs spread, touching her own breast, upper body shot, front view, fluorescent lighting, daytime, wearing white blouse, black pencil skirt",
-          "outfitId": "0186142b-1f53-4531-ad39-756d6bd13ed9",
-          "backgroundId": null
+          "id": "6e8e6bd0-8770-4372-a4c2-987e7d4e8f34",
+          "name": "침실에서의 도그스타일 (나신)",
+          "description": "하지현이 침대 위에 네 발로 엎드려 있다. 알몸으로 고개를 숙이고 두 팔로 침대를 짚는다. 김대리가 그녀 뒤에서 무릎을 꿇고 그녀의 엉덩이를 잡는다. 네이비 침대보, 스탠드 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon on all fours on queen-size bed, completely naked, head down, arms supporting on bed, 1male kneeling behind, hands on her hips, full body shot, from side, stand lamp light, dark navy bedspread, enclosed atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
         },
         {
-          "id": "afc56905-0691-4087-a264-606621a303c0",
-          "name": "일상 1: 아침 커피",
-          "description": "하지현이 주방에서 아침 커피를 내리며 창밖을 바라봄. 그녀는 잠옷 차림, 졸린 표정. 전신 샷, 측면.",
-          "prompt": "standing in kitchen, making morning coffee, looking out window, sleepy expression, wearing pale pink silk pajama set, full body shot, side view, morning sunlight, cozy atmosphere",
-          "outfitId": "9978106a-1529-46bb-a392-943235932c9e",
-          "backgroundId": null
+          "id": "6e9aed22-afa3-46d9-b1a6-72059e1adf27",
+          "name": "공원 벤치에서의 나신 애무",
+          "description": "늦은 밤 공원 벤치. 하지현이 알몸으로 벤치에 등을 대고 누워 있다. 김대리가 그녀 옆에 앉아 한 손으로 그녀의 가슴을 만지고 다른 손으로 허벅지를 쓰다듬는다. 하지현은 두 손을 머리 위로 올리고 눈을 감는다. 가로등 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon lying on back on rusty iron bench, completely naked, 1male sitting beside, one hand on her breast, other hand on her thigh, ha jihyeon arms above head, eyes closed, full body shot, from above, dim streetlamp light, night, intimate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "187bab77-e105-48ae-9a59-af6559feda88"
         },
         {
-          "id": "8e6617df-aa88-4ef2-9aae-f7f6c23d8436",
-          "name": "일상 2: 출근 준비",
-          "description": "하지현이 침실 거울 앞에서 사무복을 입고 넥타이를 매는 모습. 그녀는 거울 속 자신을 바라보며 미소. 상반신 샷, 정면.",
-          "prompt": "standing in front of bedroom mirror, putting on blazer, adjusting tie, smiling at reflection, upper body shot, front view, morning light, wearing white blouse, black pencil skirt, black blazer",
-          "outfitId": "0186142b-1f53-4531-ad39-756d6bd13ed9",
-          "backgroundId": null
+          "id": "a2f96289-0a67-441f-9d23-197d8c3de1f8",
+          "name": "거실 소파에서의 나신 69",
+          "description": "하지현과 김대리가 거실 소파 위에서 서로 반대 방향으로 누워 있다. 하지현이 위에 올라타 김대리의 허리 위에 엎드린다. 그녀의 얼굴은 그의 하반신 쪽을 향하고, 그녀의 다리는 그의 어깨 위에 걸쳐진다. 간접조명.",
+          "prompt": "1boy, 1girl, ha jihyeon lying on top of 1male on dark brown leather sofa, reverse direction, completely naked, face near his groin, legs over his shoulders, full body shot, from side, dim indirect lighting, evening, intimate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
         },
         {
-          "id": "75cb5d6c-6f40-4a8f-8154-88490d9666d5",
-          "name": "일상 3: 공원 산책",
-          "description": "하지현이 한강 공원 벤치에 앉아 책을 읽고 있음. 그녀는 평상복 차림, 바람에 머리카락 살랑임. 전신 샷, 측면.",
-          "prompt": "sitting on park bench, reading a book, wearing beige knit cardigan, white cotton blouse, dark blue skinny jeans, hair blowing in breeze, full body shot, side view, evening sunset, quiet atmosphere",
-          "outfitId": "8255e06c-e2c9-4608-9f14-068e55974be1",
-          "backgroundId": null
+          "id": "b6c5d7b6-228d-4d24-ba52-439a873c6f2f",
+          "name": "침실에서의 나신 정상위",
+          "description": "하지현이 침대에 등을 대고 누워 있다. 알몸으로 김대리가 그녀 위에 올라타 두 팔로 상체를 지탱한다. 하지현의 다리는 그의 허리를 감싸고 있다. 그녀의 두 손은 침대보를 움켜쥐고 있다. 스탠드 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon lying on back on queen-size bed, completely naked, 1male on top, supporting himself on arms, ha jihyeon's legs wrapped around his waist, hands gripping dark navy bedspread, full body shot, from front, stand lamp light, enclosed atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
         },
         {
-          "id": "e2979215-c5e6-43c4-8686-d5cf28886d11",
-          "name": "일상 4: 카페에서의 대화",
-          "description": "하지현이 카페 테이블에 앉아 커피를 마시며 핸드폰을 보고 있음. 그녀는 무표정, 생각에 잠긴 듯. 상반신 샷, 정면.",
-          "prompt": "sitting at cafe table, drinking coffee, looking at phone, neutral expression, lost in thought, upper body shot, front view, warm lighting, afternoon, wearing beige knit cardigan, white cotton blouse",
-          "outfitId": "8255e06c-e2c9-4608-9f14-068e55974be1",
-          "backgroundId": null
+          "id": "9d781e9b-35a6-40d2-a0df-9fbc00260f1b",
+          "name": "사무실 책상 아래에서의 핸드잡",
+          "description": "낮 시간 부장실. 하지현이 외출복을 입고 다크월넛 책상 아래에 앉아 있다. 김대리가 의자에 앉아 있고, 하지현의 손이 그의 바지 위를 더듬는다. 그녀는 고개를 숙이고 손을 움직인다. 형광등 불빛, 긴장된 분위기.",
+          "prompt": "1boy, 1girl, ha jihyeon sitting under dark walnut desk, wearing beige trench coat and white blouse, 1male sitting in leather swivel chair, ha jihyeon's hand on his crotch, moving hand, looking down, upper body shot, from side, fluorescent light, daytime, secretive atmosphere",
+          "outfitId": "8a30ec82-96e8-4a28-8bcc-9c9c09a0901f",
+          "backgroundId": "c2ecc027-1c38-4961-b960-69e6bf6e96c4"
         },
         {
-          "id": "4a0b5b82-a0ad-4026-83aa-fd96d2343c5d",
-          "name": "일상 5: 사무실에서의 업무",
-          "description": "하지현이 사무실 책상에서 컴퓨터로 작업 중. 그녀는 집중한 표정, 손으로 마우스를 움직임. 상반신 샷, 측면.",
-          "prompt": "sitting at office desk, working on computer, focused expression, hand on mouse, upper body shot, side view, fluorescent lighting, daytime, wearing white blouse, black pencil skirt",
-          "outfitId": "0186142b-1f53-4531-ad39-756d6bd13ed9",
-          "backgroundId": null
+          "id": "516a69ef-19f0-421d-a2ff-b358d2a82359",
+          "name": "거실에서의 나신 애무 (무릎 꿇고)",
+          "description": "하지현이 거실 바닥에 무릎을 꿇고 앉아 있다. 알몸으로 김대리가 그녀 앞에 서서 그녀의 머리를 쓰다듬는다. 하지현은 두 손으로 그의 허벅지를 잡고 올려다본다. 간접조명, 은밀한 분위기.",
+          "prompt": "1boy, 1girl, ha jihyeon kneeling on dark wood floor, completely naked, 1male standing in front, stroking her hair, ha jihyeon holding his thighs with both hands, looking up, upper body shot, from front, dim indirect lighting, evening, intimate submissive atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
         },
         {
-          "id": "2f515d4f-cf0d-4375-a916-a2bd0b7c7860",
-          "name": "일상 6: 운동 후 스트레칭",
-          "description": "하지현이 거실 바닥에서 요가 매트 위에 앉아 스트레칭 중. 그녀는 운동복 차림, 땀에 젖은 이마. 전신 샷, 정면.",
-          "prompt": "sitting on yoga mat in living room, stretching, wearing black yoga leggings, white tank top, sweaty forehead, full body shot, front view, morning light, calm atmosphere",
-          "outfitId": "ec919870-5e70-4d9a-8167-36974550f0ed",
-          "backgroundId": null
+          "id": "e4116d37-45cd-4574-9d2f-2d1c2e8df819",
+          "name": "침실에서의 나신 후배위 (개자세)",
+          "description": "하지현이 침대 위에 네 발로 엎드려 있다. 알몸으로 고개를 숙이고 두 팔로 침대를 짚는다. 김대리가 그녀 뒤에서 무릎을 꿇고 그녀의 엉덩이를 잡는다. 네이비 침대보, 스탠드 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon on all fours on queen-size bed, completely naked, head down, arms supporting on bed, 1male kneeling behind, hands on her hips, full body shot, from side, stand lamp light, dark navy bedspread, enclosed atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
         },
         {
-          "id": "afa1ddb0-bcbe-41ba-9d3f-f40666508a34",
-          "name": "일상 7: 저녁 식사 준비",
-          "description": "하지현이 주방에서 요리 중, 프라이팬을 들고 야채를 볶음. 그녀는 앞치마를 두르고, 집중한 표정. 전신 샷, 뒤에서.",
-          "prompt": "standing in kitchen, cooking with frying pan, wearing apron over casual clothes, focused expression, full body shot, from behind, evening light, warm atmosphere",
-          "outfitId": "8255e06c-e2c9-4608-9f14-068e55974be1",
-          "backgroundId": null
+          "id": "67f39d2e-6d96-4132-9913-ef104c0276e5",
+          "name": "공원에서의 나신 스탠딩 섹스",
+          "description": "밤 공원 큰 나무 그늘 아래. 하지현이 나무에 등을 기대고 서 있다. 알몸으로 한쪽 다리를 들어 김대리의 허리에 감싼다. 김대리가 그녀의 엉덩이를 받쳐 들어 올린다. 하지현은 두 팔로 그의 목을 감싸고 얼굴을 가까이 댄다. 가로등 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon leaning against large tree, completely naked, one leg wrapped around 1male's waist, 1male holding her hips, lifting her, ha jihyeon's arms around his neck, faces close, full body shot, from side, dim streetlamp light, night, deserted park, intimate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "187bab77-e105-48ae-9a59-af6559feda88"
         },
         {
-          "id": "7a30e78e-0971-46ee-8104-4351bb37eca2",
-          "name": "일상 8: 침실에서의 독서",
-          "description": "하지현이 침대에 누워 책을 읽고 있음. 그녀는 잠옷 차림, 베개에 기대어 편안한 표정. 상반신 샷, 위에서.",
-          "prompt": "lying on bed, reading a book, wearing pale pink silk pajama set, leaning on pillow, relaxed expression, upper body shot, from above, dim lighting, night",
-          "outfitId": "9978106a-1529-46bb-a392-943235932c9e",
-          "backgroundId": null
+          "id": "1a672661-aca5-4490-957e-bf558490948d",
+          "name": "거실 소파에서의 나신 역상위",
+          "description": "하지현이 거실 소파에 앉아 있는 김대리의 위에 올라탄다. 알몸으로 그의 허리에 다리를 걸치고 상체를 숙여 그의 가슴에 입을 맞춘다. 김대리는 그녀의 엉덩이를 두 손으로 잡는다. 간접조명.",
+          "prompt": "1boy, 1girl, ha jihyeon straddling 1male on dark brown leather sofa, completely naked, legs around his waist, leaning forward to kiss his chest, 1male holding her hips, full body shot, from front, dim indirect lighting, evening, intimate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
         },
         {
-          "id": "bba4c471-2580-457c-ada6-a8498c43148b",
-          "name": "일상 9: 거실에서의 TV 시청",
-          "description": "하지현이 거실 소파에 앉아 TV를 보고 있음. 그녀는 다리를 꼬고, 무릎 위에 담요를 덮음. 상반신 샷, 측면.",
-          "prompt": "sitting on grey sofa, watching TV, legs crossed, blanket on lap, wearing beige knit cardigan, white cotton blouse, upper body shot, side view, warm lighting, evening",
-          "outfitId": "8255e06c-e2c9-4608-9f14-068e55974be1",
-          "backgroundId": null
+          "id": "4d7074f1-d595-4554-82b4-0796100233b8",
+          "name": "침실에서의 나신 69",
+          "description": "하지현과 김대리가 침대 위에서 서로 반대 방향으로 누워 있다. 하지현이 위에 올라타 김대리의 허리 위에 엎드린다. 그녀의 얼굴은 그의 하반신 쪽을 향하고, 그녀의 다리는 그의 어깨 위에 걸쳐진다. 스탠드 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon lying on top of 1male on queen-size bed, reverse direction, completely naked, face near his groin, legs over his shoulders, full body shot, from side, stand lamp light, enclosed atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
         },
         {
-          "id": "d130a4c7-dafc-4c70-a90a-7a1f06473a57",
-          "name": "일상 10: 호텔 로비에서의 대기",
-          "description": "하지현이 호텔 로비 소파에 앉아 손목시계를 보며 초조한 표정. 그녀는 비즈니스 캐주얼 차림. 상반신 샷, 정면.",
-          "prompt": "sitting on lobby sofa, checking wristwatch, anxious expression, wearing navy blue knit sweater, beige trousers, upper body shot, front view, chandelier lighting, evening",
-          "outfitId": "bdf5ffcc-7a57-4dd4-94e3-0c1a3a041d9a",
-          "backgroundId": null
+          "id": "44f9cf57-b2dd-4c40-9109-c6ed7716a22d",
+          "name": "사무실 책상 위에서의 나신 애무",
+          "description": "퇴근 후 부장실. 하지현이 알몸으로 다크월넛 책상 위에 앉아 있다. 김대리가 그녀 앞에 서서 그녀의 가슴을 만지고 키스한다. 하지현은 두 손으로 그의 어깨를 잡고 키스에 응한다. 형광등 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon sitting on dark walnut desk, completely naked, 1male standing in front, touching her breast, kissing, ha jihyeon holding his shoulders, kissing back, upper body shot, from front, fluorescent light, tense atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "c2ecc027-1c38-4961-b960-69e6bf6e96c4"
         },
         {
-          "id": "5b0e7cd2-d1fc-4c68-b5dc-b68b6cba989b",
-          "name": "일상 11: 엘리베이터에서의 혼자",
-          "description": "하지현이 엘리베이터 안에 혼자 서서, 거울에 비친 자신을 바라보며 한숨. 그녀는 사무복 차림. 전신 샷, 정면(거울).",
-          "prompt": "standing alone in elevator, looking at own reflection, sighing, wearing white blouse, black pencil skirt, black blazer, full body shot, front view via mirror, bright lighting",
-          "outfitId": "0186142b-1f53-4531-ad39-756d6bd13ed9",
-          "backgroundId": null
+          "id": "e6b778d3-133d-45c2-b5ad-09670229c568",
+          "name": "거실에서의 나신 핸드잡",
+          "description": "하지현이 거실 소파에 앉아 있다. 알몸으로 김대리가 그녀 옆에 앉아 있고, 하지현의 손이 그의 바지 위를 더듬는다. 그녀는 고개를 숙이고 손을 움직이며 부끄러운 표정을 짓는다. 간접조명.",
+          "prompt": "1boy, 1girl, ha jihyeon sitting on dark brown leather sofa, completely naked, 1male sitting beside, ha jihyeon's hand on his crotch, moving hand, looking down with shy expression, upper body shot, from side, dim indirect lighting, evening, intimate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
         },
         {
-          "id": "ecddb739-529c-40d1-80e4-475245669339",
-          "name": "일상 12: 옥상에서의 휴식",
-          "description": "하지현이 옥상 난간에 기대어 서서 도시 전망을 바라봄. 그녀는 운동복 차림, 바람에 머리카락 흩날림. 전신 샷, 뒤에서.",
-          "prompt": "leaning on rooftop railing, looking at city view, wearing black yoga leggings, white tank top, hair blowing, full body shot, from behind, night, city lights",
-          "outfitId": "ec919870-5e70-4d9a-8167-36974550f0ed",
-          "backgroundId": null
+          "id": "761df141-c559-4a27-871e-51013cd06e0d",
+          "name": "침실에서의 나신 핑거링",
+          "description": "하지현이 침대에 등을 대고 누워 있다. 알몸으로 김대리가 그녀 옆에 앉아 한 손을 그녀의 허벅지 안쪽으로 넣는다. 하지현은 두 손으로 침대보를 움켜쥐고 고개를 뒤로 젖힌다. 스탠드 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon lying on back on queen-size bed, completely naked, 1male sitting beside, hand between her thighs, ha jihyeon gripping dark navy bedspread, head tilted back, full body shot, from side, stand lamp light, quiet atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
         },
         {
-          "id": "1e8be16b-1e49-4866-b1d2-fb403dd300d2",
-          "name": "일상 13: 욕실에서의 세안",
-          "description": "하지현이 욕실 세면대 앞에서 얼굴을 씻고 있음. 그녀는 속옷 차림, 물방울이 얼굴에 맺힘. 상반신 샷, 정면.",
-          "prompt": "washing face at bathroom sink, wearing black lace bralette, black lace triangle panties, water droplets on face, upper body shot, front view, soft lighting",
-          "outfitId": "b9c5b9cf-75b0-4133-8b32-d9e51f0d627a",
-          "backgroundId": null
+          "id": "72974e07-9790-4855-bb7f-bb5783fba560",
+          "name": "공원 벤치에서의 나신 구강성교",
+          "description": "늦은 밤 공원 벤치. 하지현이 무릎을 꿇고 벤치 앞에 앉아 있다. 알몸으로 김대리가 벤치에 앉아 있고, 하지현이 그의 바지를 내리고 입을 벌린다. 그녀의 두 손은 그의 무릎을 잡고 있다. 가로등 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon kneeling in front of rusty iron bench, completely naked, 1male sitting on bench, pants down, ha jihyeon mouth open, hands on his knees, upper body shot, from side, dim streetlamp light, night, intimate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "187bab77-e105-48ae-9a59-af6559feda88"
         },
         {
-          "id": "20d963bb-08ad-428d-9386-f7d74dfd341a",
-          "name": "일상 14: 자동차 운전",
-          "description": "하지현이 자동차 운전석에 앉아 핸들을 잡고 앞을 주시. 그녀는 평상복 차림, 진지한 표정. 상반신 샷, 측면.",
-          "prompt": "sitting in driver's seat, hands on steering wheel, looking ahead, serious expression, wearing beige knit cardigan, white cotton blouse, upper body shot, side view, daytime, road visible",
-          "outfitId": "8255e06c-e2c9-4608-9f14-068e55974be1",
-          "backgroundId": null
+          "id": "9cbfe0e9-3c9e-4dda-8a25-e60343237491",
+          "name": "거실에서의 나신 도그스타일",
+          "description": "하지현이 거실 소파 팔걸이에 상체를 기대고 네 발로 서 있다. 알몸으로 김대리가 뒤에서 그녀의 엉덩이를 잡고 있다. 하지현은 고개를 숙이고 두 손으로 소파를 움켜쥔다. 간접조명.",
+          "prompt": "1boy, 1girl, ha jihyeon leaning over dark brown leather sofa armrest, on all fours, completely naked, 1male behind, hands on her hips, ha jihyeon head down, gripping sofa, full body shot, from side, dim indirect lighting, evening, intimate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
         },
         {
-          "id": "6cb838a6-ce83-4b1e-ada5-bdc7bc3704c8",
-          "name": "일상 15: 회의실에서의 프레젠테이션",
-          "description": "하지현이 회의실 앞에 서서 화이트보드에 자료를 가리키며 설명 중. 그녀는 사무복 차림, 자신감 있는 표정. 전신 샷, 정면.",
-          "prompt": "standing in front of whiteboard in conference room, pointing at data, confident expression, wearing white blouse, black pencil skirt, black blazer, full body shot, front view, fluorescent lighting, daytime",
-          "outfitId": "0186142b-1f53-4531-ad39-756d6bd13ed9",
-          "backgroundId": null
+          "id": "ac03cedd-a234-410d-8891-aedc95291501",
+          "name": "침실에서의 나신 스탠딩 섹스",
+          "description": "하지현이 침실 벽에 등을 기대고 서 있다. 알몸으로 두 다리를 들어 김대리의 허리에 감싼다. 김대리가 그녀의 엉덩이를 받쳐 들고 벽에 밀착시킨다. 하지현은 두 팔로 그의 어깨를 잡고 얼굴을 가까이 댄다. 스탠드 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon leaning against white wood bed frame, completely naked, both legs wrapped around 1male's waist, 1male holding her hips, pressing her against wall, ha jihyeon's arms on his shoulders, faces close, full body shot, from side, stand lamp light, enclosed atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
         },
         {
-          "id": "62293bae-db81-4830-a9d9-60f8f8f3d28c",
-          "name": "일상 16: 한강 공원에서의 조깅",
-          "description": "하지현이 한강 공원 길을 조깅 중. 그녀는 운동복 차림, 땀을 흘리며 숨을 헐떡임. 전신 샷, 측면.",
-          "prompt": "jogging on Han River park path, wearing black yoga leggings, white tank top, sweating, breathing heavily, full body shot, side view, evening sunset, trees in background",
-          "outfitId": "ec919870-5e70-4d9a-8167-36974550f0ed",
-          "backgroundId": null
+          "id": "88c1bd72-4e1a-46df-a9e2-9225cf3fb4ae",
+          "name": "사무실 책상 위에서의 나신 후배위",
+          "description": "퇴근 후 부장실. 하지현이 알몸으로 다크월넛 책상 위에 엎드려 있다. 김대리가 뒤에서 그녀의 허리를 잡는다. 하지현은 두 팔로 책상을 짚고 고개를 숙인다. 형광등 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon lying face down on dark walnut desk, completely naked, 1male behind, hands on her hips, ha jihyeon arms supporting on desk, head down, full body shot, from side, fluorescent light, authoritative atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "c2ecc027-1c38-4961-b960-69e6bf6e96c4"
         },
         {
-          "id": "8679ab5e-4749-424f-8795-ad0496e79e3e",
-          "name": "일상 17: 카페에서의 혼자 시간",
-          "description": "하지현이 카페 창가 자리에 앉아 창밖을 바라보며 생각에 잠김. 그녀는 비즈니스 캐주얼 차림, 커피잔을 손에 쥠. 상반신 샷, 측면.",
-          "prompt": "sitting by cafe window, looking outside, lost in thought, holding coffee cup, wearing navy blue knit sweater, beige trousers, upper body shot, side view, afternoon light",
-          "outfitId": "bdf5ffcc-7a57-4dd4-94e3-0c1a3a041d9a",
-          "backgroundId": null
+          "id": "4b661b6e-8d42-40fa-9aad-b4edf8599da8",
+          "name": "거실 소파에서의 나신 핑거링",
+          "description": "하지현이 거실 소파에 앉아 있다. 알몸으로 김대리가 그녀 옆에 앉아 한 손을 그녀의 허벅지 안쪽으로 넣는다. 하지현은 두 손으로 소파를 잡고 고개를 뒤로 젖히며 숨을 헐떡인다. 간접조명.",
+          "prompt": "1boy, 1girl, ha jihyeon sitting on dark brown leather sofa, completely naked, 1male sitting beside, hand between her thighs, ha jihyeon gripping sofa, head tilted back, gasping, upper body shot, from side, dim indirect lighting, evening, intimate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
         },
         {
-          "id": "558e918e-7635-4e70-b355-02bc2527f65b",
-          "name": "일상 18: 집에서의 화장",
-          "description": "하지현이 침실 화장대 앞에 앉아 메이크업 중. 그녀는 잠옷 차림, 거울에 집중. 상반신 샷, 정면.",
-          "prompt": "sitting at vanity in bedroom, applying makeup, wearing pale pink silk pajama set, focused on mirror, upper body shot, front view, morning light",
-          "outfitId": "9978106a-1529-46bb-a392-943235932c9e",
-          "backgroundId": null
+          "id": "234e5da5-ab11-43f1-b515-3f2ee429b6a5",
+          "name": "침실에서의 나신 구강성교",
+          "description": "하지현이 침실 바닥에 무릎을 꿇고 앉아 있다. 알몸으로 김대리가 그녀 앞에 서 있다. 하지현은 두 손으로 그의 엉덩이를 잡고 입을 벌려 그의 성기를 받아들인다. 스탠드 불빛이 그녀의 옆모습을 비춘다.",
+          "prompt": "1boy, 1girl, ha jihyeon kneeling on dark wood floor, completely naked, 1male standing in front, ha jihyeon holding his hips with both hands, mouth open, performing oral, upper body shot, from side, stand lamp light, quiet enclosed atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
         },
         {
-          "id": "042c51c1-d56f-46ef-b3a2-97535afc08d4",
-          "name": "일상 19: 거실에서의 스마트폰",
-          "description": "하지현이 거실 소파에 누워 스마트폰을 보고 있음. 그녀는 평상복 차림, 다리를 소파 위에 올림. 전신 샷, 위에서.",
-          "prompt": "lying on sofa, looking at smartphone, legs up on sofa, wearing beige knit cardigan, white cotton blouse, dark blue skinny jeans, full body shot, from above, warm lighting, evening",
-          "outfitId": "8255e06c-e2c9-4608-9f14-068e55974be1",
-          "backgroundId": null
+          "id": "c436419d-ae3d-462b-83ff-c3410b27292f",
+          "name": "공원에서의 나신 핸드잡",
+          "description": "밤 공원 벤치. 하지현이 벤치에 앉아 있다. 알몸으로 김대리가 그녀 옆에 앉아 있고, 하지현의 손이 그의 바지 위를 더듬는다. 그녀는 고개를 숙이고 손을 움직인다. 가로등 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon sitting on rusty iron bench, completely naked, 1male sitting beside, ha jihyeon's hand on his crotch, moving hand, looking down, upper body shot, from side, dim streetlamp light, night, intimate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "187bab77-e105-48ae-9a59-af6559feda88"
         },
         {
-          "id": "432cf8fa-feb6-4586-b3b8-5806cd826225",
-          "name": "일상 20: 호텔 방에서의 휴식",
-          "description": "하지현이 호텔 침대에 앉아 TV를 보고 있음. 그녀는 속옷 차림, 무표정. 상반신 샷, 정면.",
-          "prompt": "sitting on hotel bed, watching TV, wearing black lace bralette, black lace triangle panties, neutral expression, upper body shot, front view, dim lighting, night",
-          "outfitId": "b9c5b9cf-75b0-4133-8b32-d9e51f0d627a",
-          "backgroundId": null
+          "id": "4cfa0360-7ffd-481e-8e92-a6b6a9cbed7b",
+          "name": "거실에서의 나신 69",
+          "description": "하지현과 김대리가 거실 바닥에 서로 반대 방향으로 누워 있다. 하지현이 위에 올라타 김대리의 허리 위에 엎드린다. 그녀의 얼굴은 그의 하반신 쪽을 향하고, 그녀의 다리는 그의 어깨 위에 걸쳐진다. 간접조명.",
+          "prompt": "1boy, 1girl, ha jihyeon lying on top of 1male on dark wood floor, reverse direction, completely naked, face near his groin, legs over his shoulders, full body shot, from side, dim indirect lighting, evening, intimate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
+        },
+        {
+          "id": "5fb61673-c8b1-476a-87ca-538f908fa7c6",
+          "name": "침실에서의 나신 역상위",
+          "description": "하지현이 침대에 앉아 있는 김대리의 위에 올라탄다. 알몸으로 그의 허리에 다리를 걸치고 상체를 숙여 그의 가슴에 입을 맞춘다. 김대리는 그녀의 엉덩이를 두 손으로 잡는다. 스탠드 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon straddling 1male on queen-size bed, completely naked, legs around his waist, leaning forward to kiss his chest, 1male holding her hips, full body shot, from front, stand lamp light, enclosed atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
+        },
+        {
+          "id": "a3d5eed0-b93d-4c97-a595-a708f30ee132",
+          "name": "사무실 책상 아래에서의 나신 구강성교",
+          "description": "낮 시간 부장실. 하지현이 알몸으로 다크월넛 책상 아래에 무릎을 꿇고 있다. 김대리가 의자에 앉아 있고, 하지현이 그의 바지를 내리고 입을 벌린다. 그녀의 두 손은 그의 무릎을 잡고 있다. 형광등 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon kneeling under dark walnut desk, completely naked, 1male sitting in leather swivel chair, pants down, ha jihyeon mouth open, hands on his knees, upper body shot, from side, fluorescent light, daytime, secretive atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "c2ecc027-1c38-4961-b960-69e6bf6e96c4"
+        },
+        {
+          "id": "c4d9d679-4049-4408-adb6-bf070f08fe35",
+          "name": "거실에서의 나신 스탠딩 키스",
+          "description": "하지현이 거실에 서 있다. 알몸으로 김대리가 그녀 앞에 서서 두 손으로 그녀의 허리를 잡고 키스한다. 하지현은 두 팔로 그의 목을 감싸고 키스에 응한다. 간접조명.",
+          "prompt": "1boy, 1girl, ha jihyeon standing in living room, completely naked, 1male in front, holding her waist, kissing, ha jihyeon arms around his neck, kissing back, full body shot, from side, dim indirect lighting, evening, intimate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
+        },
+        {
+          "id": "c6bf16d6-58a5-4690-a54c-f1cd44cf0cf3",
+          "name": "침실에서의 나신 포옹 (서서)",
+          "description": "하지현과 김대리가 침실에 서서 포옹하고 있다. 하지현이 그의 가슴에 얼굴을 묻고 두 팔로 그의 허리를 감싼다. 김대리가 그녀의 등을 쓰다듬는다. 스탠드 불빛, 조용하고 다정한 분위기.",
+          "prompt": "1boy, 1girl, ha jihyeon standing in bedroom, completely naked, hugging 1male, face buried in his chest, arms around his waist, 1male caressing her back, full body shot, from side, stand lamp light, quiet affectionate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
+        },
+        {
+          "id": "23bb07ad-f76a-448d-8c83-fe8a19f74b82",
+          "name": "공원에서의 나신 포옹",
+          "description": "밤 공원 벤치 옆. 하지현이 서서 김대리와 포옹하고 있다. 알몸으로 그의 가슴에 얼굴을 묻고 두 팔로 그의 허리를 감싼다. 김대리가 그녀의 등을 쓰다듬는다. 가로등 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon standing in park, completely naked, hugging 1male, face buried in his chest, arms around his waist, 1male caressing her back, full body shot, from side, dim streetlamp light, night, intimate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "187bab77-e105-48ae-9a59-af6559feda88"
+        },
+        {
+          "id": "bb34ab8d-b438-410a-b3c8-1fd401dfd08d",
+          "name": "거실 소파에서의 나신 키스",
+          "description": "하지현과 김대리가 거실 소파에 앉아 키스하고 있다. 하지현이 그의 얼굴에 손을 대고 키스한다. 그녀의 다리는 그의 무릎 위에 올려져 있다. 간접조명, 조용하고 다정한 분위기.",
+          "prompt": "1boy, 1girl, ha jihyeon sitting on dark brown leather sofa, completely naked, 1male sitting beside, ha jihyeon's hand on his face, kissing, her legs on his lap, upper body shot, from side, dim indirect lighting, evening, quiet affectionate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
+        },
+        {
+          "id": "98cd85a5-2069-4942-aceb-ee6455ca580c",
+          "name": "침실에서의 나신 애무 (가슴)",
+          "description": "하지현이 침대에 등을 대고 누워 있다. 알몸으로 김대리가 그녀 옆에 누워 한 손으로 그녀의 가슴을 만지고 다른 손으로 그녀의 손을 잡는다. 하지현은 눈을 뜨고 그를 바라본다. 스탠드 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon lying on back on queen-size bed, completely naked, 1male lying beside, one hand on her breast, other hand holding hers, ha jihyeon looking at him, eyes open, full body shot, from side, stand lamp light, quiet atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
+        },
+        {
+          "id": "6e028fca-442d-435a-90a3-15b089fecae9",
+          "name": "사무실 책상 위에서의 나신 키스",
+          "description": "퇴근 후 부장실. 하지현이 알몸으로 다크월넛 책상 위에 앉아 있다. 김대리가 그녀 앞에 서서 그녀의 얼굴을 두 손으로 감싸고 키스한다. 하지현은 두 손으로 그의 손을 잡는다. 형광등 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon sitting on dark walnut desk, completely naked, 1male standing in front, holding her face, kissing, ha jihyeon holding his hands, upper body shot, from front, fluorescent light, tense atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "c2ecc027-1c38-4961-b960-69e6bf6e96c4"
+        },
+        {
+          "id": "0d7f0212-c448-41d0-bca5-54df39ae620b",
+          "name": "거실에서의 나신 애무 (배)",
+          "description": "하지현이 거실 바닥에 등을 대고 누워 있다. 알몸으로 김대리가 그녀 옆에 앉아 한 손으로 그녀의 배를 쓰다듬는다. 하지현은 두 손을 배 위에 올리고 눈을 감고 있다. 간접조명.",
+          "prompt": "1boy, 1girl, ha jihyeon lying on back on dark wood floor, completely naked, 1male sitting beside, one hand caressing her belly, ha jihyeon hands on her belly, eyes closed, full body shot, from above, dim indirect lighting, evening, quiet atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
+        },
+        {
+          "id": "f5082595-b5a8-4c95-af8a-2d3260becdb7",
+          "name": "침실에서의 나신 애무 (다리)",
+          "description": "하지현이 침대에 등을 대고 누워 있다. 알몸으로 김대리가 그녀의 발치에 앉아 그녀의 다리를 쓰다듬는다. 하지현은 두 팔을 머리 위로 올리고 편안한 표정을 짓는다. 스탠드 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon lying on back on queen-size bed, completely naked, 1male sitting at foot of bed, caressing her legs, ha jihyeon arms above head, relaxed expression, full body shot, from side, stand lamp light, quiet atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
+        },
+        {
+          "id": "92bc1f2c-a1aa-4abb-b18d-ec3ec839ad1f",
+          "name": "공원 벤치에서의 나신 키스",
+          "description": "늦은 밤 공원 벤치. 하지현이 벤치에 앉아 있다. 알몸으로 김대리가 그녀 옆에 앉아 그녀의 얼굴을 두 손으로 감싸고 키스한다. 하지현은 두 손으로 그의 가슴을 잡는다. 가로등 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon sitting on rusty iron bench, completely naked, 1male sitting beside, holding her face, kissing, ha jihyeon holding his chest, upper body shot, from side, dim streetlamp light, night, intimate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "187bab77-e105-48ae-9a59-af6559feda88"
+        },
+        {
+          "id": "4b4fd905-5189-424e-ad39-6136a0f0f184",
+          "name": "거실 소파에서의 나신 애무 (등)",
+          "description": "하지현이 거실 소파에 엎드려 누워 있다. 알몸으로 김대리가 그녀 옆에 앉아 그녀의 등을 쓰다듬는다. 하지현은 고개를 옆으로 돌리고 눈을 감고 있다. 간접조명.",
+          "prompt": "1boy, 1girl, ha jihyeon lying face down on dark brown leather sofa, completely naked, 1male sitting beside, caressing her back, ha jihyeon turning head to side, eyes closed, full body shot, from above, dim indirect lighting, evening, quiet atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
+        },
+        {
+          "id": "536d53bb-55d8-48a0-9e9f-03d7b7f192c5",
+          "name": "침실에서의 나신 애무 (엉덩이)",
+          "description": "하지현이 침대에 엎드려 누워 있다. 알몸으로 김대리가 그녀 옆에 앉아 그녀의 엉덩이를 쓰다듬는다. 하지현은 고개를 숙이고 두 팔로 베개를 안는다. 스탠드 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon lying face down on queen-size bed, completely naked, 1male sitting beside, caressing her buttocks, ha jihyeon head down, hugging pillow with both arms, full body shot, from side, stand lamp light, quiet atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
+        },
+        {
+          "id": "8ba826e3-8f49-4f5e-9c30-5611fcbeee2e",
+          "name": "사무실 책상 위에서의 나신 애무 (가슴)",
+          "description": "퇴근 후 부장실. 하지현이 알몸으로 다크월넛 책상 위에 앉아 있다. 김대리가 그녀 앞에 서서 그녀의 가슴을 만지고 있다. 하지현은 두 손으로 책상 가장자리를 잡고 고개를 뒤로 젖힌다. 형광등 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon sitting on dark walnut desk, completely naked, 1male standing in front, touching her breast, ha jihyeon gripping desk edge, head tilted back, upper body shot, from front, fluorescent light, tense atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "c2ecc027-1c38-4961-b960-69e6bf6e96c4"
+        },
+        {
+          "id": "364067df-7405-40b1-96fa-ba37edd49c7d",
+          "name": "거실에서의 나신 포옹 (소파)",
+          "description": "하지현이 거실 소파에 앉아 있다. 알몸으로 김대리가 그녀 옆에 앉아 그녀를 두 팔로 감싸 안는다. 하지현은 그의 가슴에 기대어 눈을 감는다. 간접조명, 조용하고 다정한 분위기.",
+          "prompt": "1boy, 1girl, ha jihyeon sitting on dark brown leather sofa, completely naked, 1male sitting beside, hugging her with both arms, ha jihyeon leaning against his chest, eyes closed, upper body shot, from side, dim indirect lighting, evening, quiet affectionate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
+        },
+        {
+          "id": "431e5141-cf48-4115-a8b5-a510eb1b714f",
+          "name": "침실에서의 나신 포옹 (침대)",
+          "description": "하지현과 김대리가 침대 위에 알몸으로 포옹하며 누워 있다. 하지현이 그의 가슴에 얼굴을 묻고 두 팔로 그의 허리를 감싼다. 김대리가 그녀의 등을 쓰다듬는다. 네이비 침대보, 스탠드 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon lying on queen-size bed, completely naked, hugging 1male, face buried in his chest, arms around his waist, 1male caressing her back, full body shot, from side, stand lamp light, dark navy bedspread, quiet affectionate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
+        },
+        {
+          "id": "62d4585b-66aa-4f14-a5ea-c0498d384884",
+          "name": "공원에서의 나신 애무 (가슴)",
+          "description": "밤 공원 벤치. 하지현이 벤치에 앉아 있다. 알몸으로 김대리가 그녀 옆에 앉아 한 손으로 그녀의 가슴을 만지고 다른 손으로 허벅지를 쓰다듬는다. 하지현은 두 손으로 벤치를 잡고 고개를 뒤로 젖힌다. 가로등 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon sitting on rusty iron bench, completely naked, 1male sitting beside, one hand on her breast, other hand on her thigh, ha jihyeon gripping bench, head tilted back, upper body shot, from side, dim streetlamp light, night, intimate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "187bab77-e105-48ae-9a59-af6559feda88"
+        },
+        {
+          "id": "efe531f2-1d30-4462-8f82-4974afcaadf1",
+          "name": "거실 소파에서의 나신 애무 (허벅지)",
+          "description": "하지현이 거실 소파에 앉아 있다. 알몸으로 김대리가 그녀 옆에 앉아 한 손으로 그녀의 허벅지를 쓰다듬는다. 하지현은 두 손으로 소파를 잡고 부끄러운 표정을 짓는다. 간접조명.",
+          "prompt": "1boy, 1girl, ha jihyeon sitting on dark brown leather sofa, completely naked, 1male sitting beside, one hand caressing her thigh, ha jihyeon gripping sofa, shy expression, upper body shot, from side, dim indirect lighting, evening, intimate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
+        },
+        {
+          "id": "6ab589a0-bc0b-4902-9979-192f7af89d4b",
+          "name": "침실에서의 나신 애무 (손)",
+          "description": "하지현과 김대리가 침대 위에 마주보며 앉아 있다. 알몸으로 하지현이 그의 손을 잡고 바라본다. 김대리가 그녀의 손등에 키스한다. 스탠드 불빛, 조용하고 다정한 분위기.",
+          "prompt": "1boy, 1girl, ha jihyeon sitting on queen-size bed, completely naked, facing 1male, holding his hand, looking at him, 1male kissing her hand, upper body shot, from front, stand lamp light, quiet affectionate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
+        },
+        {
+          "id": "d4dc97aa-a956-45ce-9580-6822ae050a51",
+          "name": "사무실 책상 위에서의 나신 포옹",
+          "description": "퇴근 후 부장실. 하지현이 알몸으로 다크월넛 책상 위에 앉아 있다. 김대리가 그녀 앞에 서서 그녀를 두 팔로 감싸 안는다. 하지현은 그의 가슴에 얼굴을 묻고 두 팔로 그의 허리를 감싼다. 형광등 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon sitting on dark walnut desk, completely naked, 1male standing in front, hugging her with both arms, ha jihyeon face buried in his chest, arms around his waist, upper body shot, from side, fluorescent light, tense atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "c2ecc027-1c38-4961-b960-69e6bf6e96c4"
+        },
+        {
+          "id": "9617b0cc-3f24-4893-8cb4-8f7387192dce",
+          "name": "거실에서의 나신 애무 (어깨)",
+          "description": "하지현이 거실에 서 있다. 알몸으로 김대리가 그녀 뒤에 서서 그녀의 어깨를 마사지한다. 하지현은 두 손을 앞으로 모으고 눈을 감고 편안한 표정을 짓는다. 간접조명.",
+          "prompt": "1boy, 1girl, ha jihyeon standing in living room, completely naked, 1male standing behind, massaging her shoulders, ha jihyeon hands together in front, eyes closed, relaxed expression, upper body shot, from behind, dim indirect lighting, evening, quiet atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
+        },
+        {
+          "id": "7943a94c-a9b2-48bf-b0e4-65a17c51e032",
+          "name": "침실에서의 나신 애무 (머리)",
+          "description": "하지현이 침대에 앉아 있다. 알몸으로 김대리가 그녀 뒤에 앉아 그녀의 머리를 빗겨 주거나 쓰다듬는다. 하지현은 고개를 숙이고 편안한 표정을 짓는다. 스탠드 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon sitting on queen-size bed, completely naked, 1male sitting behind, stroking her hair, ha jihyeon head down, relaxed expression, upper body shot, from behind, stand lamp light, quiet atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
+        },
+        {
+          "id": "4dff9c66-1046-4f17-8de9-ceaa6f0d8636",
+          "name": "공원에서의 나신 애무 (등)",
+          "description": "밤 공원 벤치. 하지현이 벤치에 엎드려 누워 있다. 알몸으로 김대리가 그녀 옆에 앉아 그녀의 등을 쓰다듬는다. 하지현은 고개를 옆으로 돌리고 눈을 감고 있다. 가로등 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon lying face down on rusty iron bench, completely naked, 1male sitting beside, caressing her back, ha jihyeon turning head to side, eyes closed, full body shot, from above, dim streetlamp light, night, intimate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "187bab77-e105-48ae-9a59-af6559feda88"
+        },
+        {
+          "id": "c7a2f10e-3dfa-47bd-be8f-ae2ec3ea3466",
+          "name": "거실 소파에서의 나신 애무 (배)",
+          "description": "하지현이 거실 소파에 등을 대고 누워 있다. 알몸으로 김대리가 그녀 옆에 앉아 한 손으로 그녀의 배를 쓰다듬는다. 하지현은 두 손을 배 위에 올리고 눈을 감고 있다. 간접조명.",
+          "prompt": "1boy, 1girl, ha jihyeon lying on back on dark brown leather sofa, completely naked, 1male sitting beside, one hand caressing her belly, ha jihyeon hands on her belly, eyes closed, full body shot, from above, dim indirect lighting, evening, quiet atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
+        },
+        {
+          "id": "691151a1-fcf4-421b-9a69-a9801a50597f",
+          "name": "침실에서의 나신 애무 (옆구리)",
+          "description": "하지현이 침대에 옆으로 누워 있다. 알몸으로 김대리가 그녀 뒤에 누워 그녀의 옆구리를 쓰다듬는다. 하지현은 고개를 돌려 그를 바라보며 미소 짓는다. 스탠드 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon lying on side on queen-size bed, completely naked, 1male lying behind, caressing her side, ha jihyeon turning head to look at him, smiling, full body shot, from side, stand lamp light, quiet affectionate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
+        },
+        {
+          "id": "c0699e6f-241e-44fb-96a3-c861e2865690",
+          "name": "사무실 책상 위에서의 나신 애무 (다리)",
+          "description": "퇴근 후 부장실. 하지현이 알몸으로 다크월넛 책상 위에 앉아 있다. 김대리가 그녀 앞에 앉아 그녀의 다리를 쓰다듬는다. 하지현은 두 손으로 책상 가장자리를 잡고 편안한 표정을 짓는다. 형광등 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon sitting on dark walnut desk, completely naked, 1male sitting in front, caressing her legs, ha jihyeon gripping desk edge, relaxed expression, upper body shot, from front, fluorescent light, tense atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "c2ecc027-1c38-4961-b960-69e6bf6e96c4"
+        },
+        {
+          "id": "bb715a77-6bb5-4b67-aa27-962c00601e1b",
+          "name": "거실에서의 나신 포옹 (서서)",
+          "description": "하지현과 김대리가 거실에 서서 포옹하고 있다. 하지현이 그의 가슴에 얼굴을 묻고 두 팔로 그의 허리를 감싼다. 김대리가 그녀의 등을 쓰다듬는다. 간접조명, 조용하고 다정한 분위기.",
+          "prompt": "1boy, 1girl, ha jihyeon standing in living room, completely naked, hugging 1male, face buried in his chest, arms around his waist, 1male caressing her back, full body shot, from side, dim indirect lighting, evening, quiet affectionate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
+        },
+        {
+          "id": "b139c4b4-4213-4c9a-9616-281bc1aa7cb4",
+          "name": "침실에서의 나신 포옹 (서서)",
+          "description": "하지현과 김대리가 침실에 서서 포옹하고 있다. 하지현이 그의 가슴에 얼굴을 묻고 두 팔로 그의 허리를 감싼다. 김대리가 그녀의 등을 쓰다듬는다. 스탠드 불빛, 조용하고 다정한 분위기.",
+          "prompt": "1boy, 1girl, ha jihyeon standing in bedroom, completely naked, hugging 1male, face buried in his chest, arms around his waist, 1male caressing her back, full body shot, from side, stand lamp light, quiet affectionate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
+        },
+        {
+          "id": "6ff8b852-e259-4851-93e3-c045385998fe",
+          "name": "공원에서의 나신 포옹 (서서)",
+          "description": "밤 공원 산책로. 하지현이 서서 김대리와 포옹하고 있다. 알몸으로 그의 가슴에 얼굴을 묻고 두 팔로 그의 허리를 감싼다. 김대리가 그녀의 등을 쓰다듬는다. 가로등 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon standing on dark asphalt path, completely naked, hugging 1male, face buried in his chest, arms around his waist, 1male caressing her back, full body shot, from side, dim streetlamp light, night, intimate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "187bab77-e105-48ae-9a59-af6559feda88"
+        },
+        {
+          "id": "cc791f36-059f-42d1-a7ab-aac1ab53b46b",
+          "name": "거실 소파에서의 나신 포옹 (옆으로)",
+          "description": "하지현과 김대리가 거실 소파에 옆으로 누워 포옹하고 있다. 하지현이 그의 품에 안겨 있고, 김대리가 그녀를 두 팔로 감싸 안는다. 하지현은 눈을 감고 편안한 표정을 짓는다. 간접조명.",
+          "prompt": "1boy, 1girl, ha jihyeon lying on side on dark brown leather sofa, completely naked, in 1male's arms, 1male hugging her with both arms, ha jihyeon eyes closed, relaxed expression, full body shot, from side, dim indirect lighting, evening, quiet affectionate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
+        },
+        {
+          "id": "2c3d1c26-b510-49fe-94c8-d52bf244d4d5",
+          "name": "침실에서의 나신 포옹 (옆으로)",
+          "description": "하지현과 김대리가 침대 위에 옆으로 누워 포옹하고 있다. 하지현이 그의 품에 안겨 있고, 김대리가 그녀를 두 팔로 감싸 안는다. 하지현은 눈을 감고 편안한 표정을 짓는다. 스탠드 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon lying on side on queen-size bed, completely naked, in 1male's arms, 1male hugging her with both arms, ha jihyeon eyes closed, relaxed expression, full body shot, from side, stand lamp light, quiet affectionate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
+        },
+        {
+          "id": "b36dd16d-18ce-45bd-a07c-7a73eec04f9d",
+          "name": "사무실 책상 위에서의 나신 포옹 (옆으로)",
+          "description": "퇴근 후 부장실. 하지현이 다크월넛 책상 위에 옆으로 누워 있다. 알몸으로 김대리가 그녀 옆에 누워 그녀를 두 팔로 감싸 안는다. 하지현은 그의 가슴에 얼굴을 묻고 눈을 감는다. 형광등 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon lying on side on dark walnut desk, completely naked, 1male lying beside, hugging her with both arms, ha jihyeon face buried in his chest, eyes closed, full body shot, from side, fluorescent light, tense atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "c2ecc027-1c38-4961-b960-69e6bf6e96c4"
+        },
+        {
+          "id": "ddaca16d-c914-4beb-a9d7-01416485a78f",
+          "name": "거실에서의 나신 키스 (서서)",
+          "description": "하지현이 거실에 서 있다. 알몸으로 김대리가 그녀 앞에 서서 두 손으로 그녀의 얼굴을 감싸고 키스한다. 하지현은 두 팔로 그의 목을 감싸고 키스에 응한다. 간접조명.",
+          "prompt": "1boy, 1girl, ha jihyeon standing in living room, completely naked, 1male in front, holding her face, kissing, ha jihyeon arms around his neck, kissing back, upper body shot, from side, dim indirect lighting, evening, intimate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
+        },
+        {
+          "id": "9ba30a28-2a00-4fb0-8c7c-aff1438eac7d",
+          "name": "침실에서의 나신 키스 (서서)",
+          "description": "하지현이 침실에 서 있다. 알몸으로 김대리가 그녀 앞에 서서 두 손으로 그녀의 허리를 잡고 키스한다. 하지현은 두 팔로 그의 목을 감싸고 키스에 응한다. 스탠드 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon standing in bedroom, completely naked, 1male in front, holding her waist, kissing, ha jihyeon arms around his neck, kissing back, full body shot, from side, stand lamp light, quiet atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
+        },
+        {
+          "id": "665f35d6-6460-4d91-97ba-e61fb9f30c29",
+          "name": "공원에서의 나신 키스 (서서)",
+          "description": "밤 공원 산책로. 하지현이 서 있다. 알몸으로 김대리가 그녀 앞에 서서 두 손으로 그녀의 허리를 잡고 키스한다. 하지현은 두 팔로 그의 목을 감싸고 키스에 응한다. 가로등 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon standing on dark asphalt path, completely naked, 1male in front, holding her waist, kissing, ha jihyeon arms around his neck, kissing back, full body shot, from side, dim streetlamp light, night, intimate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "187bab77-e105-48ae-9a59-af6559feda88"
+        },
+        {
+          "id": "ac374f2e-999d-4bec-8084-5ce537688909",
+          "name": "거실 소파에서의 나신 키스 (앉아서)",
+          "description": "하지현이 거실 소파에 앉아 있다. 알몸으로 김대리가 그녀 옆에 앉아 그녀의 얼굴을 두 손으로 감싸고 키스한다. 하지현은 두 손으로 그의 가슴을 잡고 키스에 응한다. 간접조명.",
+          "prompt": "1boy, 1girl, ha jihyeon sitting on dark brown leather sofa, completely naked, 1male sitting beside, holding her face, kissing, ha jihyeon holding his chest, kissing back, upper body shot, from side, dim indirect lighting, evening, intimate atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
+        },
+        {
+          "id": "1de4d35a-5ed5-414c-9757-6f33b4127cd9",
+          "name": "침실에서의 나신 키스 (앉아서)",
+          "description": "하지현이 침대에 앉아 있다. 알몸으로 김대리가 그녀 앞에 무릎을 꿇고 앉아 그녀의 얼굴을 두 손으로 감싸고 키스한다. 하지현은 두 손으로 그의 어깨를 잡고 키스에 응한다. 스탠드 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon sitting on queen-size bed, completely naked, 1male kneeling in front, holding her face, kissing, ha jihyeon holding his shoulders, kissing back, upper body shot, from front, stand lamp light, quiet atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
+        },
+        {
+          "id": "b4e7df9f-19e9-4b81-9ebf-b854e4b9a1fe",
+          "name": "사무실 책상 위에서의 나신 키스 (앉아서)",
+          "description": "퇴근 후 부장실. 하지현이 다크월넛 책상 위에 앉아 있다. 알몸으로 김대리가 그녀 앞에 서서 그녀의 얼굴을 두 손으로 감싸고 키스한다. 하지현은 두 손으로 그의 손을 잡고 키스에 응한다. 형광등 불빛.",
+          "prompt": "1boy, 1girl, ha jihyeon sitting on dark walnut desk, completely naked, 1male standing in front, holding her face, kissing, ha jihyeon holding his hands, kissing back, upper body shot, from front, fluorescent light, tense atmosphere",
+          "outfitId": "b732d24b-6673-4adf-abec-c5858e559ba0",
+          "backgroundId": "c2ecc027-1c38-4961-b960-69e6bf6e96c4"
+        },
+        {
+          "id": "cae3f79a-1be0-4656-be51-3e9fbf81565b",
+          "name": "거실에서의 나신 대화",
+          "description": "하지현이 거실 소파에 앉아 있다. 평상복을 입고 김대리와 마주 앉아 이야기하고 있다. 하지현은 두 손을 무릎 위에 올리고 긴장된 표정을 짓는다. 간접조명, 차분하고 약간 음산한 분위기.",
+          "prompt": "1boy, 1girl, ha jihyeon sitting on dark brown leather sofa, wearing ivory sweater and light blue jeans, facing 1male, hands on knees, nervous expression, upper body shot, from front, dim indirect lighting, evening, calm slightly somber atmosphere",
+          "outfitId": "0ef498cf-72aa-47dc-8ea8-5ee6353bd307",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
+        },
+        {
+          "id": "da5b8b20-481f-4a10-a6a2-c6dd97006f8d",
+          "name": "침실에서의 혼자 생각",
+          "description": "하지현이 침대 가장자리에 앉아 있다. 평상복을 입고 고개를 숙인 채 깊은 생각에 잠겨 있다. 두 손은 무릎 위에 올려져 있고, 표정은 불안하고 우울하다. 스탠드 불빛, 조용하고 폐쇄적인 분위기.",
+          "prompt": "1girl, ha jihyeon sitting on edge of queen-size bed, wearing ivory sweater and light blue jeans, head down, deep in thought, hands on knees, anxious depressed expression, upper body shot, from side, stand lamp light, quiet enclosed atmosphere",
+          "outfitId": "0ef498cf-72aa-47dc-8ea8-5ee6353bd307",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
+        },
+        {
+          "id": "0b2e475d-04e5-4608-a6a3-ef85b9a77b0a",
+          "name": "부장실에서의 업무 보고",
+          "description": "하지현이 외출복을 입고 부장실에 서 있다. 박부장이 책상 뒤에 앉아 그녀를 노려본다. 하지현은 서류를 들고 긴장된 표정으로 보고한다. 형광등 불빛, 권위적이고 딱딱한 분위기.",
+          "prompt": "1girl, 1male, ha jihyeon standing in front of dark walnut desk, wearing beige trench coat and white blouse, holding documents, nervous expression, 1male (department head) sitting behind desk, glaring, full body shot, from front, fluorescent light, daytime, authoritative rigid atmosphere",
+          "outfitId": "8a30ec82-96e8-4a28-8bcc-9c9c09a0901f",
+          "backgroundId": "c2ecc027-1c38-4961-b960-69e6bf6e96c4"
+        },
+        {
+          "id": "b5373db0-93df-4edd-ba24-9df57064ffa9",
+          "name": "일반 사무실에서의 업무",
+          "description": "하지현이 일반 사무실 책상에 앉아 컴퓨터로 작업하고 있다. 외출복을 입고 집중한 표정으로 모니터를 바라본다. 주변에 다른 직원들이 바쁘게 움직인다. 형광등 조명, 분주한 업무 분위기.",
+          "prompt": "1girl, ha jihyeon sitting at gray desk, wearing beige trench coat and white blouse, working on computer, focused expression, looking at monitor, other office workers in background, upper body shot, from side, fluorescent lighting, daytime, busy work atmosphere",
+          "outfitId": "8a30ec82-96e8-4a28-8bcc-9c9c09a0901f",
+          "backgroundId": "c95df079-f868-4d40-a71f-63adf81c701a"
+        },
+        {
+          "id": "23b04b42-218e-4279-b400-222ccfa2726f",
+          "name": "공원에서의 혼자 산책",
+          "description": "늦은 밤 공원. 하지현이 평상복을 입고 산책로를 천천히 걷고 있다. 두 손을 주머니에 넣고 고개를 숙인 채 생각에 잠겨 있다. 가로등 불빛이 그녀의 모습을 희미하게 비춘다. 조용하고 쓸쓸한 분위기.",
+          "prompt": "1girl, ha jihyeon walking on dark asphalt path, wearing ivory sweater and light blue jeans, hands in pockets, head down, lost in thought, full body shot, from behind, dim streetlamp light, night, quiet lonely atmosphere",
+          "outfitId": "0ef498cf-72aa-47dc-8ea8-5ee6353bd307",
+          "backgroundId": "187bab77-e105-48ae-9a59-af6559feda88"
+        },
+        {
+          "id": "d602d004-d3a0-4ef2-a424-65180a97f7fe",
+          "name": "거실에서의 TV 시청",
+          "description": "하지현이 거실 소파에 앉아 TV를 보고 있다. 평상복을 입고 무릎을 세운 채 팔로 감싸 안고 있다. 표정은 무표정하고 멍하니 화면을 응시한다. 간접조명, 차분하고 적막한 분위기.",
+          "prompt": "1girl, ha jihyeon sitting on dark brown leather sofa, wearing ivory sweater and light blue jeans, knees pulled up, arms wrapped around knees, blank expression, staring at TV, upper body shot, from side, dim indirect lighting, evening, calm quiet atmosphere",
+          "outfitId": "0ef498cf-72aa-47dc-8ea8-5ee6353bd307",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
+        },
+        {
+          "id": "7f822977-3391-4b49-a80f-899d74f37b44",
+          "name": "침실 화장대에서의 화장",
+          "description": "하지현이 침실 화장대 앞에 앉아 화장을 하고 있다. 평상복을 입고 거울을 바라보며 립스틱을 바른다. 표정은 차분하고 집중되어 있다. 스탠드 불빛, 조용한 분위기.",
+          "prompt": "1girl, ha jihyeon sitting at vanity table, wearing ivory sweater and light blue jeans, looking in mirror, applying lipstick, calm focused expression, upper body shot, from behind, stand lamp light, quiet atmosphere",
+          "outfitId": "0ef498cf-72aa-47dc-8ea8-5ee6353bd307",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
+        },
+        {
+          "id": "c2ef2436-1f42-4a1f-a6f1-c8d016331c81",
+          "name": "부장실에서의 대기",
+          "description": "하지현이 부장실 소파에 앉아 있다. 외출복을 입고 초조하게 손가락을 꼬고 있다. 박부장이 전화 통화 중이며 그녀를 힐끗 보며 웃는다. 형광등 불빛, 불안하고 긴장된 분위기.",
+          "prompt": "1girl, 1male, ha jihyeon sitting on leather sofa in office, wearing beige trench coat and white blouse, fidgeting with fingers, anxious expression, 1male (department head) on phone, glancing at her, upper body shot, from side, fluorescent light, daytime, tense atmosphere",
+          "outfitId": "8a30ec82-96e8-4a28-8bcc-9c9c09a0901f",
+          "backgroundId": "c2ecc027-1c38-4961-b960-69e6bf6e96c4"
+        },
+        {
+          "id": "693bfc54-0d9a-49af-8993-7f2a698a0b74",
+          "name": "일반 사무실에서의 커피 타임",
+          "description": "하지현이 일반 사무실 커피 머신 앞에 서 있다. 외출복을 입고 종이컵에 커피를 따르고 있다. 표정은 피곤하고 무표정하다. 다른 직원들이 지나간다. 형광등 조명, 분주한 분위기.",
+          "prompt": "1girl, ha jihyeon standing in front of coffee machine in office, wearing beige trench coat and white blouse, pouring coffee into paper cup, tired blank expression, other workers passing by, upper body shot, from side, fluorescent lighting, daytime, busy atmosphere",
+          "outfitId": "8a30ec82-96e8-4a28-8bcc-9c9c09a0901f",
+          "backgroundId": "c95df079-f868-4d40-a71f-63adf81c701a"
+        },
+        {
+          "id": "75cab141-d5a1-4f00-9b01-87da9d444394",
+          "name": "공원 벤치에서의 휴식",
+          "description": "늦은 밤 공원 벤치. 하지현이 평상복을 입고 벤치에 앉아 있다. 두 손을 무릎 위에 올리고 하늘을 바라보며 깊은 숨을 내쉰다. 가로등 불빛, 조용하고 쓸쓸한 분위기.",
+          "prompt": "1girl, ha jihyeon sitting on rusty iron bench, wearing ivory sweater and light blue jeans, hands on knees, looking up at sky, taking deep breath, full body shot, from side, dim streetlamp light, night, quiet lonely atmosphere",
+          "outfitId": "0ef498cf-72aa-47dc-8ea8-5ee6353bd307",
+          "backgroundId": "187bab77-e105-48ae-9a59-af6559feda88"
+        },
+        {
+          "id": "af86489f-4ff8-41fb-874c-62e2642df15c",
+          "name": "거실에서의 독서",
+          "description": "하지현이 거실 소파에 앉아 책을 읽고 있다. 평상복을 입고 다리를 꼰 채 책에 집중하고 있다. 간접조명이 그녀의 옆모습을 비춘다. 차분하고 조용한 분위기.",
+          "prompt": "1girl, ha jihyeon sitting on dark brown leather sofa, wearing ivory sweater and light blue jeans, legs crossed, reading a book, focused expression, upper body shot, from side, dim indirect lighting, evening, calm quiet atmosphere",
+          "outfitId": "0ef498cf-72aa-47dc-8ea8-5ee6353bd307",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
+        },
+        {
+          "id": "49c8a47f-7a6f-46ed-b209-e3e5e4b6d9bc",
+          "name": "침실에서의 수면 준비",
+          "description": "하지현이 침대 옆에 서서 침대보를 정리하고 있다. 평상복을 입고 졸린 표정으로 하품을 한다. 스탠드 불빛이 은은하게 비춘다. 조용하고 편안한 분위기.",
+          "prompt": "1girl, ha jihyeon standing beside queen-size bed, wearing ivory sweater and light blue jeans, tidying dark navy bedspread, sleepy expression, yawning, full body shot, from side, stand lamp light, quiet comfortable atmosphere",
+          "outfitId": "0ef498cf-72aa-47dc-8ea8-5ee6353bd307",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
+        },
+        {
+          "id": "6baedec0-fd03-4cc2-b3ec-c11f6bdf23d4",
+          "name": "부장실에서의 서류 정리",
+          "description": "하지현이 부장실 책상 앞에 서서 서류를 정리하고 있다. 외출복을 입고 집중한 표정으로 파일을 분류한다. 박부장은 자리에 없다. 형광등 불빛, 조용하고 업무적인 분위기.",
+          "prompt": "1girl, ha jihyeon standing in front of dark walnut desk, wearing beige trench coat and white blouse, organizing documents, focused expression, sorting files, upper body shot, from side, fluorescent light, daytime, quiet work atmosphere",
+          "outfitId": "8a30ec82-96e8-4a28-8bcc-9c9c09a0901f",
+          "backgroundId": "c2ecc027-1c38-4961-b960-69e6bf6e96c4"
+        },
+        {
+          "id": "e3754567-db11-4892-a734-331d89074308",
+          "name": "일반 사무실에서의 동료와 대화",
+          "description": "하지현이 일반 사무실에서 동료 직원과 이야기하고 있다. 외출복을 입고 미소를 지으며 대화한다. 표정은 밝지만 약간 억지스럽다. 형광등 조명, 분주한 분위기.",
+          "prompt": "1girl, 1male, ha jihyeon standing in general office, wearing beige trench coat and white blouse, talking to coworker, smiling, slightly forced expression, upper body shot, from front, fluorescent lighting, daytime, busy atmosphere",
+          "outfitId": "8a30ec82-96e8-4a28-8bcc-9c9c09a0901f",
+          "backgroundId": "c95df079-f868-4d40-a71f-63adf81c701a"
+        },
+        {
+          "id": "1bcc9fc0-ff4b-4a0e-b258-c4c72809062b",
+          "name": "공원에서의 전화 통화",
+          "description": "늦은 밤 공원. 하지현이 평상복을 입고 서서 전화 통화를 하고 있다. 표정은 불안하고 긴장되어 있으며, 낮은 목소리로 말한다. 가로등 불빛, 은밀하고 불안한 분위기.",
+          "prompt": "1girl, ha jihyeon standing on dark asphalt path, wearing ivory sweater and light blue jeans, talking on phone, anxious tense expression, speaking in low voice, upper body shot, from side, dim streetlamp light, night, secretive uneasy atmosphere",
+          "outfitId": "0ef498cf-72aa-47dc-8ea8-5ee6353bd307",
+          "backgroundId": "187bab77-e105-48ae-9a59-af6559feda88"
+        },
+        {
+          "id": "1cdc0464-0ebb-4d08-91bc-81c95ee14b36",
+          "name": "거실에서의 청소",
+          "description": "하지현이 거실에서 청소기를 돌리고 있다. 평상복을 입고 집중한 표정으로 바닥을 청소한다. 간접조명, 차분하고 일상적인 분위기.",
+          "prompt": "1girl, ha jihyeon standing in living room, wearing ivory sweater and light blue jeans, vacuuming dark wood floor, focused expression, full body shot, from side, dim indirect lighting, evening, calm daily atmosphere",
+          "outfitId": "0ef498cf-72aa-47dc-8ea8-5ee6353bd307",
+          "backgroundId": "6073e82f-2e70-46ad-93a5-10f2ff39678d"
+        },
+        {
+          "id": "aa14b617-f0dc-4cea-aa5e-6223d51e5941",
+          "name": "침실에서의 옷 갈아입기",
+          "description": "하지현이 침실에서 옷을 갈아입고 있다. 평상복을 벗고 외출복으로 갈아입는 중이다. 브래지어 차림으로 블라우스를 걸치고 있다. 스탠드 불빛, 조용하고 사적인 분위기.",
+          "prompt": "1girl, ha jihyeon standing in bedroom, wearing only bra, putting on white silk blouse, changing clothes, upper body shot, from side, stand lamp light, quiet private atmosphere",
+          "outfitId": "0ef498cf-72aa-47dc-8ea8-5ee6353bd307",
+          "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
+        },
+        {
+          "id": "ae7269d2-f596-45c3-beef-4852d6cb19f3",
+          "name": "부장실에서의 퇴근 준비",
+          "description": "하지현이 부장실에서 가방을 챙기고 있다. 외출복을 입고 서류를 정리하며 퇴근 준비를 한다. 표정은 피곤하고 무표정하다. 형광등 불빛, 조용하고 지친 분위기.",
+          "prompt": "1girl, ha jihyeon standing in front of dark walnut desk, wearing beige trench coat and white blouse, packing brown leather tote bag, organizing documents, tired blank expression, full body shot, from side, fluorescent light, daytime, quiet tired atmosphere",
+          "outfitId": "8a30ec82-96e8-4a28-8bcc-9c9c09a0901f",
+          "backgroundId": "c2ecc027-1c38-4961-b960-69e6bf6e96c4"
+        },
+        {
+          "id": "74a6f238-754c-497a-846a-756af51d5d07",
+          "name": "일반 사무실에서의 점심 시간",
+          "description": "하지현이 일반 사무실 책상에서 도시락을 먹고 있다. 외출복을 입고 천천히 밥을 뜨며 멍하니 창밖을 바라본다. 형광등 조명, 조용하고 쓸쓸한 분위기.",
+          "prompt": "1girl, ha jihyeon sitting at gray desk, wearing beige trench coat and white blouse, eating lunch box, slowly eating, staring blankly out window, upper body shot, from side, fluorescent lighting, daytime, quiet lonely atmosphere",
+          "outfitId": "8a30ec82-96e8-4a28-8bcc-9c9c09a0901f",
+          "backgroundId": "c95df079-f868-4d40-a71f-63adf81c701a"
+        },
+        {
+          "id": "10e92309-1d10-4620-a759-f77634004323",
+          "name": "공원에서의 벤치에 앉아 휴대폰",
+          "description": "늦은 밤 공원 벤치. 하지현이 평상복을 입고 벤치에 앉아 휴대폰을 보고 있다. 표정은 불안하고 초조하며, 손가락으로 화면을 급히 스크롤한다. 가로등 불빛, 은밀하고 불안한 분위기.",
+          "prompt": "1girl, ha jihyeon sitting on rusty iron bench, wearing ivory sweater and light blue jeans, looking at smartphone, anxious fidgety expression, scrolling quickly, upper body shot, from front, dim streetlamp light, night, secretive uneasy atmosphere",
+          "outfitId": "0ef498cf-72aa-47dc-8ea8-5ee6353bd307",
+          "backgroundId": "187bab77-e105-48ae-9a59-af6559feda88"
         }
       ],
       "createdAt": 1787017970596,
-      "updatedAt": 1787036629477
+      "updatedAt": 1787040264301
     },
     {
       "id": "8a0edc6c-51bc-4c2d-8b09-806dfe53b7bc",
@@ -833,6 +1304,20 @@
       ],
       "createdAt": 1787030806120,
       "updatedAt": 1787031075919
+    },
+    {
+      "id": "b73d3c0c-c766-4d89-8dca-1898a1b39bd6",
+      "name": "",
+      "summary": "",
+      "synopsis": "",
+      "thumbnail": null,
+      "appearanceDescription": "",
+      "appearancePrompt": "",
+      "outfits": [],
+      "backgrounds": [],
+      "situations": [],
+      "createdAt": 1787043070874,
+      "updatedAt": 1787043083675
     }
   ]
 }

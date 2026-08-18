@@ -10,6 +10,7 @@ import {
 } from "react";
 import {
   Clipboard,
+  GripVertical,
   Images as ImagesIcon,
   Loader2,
   Plus,
@@ -177,6 +178,10 @@ export function CharacterStudio() {
   const [creating, setCreating] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("basic");
+  // Id of the character row currently being dragged for reordering, or null.
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  // Mirror of draggingId so drag-over handlers read it without re-subscribing.
+  const draggingIdRef = useRef<string | null>(null);
   const [thumbBusy, setThumbBusy] = useState(false);
   const [thumbError, setThumbError] = useState("");
 
@@ -394,6 +399,42 @@ export function CharacterStudio() {
     },
     []
   );
+
+  // ---- List reordering (drag & drop) ----
+
+  const startDrag = useCallback((id: string) => {
+    draggingIdRef.current = id;
+    setDraggingId(id);
+  }, []);
+
+  // Live-reorder the list as the dragged row passes over another. Persisting is
+  // deferred to drag-end so we PUT the final order once, not on every move.
+  const handleDragOver = useCallback((overId: string) => {
+    const dragId = draggingIdRef.current;
+    if (!dragId || dragId === overId) return;
+    setCharacters((prev) => {
+      const from = prev.findIndex((item) => item.id === dragId);
+      const to = prev.findIndex((item) => item.id === overId);
+      if (from === -1 || to === -1 || from === to) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    draggingIdRef.current = null;
+    setDraggingId(null);
+    // Persist the current on-screen order (charactersRef is kept fresh above).
+    void fetch("/api/characters", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ids: charactersRef.current.map((item) => item.id),
+      }),
+    }).catch(() => {});
+  }, []);
 
   // ---- Thumbnail sources ----
 
@@ -666,13 +707,28 @@ export function CharacterStudio() {
                 <button
                   key={character.id}
                   type="button"
+                  draggable
                   onClick={() => setSelectedId(character.id)}
-                  className={`group flex w-full items-center gap-3 rounded-md border p-2 text-left transition-colors ${
+                  onDragStart={(event) => {
+                    startDrag(character.id);
+                    event.dataTransfer.effectAllowed = "move";
+                  }}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = "move";
+                    handleDragOver(character.id);
+                  }}
+                  onDragEnd={handleDragEnd}
+                  className={`group flex w-full items-center gap-2 rounded-md border p-2 text-left transition-colors ${
                     active
                       ? "border-primary/30 bg-primary/10"
                       : "border-transparent hover:bg-sidebar-accent"
-                  }`}
+                  } ${draggingId === character.id ? "opacity-50" : ""}`}
                 >
+                  <GripVertical
+                    className="size-4 shrink-0 cursor-grab text-muted-foreground/50 transition-colors group-hover:text-muted-foreground"
+                    aria-hidden
+                  />
                   <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
                     {character.thumbnail ? (
                       // eslint-disable-next-line @next/next/no-img-element
