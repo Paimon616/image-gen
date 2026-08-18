@@ -28,12 +28,11 @@ import { FieldHelp } from "@/components/field-help";
 import { PaimonChat, type PaimonAttachment } from "@/components/paimon-chat";
 import { Slider } from "@/components/ui/slider";
 import type {
-  CivitaiOrigin,
   GeneratedImage,
   GenerationParams as GenerationParamsType,
   ImportedCivitaiResource,
 } from "@/lib/types";
-import { getModelConfig, randomGenerationSeed } from "@/lib/types";
+import { getModelConfig } from "@/lib/types";
 import {
   compareComfyVersions,
   formatComfyVersion,
@@ -41,6 +40,10 @@ import {
   requiredComfyVersionForCheckpoint,
 } from "@/lib/comfy-version";
 import { useRunpodDownloadStore } from "@/lib/runpod-download-store";
+import {
+  useGenerationQueueStore,
+  type RunpodMissingFile,
+} from "@/lib/generation-queue-store";
 import {
   runpodDownloadEntryId,
   useDownloadManagerStore,
@@ -76,23 +79,6 @@ interface RunpodPodOption {
   comfyUrl: string;
 }
 
-interface RunpodMissingFile {
-  folder: string;
-  path: string;
-  resource: {
-    type: "checkpoint" | "lora" | "embedding" | "vae" | "upscaler" | "other";
-    name: string;
-    versionName?: string;
-    baseModel?: string;
-    url: string;
-    modelId?: number;
-    modelVersionId?: number;
-  };
-  // Server-computed: whether the pod can fetch this file automatically. Mirrors
-  // getRunpodDownloadPlan's eligibility so the client never re-derives it.
-  downloadable?: boolean;
-}
-
 interface RunpodConnectionStatus {
   checked: boolean;
   comfyReachable: boolean;
@@ -124,25 +110,6 @@ function choosePoseControlNet(controlnets: string[]) {
   );
 }
 
-function parseSseEvent(rawEvent: string) {
-  const event =
-    rawEvent
-      .split("\n")
-      .find((line) => line.startsWith("event: "))
-      ?.slice("event: ".length)
-      .trim() ?? "message";
-  const data = rawEvent
-    .split("\n")
-    .filter((line) => line.startsWith("data: "))
-    .map((line) => line.slice("data: ".length))
-    .join("\n");
-
-  return {
-    event,
-    data: data ? JSON.parse(data) : null,
-  };
-}
-
 async function uploadImageFile(file: File) {
   const formData = new FormData();
   formData.append("file", file);
@@ -164,33 +131,6 @@ function imageFileFromClipboard(event: ClipboardEvent) {
   return imageItem?.getAsFile() ?? null;
 }
 
-interface GenerationQueueItem {
-  id: string;
-  params: GenerationParamsType;
-  resources?: ImportedCivitaiResource[];
-  civitaiOrigin?: CivitaiOrigin;
-  workspaceId?: string;
-  generationTarget: "local" | "runpod";
-  runpodPodId?: string;
-  // Links the generated image back to the saved character/situation it was
-  // composed from (set when generation is triggered from the Paimon picker).
-  characterId?: string;
-  situationId?: string;
-}
-
-// Links a composed prompt to the character/situation it came from so a manual
-// Generate press (after picking a situation without auto-generate) can still tag
-// the image. Only used while the prompt still matches what was composed.
-interface CharacterContext {
-  characterId?: string;
-  situationId?: string;
-  prompt: string;
-}
-
-function cloneGenerationParams(params: GenerationParamsType) {
-  return JSON.parse(JSON.stringify(params)) as GenerationParamsType;
-}
-
 function canDownloadRunpodMissingFile(item: RunpodMissingFile) {
   // Eligibility is decided server-side (see canDownloadRunpodResource in runpod.ts)
   // where the base-asset list and catalog are known; the client just reflects it.
@@ -203,9 +143,6 @@ export default function Home() {
     setParams,
     status,
     setStatus,
-    addImage,
-    addImages,
-    updateImage,
     images,
     pendingImages,
     language,
@@ -236,8 +173,17 @@ export default function Home() {
   const [batchActionBusy, setBatchActionBusy] = useState(false);
   const [batchDownloadBusy, setBatchDownloadBusy] = useState(false);
   const layoutRef = useRef<HTMLDivElement | null>(null);
-  const [generationQueue, setGenerationQueue] = useState<GenerationQueueItem[]>([]);
-  const characterContextRef = useRef<CharacterContext | null>(null);
+  // The queue, the running job and the job runner live in a module-level store
+  // (see generation-queue-store.ts) so queued generations keep draining while
+  // this page is unmounted — e.g. during a Paimon batch started here and
+  // continued from another page.
+  const generationQueue = useGenerationQueueStore((state) => state.queue);
+  const activeGeneration = useGenerationQueueStore((state) => state.active);
+  const enqueueGenerationJob = useGenerationQueueStore((state) => state.enqueue);
+  const cancelGenerationJob = useGenerationQueueStore((state) => state.cancel);
+  const setGenerationConfig = useGenerationQueueStore(
+    (state) => state.setConfig
+  );
   // True from the moment Generate is pressed until the pending gallery card is
   // registered. On the RunPod path an async file check sits in that gap, so the
   // button shows a "registering card" state instead of looking unresponsive.
@@ -326,13 +272,8 @@ export default function Home() {
   const autoRunpodCheckKeyRef = useRef("");
   const autoRunpodFileSigRef = useRef("");
   const [runpodFilesChecked, setRunpodFilesChecked] = useState(false);
-  const [activeGeneration, setActiveGeneration] =
-    useState<GenerationQueueItem | null>(null);
   const [paimonAttachments, setPaimonAttachments] =
     useState<PaimonAttachment[]>([]);
-  const activePromptIdRef = useRef("");
-  const generationAbortControllerRef = useRef<AbortController | null>(null);
-  const activeGenerationRef = useRef<GenerationQueueItem | null>(null);
 
   const startEditorResize = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -923,192 +864,6 @@ export default function Home() {
     supportsPoseReference,
   ]);
 
-  const runGenerationJob = useCallback(async (job: GenerationQueueItem) => {
-    const {
-      id,
-      params: jobParams,
-      civitaiOrigin,
-      workspaceId,
-      generationTarget: jobGenerationTarget,
-      runpodPodId,
-      characterId,
-      situationId,
-    } = job;
-
-    const abortController = new AbortController();
-    activePromptIdRef.current = "";
-    generationAbortControllerRef.current = abortController;
-    updateImage(id, {
-      generation: {
-        state: "waiting",
-        progress: 1,
-        message: "Queued...",
-      },
-    });
-
-    try {
-      const res = await fetch("/api/generate/stream", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...jobParams,
-          resources: job.resources ?? [],
-          civitaiOrigin,
-          workspaceId,
-          generationTarget: jobGenerationTarget,
-          runpodPodId,
-          characterId,
-          situationId,
-        }),
-        signal: abortController.signal,
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Generation failed");
-      }
-
-      if (!res.body) {
-        throw new Error("Generation stream did not start");
-      }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let completed = false;
-
-      while (!completed) {
-        const { value, done } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const events = buffer.split("\n\n");
-        buffer = events.pop() ?? "";
-
-        for (const rawEvent of events) {
-          if (!rawEvent.trim()) continue;
-          const { event, data } = parseSseEvent(rawEvent);
-
-          if (event === "queued") {
-            activePromptIdRef.current = String(data?.prompt_id ?? "");
-            updateImage(id, {
-              generation: {
-                state: "waiting",
-                progress: 1,
-                message: "Waiting for ComfyUI...",
-              },
-            });
-          }
-
-          if (event === "progress") {
-            const progress = Number(data?.progress ?? 0);
-            const message = String(data?.message ?? "Generating...");
-            const isStepProgress =
-              data?.step != null && data?.total_steps != null;
-            updateImage(id, {
-              generation: {
-                state: isStepProgress ? "generating" : "waiting",
-                progress,
-                message,
-              },
-            });
-          }
-
-          if (event === "complete") {
-            const generatedImages: GeneratedImage[] = Array.isArray(data?.images)
-              ? data.images
-              : [];
-
-            if (generatedImages.length === 0) {
-              throw new Error("Generation completed without an image.");
-            }
-
-            const [firstImage, ...additionalImages] = generatedImages;
-            updateImage(id, {
-              ...firstImage,
-              params: firstImage.params ?? jobParams,
-              generation: {
-                state: "completed",
-                progress: 100,
-                message: "Done",
-              },
-            });
-
-            if (additionalImages.length > 0) {
-              addImages(
-                additionalImages.map((image) => ({
-                  ...image,
-                  generation: {
-                    state: "completed" as const,
-                    progress: 100,
-                    message: "Done",
-                  },
-                }))
-              );
-            }
-
-            // Refresh workspace image counts after auto-registering the result.
-            if (workspaceId) {
-              void useStore.getState().fetchWorkspaces();
-            }
-
-            completed = true;
-          }
-
-          if (event === "error") {
-            throw new Error(data?.error || "Generation failed");
-          }
-        }
-      }
-
-      setStatus({ state: "completed", progress: 100, message: "Done!" });
-      setTimeout(() => {
-        setStatus({ state: "idle", progress: 0, message: "" });
-      }, 2000);
-    } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") {
-        updateImage(id, {
-          generation: {
-            state: "canceled",
-            progress: 0,
-            message: "Canceled.",
-          },
-        });
-        setStatus({ state: "canceled", progress: 0, message: "Canceled." });
-        return;
-      }
-
-      const message = err instanceof Error ? err.message : "Unknown error";
-      updateImage(id, {
-        generation: {
-          state: "error",
-          progress: 0,
-          message,
-        },
-      });
-      setStatus({ state: "error", progress: 0, message });
-    } finally {
-      generationAbortControllerRef.current = null;
-      activePromptIdRef.current = "";
-      activeGenerationRef.current = null;
-      setActiveGeneration(null);
-    }
-  }, [addImages, setStatus, updateImage]);
-
-  useEffect(() => {
-    if (activeGenerationRef.current || activeGeneration || generationQueue.length === 0) {
-      return;
-    }
-
-    const [nextJob] = generationQueue;
-    activeGenerationRef.current = nextJob;
-    setGenerationQueue((queue) =>
-      queue[0]?.id === nextJob.id ? queue.slice(1) : queue
-    );
-    setActiveGeneration(nextJob);
-    void runGenerationJob(nextJob);
-  }, [activeGeneration, generationQueue, runGenerationJob]);
-
   const checkRunpodFiles = useCallback(async () => {
     if (!selectedRunpodPodId) return null;
 
@@ -1508,157 +1263,52 @@ export default function Home() {
     void checkRunpodImageNodes();
   }, [checkRunpodImageNodes]);
 
-  const enqueueGeneration = useCallback(async (
-    sourceParams: GenerationParamsType,
-    meta?: { characterId?: string; situationId?: string }
-  ) => {
-    if (!sourceParams.prompt.trim()) return;
-    // Resolve the character/situation link. An explicit meta (Paimon auto-gen or
-    // batch) wins; otherwise fall back to the last composed context if the prompt
-    // still matches, so a manual Generate after picking a situation still tags.
-    const context = characterContextRef.current;
-    const linkedMeta =
-      meta ??
-      (context && context.prompt === sourceParams.prompt
-        ? { characterId: context.characterId, situationId: context.situationId }
-        : undefined);
-    // Flag the "registering card" state up front; the finally below clears it
-    // once the pending card exists (or an early return bails out).
-    setIsSubmitting(true);
-    try {
-    if (generationModeError) {
-      setStatus({ state: "error", progress: 0, message: generationModeError });
-      return;
-    }
-    if (generationTarget === "runpod" && !selectedRunpodPodId) {
-      setStatus({
-        state: "error",
-        progress: 0,
-        message: "RunPod target is not configured.",
-      });
-      return;
-    }
-    if (generationTarget === "runpod") {
-      setRunpodBusy("check");
-      setRunpodStatus(ko ? "RunPod 파일을 확인 중입니다..." : "Checking RunPod files...");
-      try {
-        const missing = await checkRunpodFiles();
-        if (missing && missing.length > 0) {
-          setRunpodStatus(
-            ko
-              ? `RunPod에 누락 파일 ${missing.length}개가 있어 생성하지 않았습니다. 다운로드 후 다시 생성하세요.`
-              : `${missing.length} file(s) are missing on RunPod. Download them before generating.`
-          );
-          setStatus({
-            state: "error",
-            progress: 0,
-            message:
-              ko
-                ? `RunPod 누락 파일 ${missing.length}개`
-                : `${missing.length} RunPod file(s) missing`,
-          });
-          return;
-        }
-        setRunpodStatus(ko ? "RunPod 파일 준비 완료." : "RunPod files are ready.");
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "RunPod file check failed";
-        setRunpodStatus(message);
-        setStatus({ state: "error", progress: 0, message });
-        return;
-      } finally {
-        setRunpodBusy("");
-      }
-    }
-
-    const jobParams = cloneGenerationParams(sourceParams);
-    if (jobParams.seed == null || jobParams.seed < 0) {
-      jobParams.seed = randomGenerationSeed();
-    }
-    const id = crypto.randomUUID();
-    const civitaiOrigin = useStore.getState().civitaiReference ?? undefined;
-    const importedResources = useStore
-      .getState()
-      .civitaiImport.missingResources.map(
-        (resource): ImportedCivitaiResource => ({
-          type: resource.type,
-          name: resource.name,
-          versionName: resource.versionName,
-          baseModel: resource.baseModel,
-          weight: resource.weight,
-          hash: resource.hash,
-          modelId: resource.modelId,
-          modelVersionId: resource.modelVersionId,
-          url: resource.url,
-        })
-      );
-    const workspaceId = useStore.getState().activeWorkspaceId ?? undefined;
-
-    addImage({
-      id,
-      url: "",
-      filename: "",
-      params: jobParams,
-      timestamp: Date.now(),
-      civitaiOrigin,
-      workspaces: workspaceId ? [workspaceId] : [],
-      characterId: linkedMeta?.characterId,
-      situationId: linkedMeta?.situationId,
-      generation: {
-        state: "queued",
-        progress: 0,
-        message: "Queued",
-      },
+  // Publish the target/validation context the queue store needs so a background
+  // enqueue (a Paimon batch that outlives this page) still generates against the
+  // right backend and pre-checks RunPod files.
+  useEffect(() => {
+    setGenerationConfig({
+      generationTarget,
+      runpodPodId: selectedRunpodPodId,
+      ko,
+      modeError: generationModeError,
     });
-    setGenerationQueue((queue) => [
-      ...queue,
-      {
-        id,
-        params: jobParams,
-        resources: importedResources,
-        civitaiOrigin,
-        workspaceId,
-        generationTarget,
-        runpodPodId: generationTarget === "runpod" ? selectedRunpodPodId : undefined,
-        characterId: linkedMeta?.characterId,
-        situationId: linkedMeta?.situationId,
-      },
-    ]);
-    setStatus({ state: "idle", progress: 0, message: "" });
-    } finally {
-      setIsSubmitting(false);
-    }
   }, [
-    addImage,
     generationModeError,
     generationTarget,
-    checkRunpodFiles,
     ko,
     selectedRunpodPodId,
-    setStatus,
+    setGenerationConfig,
   ]);
+
+  const enqueueGeneration = useCallback(
+    async (
+      sourceParams: GenerationParamsType,
+      meta?: { characterId?: string; situationId?: string }
+    ) => {
+      // Flag the "registering card" state up front; the finally below clears it
+      // once the pending card exists (or an early return bails out).
+      setIsSubmitting(true);
+      try {
+        await enqueueGenerationJob(sourceParams, meta, {
+          onRunpodBusy: setRunpodBusy,
+          onRunpodStatus: setRunpodStatus,
+          onMissingFiles: (missing) => {
+            setRunpodMissingFiles(missing);
+            setRunpodFilesChecked(true);
+          },
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [enqueueGenerationJob]
+  );
 
   // Manual Generate press uses the current form params.
   const generate = useCallback(
     () => enqueueGeneration(params),
     [enqueueGeneration, params]
-  );
-
-  // Records what character/situation a composed prompt came from, so a later
-  // manual Generate on that same prompt still links the image (see enqueueGeneration).
-  const handleCharacterContext = useCallback((context: CharacterContext) => {
-    characterContextRef.current = context;
-  }, []);
-
-  // Paimon auto-generate / batch: enqueue the composed params with an explicit
-  // character/situation link.
-  const handlePaimonGenerate = useCallback(
-    (
-      composedParams: GenerationParamsType,
-      meta: { characterId?: string; situationId?: string }
-    ) => {
-      void enqueueGeneration(composedParams, meta);
-    },
-    [enqueueGeneration]
   );
 
   const selectedRunpodPod = useMemo(
@@ -1823,52 +1473,10 @@ export default function Home() {
   );
 
 
-  const cancelGeneration = useCallback((imageId?: string) => {
-    const targetId = imageId ?? activeGeneration?.id;
-
-    if (!targetId) return;
-
-    const queuedJob = generationQueue.find((job) => job.id === targetId);
-
-    if (queuedJob) {
-      setGenerationQueue((queue) => queue.filter((job) => job.id !== targetId));
-      updateImage(targetId, {
-        generation: {
-          state: "canceled",
-          progress: 0,
-          message: "Canceled.",
-        },
-      });
-      setStatus({ state: "canceled", progress: 0, message: "Canceled." });
-      return;
-    }
-
-    const runningJob = activeGenerationRef.current ?? activeGeneration;
-
-    if (runningJob?.id !== targetId) return;
-
-    const promptId = activePromptIdRef.current;
-
-    generationAbortControllerRef.current?.abort();
-
-    if (promptId) {
-      void fetch("/api/generate/cancel", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt_id: promptId }),
-      }).catch(() => {});
-    }
-
-    updateImage(targetId, {
-      generation: {
-        state: "canceled",
-        progress: 0,
-        message: "Canceled.",
-      },
-    });
-
-    setStatus({ state: "canceled", progress: 0, message: "Canceled." });
-  }, [activeGeneration, generationQueue, setStatus, updateImage]);
+  const cancelGeneration = useCallback(
+    (imageId?: string) => cancelGenerationJob(imageId),
+    [cancelGenerationJob]
+  );
 
   const previewPose = useCallback(async () => {
     if (!params.pose_reference_image) return;
@@ -3098,12 +2706,8 @@ export default function Home() {
       </main>
 
       <PaimonChat
-        params={params}
-        onApplyParams={setParams}
         attachments={paimonAttachments}
         onAttachmentsChange={setPaimonAttachments}
-        onEnqueueGeneration={handlePaimonGenerate}
-        onCharacterContext={handleCharacterContext}
         onOpenImage={setSelectedImage}
       />
 

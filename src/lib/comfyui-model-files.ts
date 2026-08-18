@@ -16,6 +16,11 @@ export const KREA2_VAE_NAME = "qwen_image_vae.safetensors";
 // Krea 2 files so the "generic" workflow is unaffected.
 export const PORNMASTER_CLIP_NAME = "qwen3-vl-4b-heretic_int8.safetensors";
 export const PORNMASTER_VAE_NAME = "wan_2.1_vae.safetensors";
+// Z-Image (Tongyi-MAI) is a Lumina2-architecture DiT: the diffusion weights ship
+// alone and pair with a Qwen3-4B text encoder plus the Flux-style 16-channel VAE.
+// Names match Comfy-Org/z_image_turbo split_files (the official ComfyUI blueprint).
+export const ZIMAGE_CLIP_NAME = "qwen_3_4b.safetensors";
+export const ZIMAGE_VAE_NAME = "ae.safetensors";
 
 export interface CheckpointCapabilities {
   clip: boolean;
@@ -45,6 +50,17 @@ export function isKrea2CheckpointName(modelName: string) {
   return /krea[-_ ]?2/i.test(modelName);
 }
 
+export function isZImageCheckpointName(modelName: string) {
+  return /z[-_ ]?image/i.test(modelName);
+}
+
+// Diffusion-only image checkpoints. They are usually installed under
+// models/diffusion_models (UNETLoader) rather than models/checkpoints, yet they
+// generate images, so the image model list has to reach into that folder too.
+export function isDiffusionOnlyImageCheckpointName(modelName: string) {
+  return isKrea2CheckpointName(modelName) || isZImageCheckpointName(modelName);
+}
+
 export async function modelFileExists(folder: string, modelName: string) {
   try {
     await access(safeModelPath(folder, modelName));
@@ -60,13 +76,16 @@ export async function getMissingRequiredModelFiles(
 ) {
   const isKrea2 = isKrea2CheckpointName(checkpointName);
   const isPornmaster = isKrea2 && krea2Workflow === "pornmaster";
+  const isZImage = !isKrea2 && isZImageCheckpointName(checkpointName);
   const clipName = isKrea2
     ? isPornmaster
       ? PORNMASTER_CLIP_NAME
       : KREA2_CLIP_NAME
-    : isAnimaCheckpointName(checkpointName)
-      ? ANIMA_CLIP_NAME
-      : null;
+    : isZImage
+      ? ZIMAGE_CLIP_NAME
+      : isAnimaCheckpointName(checkpointName)
+        ? ANIMA_CLIP_NAME
+        : null;
 
   if (!clipName) {
     return [];
@@ -76,7 +95,9 @@ export async function getMissingRequiredModelFiles(
     ? isPornmaster
       ? PORNMASTER_VAE_NAME
       : KREA2_VAE_NAME
-    : ANIMA_VAE_NAME;
+    : isZImage
+      ? ZIMAGE_VAE_NAME
+      : ANIMA_VAE_NAME;
   const requiredFiles = [
     {
       folder: "text_encoders",

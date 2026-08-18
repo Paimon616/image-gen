@@ -7,6 +7,7 @@ import {
   getMissingRequiredModelFiles,
   hasModelExtension,
   isAnimaCheckpointName,
+  isDiffusionOnlyImageCheckpointName,
   isKrea2CheckpointName,
 } from "@/lib/comfyui-model-files";
 import type { CivitaiLicenseInfo } from "@/lib/types";
@@ -282,7 +283,7 @@ function isVideoCheckpointAsset(
   return (
     capabilities?.clip === false &&
     !isAnimaCheckpointName(path) &&
-    !isKrea2CheckpointName(path)
+    !isDiffusionOnlyImageCheckpointName(path)
   );
 }
 
@@ -413,7 +414,7 @@ async function listVideoModelAssets(catalog: Record<string, LocalModelMetadata>)
   ).filter((path): path is string => Boolean(path));
   const diffusionModelFiles = (
     await listModelFiles("diffusion_models").catch(() => [] as string[])
-  ).filter((path) => !isKrea2CheckpointName(path));
+  ).filter((path) => !isDiffusionOnlyImageCheckpointName(path));
 
   return [
     ...buildModelAssets("checkpoints", videoCheckpointFiles, catalog),
@@ -421,21 +422,21 @@ async function listVideoModelAssets(catalog: Record<string, LocalModelMetadata>)
   ].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-// Krea 2 checkpoints are diffusion-only (loaded via UNETLoader) but generate
-// images, so they live in diffusion_models yet belong in the image model list.
-async function listKrea2ImageAssets(
+// Krea 2 and Z-Image checkpoints are diffusion-only (loaded via UNETLoader) but
+// generate images, so they live in diffusion_models yet belong in the image model list.
+async function listDiffusionOnlyImageAssets(
   catalog: Record<string, LocalModelMetadata>
 ) {
   const diffusionModelFiles = (
     await listModelFiles("diffusion_models").catch(() => [] as string[])
-  ).filter((path) => isKrea2CheckpointName(path));
+  ).filter((path) => isDiffusionOnlyImageCheckpointName(path));
 
   const assets = buildModelAssets("diffusion_models", diffusionModelFiles, catalog);
   const catalogOnlyAssets = buildCatalogOnlyAssets(
     "diffusion_models",
     diffusionModelFiles,
     catalog
-  ).filter((asset) => isKrea2CheckpointName(asset.path));
+  ).filter((asset) => isDiffusionOnlyImageCheckpointName(asset.path));
 
   return Promise.all(
     [...assets, ...catalogOnlyAssets].map(async (asset) => ({
@@ -451,7 +452,7 @@ export async function GET() {
   const catalog = await readCatalog();
   const [
     checkpointFolderAssets,
-    krea2ImageAssets,
+    diffusionOnlyImageAssets,
     loraAssets,
     embeddingAssets,
     vaeAssets,
@@ -461,7 +462,7 @@ export async function GET() {
     textEncoderAssets,
   ] = await Promise.all([
     listModelAssets("checkpoints", catalog),
-    listKrea2ImageAssets(catalog),
+    listDiffusionOnlyImageAssets(catalog),
     listModelAssets("loras", catalog),
     listModelAssets("embeddings", catalog),
     listModelAssets("vae", catalog),
@@ -470,11 +471,28 @@ export async function GET() {
     listVideoModelAssets(catalog),
     listModelAssets("text_encoders", catalog),
   ]);
-  const checkpointAssets = [
-    ...checkpointFolderAssets.filter((asset) => !isKrea2CheckpointName(asset.path)),
-    ...krea2ImageAssets,
-  ].sort(
-    (a, b) => a.name.localeCompare(b.name)
+  // Krea 2 only ever lives in diffusion_models, so drop any stray checkpoints/ copy.
+  // Z-Image works from either folder, so merge and de-duplicate by filename instead
+  // of dropping the checkpoints/ entry the user may actually have installed.
+  const checkpointAssets = await Promise.all(
+    [
+      ...checkpointFolderAssets.filter((asset) => !isKrea2CheckpointName(asset.path)),
+      ...diffusionOnlyImageAssets,
+    ]
+      .filter(
+        (asset, index, assets) =>
+          assets.findIndex((other) => other.path === asset.path) === index
+      )
+      .sort((a, b) => a.name.localeCompare(b.name))
+      // Anima and Z-Image checkpoints also install under checkpoints/, where the
+      // listing above carries no support-file info. getMissingRequiredModelFiles
+      // returns [] without touching disk for every other family, so this is cheap.
+      .map(async (asset) => ({
+        ...asset,
+        missing_required_files: asset.exists
+          ? await getMissingRequiredModelFiles(asset.path)
+          : [],
+      }))
   );
   const animaMissingRequiredFiles = await getMissingRequiredModelFiles("anima");
 

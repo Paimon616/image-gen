@@ -21,8 +21,12 @@ import {
   KREA2_VAE_NAME,
   PORNMASTER_CLIP_NAME,
   PORNMASTER_VAE_NAME,
+  ZIMAGE_CLIP_NAME,
+  ZIMAGE_VAE_NAME,
   isAnimaCheckpointName,
+  isDiffusionOnlyImageCheckpointName,
   isKrea2CheckpointName,
+  isZImageCheckpointName,
   type CheckpointCapabilities,
 } from "@/lib/comfyui-model-files";
 
@@ -67,6 +71,15 @@ const RUNPOD_BASE_ASSETS = [
   {
     path: `/workspace/ComfyUI/models/vae/${PORNMASTER_VAE_NAME}`,
     url: `https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/vae/${PORNMASTER_VAE_NAME}`,
+  },
+  {
+    // Z-Image's external stack: Qwen3-4B text encoder + the Flux-style 16ch VAE.
+    path: `/workspace/ComfyUI/models/text_encoders/${ZIMAGE_CLIP_NAME}`,
+    url: `https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/text_encoders/${ZIMAGE_CLIP_NAME}`,
+  },
+  {
+    path: `/workspace/ComfyUI/models/vae/${ZIMAGE_VAE_NAME}`,
+    url: `https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/vae/${ZIMAGE_VAE_NAME}`,
   },
   {
     path: "/workspace/ComfyUI/models/ultralytics/bbox/face_yolov8n_v2.pt",
@@ -2076,7 +2089,8 @@ function resourceFromImportedResources(
 async function namesForParams(
   params: GenerationParams,
   importedResources: ImportedCivitaiResource[] = [],
-  needsAnimaSupport = false
+  needsAnimaSupport = false,
+  checkpointFolder = "checkpoints"
 ) {
   const catalog = await readModelCatalog();
   const names: Array<{
@@ -2097,11 +2111,7 @@ async function namesForParams(
   };
   const checkpointName = params.model_name.trim();
   if (checkpointName) {
-    push(
-      "checkpoint",
-      isKrea2CheckpointName(checkpointName) ? "diffusion_models" : "checkpoints",
-      checkpointName
-    );
+    push("checkpoint", checkpointFolder, checkpointName);
     if (isKrea2CheckpointName(checkpointName)) {
       // "generic" and "refined" share the official Krea 2 stack (qwen3vl CLIP + qwen
       // image VAE); only "pornmaster" swaps in its abliterated int8 CLIP + Wan 2.1 VAE.
@@ -2109,6 +2119,11 @@ async function namesForParams(
       const pornmaster = params.krea2_workflow === "pornmaster";
       push("other", "text_encoders", pornmaster ? PORNMASTER_CLIP_NAME : KREA2_CLIP_NAME);
       push("vae", "vae", pornmaster ? PORNMASTER_VAE_NAME : KREA2_VAE_NAME);
+    } else if (isZImageCheckpointName(checkpointName)) {
+      // Z-Image loads an external Qwen3-4B text encoder + Flux-style 16ch VAE that the
+      // diffusion-only weights do not bundle. Same family order as buildDefaultWorkflow.
+      push("other", "text_encoders", ZIMAGE_CLIP_NAME);
+      push("vae", "vae", ZIMAGE_VAE_NAME);
     } else if (needsAnimaSupport) {
       // Anima loads an external Qwen3-0.6B text encoder + Qwen-Image VAE that the
       // diffusion-only checkpoint does not bundle. The caller gates this on the pod's
@@ -2161,14 +2176,27 @@ export async function checkRunpodGenerationFiles(
   // text encoder + Qwen-Image VAE, so probe the pod's capabilities before requiring
   // them (avoids false "missing file" flags for CLIP-bundling SDXL/Anima merges).
   const checkpointName = params.model_name.trim();
-  const needsAnimaSupport =
+  const isKrea2 = isKrea2CheckpointName(checkpointName);
+  const isZImage = !isKrea2 && isZImageCheckpointName(checkpointName);
+  // Probing costs a helper round-trip, so only do it for the two families whose routing
+  // actually depends on it (Anima: dedicated pipeline or not; Z-Image: which folder).
+  const capabilities =
     checkpointName.length > 0 &&
-    !isKrea2CheckpointName(checkpointName) &&
-    isAnimaCheckpointName(checkpointName) &&
-    (await getRunpodCheckpointCapabilities(pod.comfyUrl, checkpointName))?.clip ===
-      false;
+    (isZImage || (!isKrea2 && isAnimaCheckpointName(checkpointName)))
+      ? await getRunpodCheckpointCapabilities(pod.comfyUrl, checkpointName)
+      : null;
+  const needsAnimaSupport = !isZImage && capabilities?.clip === false;
+  // Non-null capabilities mean the header was read from models/checkpoints on the pod;
+  // otherwise a Z-Image checkpoint is in models/diffusion_models, like Krea 2.
+  const checkpointFolder =
+    isKrea2 || (isZImage && !capabilities) ? "diffusion_models" : "checkpoints";
 
-  const resources = await namesForParams(params, importedResources, needsAnimaSupport);
+  const resources = await namesForParams(
+    params,
+    importedResources,
+    needsAnimaSupport,
+    checkpointFolder
+  );
   if (resources.length === 0) return [];
 
   const files = resources.map((resource) => `${resource.folder}/${resource.name}`);
@@ -2432,7 +2460,7 @@ export async function fetchRunpodModelCatalog(pod: RunpodPodSettings): Promise<{
     const filename = key.slice(slash + 1);
     if (!filename) continue;
     if (folder === "checkpoints") storedCkpt.push({ folder, path: filename });
-    else if (folder === "diffusion_models" && isKrea2CheckpointName(filename)) {
+    else if (folder === "diffusion_models" && isDiffusionOnlyImageCheckpointName(filename)) {
       storedCkpt.push({ folder, path: filename });
     } else if (folder === "loras") storedLora.push({ folder, path: filename });
     else if (folder === "embeddings") storedEmb.push({ folder, path: filename });
@@ -2446,12 +2474,14 @@ export async function fetchRunpodModelCatalog(pod: RunpodPodSettings): Promise<{
       ...asCandidates("checkpoints", physical.checkpoints),
       ...asCandidates(
         "diffusion_models",
-        physical.diffusion_models.filter((path) => isKrea2CheckpointName(path))
+        physical.diffusion_models.filter((path) =>
+          isDiffusionOnlyImageCheckpointName(path)
+        )
       ),
       ...asCandidates("checkpoints", ckptNames),
       ...asCandidates(
         "diffusion_models",
-        unetNames.filter((path) => isKrea2CheckpointName(path))
+        unetNames.filter((path) => isDiffusionOnlyImageCheckpointName(path))
       ),
       ...storedCkpt,
     ]),

@@ -3,6 +3,7 @@
 import {
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type KeyboardEvent,
@@ -12,6 +13,7 @@ import {
   Check,
   FolderX,
   FolderPlus,
+  GripVertical,
   Layers,
   MoreHorizontal,
   Pencil,
@@ -33,16 +35,26 @@ function WorkspaceChip({
   workspace,
   active,
   ko,
+  dragging,
   onSelect,
   onRename,
   onDelete,
+  onDragStart,
+  onDragEnter,
+  onDragEnd,
+  onMove,
 }: {
   workspace: WorkspaceSummary;
   active: boolean;
   ko: boolean;
+  dragging: boolean;
   onSelect: () => void;
   onRename: (name: string) => void;
   onDelete: () => void;
+  onDragStart: () => void;
+  onDragEnter: () => void;
+  onDragEnd: () => void;
+  onMove: (offset: number) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
@@ -107,20 +119,65 @@ function WorkspaceChip({
     closeMenu();
   };
 
+  const dragHint = ko
+    ? "드래그해서 순서 변경 (Alt+←/→)"
+    : "Drag to reorder (Alt+\u2190/\u2192)";
+
   return (
-    <div className="relative shrink-0">
+    <div
+      className="relative shrink-0"
+      // Reordering uses native HTML5 drag events: the bar lives in a horizontal
+      // scroller and the chips are plain flex children, so no layout animation
+      // library is needed — the list itself is reordered live on drag-enter.
+      draggable={!renaming}
+      onDragStart={(event) => {
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", workspace.id);
+        closeMenu();
+        onDragStart();
+      }}
+      onDragEnter={onDragEnter}
+      onDragOver={(event) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        onDragEnd();
+      }}
+      onDragEnd={onDragEnd}
+    >
       <div
-        className={`group flex items-center gap-1 rounded-full border px-1 py-0.5 pl-3 text-xs transition-colors ${
+        className={`group flex items-center gap-1 rounded-full border py-0.5 pl-1.5 pr-1 text-xs transition-colors ${
           active
             ? "border-primary bg-primary text-primary-foreground"
             : "border-border bg-card text-foreground hover:border-primary/50"
-        }`}
+        } ${dragging ? "opacity-50 ring-2 ring-primary/60" : ""}`}
       >
+        <GripVertical
+          className={`h-3.5 w-3.5 shrink-0 cursor-grab opacity-40 transition-opacity group-hover:opacity-80 active:cursor-grabbing ${
+            active ? "" : "text-muted-foreground"
+          }`}
+          aria-hidden="true"
+        />
         <button
           type="button"
           onClick={onSelect}
+          onKeyDown={(event) => {
+            // Keyboard equivalent of the drag, so reordering is reachable
+            // without a pointer.
+            if (!event.altKey) return;
+            if (event.key === "ArrowLeft") {
+              event.preventDefault();
+              onMove(-1);
+            }
+            if (event.key === "ArrowRight") {
+              event.preventDefault();
+              onMove(1);
+            }
+          }}
           className="flex items-center gap-1.5 py-0.5"
-          title={workspace.name}
+          title={`${workspace.name} \u2014 ${dragHint}`}
         >
           <span className="max-w-40 truncate font-medium">{workspace.name}</span>
           <span
@@ -264,6 +321,7 @@ export function WorkspaceBar() {
   const setActiveWorkspace = useStore((state) => state.setActiveWorkspace);
   const createWorkspace = useStore((state) => state.createWorkspace);
   const renameWorkspace = useStore((state) => state.renameWorkspace);
+  const reorderWorkspaces = useStore((state) => state.reorderWorkspaces);
   const deleteWorkspace = useStore((state) => state.deleteWorkspace);
   const language = useStore((state) => state.language);
   const ko = language === "ko";
@@ -272,6 +330,41 @@ export function WorkspaceBar() {
   const [newName, setNewName] = useState("");
   const createRef = useRef<HTMLDivElement>(null);
   const submittingRef = useRef(false);
+
+  // Id of the chip being dragged, plus the in-progress order it is being
+  // dragged into. `draftOrder` is what the bar renders while a drag is live;
+  // it is committed to the store (and the server) on drop.
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [draftOrder, setDraftOrder] = useState<string[] | null>(null);
+
+  const orderedWorkspaces = useMemo(() => {
+    if (!draftOrder) return workspaces;
+
+    const byId = new Map(workspaces.map((workspace) => [workspace.id, workspace]));
+    const ordered: WorkspaceSummary[] = [];
+    for (const id of draftOrder) {
+      const workspace = byId.get(id);
+      if (!workspace) continue;
+      ordered.push(workspace);
+      byId.delete(id);
+    }
+    // A workspace created (or refetched) mid-drag still shows up.
+    for (const workspace of workspaces) {
+      if (byId.has(workspace.id)) ordered.push(workspace);
+    }
+    return ordered;
+  }, [workspaces, draftOrder]);
+
+  const moveWorkspace = (workspaceId: string, targetIndex: number) => {
+    const ids = orderedWorkspaces.map((workspace) => workspace.id);
+    const from = ids.indexOf(workspaceId);
+    const to = Math.max(0, Math.min(ids.length - 1, targetIndex));
+    if (from < 0 || from === to) return null;
+
+    const next = [...ids];
+    next.splice(to, 0, next.splice(from, 1)[0]);
+    return next;
+  };
 
   useEffect(() => {
     void fetchWorkspaces();
@@ -306,7 +399,15 @@ export function WorkspaceBar() {
   };
 
   return (
-    <div className="flex items-center gap-2 overflow-x-auto border-b border-border px-4 py-2">
+    <div
+      className="flex items-center gap-2 overflow-x-auto border-b border-border px-4 py-2"
+      onDragOver={(event) => {
+        if (draggingId) event.preventDefault();
+      }}
+      onDrop={(event) => {
+        if (draggingId) event.preventDefault();
+      }}
+    >
       <Layers className="h-4 w-4 shrink-0 text-muted-foreground" />
 
       <button
@@ -348,15 +449,38 @@ export function WorkspaceBar() {
         </span>
       </button>
 
-      {workspaces.map((workspace) => (
+      {orderedWorkspaces.map((workspace, index) => (
         <WorkspaceChip
           key={workspace.id}
           workspace={workspace}
           active={workspace.id === activeWorkspaceId}
           ko={ko}
+          dragging={workspace.id === draggingId}
           onSelect={() => setActiveWorkspace(workspace.id)}
           onRename={(name) => void renameWorkspace(workspace.id, name)}
           onDelete={() => void deleteWorkspace(workspace.id)}
+          onDragStart={() => {
+            setDraggingId(workspace.id);
+            setDraftOrder(orderedWorkspaces.map((item) => item.id));
+          }}
+          onDragEnter={() => {
+            if (!draggingId || draggingId === workspace.id) return;
+            const next = moveWorkspace(draggingId, index);
+            if (next) setDraftOrder(next);
+          }}
+          onDragEnd={() => {
+            const next = draftOrder;
+            setDraggingId(null);
+            setDraftOrder(null);
+            const current = workspaces.map((item) => item.id);
+            if (next && next.join("\u0000") !== current.join("\u0000")) {
+              void reorderWorkspaces(next);
+            }
+          }}
+          onMove={(offset) => {
+            const next = moveWorkspace(workspace.id, index + offset);
+            if (next) void reorderWorkspaces(next);
+          }}
         />
       ))}
 

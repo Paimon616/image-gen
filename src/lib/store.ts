@@ -59,6 +59,7 @@ interface AppState {
   setActiveWorkspace: (workspaceId: string | null) => void;
   createWorkspace: (name: string) => Promise<WorkspaceSummary | null>;
   renameWorkspace: (workspaceId: string, name: string) => Promise<void>;
+  reorderWorkspaces: (orderedIds: string[]) => Promise<void>;
   deleteWorkspace: (workspaceId: string) => Promise<void>;
   setImageWorkspace: (
     image: GeneratedImage,
@@ -450,6 +451,39 @@ export const useStore = create<AppState>((set) => ({
       }));
     } catch {
       // Ignore transient rename failures.
+    }
+  },
+
+  // Applies a drag-and-drop reorder optimistically, then persists it. The list
+  // is restored if the write fails so the UI never shows an order the server
+  // did not accept.
+  reorderWorkspaces: async (orderedIds) => {
+    const previous = useStore.getState().workspaces;
+    const byId = new Map(previous.map((workspace) => [workspace.id, workspace]));
+    const next: WorkspaceSummary[] = [];
+
+    for (const id of orderedIds) {
+      const workspace = byId.get(id);
+      if (!workspace) continue;
+      next.push(workspace);
+      byId.delete(id);
+    }
+    for (const workspace of previous) {
+      if (byId.has(workspace.id)) next.push(workspace);
+    }
+
+    if (next.length !== previous.length) return;
+    set({ workspaces: next });
+
+    try {
+      const response = await fetch("/api/workspaces", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderedIds: next.map((w) => w.id) }),
+      });
+      if (!response.ok) throw new Error("reorder failed");
+    } catch {
+      set({ workspaces: previous });
     }
   },
 

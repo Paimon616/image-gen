@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   Bot,
@@ -16,118 +16,23 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ChatMarkdown } from "@/components/chat-markdown";
-import type { Character, GeneratedImage, GenerationParams } from "@/lib/types";
+import type { GeneratedImage, GenerationParams } from "@/lib/types";
 import { readImageDataUrlForVision } from "@/lib/image-resize";
+import {
+  loadCharacterLibrary,
+  usePaimonChatStore,
+  type PaimonAttachment,
+  type PaimonCharacter,
+} from "@/lib/paimon-chat-store";
 
-type ChatRole = "user" | "assistant";
-
-interface ChatMessage {
-  id: string;
-  role: ChatRole;
-  content: string;
-}
-
-export interface PaimonAttachment {
-  id: string;
-  kind: "clipboard_image" | "gallery_image";
-  label: string;
-  url?: string;
-  dataUrl?: string;
-  metadata?: Partial<GeneratedImage>;
-}
+export type { PaimonAttachment } from "@/lib/paimon-chat-store";
 
 interface PaimonChatProps {
-  params: GenerationParams;
-  onApplyParams: (patch: Partial<GenerationParams>) => void;
   attachments: PaimonAttachment[];
   onAttachmentsChange: (attachments: PaimonAttachment[]) => void;
-  // Enqueue a generation with fully-composed params, linked to the character/
-  // situation it came from. Used by the picker's auto-generate and batch modes.
-  onEnqueueGeneration?: (
-    params: GenerationParams,
-    meta: { characterId?: string; situationId?: string }
-  ) => void;
-  // Records the character/situation a composed prompt came from so a later manual
-  // Generate press on the same prompt still links the image.
-  onCharacterContext?: (context: {
-    characterId?: string;
-    situationId?: string;
-    prompt: string;
-  }) => void;
   // Opens an image in the shared detail viewer (used by situation thumbnails).
   onOpenImage?: (image: GeneratedImage) => void;
 }
-
-interface PaimonModelAsset {
-  path: string;
-  name: string;
-  version?: string;
-  base_model?: string;
-  tags?: string[];
-}
-
-interface PaimonModelContext {
-  currentCheckpoint?: PaimonModelAsset;
-  compatibleLoras: PaimonModelAsset[];
-  checkpoints: PaimonModelAsset[];
-}
-
-const INTRO_MESSAGE: ChatMessage = {
-  id: "intro",
-  role: "assistant",
-  content:
-    "파이몬이에요. 현재 입력값과 참조 이미지를 읽고 이미지·영상 프롬프트, 모델 설정, LoRA, 업스케일을 바로 고쳐드릴게요.",
-};
-
-const EDITABLE_PARAM_KEYS = new Set<keyof GenerationParams>([
-  "backend",
-  "model",
-  "model_name",
-  "prompt",
-  "negative_prompt",
-  "num_inference_steps",
-  "guidance_scale",
-  "width",
-  "height",
-  "num_images",
-  "output_format",
-  "generation_mode",
-  "seed",
-  "sampler_name",
-  "scheduler",
-  "clip_skip",
-  "vae_name",
-  "upscale_model_name",
-  "hires_upscale",
-  "hires_steps",
-  "hires_denoise",
-  "img2img_resize",
-  "adetailer_enabled",
-  "adetailer_model",
-  "adetailer_checkpoint",
-  "adetailer_prompt",
-  "adetailer_negative_prompt",
-  "adetailer_use_steps",
-  "adetailer_steps",
-  "adetailer_confidence",
-  "adetailer_mask_blur",
-  "adetailer_noise_multiplier",
-  "adetailer_inpaint_only_masked",
-  "adetailer_loras",
-  "adetailer_denoise",
-  "loras",
-  "embeddings",
-  "controlnets",
-  "prompt_weighting",
-  "style_image",
-  "character_image",
-  "source_image",
-  "denoise_strength",
-  "pose_reference_image",
-  "pose_reference_model",
-  "pose_reference_strength",
-  "enable_safety_checker",
-]);
 
 async function uploadImageFile(file: File) {
   const formData = new FormData();
@@ -143,214 +48,30 @@ async function uploadImageFile(file: File) {
   return data.url;
 }
 
-function sanitizePatch(value: unknown): Partial<GenerationParams> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return {};
-  }
-
-  const patch: Partial<GenerationParams> = {};
-
-  Object.entries(value).forEach(([key, nextValue]) => {
-    if (EDITABLE_PARAM_KEYS.has(key as keyof GenerationParams)) {
-      (patch as Record<string, unknown>)[key] = nextValue;
-    }
-  });
-
-  return patch;
-}
-
-function compactAsset(asset: unknown): PaimonModelAsset | null {
-  if (!asset || typeof asset !== "object" || Array.isArray(asset)) {
-    return null;
-  }
-
-  const record = asset as Record<string, unknown>;
-  if (typeof record.path !== "string" || typeof record.name !== "string") {
-    return null;
-  }
-
-  return {
-    path: record.path,
-    name: record.name,
-    version: typeof record.version === "string" ? record.version : "",
-    base_model:
-      typeof record.base_model === "string" ? record.base_model : "",
-    tags: Array.isArray(record.tags)
-      ? record.tags.filter((tag): tag is string => typeof tag === "string")
-      : [],
-  };
-}
-
-function isPaimonModelAsset(
-  asset: PaimonModelAsset | null
-): asset is PaimonModelAsset {
-  return Boolean(asset);
-}
-
-function normalizeFamily(value: string | undefined) {
-  const lower = (value ?? "").toLowerCase();
-
-  if (/pony|pdxl/.test(lower)) return "pony";
-  if (/illustrious|ilxl/.test(lower)) return "illustrious";
-  if (/noob/.test(lower)) return "noobai";
-  if (/anima/.test(lower)) return "anima";
-  if (/flux/.test(lower)) return "flux";
-  if (/krea/.test(lower)) return "krea";
-  if (/sdxl|xl/.test(lower)) return "sdxl";
-  if (/sd\s*1\.?5|sd15|1\.5/.test(lower)) return "sd15";
-
-  return lower.trim();
-}
-
-function sameFamily(left: string | undefined, right: string | undefined) {
-  const leftFamily = normalizeFamily(left);
-  const rightFamily = normalizeFamily(right);
-
-  if (!leftFamily || !rightFamily) return false;
-  if (leftFamily === rightFamily) return true;
-
-  return (
-    (leftFamily === "illustrious" && rightFamily === "noobai") ||
-    (leftFamily === "noobai" && rightFamily === "illustrious")
-  );
-}
-
-async function loadModelContext(
-  params: GenerationParams
-): Promise<PaimonModelContext> {
-  try {
-    const res = await fetch("/api/models", { cache: "no-store" });
-    const data = await res.json();
-    const checkpointAssets: unknown[] = Array.isArray(data.checkpointAssets)
-      ? data.checkpointAssets
-      : [];
-    const loraAssets: unknown[] = Array.isArray(data.loraAssets)
-      ? data.loraAssets
-      : [];
-    const checkpoints = checkpointAssets
-      .map(compactAsset)
-      .filter(isPaimonModelAsset);
-    const loras = loraAssets
-      .map(compactAsset)
-      .filter(isPaimonModelAsset);
-    const currentCheckpoint = checkpoints.find(
-      (asset) => asset.path === params.model_name
-    );
-    const currentFamily =
-      currentCheckpoint?.base_model ||
-      currentCheckpoint?.path ||
-      params.model_name;
-    const compatibleLoras = loras
-      .filter((asset) => sameFamily(currentFamily, asset.base_model || asset.path))
-      .slice(0, 40);
-
-    return {
-      currentCheckpoint,
-      compatibleLoras,
-      checkpoints: checkpoints.slice(0, 80),
-    };
-  } catch {
-    return {
-      compatibleLoras: [],
-      checkpoints: [],
-    };
-  }
-}
-
-interface PaimonCharacter {
-  id: string;
-  name: string;
-  summary: string;
-  appearancePrompt: string;
-  outfits: { name: string; prompt: string }[];
-  backgrounds: { name: string; prompt: string }[];
-  situations: {
-    id: string;
-    name: string;
-    prompt: string;
-    outfitName?: string;
-    backgroundName?: string;
-  }[];
-}
-
-// Loads the user's saved characters as a compact library so Paimon can compose a
-// character's identity + outfit + background + situation into the prompt. Only
-// prompt-bearing fields are sent; failures degrade to an empty library.
-async function loadCharacterLibrary(): Promise<PaimonCharacter[]> {
-  try {
-    const res = await fetch("/api/characters", { cache: "no-store" });
-    const data = (await res.json()) as { characters?: Character[] };
-    return (data.characters ?? [])
-      .filter(
-        (character) =>
-          character.appearancePrompt.trim() ||
-          character.backgrounds.some((background) => background.prompt.trim()) ||
-          character.outfits.some((outfit) => outfit.prompt.trim()) ||
-          character.situations.some((situation) => situation.prompt.trim())
-      )
-      .slice(0, 30)
-      .map((character) => {
-        // Resolve each situation's outfit/background id to a name so Paimon can
-        // pair them without knowing the internal ids.
-        const outfitNameById = new Map(
-          character.outfits.map((outfit) => [outfit.id, outfit.name])
-        );
-        const backgroundNameById = new Map(
-          character.backgrounds.map((background) => [
-            background.id,
-            background.name,
-          ])
-        );
-        return {
-          id: character.id,
-          name: character.name,
-          summary: character.summary,
-          appearancePrompt: character.appearancePrompt,
-          outfits: character.outfits
-            .filter((outfit) => outfit.prompt.trim())
-            .map((outfit) => ({ name: outfit.name, prompt: outfit.prompt })),
-          backgrounds: character.backgrounds
-            .filter((background) => background.prompt.trim())
-            .map((background) => ({
-              name: background.name,
-              prompt: background.prompt,
-            })),
-          situations: character.situations
-            .filter((situation) => situation.prompt.trim())
-            .map((situation) => ({
-              id: situation.id,
-              name: situation.name,
-              prompt: situation.prompt,
-              outfitName: situation.outfitId
-                ? outfitNameById.get(situation.outfitId)
-                : undefined,
-              backgroundName: situation.backgroundId
-                ? backgroundNameById.get(situation.backgroundId)
-                : undefined,
-            })),
-        };
-      });
-  } catch {
-    return [];
-  }
-}
-
 export function PaimonChat({
-  params,
-  onApplyParams,
   attachments,
   onAttachmentsChange,
-  onEnqueueGeneration,
-  onCharacterContext,
   onOpenImage,
 }: PaimonChatProps) {
-  const [open, setOpen] = useState(false);
-  const [renderPanel, setRenderPanel] = useState(false);
+  // Chat transcript, the in-flight turn and the multi-situation batch all live
+  // in a module-level store (see paimon-chat-store.ts), so a run started here
+  // keeps going — and stays visible on return — when the user navigates away.
+  const messages = usePaimonChatStore((state) => state.messages);
+  const loading = usePaimonChatStore((state) => state.loading);
+  const status = usePaimonChatStore((state) => state.status);
+  const error = usePaimonChatStore((state) => state.error);
+  const batchProgress = usePaimonChatStore((state) => state.batch);
+  const cancelBatch = usePaimonChatStore((state) => state.cancelBatch);
+  const resetMessages = usePaimonChatStore((state) => state.reset);
+
+  // A batch keeps running while the user is on another page, so open the panel
+  // straight away when they come back to a run that is still going. (On a fresh
+  // page load there is never a batch, so this matches the server render.)
+  const [open, setOpen] = useState(() =>
+    Boolean(usePaimonChatStore.getState().batch)
+  );
+  const [renderPanel, setRenderPanel] = useState(open);
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>([INTRO_MESSAGE]);
-  const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState("");
-  const [error, setError] = useState("");
   // Character/situation picker (person-icon menu) state.
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerLoading, setPickerLoading] = useState(false);
@@ -363,18 +84,12 @@ export function PaimonChat({
   const [selectedSituationIds, setSelectedSituationIds] = useState<Set<string>>(
     new Set()
   );
-  // Sequential batch run state (situation prompts composed + queued in order).
-  const [batchProgress, setBatchProgress] = useState<{
-    done: number;
-    total: number;
-    current: string;
-  } | null>(null);
-  const batchCancelRef = useRef(false);
   // Thumbnails of already-generated images, grouped by situation id, for the
   // active character in the picker.
   const [situationImages, setSituationImages] = useState<
     Record<string, GeneratedImage[]>
   >({});
+  const [situationImagesLoading, setSituationImagesLoading] = useState(false);
   const previousAttachmentIds = useRef(
     new Set(attachments.map((attachment) => attachment.id))
   );
@@ -434,197 +149,14 @@ export function PaimonChat({
     });
   }, [messages, open]);
 
-  const compactMessages = useMemo(
-    () =>
-      messages
-        .filter((message) => message.id !== "intro")
-        .slice(-10)
-        .map(({ role, content }) => ({ role, content })),
-    [messages]
-  );
-
-  // Runs one Paimon turn: appends the user/assistant messages, streams the reply,
-  // applies any params patch, and RETURNS the sanitized patch (or null on
-  // failure) so callers can compose+generate. The public sendMessage wraps this
-  // with the "don't start while busy" guard.
-  const runTurn = useCallback(
-    async (content: string): Promise<Partial<GenerationParams> | null> => {
-      const trimmed = content.trim();
-      if (!trimmed) return null;
-
-      const userMessage: ChatMessage = {
-        id: crypto.randomUUID(),
-        role: "user",
-        content: trimmed,
-      };
-
-      setMessages((current) => [...current, userMessage]);
-      setInput("");
-      setLoading(true);
-      setStatus("");
-      setError("");
-
-      const assistantId = crypto.randomUUID();
-      let placeholderAdded = false;
-      const ensurePlaceholder = () => {
-        if (placeholderAdded) return;
-        placeholderAdded = true;
-        setMessages((current) => [
-          ...current,
-          { id: assistantId, role: "assistant", content: "" },
-        ]);
-      };
-      const appendToAssistant = (text: string) => {
-        ensurePlaceholder();
-        setMessages((current) =>
-          current.map((message) =>
-            message.id === assistantId
-              ? { ...message, content: message.content + text }
-              : message
-          )
-        );
-      };
-      const setAssistantContent = (text: string) => {
-        ensurePlaceholder();
-        setMessages((current) =>
-          current.map((message) =>
-            message.id === assistantId ? { ...message, content: text } : message
-          )
-        );
-      };
-
-      try {
-        const [modelContext, characterLibrary] = await Promise.all([
-          loadModelContext(params),
-          loadCharacterLibrary(),
-        ]);
-        const res = await fetch("/api/paimon/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            currentParams: params,
-            modelContext,
-            characterLibrary,
-            attachments: attachments.map((attachment, index) => ({
-              ...attachment,
-              referenceId: `참조${index + 1}`,
-            })),
-            messages: [...compactMessages, userMessage].map(
-              ({ role, content }) => ({ role, content })
-            ),
-          }),
-        });
-
-        const contentType = res.headers.get("Content-Type") ?? "";
-
-        // Non-streaming error responses (missing key, upstream failure) come
-        // back as JSON.
-        if (!res.ok || !res.body || !contentType.includes("text/event-stream")) {
-          const data = await res.json().catch(() => null);
-          throw new Error(data?.error || "파이몬 호출에 실패했습니다.");
-        }
-
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-        let streamedText = "";
-        let done: {
-          reply?: string;
-          paramsPatch?: unknown;
-          attachmentNotice?: string;
-        } | null = null;
-        let streamError = "";
-
-        while (true) {
-          const { value, done: readerDone } = await reader.read();
-          if (readerDone) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const events = buffer.split("\n\n");
-          buffer = events.pop() ?? "";
-
-          for (const rawEvent of events) {
-            if (!rawEvent.trim()) continue;
-
-            const eventLine = rawEvent
-              .split("\n")
-              .find((line) => line.startsWith("event:"));
-            const dataLine = rawEvent
-              .split("\n")
-              .find((line) => line.startsWith("data:"));
-            const event = eventLine?.slice("event:".length).trim() ?? "message";
-            const payload = dataLine
-              ? JSON.parse(dataLine.slice("data:".length).trim())
-              : null;
-
-            if (event === "status" && typeof payload?.message === "string") {
-              setStatus(payload.message);
-            } else if (event === "delta" && typeof payload?.text === "string") {
-              streamedText += payload.text;
-              appendToAssistant(payload.text);
-            } else if (event === "done") {
-              done = payload;
-            } else if (event === "error") {
-              streamError = payload?.error || "파이몬 오류";
-            }
-          }
-        }
-
-        if (streamError) throw new Error(streamError);
-
-        const patch = sanitizePatch(done?.paramsPatch);
-        const applied = Object.keys(patch).length > 0;
-        if (applied) {
-          onApplyParams(patch);
-        }
-
-        const finalContent =
-          done?.reply ||
-          streamedText ||
-          done?.attachmentNotice ||
-          (applied
-            ? "요청을 반영해서 현재 생성 정보를 수정했어요."
-            : "이번에는 반영할 내용을 만들지 못했어요. 조금 더 구체적으로 다시 요청해 주세요.");
-        setAssistantContent(finalContent);
-        return patch;
-      } catch (err) {
-        // Drop an empty placeholder so a failed turn doesn't leave a blank bubble.
-        if (placeholderAdded) {
-          setMessages((current) =>
-            current.filter(
-              (message) =>
-                !(message.id === assistantId && message.content === "")
-            )
-          );
-        }
-        setError(err instanceof Error ? err.message : "파이몬 오류");
-        return null;
-      } finally {
-        setLoading(false);
-        setStatus("");
-      }
-    },
-    [attachments, compactMessages, onApplyParams, params]
-  );
-
   const sendMessage = useCallback(
     (content: string) => {
-      if (loading) return;
-      void runTurn(content);
+      if (!content.trim() || loading) return;
+      setInput("");
+      usePaimonChatStore.getState().sendMessage(content, attachments);
     },
-    [loading, runTurn]
+    [attachments, loading]
   );
-
-  // Refs so the async batch loop always reads the freshest turn runner and params
-  // without capturing stale closures between iterations.
-  const runTurnRef = useRef(runTurn);
-  useEffect(() => {
-    runTurnRef.current = runTurn;
-  }, [runTurn]);
-  const paramsRef = useRef(params);
-  useEffect(() => {
-    paramsRef.current = params;
-  }, [params]);
 
   const togglePicker = useCallback(async () => {
     if (pickerOpen) {
@@ -647,8 +179,10 @@ export function PaimonChat({
   }, [pickerOpen]);
 
   // Load already-generated thumbnails for the active character, grouped by
-  // situation id, so each situation row can show what's been made for it.
+  // situation id, so each situation row can show what's been made for it — and
+  // so "미생성만 선택" knows which situations have no image yet.
   const loadSituationImages = useCallback(async (characterId: string) => {
+    setSituationImagesLoading(true);
     try {
       const res = await fetch(`/api/characters/${characterId}/images`, {
         cache: "no-store",
@@ -681,6 +215,8 @@ export function PaimonChat({
       setSituationImages(grouped);
     } catch {
       setSituationImages({});
+    } finally {
+      setSituationImagesLoading(false);
     }
   }, []);
 
@@ -695,88 +231,35 @@ export function PaimonChat({
     [loadSituationImages]
   );
 
-  const buildInstruction = (characterName: string, situationName?: string) =>
-    situationName
-      ? `저장된 캐릭터 '${characterName}'를 '${situationName}' 상황으로 만들어줘. 지금 설정된 모델·네거티브·이미지 크기는 그대로 두고, 그 상황의 의상·배경·상황 프롬프트를 캐릭터 정체성과 합쳐서 현재 모델에 맞게 프롬프트에 적용해줘.`
-      : `저장된 캐릭터 '${characterName}'로 만들어줘. 지금 설정된 모델·네거티브·이미지 크기는 그대로 두고, 현재 모델에 맞게 프롬프트를 구성해줘.`;
-
-  // Composes one character/situation into the prompt (via a Paimon turn) and,
-  // when `generate` is set, enqueues it linked to that situation. Returns true on
-  // a successful compose. Reads the latest turn runner/params through refs so it
-  // is safe to call repeatedly inside the batch loop.
-  const composeSituation = useCallback(
-    async (
-      character: PaimonCharacter,
-      situation: PaimonCharacter["situations"][number] | null,
-      generate: boolean
-    ): Promise<boolean> => {
-      const patch = await runTurnRef.current(
-        buildInstruction(character.name, situation?.name)
-      );
-      if (!patch) return false;
-      const merged = { ...paramsRef.current, ...patch } as GenerationParams;
-      onCharacterContext?.({
-        characterId: character.id,
-        situationId: situation?.id,
-        prompt: merged.prompt,
-      });
-      if (generate && merged.prompt.trim()) {
-        onEnqueueGeneration?.(merged, {
-          characterId: character.id,
-          situationId: situation?.id,
-        });
-      }
-      return true;
-    },
-    [onCharacterContext, onEnqueueGeneration]
-  );
-
   // Single pick (multi-select off): compose the situation, generate if the
   // auto-generate box is checked. Closes the picker.
   const applyCharacterSituation = useCallback(
     (character: PaimonCharacter, situationId?: string) => {
       setPickerOpen(false);
       setPickerActiveName(null);
-      const situation =
-        character.situations.find((item) => item.id === situationId) ?? null;
-      void composeSituation(character, situation, autoGenerate);
+      void usePaimonChatStore
+        .getState()
+        .composeSituation(character, situationId, autoGenerate, attachments);
     },
-    [autoGenerate, composeSituation]
+    [attachments, autoGenerate]
   );
 
-  // Multi-select: compose + queue each checked situation in order. Each situation
-  // is prompted, queued, then the next — until all are queued or the user cancels.
   const runBatch = useCallback(
-    async (character: PaimonCharacter) => {
-      const chosen = character.situations.filter((situation) =>
-        selectedSituationIds.has(situation.id)
-      );
+    (character: PaimonCharacter) => {
+      const chosen = character.situations
+        .filter((situation) => selectedSituationIds.has(situation.id))
+        .map((situation) => situation.id);
       if (chosen.length === 0) return;
 
-      batchCancelRef.current = false;
       setPickerOpen(false);
       setPickerActiveName(null);
-
-      for (let i = 0; i < chosen.length; i += 1) {
-        if (batchCancelRef.current) break;
-        setBatchProgress({
-          done: i,
-          total: chosen.length,
-          current: chosen[i].name || "이름 없음",
-        });
-        // Intentional serial await: compose+queue one situation before the next.
-        await composeSituation(character, chosen[i], true);
-      }
-
-      setBatchProgress(null);
       setSelectedSituationIds(new Set());
+      void usePaimonChatStore
+        .getState()
+        .runBatch(character, chosen, attachments);
     },
-    [composeSituation, selectedSituationIds]
+    [attachments, selectedSituationIds]
   );
-
-  const cancelBatch = useCallback(() => {
-    batchCancelRef.current = true;
-  }, []);
 
   const toggleSituationSelected = useCallback((situationId: string) => {
     setSelectedSituationIds((current) => {
@@ -785,6 +268,13 @@ export function PaimonChat({
       else next.add(situationId);
       return next;
     });
+  }, []);
+
+  // Bulk pickers. Both switch multi-select on so the checked rows and the run
+  // button appear right away.
+  const selectSituations = useCallback((situationIds: string[]) => {
+    setMultiSelect(true);
+    setSelectedSituationIds(new Set(situationIds));
   }, []);
 
   const openSituationImage = useCallback(
@@ -802,11 +292,10 @@ export function PaimonChat({
   }, [attachments, onAttachmentsChange]);
 
   const resetChat = useCallback(() => {
-    setMessages([INTRO_MESSAGE]);
+    resetMessages();
     onAttachmentsChange([]);
     setInput("");
-    setError("");
-  }, [onAttachmentsChange]);
+  }, [onAttachmentsChange, resetMessages]);
 
   const handlePaste = useCallback(
     async (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
@@ -818,8 +307,9 @@ export function PaimonChat({
       if (!file) return;
 
       event.preventDefault();
-      setLoading(true);
-      setError("");
+      const store = usePaimonChatStore.getState();
+      store.setLoading(true);
+      store.setError("");
       try {
         const [url, dataUrl] = await Promise.all([
           uploadImageFile(file),
@@ -834,18 +324,13 @@ export function PaimonChat({
         };
 
         onAttachmentsChange([...attachments, attachment].slice(-6));
-        setMessages((current) => [
-          ...current,
-          {
-            id: crypto.randomUUID(),
-            role: "assistant",
-            content: "클립보드 이미지가 채팅에 첨부됐어요.",
-          },
-        ]);
+        store.pushAssistantMessage("클립보드 이미지가 채팅에 첨부됐어요.");
       } catch (err) {
-        setError(err instanceof Error ? err.message : "이미지 업로드 실패");
+        store.setError(
+          err instanceof Error ? err.message : "이미지 업로드 실패"
+        );
       } finally {
-        setLoading(false);
+        usePaimonChatStore.getState().setLoading(false);
       }
     },
     [attachments, onAttachmentsChange]
@@ -1003,7 +488,7 @@ export function PaimonChat({
             className="border-t border-border p-3"
             onSubmit={(event) => {
               event.preventDefault();
-              void sendMessage(input);
+              sendMessage(input);
             }}
           >
             <div className="relative mb-2">
@@ -1088,6 +573,14 @@ export function PaimonChat({
                         const selectedCount = active.situations.filter(
                           (situation) => selectedSituationIds.has(situation.id)
                         ).length;
+                        // "Ungenerated" = no image has ever been saved for that
+                        // situation (the thumbnails just loaded above).
+                        const ungeneratedIds = active.situations
+                          .filter(
+                            (situation) =>
+                              (situationImages[situation.id] ?? []).length === 0
+                          )
+                          .map((situation) => situation.id);
                         return (
                           <div>
                             <div className="flex items-center gap-1 border-b border-border px-1 pb-1">
@@ -1129,6 +622,57 @@ export function PaimonChat({
                                 />
                                 여러 장
                               </label>
+                            </div>
+
+                            {/* Bulk selection — both turn 여러 장 on. */}
+                            <div className="flex flex-wrap items-center gap-1 border-b border-border px-1 pb-1.5">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-6 px-2 text-[11px]"
+                                disabled={active.situations.length === 0}
+                                onClick={() =>
+                                  selectSituations(
+                                    active.situations.map(
+                                      (situation) => situation.id
+                                    )
+                                  )
+                                }
+                              >
+                                상황 모두 선택 ({active.situations.length})
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-6 px-2 text-[11px]"
+                                disabled={
+                                  situationImagesLoading ||
+                                  ungeneratedIds.length === 0
+                                }
+                                onClick={() => selectSituations(ungeneratedIds)}
+                                title="아직 이미지가 없는 상황만 선택"
+                              >
+                                {situationImagesLoading ? (
+                                  <Loader2 className="size-3 animate-spin" />
+                                ) : (
+                                  `미생성 모두 선택 (${ungeneratedIds.length})`
+                                )}
+                              </Button>
+                              {selectedCount > 0 && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 px-2 text-[11px] text-muted-foreground"
+                                  onClick={() =>
+                                    setSelectedSituationIds(new Set())
+                                  }
+                                >
+                                  선택 해제
+                                </Button>
+                              )}
                             </div>
 
                             <ul className="mt-0.5 space-y-0.5">
@@ -1199,6 +743,11 @@ export function PaimonChat({
                                           </span>
                                         )}
                                       </button>
+                                      {thumbs.length === 0 && (
+                                        <span className="shrink-0 rounded bg-secondary px-1 py-0.5 text-[10px] text-muted-foreground">
+                                          미생성
+                                        </span>
+                                      )}
                                     </div>
                                     {thumbs.length > 0 && (
                                       <div className="mt-1 flex gap-1 overflow-x-auto pl-1">
@@ -1237,7 +786,7 @@ export function PaimonChat({
                                   disabled={
                                     selectedCount === 0 || batchProgress !== null
                                   }
-                                  onClick={() => void runBatch(active)}
+                                  onClick={() => runBatch(active)}
                                 >
                                   선택 {selectedCount}개 순차 생성
                                 </Button>
@@ -1271,7 +820,7 @@ export function PaimonChat({
                     !(event.nativeEvent.isComposing || event.keyCode === 229)
                   ) {
                     event.preventDefault();
-                    void sendMessage(input);
+                    sendMessage(input);
                   }
                 }}
               />

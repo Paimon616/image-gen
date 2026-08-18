@@ -212,6 +212,627 @@
       ],
       "createdAt": 1786695445952,
       "updatedAt": 1786709501146
+    },
+    {
+      "id": "344a0e18-294a-4819-9a38-d84320e2c59d",
+      "name": "하지현",
+      "summary": "상사의 와이프",
+      "synopsis": "박부장은 건설회사에서 못된 성격으로 유명하다. 그리고 하지현은 그런 박부장의 아내다. 남편의 괴롭힘에 시달리던 회사 직원 김대리는 어느 날 우연히 하지현이 다른 남자와 만나는 외도 현장을 목격한다. 김대리는 이를 이용해 박부장에게 복수하기로 마음먹고, 하지현에게 접근해 그녀와의 관계를 강요한다. 하지현은 처음에는 거부하지만, 자신의 비밀이 남편에게 알려질 것을 두려워해 결국 김대리의 요구를 받아들인다. 이후 두 사람은 은밀한 만남을 이어가며, 김대리는 박부장에게 복수하는 동시에 하지현을 완전히 소유하려 한다. 하지현은 점점 이 관계에 익숙해져 가지만, 언젠가 남편에게 발각될까 늘 불안해한다.",
+      "thumbnail": "/api/images/5a1a0830-ff6d-4a71-8f5e-4839dbbeffc1.png",
+      "appearanceDescription": "하지현은 둥근 타원형 얼굴에 작은 턱을 가졌다. 넓은 아몬드형 갈색 눈, 가늘고 평행한 눈썹, 섬세한 콧날과 작은 코끝, 얇은 윗입술과 부드러운 아랫입술을 지녔다. 피부는 밝고 화사하며, 연분홍 볼과 은은한 아이메이크업을 한다. 갈색 머리는 얇은 앞머리가 있고, 낮은 사이드 스웹트 업두로 묶으며 흰색 레이스 리본을 단다. 체형은 날씬하고 약간 큰 가슴이다.",
+      "appearancePrompt": "brown hair, thin bangs, low side-swept updo, white lace ribbon, rounded oval face, small chin, wide almond-shaped eyes, brown eyes, thin parallel eyebrows, delicate nose bridge, small nose tip, thin upper lip, soft lower lip, fair skin, pale pink cheeks, subtle eye makeup, slim figure, slightly large bust",
+      "outfits": [
+        {
+          "id": "8255e06c-e2c9-4608-9f14-068e55974be1",
+          "name": "평상복",
+          "description": "베이지색 니트 가디건, 흰색 면 블라우스, 진청색 스키니 진, 갈색 가죽 플랫 슈즈, 작은 은색 목걸이, 손목시계",
+          "prompt": "beige knit cardigan, white cotton blouse, dark blue skinny jeans, brown leather flat shoes, small silver necklace, wristwatch"
+        },
+        {
+          "id": "b9c5b9cf-75b0-4133-8b32-d9e51f0d627a",
+          "name": "속옷",
+          "description": "검은색 레이스 브라렛, 검은색 레이스 삼각 팬티, 얇은 가터 벨트, 검은색 스타킹, 침실 분위기",
+          "prompt": "black lace bralette, black lace triangle panties, thin garter belt, black stockings, bedroom atmosphere"
+        },
+        {
+          "id": "4ce7ab9a-00b8-4240-9c69-25435a49dbb0",
+          "name": "알몸",
+          "description": "옷을 입지 않은 상태, 전신 노출, 자연스러운 포즈, 은밀한 분위기",
+          "prompt": "nude, no clothes, full body exposure, natural pose, intimate atmosphere"
+        },
+        {
+          "id": "9978106a-1529-46bb-a392-943235932c9e",
+          "name": "잠옷",
+          "description": "연분홍색 실크 잠옷 세트, 반팔 단추 상의, 반바지, 부드러운 소재, 편안한 홈웨어",
+          "prompt": "pale pink silk pajama set, short-sleeve button-up top, shorts, soft fabric, comfortable homewear"
+        },
+        {
+          "id": "0186142b-1f53-4531-ad39-756d6bd13ed9",
+          "name": "사무복",
+          "description": "흰색 블라우스, 검은색 펜슬 스커트, 검은색 블레이저, 누드색 펌프스, 작은 금색 귀걸이",
+          "prompt": "white blouse, black pencil skirt, black blazer, nude pumps, small gold earrings"
+        },
+        {
+          "id": "ec919870-5e70-4d9a-8167-36974550f0ed",
+          "name": "운동복",
+          "description": "검은색 요가 레깅스, 흰색 탱크탑, 흰색 운동화, 머리 묶음",
+          "prompt": "black yoga leggings, white tank top, white sneakers, hair tied back"
+        },
+        {
+          "id": "7b2a1d70-8a2c-40fa-81ef-79dbb99188fd",
+          "name": "섹시 란제리",
+          "description": "검은색 레이스 베이비돌, 매칭 팬티, 시스루 스타킹, 가터 벨트",
+          "prompt": "black lace babydoll, matching thong, sheer stockings, garter belt"
+        },
+        {
+          "id": "bdf5ffcc-7a57-4dd4-94e3-0c1a3a041d9a",
+          "name": "비즈니스 캐주얼",
+          "description": "네이비 블루 니트 스웨터, 베이지색 슬랙스, 갈색 로퍼, 은색 목걸이",
+          "prompt": "navy blue knit sweater, beige trousers, brown loafers, silver necklace"
+        }
+      ],
+      "backgrounds": [],
+      "situations": [
+        {
+          "id": "58a5ddde-daff-4a8d-9ff7-c871c23a5451",
+          "name": "자동차 뒷좌석에서의 구강 성교",
+          "description": "하지현이 자동차 뒷좌석에 앉아, 김대리가 옆에서 그녀의 성기를 구강으로 자극. 그녀는 머리를 뒤로 젖히고, 손으로 시트를 잡음. 상반신 샷, 측면.",
+          "prompt": "sitting in back seat, head tilted back, hands gripping seat, receiving oral sex from 1male beside her, upper body shot, side view, night, street lights, wearing beige knit cardigan, white cotton blouse",
+          "outfitId": "8255e06c-e2c9-4608-9f14-068e55974be1",
+          "backgroundId": null
+        },
+        {
+          "id": "43f5eac3-2afb-499f-8578-4ebf00d3df03",
+          "name": "욕실 샤워기 아래에서의 정사",
+          "description": "하지현이 샤워기 아래 서서, 김대리가 뒤에서 삽입. 물이 몸에 흐르고, 그녀는 두 손을 벽에 짚음. 전신 샷, 뒤에서.",
+          "prompt": "standing under shower, water flowing, hands on wall, being penetrated from behind by 1male, full body shot, from behind, steam, soft lighting, wearing nude, no clothes",
+          "outfitId": "4ce7ab9a-00b8-4240-9c69-25435a49dbb0",
+          "backgroundId": null
+        },
+        {
+          "id": "33e9592d-3de5-48b8-8a25-ac530ab4e341",
+          "name": "거실 소파에서의 구강 성교",
+          "description": "하지현이 거실 소파에 앉아, 김대리가 무릎 꿇고 그녀의 성기를 구강으로 자극. 그녀는 한 손으로 그의 머리를 잡고, 다른 손으로 소파를 잡음. 상반신 샷, 위에서.",
+          "prompt": "sitting on grey sofa, one hand on partner's head, other hand on sofa, receiving oral sex from 1male kneeling, upper body shot, from above, warm lighting, evening, wearing black lace babydoll, matching thong",
+          "outfitId": "7b2a1d70-8a2c-40fa-81ef-79dbb99188fd",
+          "backgroundId": null
+        },
+        {
+          "id": "bb705ce9-0856-4f0c-ab23-2f973806a1e7",
+          "name": "회의실 테이블 아래 구강 성교",
+          "description": "하지현이 회의실 테이블 아래에 숨어 무릎 꿇고, 김대리의 성기를 입으로 봉사. 테이블 위에는 서류와 커피잔. 상반신 샷, 낮은 각도.",
+          "prompt": "kneeling under conference table, performing oral sex on 1male, documents and coffee cup on table above, upper body shot, low angle, fluorescent lighting, daytime, wearing white blouse, black pencil skirt",
+          "outfitId": "0186142b-1f53-4531-ad39-756d6bd13ed9",
+          "backgroundId": null
+        },
+        {
+          "id": "9efc4e9e-a2f9-4456-9eaa-ded23396cd71",
+          "name": "침실에서의 정사 6",
+          "description": "하지현이 침대에 엎드려 누워, 김대리가 그녀 위에 엎드려 삽입. 그녀는 베개를 껴안고, 그는 그녀의 등에 키스. 전신 샷, 위에서.",
+          "prompt": "lying face down on bed, 1male on top, penetrating, kissing her back, full body shot, from above, dim lighting, night, wearing pale pink silk pajama set",
+          "outfitId": "9978106a-1529-46bb-a392-943235932c9e",
+          "backgroundId": null
+        },
+        {
+          "id": "dbdcd3ad-8329-45a9-b20c-33aa5d05ff39",
+          "name": "엘리베이터에서의 정사 2",
+          "description": "하지현이 엘리베이터 바닥에 앉아, 김대리가 위에서 삽입. 그녀는 두 다리를 벌리고, 손으로 바닥을 짚음. 전신 샷, 위에서.",
+          "prompt": "sitting on elevator floor, legs spread, hands on floor, being penetrated by 1male on top, full body shot, from above, bright lighting, mirrored walls, wearing black lace bralette, black lace triangle panties",
+          "outfitId": "b9c5b9cf-75b0-4133-8b32-d9e51f0d627a",
+          "backgroundId": null
+        },
+        {
+          "id": "cc870d16-75e3-4598-bd42-32d9df78a076",
+          "name": "옥상에서의 정사 2",
+          "description": "하지현이 옥상 바닥에 등을 대고 누워, 김대리가 위에서 삽입. 그녀는 두 팔을 벌리고, 별을 바라봄. 전신 샷, 위에서.",
+          "prompt": "lying on back on rooftop floor, arms spread, looking at stars, being penetrated by 1male on top, full body shot, from above, night, city view, wearing black yoga leggings, white tank top",
+          "outfitId": "ec919870-5e70-4d9a-8167-36974550f0ed",
+          "backgroundId": null
+        },
+        {
+          "id": "b83c0118-9846-403d-aa37-c126c3cff098",
+          "name": "호텔 방에서의 정사 3",
+          "description": "하지현이 호텔 침대에 앉아, 김대리가 서서 그녀의 다리를 어깨에 올리고 삽입. 그녀는 두 손으로 침대를 잡음. 전신 샷, 정면.",
+          "prompt": "sitting on hotel bed, legs on partner's shoulders, being penetrated by 1male standing, hands gripping bed, full body shot, front view, dim lighting, night, wearing nude, no clothes",
+          "outfitId": "4ce7ab9a-00b8-4240-9c69-25435a49dbb0",
+          "backgroundId": null
+        },
+        {
+          "id": "ccedd46c-4b09-44a9-9218-8d603024609f",
+          "name": "사무실 복도에서의 정사",
+          "description": "하지현이 사무실 복도 벽에 기대어 서서, 김대리가 앞에서 삽입. 그녀는 한 손으로 그의 넥타이를 잡고, 다른 손으로 입을 막음. 전신 샷, 측면.",
+          "prompt": "leaning against office corridor wall, one hand on partner's tie, other hand covering mouth, being penetrated by 1male in front, full body shot, side view, fluorescent lighting, daytime, wearing white blouse, black pencil skirt, black blazer",
+          "outfitId": "0186142b-1f53-4531-ad39-756d6bd13ed9",
+          "backgroundId": null
+        },
+        {
+          "id": "df05cc3b-28e5-4f81-afa2-84c6d10a4571",
+          "name": "자동차 지붕 위의 정사",
+          "description": "하지현이 자동차 지붕 위에 엎드려, 김대리가 뒤에서 삽입. 그녀는 두 손으로 지붕을 잡고, 바람에 머리카락 흩날림. 전신 샷, 뒤에서.",
+          "prompt": "lying face down on car roof, hands gripping roof, hair blowing, being penetrated from behind by 1male, full body shot, from behind, night, street lights, wearing beige knit cardigan, white cotton blouse",
+          "outfitId": "8255e06c-e2c9-4608-9f14-068e55974be1",
+          "backgroundId": null
+        },
+        {
+          "id": "42840fff-b13c-400e-ae8c-d61a4aba2db9",
+          "name": "욕실 변기 위의 정사",
+          "description": "하지현이 욕실 변기 위에 앉아, 김대리가 앞에서 삽입. 그녀는 두 다리를 그의 허리에 감고, 키스. 상반신 샷, 정면.",
+          "prompt": "sitting on toilet, legs wrapped around partner's waist, kissing, being penetrated, upper body shot, front view, soft lighting, wearing nude, no clothes",
+          "outfitId": "4ce7ab9a-00b8-4240-9c69-25435a49dbb0",
+          "backgroundId": null
+        },
+        {
+          "id": "60213d22-5463-42e4-8cfa-bd3be11612e5",
+          "name": "거실 소파에서의 정사 2",
+          "description": "하지현이 거실 소파에 엎드려, 김대리가 뒤에서 삽입. 그녀는 팔을 소파 등받이에 걸침. 전신 샷, 뒤에서.",
+          "prompt": "lying face down on sofa, arms over backrest, being penetrated from behind by 1male, full body shot, from behind, warm lighting, evening, wearing black lace babydoll, matching thong",
+          "outfitId": "7b2a1d70-8a2c-40fa-81ef-79dbb99188fd",
+          "backgroundId": null
+        },
+        {
+          "id": "22061e6c-e45e-40ce-817e-07577cb89c2c",
+          "name": "호텔 방에서의 정사 4",
+          "description": "하지현이 호텔 침대에 옆으로 누워, 김대리가 뒤에서 스푼 자세로 삽입. 그녀는 그의 손을 잡고, 눈을 감음. 전신 샷, 측면.",
+          "prompt": "lying on side in hotel bed, spooning, holding hands, being penetrated from behind, eyes closed, full body shot, side view, dim lighting, night, wearing black lace bralette, black lace triangle panties",
+          "outfitId": "b9c5b9cf-75b0-4133-8b32-d9e51f0d627a",
+          "backgroundId": null
+        },
+        {
+          "id": "c63f8359-f21f-47e9-b5e7-f397e395abab",
+          "name": "유사 성행위 1: 스트립쇼",
+          "description": "하지현이 침실에서 천천히 옷을 벗으며, 블라우스 단추를 풀고 스커트를 내림. 그녀는 관객(김대리)을 바라보며 유혹적인 미소. 전신 샷, 정면.",
+          "prompt": "slowly undressing in bedroom, unbuttoning blouse, pushing down skirt, looking at viewer with seductive smile, full body shot, front view, dim lighting, night, wearing white blouse, black pencil skirt, black blazer",
+          "outfitId": "0186142b-1f53-4531-ad39-756d6bd13ed9",
+          "backgroundId": null
+        },
+        {
+          "id": "196b6a5c-24e0-4e4f-a7f4-de65510ae253",
+          "name": "유사 성행위 2: 침대 위에서의 키스",
+          "description": "하지현이 침대에 누워 김대리와 열정적으로 키스. 그녀의 손은 그의 머리카락을 감싸고, 다리는 엉킴. 상반신 샷, 측면.",
+          "prompt": "lying on bed, passionately kissing 1male, hands in his hair, legs intertwined, upper body shot, side view, dim lighting, night, wearing pale pink silk pajama set",
+          "outfitId": "9978106a-1529-46bb-a392-943235932c9e",
+          "backgroundId": null
+        },
+        {
+          "id": "de6355d0-86a1-460a-b3f0-cf355d01943b",
+          "name": "유사 성행위 3: 거실에서의 핑거링",
+          "description": "하지현이 거실 소파에 앉아, 김대리가 그녀의 팬티 안으로 손을 넣어 클리토리스를 자극. 그녀는 머리를 뒤로 젖히고 신음. 상반신 샷, 정면.",
+          "prompt": "sitting on grey sofa, 1male's hand inside her panties, fingering her clitoris, head tilted back, moaning, upper body shot, front view, warm lighting, evening, wearing beige knit cardigan, white cotton blouse, dark blue skinny jeans",
+          "outfitId": "8255e06c-e2c9-4608-9f14-068e55974be1",
+          "backgroundId": null
+        },
+        {
+          "id": "be6a20da-510a-4128-b47c-afde241d5424",
+          "name": "유사 성행위 4: 호텔 방에서의 애무",
+          "description": "하지현이 호텔 침대에 엎드려, 김대리가 그녀의 등과 엉덩이를 마사지하며 점점 내려감. 그녀는 눈을 감고 편안한 표정. 전신 샷, 위에서.",
+          "prompt": "lying face down on hotel bed, 1male massaging her back and buttocks, eyes closed, relaxed expression, full body shot, from above, dim lighting, night, wearing nude, no clothes",
+          "outfitId": "4ce7ab9a-00b8-4240-9c69-25435a49dbb0",
+          "backgroundId": null
+        },
+        {
+          "id": "d90483f2-97f5-40fc-98d3-f3df326a7099",
+          "name": "유사 성행위 5: 사무실 책상 위에서의 노출",
+          "description": "하지현이 사무실 책상 위에 앉아, 스커트를 허리까지 걷어 올리고 다리를 벌려 팬티를 드러냄. 그녀는 손가락으로 입술을 만지며 유혹. 상반신 샷, 정면.",
+          "prompt": "sitting on office desk, skirt hiked up to waist, legs spread, showing panties, finger on lips, seductive look, upper body shot, front view, fluorescent lighting, daytime, wearing white blouse, black pencil skirt",
+          "outfitId": "0186142b-1f53-4531-ad39-756d6bd13ed9",
+          "backgroundId": null
+        },
+        {
+          "id": "b6eb56f2-e606-4ef2-8e50-ad0d8aac8b3b",
+          "name": "유사 성행위 6: 자동차 안에서의 손길",
+          "description": "하지현이 자동차 조수석에 앉아, 김대리가 그녀의 가슴을 만지고 그녀는 그의 손을 잡음. 그녀는 입술을 깨물며 흥분한 표정. 상반신 샷, 측면.",
+          "prompt": "sitting in passenger seat, 1male touching her breast, she holds his hand, biting lip, excited expression, upper body shot, side view, night, street lights, wearing beige knit cardigan, white cotton blouse",
+          "outfitId": "8255e06c-e2c9-4608-9f14-068e55974be1",
+          "backgroundId": null
+        },
+        {
+          "id": "9e727867-c54a-4843-8483-a044f8f6c9aa",
+          "name": "유사 성행위 7: 욕실에서의 바디워시",
+          "description": "하지현이 욕실에서 샤워 중, 김대리가 뒤에서 그녀의 몸에 바디워시를 바르며 가슴과 엉덩이를 씻어줌. 그녀는 눈을 감고 몸을 맡김. 전신 샷, 뒤에서.",
+          "prompt": "showering in bathroom, 1male behind her applying body wash on her breasts and buttocks, eyes closed, relaxed, full body shot, from behind, steam, soft lighting, wearing nude, no clothes",
+          "outfitId": "4ce7ab9a-00b8-4240-9c69-25435a49dbb0",
+          "backgroundId": null
+        },
+        {
+          "id": "58f757c2-2f23-44bd-b270-c3db0005c175",
+          "name": "유사 성행위 8: 거실에서의 란제리 자랑",
+          "description": "하지현이 거실에 서서 검은색 레이스 란제리를 입고 포즈를 취하며 김대리를 바라봄. 한 손은 허리에, 다른 손은 머리카락을 만짐. 전신 샷, 정면.",
+          "prompt": "standing in living room, wearing black lace babydoll and thong, posing with hand on hip, other hand touching hair, looking at viewer, full body shot, front view, warm lighting, evening",
+          "outfitId": "7b2a1d70-8a2c-40fa-81ef-79dbb99188fd",
+          "backgroundId": null
+        },
+        {
+          "id": "bfca70c6-3ccd-440e-9b9d-90e182282fbc",
+          "name": "유사 성행위 9: 엘리베이터에서의 몸 접촉",
+          "description": "하지현이 엘리베이터 안에서 김대리와 마주 서서, 그의 몸에 밀착되어 가슴이 그의 가슴에 닿음. 그녀는 그의 넥타이를 잡고 위를 올려다봄. 상반신 샷, 정면.",
+          "prompt": "standing close to 1male in elevator, chest pressed against his, holding his tie, looking up, upper body shot, front view, bright lighting, mirrored walls, wearing navy blue knit sweater, beige trousers",
+          "outfitId": "bdf5ffcc-7a57-4dd4-94e3-0c1a3a041d9a",
+          "backgroundId": null
+        },
+        {
+          "id": "1097343c-3294-4a66-9e4d-35f9cf9c3f4f",
+          "name": "유사 성행위 10: 옥상에서의 백허그",
+          "description": "하지현이 옥상 난간 앞에 서서, 김대리가 뒤에서 그녀를 껴안고 목에 키스. 그녀는 눈을 감고 그의 손을 잡음. 전신 샷, 뒤에서.",
+          "prompt": "standing at rooftop railing, 1male hugging her from behind, kissing her neck, eyes closed, holding his hands, full body shot, from behind, night, city view, wearing black yoga leggings, white tank top",
+          "outfitId": "ec919870-5e70-4d9a-8167-36974550f0ed",
+          "backgroundId": null
+        },
+        {
+          "id": "2465d8e3-4148-408e-91b4-28432cce56ff",
+          "name": "유사 성행위 11: 침실에서의 페티시 플레이",
+          "description": "하지현이 침대에 무릎 꿇고, 손목에 실크 스카프로 묶인 채 김대리를 바라봄. 그녀는 입술을 깨물며 복종적인 표정. 상반신 샷, 정면.",
+          "prompt": "kneeling on bed, wrists tied with silk scarf, looking at 1male, biting lip, submissive expression, upper body shot, front view, dim lighting, night, wearing black lace bralette, black lace triangle panties",
+          "outfitId": "b9c5b9cf-75b0-4133-8b32-d9e51f0d627a",
+          "backgroundId": null
+        },
+        {
+          "id": "e5058969-1e73-42d4-b9cb-3edb2f08838b",
+          "name": "유사 성행위 12: 호텔 방에서의 마사지",
+          "description": "하지현이 호텔 침대에 엎드려, 김대리가 그녀의 등에 오일을 바르고 마사지. 그녀는 눈을 감고 편안한 표정. 전신 샷, 위에서.",
+          "prompt": "lying face down on hotel bed, 1male applying oil on her back, massaging, eyes closed, relaxed, full body shot, from above, dim lighting, night, wearing nude, no clothes",
+          "outfitId": "4ce7ab9a-00b8-4240-9c69-25435a49dbb0",
+          "backgroundId": null
+        },
+        {
+          "id": "57a5db73-c7f0-4497-bc44-4645dc09e3d9",
+          "name": "유사 성행위 13: 사무실에서의 치마 속 손",
+          "description": "하지현이 사무실 의자에 앉아, 김대리가 그녀의 치마 속으로 손을 넣어 팬티를 만짐. 그녀는 놀란 표정으로 주변을 살핌. 상반신 샷, 측면.",
+          "prompt": "sitting on office chair, 1male's hand under her skirt, touching her panties, surprised look, glancing around, upper body shot, side view, fluorescent lighting, daytime, wearing white blouse, black pencil skirt",
+          "outfitId": "0186142b-1f53-4531-ad39-756d6bd13ed9",
+          "backgroundId": null
+        },
+        {
+          "id": "51bee510-1e6e-45b4-97f3-dc9adf8470a3",
+          "name": "유사 성행위 14: 자동차 안에서의 키스와 애무",
+          "description": "하지현이 자동차 뒷좌석에 앉아 김대리와 깊은 키스, 그의 손이 그녀의 블라우스 안으로 들어가 가슴을 만짐. 그녀는 그의 손을 잡고 신음. 상반신 샷, 정면.",
+          "prompt": "sitting in back seat, deep kissing 1male, his hand inside her blouse touching her breast, she holds his hand, moaning, upper body shot, front view, night, street lights, wearing beige knit cardigan, white cotton blouse",
+          "outfitId": "8255e06c-e2c9-4608-9f14-068e55974be1",
+          "backgroundId": null
+        },
+        {
+          "id": "040da6db-9997-4726-9fa5-5b3c1e7c1f77",
+          "name": "유사 성행위 15: 욕실 거울 앞에서의 나체",
+          "description": "하지현이 욕실 거울 앞에 서서, 알몸으로 자신의 몸을 바라보며 손으로 가슴과 엉덩이를 만짐. 그녀는 거울 속 자신과 눈을 마주침. 전신 샷, 정면(거울).",
+          "prompt": "standing naked in front of bathroom mirror, touching her own breasts and buttocks, looking at her reflection, full body shot, front view via mirror, soft lighting, steam, wearing nude, no clothes",
+          "outfitId": "4ce7ab9a-00b8-4240-9c69-25435a49dbb0",
+          "backgroundId": null
+        },
+        {
+          "id": "83f3cd8b-804b-4251-aa6b-c02364840b07",
+          "name": "유사 성행위 16: 거실 소파에서의 펠라티오 준비",
+          "description": "하지현이 거실 소파에 무릎 꿇고, 김대리의 바지 지퍼를 내리며 위를 올려다봄. 그녀는 혀로 입술을 핥음. 상반신 샷, 낮은 각도.",
+          "prompt": "kneeling on living room sofa, unzipping 1male's pants, looking up, licking lips, upper body shot, low angle, warm lighting, evening, wearing black lace babydoll, matching thong",
+          "outfitId": "7b2a1d70-8a2c-40fa-81ef-79dbb99188fd",
+          "backgroundId": null
+        },
+        {
+          "id": "8ebda65d-2798-4b7d-a899-daf222b08dda",
+          "name": "유사 성행위 17: 호텔 로비에서의 유혹",
+          "description": "하지현이 호텔 로비 소파에 앉아, 다리를 꼬고 김대리를 바라보며 손가락으로 자신의 다리를 타고 올라감. 그녀는 미소. 상반신 샷, 정면.",
+          "prompt": "sitting on lobby sofa, legs crossed, tracing finger up her own thigh, looking at 1male, smiling, upper body shot, front view, chandelier lighting, evening, wearing navy blue knit sweater, beige trousers",
+          "outfitId": "bdf5ffcc-7a57-4dd4-94e3-0c1a3a041d9a",
+          "backgroundId": null
+        },
+        {
+          "id": "3b120c6a-3327-497f-a7d1-a57d221692b5",
+          "name": "유사 성행위 18: 옥상에서의 스트리핑",
+          "description": "하지현이 옥상에서 천천히 운동복 상의를 벗어 브라를 드러내고, 바람에 머리카락 흩날림. 그녀는 김대리를 바라보며 유혹. 전신 샷, 정면.",
+          "prompt": "slowly removing tank top on rooftop, revealing bra, hair blowing in wind, looking at 1male seductively, full body shot, front view, night, city view, wearing black yoga leggings, white tank top",
+          "outfitId": "ec919870-5e70-4d9a-8167-36974550f0ed",
+          "backgroundId": null
+        },
+        {
+          "id": "7a101a48-af3d-47e1-8d7e-0c2b7e241bd2",
+          "name": "유사 성행위 19: 침실에서의 바운드 플레이",
+          "description": "하지현이 침대에 엎드려, 손목과 발목이 침대 기둥에 묶임. 그녀는 뒤돌아 김대리를 바라보며 기대와 두려움 섞인 표정. 전신 샷, 위에서.",
+          "prompt": "lying face down on bed, wrists and ankles tied to bedposts, looking back at 1male, mixed expression of anticipation and fear, full body shot, from above, dim lighting, night, wearing pale pink silk pajama set",
+          "outfitId": "9978106a-1529-46bb-a392-943235932c9e",
+          "backgroundId": null
+        },
+        {
+          "id": "a2a10219-63dd-41ca-a734-bf50d694861e",
+          "name": "유사 성행위 20: 회의실 테이블 위의 노출",
+          "description": "하지현이 회의실 테이블 위에 앉아, 블라우스 단추를 모두 풀고 브라를 드러냄. 그녀는 다리를 벌리고 손으로 가슴을 만짐. 상반신 샷, 정면.",
+          "prompt": "sitting on conference table, blouse fully unbuttoned, bra exposed, legs spread, touching her own breast, upper body shot, front view, fluorescent lighting, daytime, wearing white blouse, black pencil skirt",
+          "outfitId": "0186142b-1f53-4531-ad39-756d6bd13ed9",
+          "backgroundId": null
+        },
+        {
+          "id": "afc56905-0691-4087-a264-606621a303c0",
+          "name": "일상 1: 아침 커피",
+          "description": "하지현이 주방에서 아침 커피를 내리며 창밖을 바라봄. 그녀는 잠옷 차림, 졸린 표정. 전신 샷, 측면.",
+          "prompt": "standing in kitchen, making morning coffee, looking out window, sleepy expression, wearing pale pink silk pajama set, full body shot, side view, morning sunlight, cozy atmosphere",
+          "outfitId": "9978106a-1529-46bb-a392-943235932c9e",
+          "backgroundId": null
+        },
+        {
+          "id": "8e6617df-aa88-4ef2-9aae-f7f6c23d8436",
+          "name": "일상 2: 출근 준비",
+          "description": "하지현이 침실 거울 앞에서 사무복을 입고 넥타이를 매는 모습. 그녀는 거울 속 자신을 바라보며 미소. 상반신 샷, 정면.",
+          "prompt": "standing in front of bedroom mirror, putting on blazer, adjusting tie, smiling at reflection, upper body shot, front view, morning light, wearing white blouse, black pencil skirt, black blazer",
+          "outfitId": "0186142b-1f53-4531-ad39-756d6bd13ed9",
+          "backgroundId": null
+        },
+        {
+          "id": "75cb5d6c-6f40-4a8f-8154-88490d9666d5",
+          "name": "일상 3: 공원 산책",
+          "description": "하지현이 한강 공원 벤치에 앉아 책을 읽고 있음. 그녀는 평상복 차림, 바람에 머리카락 살랑임. 전신 샷, 측면.",
+          "prompt": "sitting on park bench, reading a book, wearing beige knit cardigan, white cotton blouse, dark blue skinny jeans, hair blowing in breeze, full body shot, side view, evening sunset, quiet atmosphere",
+          "outfitId": "8255e06c-e2c9-4608-9f14-068e55974be1",
+          "backgroundId": null
+        },
+        {
+          "id": "e2979215-c5e6-43c4-8686-d5cf28886d11",
+          "name": "일상 4: 카페에서의 대화",
+          "description": "하지현이 카페 테이블에 앉아 커피를 마시며 핸드폰을 보고 있음. 그녀는 무표정, 생각에 잠긴 듯. 상반신 샷, 정면.",
+          "prompt": "sitting at cafe table, drinking coffee, looking at phone, neutral expression, lost in thought, upper body shot, front view, warm lighting, afternoon, wearing beige knit cardigan, white cotton blouse",
+          "outfitId": "8255e06c-e2c9-4608-9f14-068e55974be1",
+          "backgroundId": null
+        },
+        {
+          "id": "4a0b5b82-a0ad-4026-83aa-fd96d2343c5d",
+          "name": "일상 5: 사무실에서의 업무",
+          "description": "하지현이 사무실 책상에서 컴퓨터로 작업 중. 그녀는 집중한 표정, 손으로 마우스를 움직임. 상반신 샷, 측면.",
+          "prompt": "sitting at office desk, working on computer, focused expression, hand on mouse, upper body shot, side view, fluorescent lighting, daytime, wearing white blouse, black pencil skirt",
+          "outfitId": "0186142b-1f53-4531-ad39-756d6bd13ed9",
+          "backgroundId": null
+        },
+        {
+          "id": "2f515d4f-cf0d-4375-a916-a2bd0b7c7860",
+          "name": "일상 6: 운동 후 스트레칭",
+          "description": "하지현이 거실 바닥에서 요가 매트 위에 앉아 스트레칭 중. 그녀는 운동복 차림, 땀에 젖은 이마. 전신 샷, 정면.",
+          "prompt": "sitting on yoga mat in living room, stretching, wearing black yoga leggings, white tank top, sweaty forehead, full body shot, front view, morning light, calm atmosphere",
+          "outfitId": "ec919870-5e70-4d9a-8167-36974550f0ed",
+          "backgroundId": null
+        },
+        {
+          "id": "afa1ddb0-bcbe-41ba-9d3f-f40666508a34",
+          "name": "일상 7: 저녁 식사 준비",
+          "description": "하지현이 주방에서 요리 중, 프라이팬을 들고 야채를 볶음. 그녀는 앞치마를 두르고, 집중한 표정. 전신 샷, 뒤에서.",
+          "prompt": "standing in kitchen, cooking with frying pan, wearing apron over casual clothes, focused expression, full body shot, from behind, evening light, warm atmosphere",
+          "outfitId": "8255e06c-e2c9-4608-9f14-068e55974be1",
+          "backgroundId": null
+        },
+        {
+          "id": "7a30e78e-0971-46ee-8104-4351bb37eca2",
+          "name": "일상 8: 침실에서의 독서",
+          "description": "하지현이 침대에 누워 책을 읽고 있음. 그녀는 잠옷 차림, 베개에 기대어 편안한 표정. 상반신 샷, 위에서.",
+          "prompt": "lying on bed, reading a book, wearing pale pink silk pajama set, leaning on pillow, relaxed expression, upper body shot, from above, dim lighting, night",
+          "outfitId": "9978106a-1529-46bb-a392-943235932c9e",
+          "backgroundId": null
+        },
+        {
+          "id": "bba4c471-2580-457c-ada6-a8498c43148b",
+          "name": "일상 9: 거실에서의 TV 시청",
+          "description": "하지현이 거실 소파에 앉아 TV를 보고 있음. 그녀는 다리를 꼬고, 무릎 위에 담요를 덮음. 상반신 샷, 측면.",
+          "prompt": "sitting on grey sofa, watching TV, legs crossed, blanket on lap, wearing beige knit cardigan, white cotton blouse, upper body shot, side view, warm lighting, evening",
+          "outfitId": "8255e06c-e2c9-4608-9f14-068e55974be1",
+          "backgroundId": null
+        },
+        {
+          "id": "d130a4c7-dafc-4c70-a90a-7a1f06473a57",
+          "name": "일상 10: 호텔 로비에서의 대기",
+          "description": "하지현이 호텔 로비 소파에 앉아 손목시계를 보며 초조한 표정. 그녀는 비즈니스 캐주얼 차림. 상반신 샷, 정면.",
+          "prompt": "sitting on lobby sofa, checking wristwatch, anxious expression, wearing navy blue knit sweater, beige trousers, upper body shot, front view, chandelier lighting, evening",
+          "outfitId": "bdf5ffcc-7a57-4dd4-94e3-0c1a3a041d9a",
+          "backgroundId": null
+        },
+        {
+          "id": "5b0e7cd2-d1fc-4c68-b5dc-b68b6cba989b",
+          "name": "일상 11: 엘리베이터에서의 혼자",
+          "description": "하지현이 엘리베이터 안에 혼자 서서, 거울에 비친 자신을 바라보며 한숨. 그녀는 사무복 차림. 전신 샷, 정면(거울).",
+          "prompt": "standing alone in elevator, looking at own reflection, sighing, wearing white blouse, black pencil skirt, black blazer, full body shot, front view via mirror, bright lighting",
+          "outfitId": "0186142b-1f53-4531-ad39-756d6bd13ed9",
+          "backgroundId": null
+        },
+        {
+          "id": "ecddb739-529c-40d1-80e4-475245669339",
+          "name": "일상 12: 옥상에서의 휴식",
+          "description": "하지현이 옥상 난간에 기대어 서서 도시 전망을 바라봄. 그녀는 운동복 차림, 바람에 머리카락 흩날림. 전신 샷, 뒤에서.",
+          "prompt": "leaning on rooftop railing, looking at city view, wearing black yoga leggings, white tank top, hair blowing, full body shot, from behind, night, city lights",
+          "outfitId": "ec919870-5e70-4d9a-8167-36974550f0ed",
+          "backgroundId": null
+        },
+        {
+          "id": "1e8be16b-1e49-4866-b1d2-fb403dd300d2",
+          "name": "일상 13: 욕실에서의 세안",
+          "description": "하지현이 욕실 세면대 앞에서 얼굴을 씻고 있음. 그녀는 속옷 차림, 물방울이 얼굴에 맺힘. 상반신 샷, 정면.",
+          "prompt": "washing face at bathroom sink, wearing black lace bralette, black lace triangle panties, water droplets on face, upper body shot, front view, soft lighting",
+          "outfitId": "b9c5b9cf-75b0-4133-8b32-d9e51f0d627a",
+          "backgroundId": null
+        },
+        {
+          "id": "20d963bb-08ad-428d-9386-f7d74dfd341a",
+          "name": "일상 14: 자동차 운전",
+          "description": "하지현이 자동차 운전석에 앉아 핸들을 잡고 앞을 주시. 그녀는 평상복 차림, 진지한 표정. 상반신 샷, 측면.",
+          "prompt": "sitting in driver's seat, hands on steering wheel, looking ahead, serious expression, wearing beige knit cardigan, white cotton blouse, upper body shot, side view, daytime, road visible",
+          "outfitId": "8255e06c-e2c9-4608-9f14-068e55974be1",
+          "backgroundId": null
+        },
+        {
+          "id": "6cb838a6-ce83-4b1e-ada5-bdc7bc3704c8",
+          "name": "일상 15: 회의실에서의 프레젠테이션",
+          "description": "하지현이 회의실 앞에 서서 화이트보드에 자료를 가리키며 설명 중. 그녀는 사무복 차림, 자신감 있는 표정. 전신 샷, 정면.",
+          "prompt": "standing in front of whiteboard in conference room, pointing at data, confident expression, wearing white blouse, black pencil skirt, black blazer, full body shot, front view, fluorescent lighting, daytime",
+          "outfitId": "0186142b-1f53-4531-ad39-756d6bd13ed9",
+          "backgroundId": null
+        },
+        {
+          "id": "62293bae-db81-4830-a9d9-60f8f8f3d28c",
+          "name": "일상 16: 한강 공원에서의 조깅",
+          "description": "하지현이 한강 공원 길을 조깅 중. 그녀는 운동복 차림, 땀을 흘리며 숨을 헐떡임. 전신 샷, 측면.",
+          "prompt": "jogging on Han River park path, wearing black yoga leggings, white tank top, sweating, breathing heavily, full body shot, side view, evening sunset, trees in background",
+          "outfitId": "ec919870-5e70-4d9a-8167-36974550f0ed",
+          "backgroundId": null
+        },
+        {
+          "id": "8679ab5e-4749-424f-8795-ad0496e79e3e",
+          "name": "일상 17: 카페에서의 혼자 시간",
+          "description": "하지현이 카페 창가 자리에 앉아 창밖을 바라보며 생각에 잠김. 그녀는 비즈니스 캐주얼 차림, 커피잔을 손에 쥠. 상반신 샷, 측면.",
+          "prompt": "sitting by cafe window, looking outside, lost in thought, holding coffee cup, wearing navy blue knit sweater, beige trousers, upper body shot, side view, afternoon light",
+          "outfitId": "bdf5ffcc-7a57-4dd4-94e3-0c1a3a041d9a",
+          "backgroundId": null
+        },
+        {
+          "id": "558e918e-7635-4e70-b355-02bc2527f65b",
+          "name": "일상 18: 집에서의 화장",
+          "description": "하지현이 침실 화장대 앞에 앉아 메이크업 중. 그녀는 잠옷 차림, 거울에 집중. 상반신 샷, 정면.",
+          "prompt": "sitting at vanity in bedroom, applying makeup, wearing pale pink silk pajama set, focused on mirror, upper body shot, front view, morning light",
+          "outfitId": "9978106a-1529-46bb-a392-943235932c9e",
+          "backgroundId": null
+        },
+        {
+          "id": "042c51c1-d56f-46ef-b3a2-97535afc08d4",
+          "name": "일상 19: 거실에서의 스마트폰",
+          "description": "하지현이 거실 소파에 누워 스마트폰을 보고 있음. 그녀는 평상복 차림, 다리를 소파 위에 올림. 전신 샷, 위에서.",
+          "prompt": "lying on sofa, looking at smartphone, legs up on sofa, wearing beige knit cardigan, white cotton blouse, dark blue skinny jeans, full body shot, from above, warm lighting, evening",
+          "outfitId": "8255e06c-e2c9-4608-9f14-068e55974be1",
+          "backgroundId": null
+        },
+        {
+          "id": "432cf8fa-feb6-4586-b3b8-5806cd826225",
+          "name": "일상 20: 호텔 방에서의 휴식",
+          "description": "하지현이 호텔 침대에 앉아 TV를 보고 있음. 그녀는 속옷 차림, 무표정. 상반신 샷, 정면.",
+          "prompt": "sitting on hotel bed, watching TV, wearing black lace bralette, black lace triangle panties, neutral expression, upper body shot, front view, dim lighting, night",
+          "outfitId": "b9c5b9cf-75b0-4133-8b32-d9e51f0d627a",
+          "backgroundId": null
+        }
+      ],
+      "createdAt": 1787017970596,
+      "updatedAt": 1787036629477
+    },
+    {
+      "id": "8a0edc6c-51bc-4c2d-8b09-806dfe53b7bc",
+      "name": "봉미선",
+      "summary": "대학교 후배",
+      "synopsis": "대학교 2학년인 봉미선은 같은 과 선배인 '나'와 우연히 자주 마주치게 된다. 처음에는 단순한 인사만 나누던 사이였지만, 점점 밤늦도록 학교에 남아 과제를 하는 두 사람은 자연스럽게 가까워진다. 어느 날, 미선이는 선배의 자취방에 과제를 도와달라고 찾아오게 되고, 그날을 기점으로 두 사람의 관계는 급격히 가까워지기 시작한다. 미선이는 순수하고 수줍음 많은 성격이지만, 선배에게만은 점점 의존적이고 적극적인 모습을 보이게 된다. 학교와 자취방을 오가며 쌓이는 은밀한 시간들, 그리고 그 속에서 피어나는 감정과 욕망을 그린 성인 로맨스.",
+      "thumbnail": null,
+      "appearanceDescription": "봉미선은 20대 초반의 한국인 여대생으로, 단발 보브컷에 레이어드가 들어간 곧은 생머리를 하고 있다. 앞머리는 시스루 뱅으로 이마가 살짝 비치며, 갈색 눈은 가늘고 길쭉하며 눈매가 날카롭지 않다. 얇은 눈썹, 작고 오똑한 코, 연분홍 입술을 가졌다. 피부는 창백하고 맑은 편이며, 몸은 슬림하고 가슴은 작은 편이다. 전체적으로 청순하고 수수한 인상.",
+      "appearancePrompt": "1girl, korean, college student, young adult, short hair, bob cut, layered cut, straight hair, see-through bangs, brown eyes, narrow eyes, thin eyebrows, small nose, pink lips, pale skin, slim body, small breasts, natural look, innocent impression",
+      "outfits": [
+        {
+          "id": "a87da737-da21-4887-b81f-b20e2b6578ae",
+          "name": "캐주얼 홈웨어",
+          "description": "오버사이즈 흰색 반팔 티셔츠에 짙은 회색 면 반바지를 입고 맨발인 상태. 티셔츠 목 부분이 넓어 가슴골이 살짝 보이고, 반바지는 허벅지 중간까지 오는 길이로 다리가 많이 드러난다. 실내에서 편하게 입는 차림.",
+          "prompt": "wearing oversized white cotton t-shirt, deep neckline, cleavage visible, wearing dark grey cotton shorts, mid-thigh length, thighs visible, barefoot, casual homewear"
+        },
+        {
+          "id": "191fd075-716d-4d9a-99b7-99c02657686c",
+          "name": "속옷 차림",
+          "description": "흰색 면 브라렛과 흰색 레이스 가장자리 면 팬티를 입은 상태. 브라렛은 가슴을 살짝 덮는 컵 없는 디자인, 팬티는 로우라이즈로 허리 라인이 드러난다. 맨발.",
+          "prompt": "wearing white cotton bralette, no cups, small breasts visible, wearing white cotton panties, lace trim, low-rise, waist visible, barefoot, underwear, lingerie"
+        },
+        {
+          "id": "12b71c7d-63aa-4ed4-ab53-b54e6bbe5621",
+          "name": "알몸",
+          "description": "완전히 옷을 벗은 상태. 맨살이 드러나며, 신체의 모든 부분이 노출되어 있다. 맨발.",
+          "prompt": "nude, naked, no clothes, bare skin, barefoot, exposed body"
+        }
+      ],
+      "backgrounds": [
+        {
+          "id": "6f245386-65de-4540-a63e-80c206baece9",
+          "name": "자취방 현관",
+          "description": "어두운 실내 복도 끝에 있는 열린 문. 문 밖에서 들어오는 밝은 빛이 바닥에 길게 드리워져 있다. 방 안은 어둡고 흐릿하게 보이며, 깊이감이 있는 구도. 전체적으로 부드러운 조명과 자연스러운 분위기.",
+          "prompt": "indoor, room, doorway, open door, light from doorway, depth of field, soft lighting, dark interior, wooden floor visible, warm atmosphere"
+        },
+        {
+          "id": "563c837a-e558-41fb-a7bd-b111552f247f",
+          "name": "자취방 침실",
+          "description": "어두운 조명의 작은 침실. 침대는 흰색 시트와 베개가 있는 싱글 침대, 벽면은 옅은 회색 벽지, 바닥은 갈색 나무 마루. 침대 옆에는 작은 나무 책상과 의자가 있다. 커튼은 짙은 회색으로 쳐져 있고, 침실 전등은 부드러운 노란색 불빛을 낸다. 밤늦은 시간.",
+          "prompt": "indoor, bedroom, small room, single bed, white sheets, white pillow, light grey wallpaper, brown wooden floor, wooden desk, wooden chair, dark grey curtains, soft yellow lighting, night time, intimate atmosphere, depth of field"
+        },
+        {
+          "id": "5cf43690-5db5-4b12-91a0-3ad1a59c5cf3",
+          "name": "학교 도서관 (밤)",
+          "description": "조용한 대학교 도서관 열람실. 긴 나무 책상이 여러 줄로 배열되어 있고, 각 책상마다 초록색 책상 램프가 켜져 있다. 벽은 흰색, 바닥은 회색 카펫. 창문 밖은 어둡고, 실내는 책상 램프의 따뜻한 빛이 주요 광원이다. 선반에는 알록달록한 책등이 보인다. 텅 빈 분위기이지만 한적함.",
+          "prompt": "indoor, university library, reading room, long wooden desks, green desk lamps, white walls, grey carpet, windows, night outside, warm lamp light, bookshelves, quiet atmosphere, empty, night time"
+        }
+      ],
+      "situations": [
+        {
+          "id": "19cdea6b-c7ec-4fb5-a699-2fa5945ade3c",
+          "name": "현관에서 마주침",
+          "description": "봉미선이 자취방 현관문 앞에 서서 안으로 들어오려는 듯이 문을 열고 있다. 약간 망설이는 표정으로 시선을 아래로 내리거나 카메라를 바라본다. 자연스러운 실내 조명이 문 밖에서 들어오고 있다.",
+          "prompt": "standing at open doorway, one hand on door frame, leaning forward slightly, hesitant expression, looking down then at viewer, full body shot, from inside room, eye level, natural light from outside, depth of field, barefoot",
+          "outfitId": "a87da737-da21-4887-b81f-b20e2b6578ae",
+          "backgroundId": "6f245386-65de-4540-a63e-80c206baece9"
+        },
+        {
+          "id": "84d9921e-1770-4c16-9e9d-cbe5f577bcf2",
+          "name": "과제 도움",
+          "description": "봉미선이 침실 바닥에 앉아 책상 위 과제를 보고 있다. 한 손으로 종이를 가리키며, 다른 손은 턱을 괴고 집중한 표정. 무릎을 세우고 편안한 자세.",
+          "prompt": "sitting on floor, kneeling, leaning toward desk, one hand pointing at paper, other hand on chin, concentrated expression, looking at paper, upper body shot, from side, slightly above, laptop on desk, soft yellow lighting",
+          "outfitId": "a87da737-da21-4887-b81f-b20e2b6578ae",
+          "backgroundId": "563c837a-e558-41fb-a7bd-b111552f247f"
+        },
+        {
+          "id": "52cfac25-350c-4da8-922d-d5c202f51db4",
+          "name": "침대에 앉아",
+          "description": "봉미선이 침대 가장자리에 앉아 다리를 꼰 자세로, 두 손을 무릎 위에 올리고 수줍게 웃으며 카메라를 바라본다. 속옷만 입고 있어 다리와 허리가 드러나 있다.",
+          "prompt": "sitting on bed edge, legs crossed, hands on lap, shy smile, looking at viewer, cowboy shot, from front, eye level, white sheets, soft warm lighting, bare legs",
+          "outfitId": "191fd075-716d-4d9a-99b7-99c02657686c",
+          "backgroundId": "563c837a-e558-41fb-a7bd-b111552f247f"
+        },
+        {
+          "id": "3ba1653b-4c08-460c-97dc-f76d176b90b7",
+          "name": "도서관에서 공부",
+          "description": "봉미선이 도서관 책상에 앉아 노트북을 보며 공부하고 있다. 한 손으로 책을 넘기고, 다른 손은 마우스를 조작. 집중한 표정에 눈은 화면을 향함.",
+          "prompt": "sitting at desk, reading book, one hand flipping page, other hand on mouse, focused expression, looking at laptop screen, upper body shot, from behind over shoulder, desk lamp light, bookshelves in background, quiet atmosphere",
+          "outfitId": "a87da737-da21-4887-b81f-b20e2b6578ae",
+          "backgroundId": "5cf43690-5db5-4b12-91a0-3ad1a59c5cf3"
+        },
+        {
+          "id": "24f72d76-36f2-4c99-9317-e2ae2786bfcc",
+          "name": "현관에서 인사",
+          "description": "봉미선이 현관 문틀에 기대어 팔짱을 끼고, 살짝 고개를 기울여 미소를 지으며 카메라를 바라본다. 발은 맨발로, 한쪽 다리를 살짝 굽혀 편안한 자세.",
+          "prompt": "leaning against doorframe, arms crossed, head tilted, slight smile, looking at viewer, full body shot, from front, eye level, one leg bent, barefoot, soft light from doorway, casual pose",
+          "outfitId": "a87da737-da21-4887-b81f-b20e2b6578ae",
+          "backgroundId": "6f245386-65de-4540-a63e-80c206baece9"
+        },
+        {
+          "id": "82a3791d-83c7-4718-b240-a8b2d144f7cc",
+          "name": "침대에 누워",
+          "description": "봉미선이 침대 위에 옆으로 누워 시트를 허리까지 덮고 있다. 팔로 베개를 감싸 안고, 카메라를 향해 부드러운 눈빛을 보낸다. 알몸 상태로 상체가 드러나 있다.",
+          "prompt": "lying on side on bed, one arm hugging pillow, sheet covering waist, bare upper body, soft seductive look, looking at viewer, close-up shot, from front, eye level, warm yellow lighting, intimate atmosphere",
+          "outfitId": "12b71c7d-63aa-4ed4-ab53-b54e6bbe5621",
+          "backgroundId": "563c837a-e558-41fb-a7bd-b111552f247f"
+        },
+        {
+          "id": "9196acf1-6e79-4a08-a2c7-ff88e34bb841",
+          "name": "도서관에서 잠",
+          "description": "봉미선이 도서관 책상에 엎드려 잠들어 있다. 두 팔을 베개 삼아 머리를 묻고, 눈을 감고 편안한 표정. 주변에 책과 노트가 흩어져 있다.",
+          "prompt": "sleeping on desk, head resting on arms, eyes closed, relaxed expression, upper body shot, from side, slightly above, desk lamp light, scattered books and notes, quiet atmosphere",
+          "outfitId": "a87da737-da21-4887-b81f-b20e2b6578ae",
+          "backgroundId": "5cf43690-5db5-4b12-91a0-3ad1a59c5cf3"
+        },
+        {
+          "id": "c57c891f-6b6c-441b-8376-05cb85103bc5",
+          "name": "옷 갈아입기",
+          "description": "봉미선이 침실에서 속옷 차림으로 서서, 티셔츠를 벗어 들고 있다. 몸을 살짝 돌려 옆모습이 보이며, 카메라를 향해 어색하게 웃으며 쳐다본다.",
+          "prompt": "standing, holding t-shirt in hand, partially undressed, wearing only underwear, slight turn showing side view, awkward smile, looking at viewer, full body shot, from front, eye level, bedroom background, soft lighting",
+          "outfitId": "191fd075-716d-4d9a-99b7-99c02657686c",
+          "backgroundId": "563c837a-e558-41fb-a7bd-b111552f247f"
+        },
+        {
+          "id": "74de4aa2-6a81-4d20-a903-ee287e582524",
+          "name": "선배에게 안기기",
+          "description": "봉미선이 선배(1boy)의 목에 팔을 감고 얼굴을 가슴에 묻으며 꼭 안고 있다. 눈을 감고 편안한 표정. 선배의 등이 보이는 앵글.",
+          "prompt": "hugging 1boy, arms around neck, face buried in chest, eyes closed, content expression, full body shot, from side, showing both characters, standing pose, intimate embrace, bedroom background",
+          "outfitId": "a87da737-da21-4887-b81f-b20e2b6578ae",
+          "backgroundId": "563c837a-e558-41fb-a7bd-b111552f247f"
+        },
+        {
+          "id": "04854020-2408-41d3-8828-52c516b6b635",
+          "name": "선배와 키스",
+          "description": "봉미선이 선배(1boy)와 키스하고 있다. 자신의 손을 선배의 가슴에 대고, 살짝 발돋움하여 입술을 맞대고 있다. 눈을 감고 집중한 표정.",
+          "prompt": "kissing 1boy, own hand on male chest, standing on tiptoes, eyes closed, leaning in, upper body shot, from side, close-up on faces, intimate atmosphere, soft warm lighting, bedroom",
+          "outfitId": "191fd075-716d-4d9a-99b7-99c02657686c",
+          "backgroundId": "563c837a-e558-41fb-a7bd-b111552f247f"
+        }
+      ],
+      "createdAt": 1787030806120,
+      "updatedAt": 1787031075919
     }
   ]
 }

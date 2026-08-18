@@ -2,8 +2,10 @@ import { type NextRequest, NextResponse } from "next/server";
 import {
   createWorkspace,
   getAssignments,
+  isValidWorkspaceId,
   listWorkspaceSummaries,
   normalizeWorkspaceName,
+  reorderWorkspaces,
 } from "@/lib/workspaces";
 import { listImageFilenames } from "@/lib/server-images";
 
@@ -44,6 +46,33 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json(
       { error: "Failed to create workspace" },
+      { status: 500 }
+    );
+  }
+}
+
+// Reorders the workspace list from a drag-and-drop in the workspace bar.
+export async function PATCH(request: NextRequest) {
+  const body = (await request.json().catch(() => null)) as {
+    orderedIds?: unknown;
+  } | null;
+  const orderedIds = Array.isArray(body?.orderedIds)
+    ? body.orderedIds.filter(isValidWorkspaceId)
+    : [];
+
+  if (orderedIds.length === 0) {
+    return NextResponse.json(
+      { error: "orderedIds is required" },
+      { status: 400 }
+    );
+  }
+
+  try {
+    await reorderWorkspaces(orderedIds);
+    return NextResponse.json({ workspaces: await listWorkspaceSummaries() });
+  } catch {
+    return NextResponse.json(
+      { error: "Failed to reorder workspaces" },
       { status: 500 }
     );
   }

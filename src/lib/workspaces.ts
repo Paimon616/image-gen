@@ -114,6 +114,9 @@ function pruneAssignmentsForWorkspace(
   return next;
 }
 
+// The stored array order is the user-facing order: new workspaces are appended
+// (so it starts out as creation order) and `reorderWorkspaces` rewrites it when
+// the user drags a chip to a new position.
 export async function listWorkspaceSummaries(): Promise<WorkspaceSummary[]> {
   const { workspaces, assignments } = await readData();
   const counts = new Map<string, number>();
@@ -124,12 +127,10 @@ export async function listWorkspaceSummaries(): Promise<WorkspaceSummary[]> {
     }
   }
 
-  return workspaces
-    .map((workspace) => ({
-      ...workspace,
-      count: counts.get(workspace.id) ?? 0,
-    }))
-    .sort((a, b) => a.createdAt - b.createdAt);
+  return workspaces.map((workspace) => ({
+    ...workspace,
+    count: counts.get(workspace.id) ?? 0,
+  }));
 }
 
 export async function getAssignments(): Promise<Record<string, string[]>> {
@@ -184,6 +185,28 @@ export function renameWorkspace(
       },
       result: updated,
     };
+  });
+}
+
+// Rewrites the stored order from a client-supplied id list. Ids the client did
+// not know about (created concurrently, in another tab) keep their relative
+// order at the end instead of being dropped.
+export function reorderWorkspaces(orderedIds: string[]): Promise<Workspace[]> {
+  return mutate((data) => {
+    const remaining = new Map(data.workspaces.map((item) => [item.id, item]));
+    const workspaces: Workspace[] = [];
+
+    for (const id of orderedIds) {
+      const workspace = remaining.get(id);
+      if (!workspace) continue;
+      workspaces.push(workspace);
+      remaining.delete(id);
+    }
+    for (const workspace of data.workspaces) {
+      if (remaining.has(workspace.id)) workspaces.push(workspace);
+    }
+
+    return { data: { ...data, workspaces }, result: workspaces };
   });
 }
 

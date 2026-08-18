@@ -103,6 +103,18 @@ function FieldPair({
   );
 }
 
+// A small pill showing how many prompts a tab currently holds (outfits for the
+// identity tab, backgrounds/situations for their own tabs). Hidden at zero so
+// empty tabs stay uncluttered.
+function TabCount({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <span className="ml-1.5 inline-flex min-w-4 items-center justify-center rounded-full bg-primary/15 px-1 text-[10px] font-semibold leading-4 text-primary">
+      {count}
+    </span>
+  );
+}
+
 function SectionCard({
   title,
   description,
@@ -530,6 +542,19 @@ export function CharacterStudio() {
     [patchSelected, selected]
   );
 
+  // Wipe every situation for the selected character at once — used by the "모두
+  // 제거" button when a batch-generated set needs to be cleared and regenerated.
+  const clearSituations = useCallback(() => {
+    if (!selected || selected.situations.length === 0) return;
+    if (
+      !window.confirm(
+        `상황 ${selected.situations.length}개를 모두 제거할까요? 이 작업은 되돌릴 수 없어요.`
+      )
+    )
+      return;
+    patchSelected({ situations: [] });
+  }, [patchSelected, selected]);
+
   const combinedPrompt = useMemo(
     () => (selected ? composeCharacterPrompt(selected) : ""),
     [selected]
@@ -645,9 +670,18 @@ export function CharacterStudio() {
               <div className="border-b border-border px-6 py-3">
                 <TabsList>
                   <TabsTrigger value="basic">기본정보</TabsTrigger>
-                  <TabsTrigger value="identity">아이덴티티</TabsTrigger>
-                  <TabsTrigger value="background">배경</TabsTrigger>
-                  <TabsTrigger value="situation">상황</TabsTrigger>
+                  <TabsTrigger value="identity">
+                    아이덴티티
+                    <TabCount count={selected.outfits.length} />
+                  </TabsTrigger>
+                  <TabsTrigger value="background">
+                    배경
+                    <TabCount count={selected.backgrounds.length} />
+                  </TabsTrigger>
+                  <TabsTrigger value="situation">
+                    상황
+                    <TabCount count={selected.situations.length} />
+                  </TabsTrigger>
                 </TabsList>
               </div>
 
@@ -1075,14 +1109,27 @@ export function CharacterStudio() {
                           )}
                         </div>
                       ))}
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={addSituation}
-                      >
-                        <Plus /> 상황 추가
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={addSituation}
+                        >
+                          <Plus /> 상황 추가
+                        </Button>
+                        {selected.situations.length > 0 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={clearSituations}
+                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            <Trash2 /> 모두 제거 ({selected.situations.length})
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </SectionCard>
 

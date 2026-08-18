@@ -11,7 +11,7 @@ import {
   buildCivitaiMetadataAdvice,
   recommendedCivitaiBackend,
 } from "@/lib/civitai-metadata-advice";
-import { isKrea2CheckpointName } from "@/lib/comfyui-model-files";
+import { isDiffusionOnlyImageCheckpointName } from "@/lib/comfyui-model-files";
 
 const CIVITAI_IMAGE_URL_PATTERN =
   /(?:https?:\/\/)?(?:www\.)?(civitai\.(?:com|red))\/images\/(\d+)/i;
@@ -586,7 +586,7 @@ async function writeCatalog(catalog: Record<string, CatalogEntry>) {
 function resourceCatalogPath(resource: ImportedCivitaiResource) {
   if (resource.type === "checkpoint") {
     const name = resource.fileName || resource.name;
-    const folder = isKrea2CheckpointName(resource.name)
+    const folder = isDiffusionOnlyImageCheckpointName(resource.name)
       ? "diffusion_models"
       : "checkpoints";
     return `${folder}/${name}`;
@@ -615,7 +615,7 @@ async function upsertImportedResourcesCatalog(
   if (checkpoint && params.model_name) {
     explicitKeys.set(
       checkpoint,
-      `${isKrea2CheckpointName(params.model_name) ? "diffusion_models" : "checkpoints"}/${params.model_name}`
+      `${isDiffusionOnlyImageCheckpointName(params.model_name) ? "diffusion_models" : "checkpoints"}/${params.model_name}`
     );
   }
 

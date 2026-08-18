@@ -14,10 +14,14 @@ import {
   KREA2_VAE_NAME,
   PORNMASTER_CLIP_NAME,
   PORNMASTER_VAE_NAME,
+  ZIMAGE_CLIP_NAME,
+  ZIMAGE_VAE_NAME,
   getCheckpointCapabilities,
   getMissingRequiredModelFiles,
   isAnimaCheckpointName,
   isKrea2CheckpointName,
+  isZImageCheckpointName,
+  type CheckpointCapabilities,
 } from "./comfyui-model-files";
 import {
   compareComfyVersions,
@@ -162,7 +166,11 @@ function addFaceDetailerWorkflowNode(
   vaeRef: [string, number],
   positiveRef: [string, number],
   negativeRef: [string, number],
-  seed: number
+  seed: number,
+  // Distilled pipelines (Krea 2 / Z-Image Turbo) sample far off the app defaults —
+  // cfg 1 with a flow-matching sampler. Without this the detail pass would re-run the
+  // face at the raw UI cfg/sampler and burn it. Omitted callers keep the old behaviour.
+  sampling?: { cfg?: number; sampler_name?: string; scheduler?: string }
 ) {
   if (!params.adetailer_enabled) return imageRef;
 
@@ -263,9 +271,9 @@ function addFaceDetailerWorkflowNode(
           ? params.adetailer_steps
           : params.num_inference_steps
       ),
-      cfg: params.guidance_scale,
-      sampler_name: params.sampler_name || "dpmpp_2m",
-      scheduler: params.scheduler || "karras",
+      cfg: sampling?.cfg ?? params.guidance_scale,
+      sampler_name: sampling?.sampler_name || params.sampler_name || "dpmpp_2m",
+      scheduler: sampling?.scheduler || params.scheduler || "karras",
       positive: detailPositiveRef,
       negative: detailNegativeRef,
       denoise: clampDenoiseStrength(params.adetailer_denoise),
@@ -1378,6 +1386,333 @@ async function addPulidWorkflowNodes(
   return ["204", 0];
 }
 
+// --- Z-Image (Tongyi-MAI) ---------------------------------------------------
+// Z-Image is a Lumina2-architecture DiT that ships as diffusion weights only: it
+// carries no CLIP and no VAE, so the standard CheckpointLoaderSimple graph dies with
+// "clip input is invalid: None". The official ComfyUI blueprint
+// (blueprints/"Text to Image (Z-Image-Turbo)".json) pairs it with an external
+// Qwen3-4B text encoder (CLIPLoader type "lumina2" — CLIPType.LUMINA2 routes a
+// Qwen3-4B state dict to the z_image text encoder) and the Flux-style 16-channel VAE,
+// with ModelSamplingAuraFlow(shift 3) in front of the sampler.
+const ZIMAGE_SHIFT = 3;
+
+function isZImageTurboCheckpointName(checkpoint: string) {
+  return /turbo/i.test(checkpoint);
+}
+
+// The diffusion weights are valid in either models/diffusion_models (UNETLoader — the
+// folder the official install uses) or models/checkpoints (CheckpointLoaderSimple,
+// which falls back to a diffusion-model-only load and returns a null CLIP we replace).
+// Each loader only sees its own folder, so ask the target backend where the file is.
+async function resolveZImageModelLoader(
+  checkpoint: string,
+  capabilities: CheckpointCapabilities | null,
+  options?: ComfyClientOptions
+) {
+  try {
+    const unetNames = await getComfyObjectInputOptions("UNETLoader", "unet_name", options);
+    if (unetNames.includes(checkpoint)) return "UNETLoader" as const;
+    const checkpointNames = await getComfyObjectInputOptions(
+      "CheckpointLoaderSimple",
+      "ckpt_name",
+      options
+    );
+    if (checkpointNames.includes(checkpoint)) return "CheckpointLoaderSimple" as const;
+  } catch {
+    // /object_info unreachable — fall through to the capability probe below.
+  }
+
+  // Non-null capabilities mean the safetensors header was read from models/checkpoints,
+  // so the file is there; otherwise assume the official diffusion_models location.
+  return capabilities ? ("CheckpointLoaderSimple" as const) : ("UNETLoader" as const);
+}
+
+// Support files live on whichever ComfyUI runs the job, so a hardcoded name can be
+// wrong (fp8/fp4 text-encoder builds, a differently named Flux VAE). Resolve against
+// the target backend's own file lists and fall back to the canonical names.
+async function resolveZImageSupportNames(
+  params: GenerationParams,
+  options?: ComfyClientOptions
+) {
+  const [clipNames, vaeNames] = await Promise.all([
+    getComfyObjectInputOptions("CLIPLoader", "clip_name", options).catch(
+      () => [] as string[]
+    ),
+    getComfyObjectInputOptions("VAELoader", "vae_name", options).catch(
+      () => [] as string[]
+    ),
+  ]);
+
+  const clipName =
+    clipNames.find((name) => name === ZIMAGE_CLIP_NAME) ??
+    // Qwen3-4B in any precision; exclude Qwen3-VL, which is a different encoder.
+    clipNames.find((name) => /qwen[-_ ]?3[-_ ]?4b/i.test(name) && !/vl/i.test(name)) ??
+    ZIMAGE_CLIP_NAME;
+  const requestedVae = params.vae_name.trim();
+  const vaeName =
+    (requestedVae && (vaeNames.length === 0 || vaeNames.includes(requestedVae))
+      ? requestedVae
+      : "") ||
+    vaeNames.find((name) => name === ZIMAGE_VAE_NAME) ||
+    vaeNames.find((name) => /^ae[._-]|flux.*vae|vae.*flux|z[-_ ]?image.*vae/i.test(name)) ||
+    ZIMAGE_VAE_NAME;
+
+  return { clipName, vaeName };
+}
+
+async function assertZImageSupportFiles(
+  checkpoint: string,
+  options?: ComfyClientOptions
+) {
+  // Remote jobs read their files from the pod, not this disk — mirrors the Anima and
+  // Krea 2 skips so a local-only gap can't block a RunPod generation.
+  if (options?.baseUrl) return;
+
+  const missing = await getMissingRequiredModelFiles(checkpoint);
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Z-Image generation requires these additional files: ${missing.join(", ")}`
+    );
+  }
+}
+
+async function buildZImageWorkflow(
+  params: GenerationParams,
+  checkpoint: string,
+  capabilities: CheckpointCapabilities | null,
+  options?: ComfyClientOptions
+) {
+  assertNoCharacterReference(params, "Z-Image");
+  await assertZImageSupportFiles(checkpoint, options);
+
+  // Z-Image ControlNet needs its own ModelPatchLoader/ZImage_Control chain rather than
+  // the SDXL ControlNetApplyAdvanced nodes, so say so instead of silently generating
+  // without the control image the user attached. Read straight off params because
+  // cleanControlnets would upload those images first.
+  const hasControlnet = (params.controlnets ?? []).some(
+    (controlnet) => controlnet.model && controlnet.image
+  );
+  if (hasControlnet) {
+    throw new Error(
+      "ControlNet은 현재 Z-Image 체크포인트에서 지원되지 않습니다. ControlNet을 끄고 생성하세요. " +
+        "(ControlNet is not supported on Z-Image checkpoints yet — clear the ControlNet inputs to generate.)"
+    );
+  }
+
+  const [loaderClass, { clipName, vaeName }] = await Promise.all([
+    resolveZImageModelLoader(checkpoint, capabilities, options),
+    resolveZImageSupportNames(params, options),
+  ]);
+  const loras = cleanLoras(params.loras);
+  const seed = normalizeGenerationSeed(params.seed);
+  const turbo = isZImageTurboCheckpointName(checkpoint);
+  // Only untouched UI defaults are remapped, so an explicit choice always wins.
+  // Blueprint recipes: Turbo = 8 steps / cfg 1 / zeroed negative, Base = cfg 3~5.
+  const samplerName =
+    !params.sampler_name || params.sampler_name === "dpmpp_2m"
+      ? "res_multistep"
+      : params.sampler_name;
+  const scheduler =
+    !params.scheduler || params.scheduler === "karras" ? "simple" : params.scheduler;
+  const cfg = params.guidance_scale === 7.5 ? (turbo ? 1 : 4) : params.guidance_scale;
+  const steps =
+    turbo && params.num_inference_steps === 30 ? 8 : params.num_inference_steps;
+  const workflow: Record<string, unknown> = {
+    "1":
+      loaderClass === "UNETLoader"
+        ? {
+            class_type: "UNETLoader",
+            inputs: { unet_name: checkpoint, weight_dtype: "default" },
+          }
+        : {
+            class_type: "CheckpointLoaderSimple",
+            inputs: { ckpt_name: checkpoint },
+          },
+    "8": {
+      class_type: "CLIPLoader",
+      inputs: { clip_name: clipName, type: "lumina2", device: "default" },
+    },
+    "9": {
+      class_type: "VAELoader",
+      inputs: { vae_name: vaeName },
+    },
+  };
+
+  let modelRef: [string, number] = ["1", 0];
+  const clipRef: [string, number] = ["8", 0];
+  const vaeRef: [string, number] = ["9", 0];
+
+  // Z-Image LoRAs patch the diffusion model only (the Qwen3 text encoder is untouched).
+  loras.forEach((lora, index) => {
+    const nodeId = String(10 + index);
+    workflow[nodeId] = {
+      class_type: "LoraLoaderModelOnly",
+      inputs: {
+        lora_name: lora.path,
+        strength_model: lora.scale,
+        model: modelRef,
+      },
+    };
+    modelRef = [nodeId, 0];
+  });
+
+  // Patch the sampling shift last so it applies on top of any LoRA stack.
+  workflow["40"] = {
+    class_type: "ModelSamplingAuraFlow",
+    inputs: { model: modelRef, shift: ZIMAGE_SHIFT },
+  };
+  modelRef = ["40", 0];
+
+  workflow["2"] = {
+    class_type: "CLIPTextEncode",
+    inputs: {
+      text: withEmbeddingTokens(params.prompt, params.embeddings),
+      clip: clipRef,
+    },
+  };
+  // Turbo is distilled and runs at cfg 1, where a negative prompt has no effect —
+  // the blueprint zeroes the conditioning out. Base runs real CFG, so it keeps one.
+  workflow["3"] = turbo
+    ? {
+        class_type: "ConditioningZeroOut",
+        inputs: { conditioning: ["2", 0] },
+      }
+    : {
+        class_type: "CLIPTextEncode",
+        inputs: {
+          text: withEmbeddingTokens(params.negative_prompt, []),
+          clip: clipRef,
+        },
+      };
+
+  let latentRef: [string, number] = ["4", 0];
+  let denoise = 1;
+
+  if (params.generation_mode === "image_to_image" && params.source_image) {
+    const sourceImage = await resolveControlNetImage(params.source_image);
+
+    workflow["4"] = {
+      class_type: "LoadImage",
+      inputs: { image: sourceImage },
+    };
+    workflow["22"] = {
+      class_type: "ImageScale",
+      inputs: {
+        image: ["4", 0],
+        upscale_method: "lanczos",
+        width: generationDimension(params.width, Number(params.hires_upscale)),
+        height: generationDimension(params.height, Number(params.hires_upscale)),
+        crop: "center",
+      },
+    };
+    workflow["23"] = {
+      class_type: "VAEEncode",
+      inputs: { pixels: ["22", 0], vae: vaeRef },
+    };
+    latentRef = ["23", 0];
+    denoise = clampDenoiseStrength(params.denoise_strength);
+  } else {
+    // 16-channel latent (Flux format) — EmptyLatentImage's 4 channels would not load.
+    workflow["4"] = {
+      class_type: "EmptySD3LatentImage",
+      inputs: {
+        width: generationDimension(params.width, Number(params.hires_upscale)),
+        height: generationDimension(params.height, Number(params.hires_upscale)),
+        batch_size: Math.min(Math.max(Number(params.num_images) || 1, 1), 4),
+      },
+    };
+  }
+
+  workflow["5"] = {
+    class_type: "KSampler",
+    inputs: {
+      seed,
+      steps,
+      cfg,
+      sampler_name: samplerName,
+      scheduler,
+      denoise,
+      model: modelRef,
+      positive: ["2", 0],
+      negative: ["3", 0],
+      latent_image: latentRef,
+    },
+  };
+  workflow["6"] = {
+    class_type: "VAEDecode",
+    inputs: { samples: ["5", 0], vae: vaeRef },
+  };
+
+  const hiresScale = Number(params.hires_upscale);
+  const useHiresFix = Number.isFinite(hiresScale) && hiresScale > 1;
+  let saveImageRef: [string, number];
+
+  if (useHiresFix) {
+    const upscaledRef = await addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71");
+    workflow["72"] = {
+      class_type: "ImageScale",
+      inputs: {
+        image: upscaledRef,
+        upscale_method: "lanczos",
+        width: params.width,
+        height: params.height,
+        crop: "disabled",
+      },
+    };
+    workflow["73"] = {
+      class_type: "VAEEncode",
+      inputs: { pixels: ["72", 0], vae: vaeRef },
+    };
+    workflow["74"] = {
+      class_type: "KSampler",
+      inputs: {
+        seed,
+        steps: params.hires_steps > 0 ? params.hires_steps : steps,
+        // The hires pass shares the base pass's sampling recipe: at the raw UI cfg a
+        // distilled Turbo model would blow out the second pass it just refined.
+        cfg,
+        sampler_name: samplerName,
+        scheduler,
+        denoise: clampDenoiseStrength(params.hires_denoise),
+        model: modelRef,
+        positive: ["2", 0],
+        negative: ["3", 0],
+        latent_image: ["73", 0],
+      },
+    };
+    workflow["75"] = {
+      class_type: "VAEDecode",
+      inputs: { samples: ["74", 0], vae: vaeRef },
+    };
+    saveImageRef = ["75", 0];
+  } else {
+    saveImageRef = ["6", 0];
+  }
+
+  saveImageRef = addFaceDetailerWorkflowNode(
+    workflow,
+    params,
+    saveImageRef,
+    modelRef,
+    clipRef,
+    vaeRef,
+    ["2", 0],
+    ["3", 0],
+    seed,
+    { cfg, sampler_name: samplerName, scheduler }
+  );
+  workflow["7"] = {
+    class_type: "SaveImage",
+    inputs: {
+      filename_prefix: "image-gen-zimage",
+      images: saveImageRef,
+    },
+  };
+
+  return workflow;
+}
+
 // PuLID here targets the SDXL/Illustrious node chain. FLUX-based Krea 2 and the
 // Anima stack need the separate PuLID-Flux nodes and a different apply path, so
 // fail loudly rather than silently dropping the reference the user uploaded.
@@ -1409,6 +1744,14 @@ async function buildDefaultWorkflow(params: GenerationParams, options?: ComfyCli
     ? await getRunpodCheckpointCapabilities(options.baseUrl, checkpoint)
     : await getCheckpointCapabilities(checkpoint);
 
+  // Z-Image is checked before the diffusion-only guard because the weights may live in
+  // models/diffusion_models, where the capability probe (which reads models/checkpoints)
+  // sees nothing at all. A checkpoint that really does bundle CLIP is left alone, so an
+  // unrelated SD/SDXL merge whose name happens to contain "z image" still builds normally.
+  if (isZImageCheckpointName(checkpoint) && checkpointCapabilities?.clip !== true) {
+    return buildZImageWorkflow(params, checkpoint, checkpointCapabilities, options);
+  }
+
   if (checkpointCapabilities?.clip === false) {
     if (isAnimaCheckpointName(checkpoint)) {
       return buildAnimaWorkflow(params, checkpoint, options);
@@ -1418,7 +1761,7 @@ async function buildDefaultWorkflow(params: GenerationParams, options?: ComfyCli
       options?.baseUrl
         ? `${checkpoint} on the RunPod pod is a diffusion-only checkpoint — it has no bundled CLIP text encoder, ` +
             "so it can't run in the standard workflow. Pick a full checkpoint that bundles CLIP (most SD/SDXL/Illustrious " +
-            "models do), or use a model this generator has a dedicated pipeline for (Krea 2, Anima)."
+            "models do), or use a model this generator has a dedicated pipeline for (Krea 2, Z-Image, Anima)."
         : `${checkpoint} is a diffusion-only model without a bundled CLIP text encoder. ` +
             "Use an SD/SDXL checkpoint in this generator, or move this file to ComfyUI/models/diffusion_models and run it with its matching ComfyUI blueprint."
     );
@@ -1772,10 +2115,13 @@ async function getQueue(options?: ComfyClientOptions) {
 
 async function getComfyObjectInputOptions(
   classType: string,
-  inputName: string
+  inputName: string,
+  options?: ComfyClientOptions
 ): Promise<string[]> {
   const res = await comfyFetch(
-    "/object_info/" + encodeURIComponent(classType)
+    "/object_info/" + encodeURIComponent(classType),
+    undefined,
+    options
   );
   const data = (await res.json()) as Record<string, ComfyObjectInfo>;
   const input = data[classType]?.input?.required?.[inputName];

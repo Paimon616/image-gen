@@ -8090,7 +8090,8 @@
     "base_model": "Illustrious",
     "civitai_url": "https://civitai.red/models/1772230/illustrij-evo?modelVersionId=2182724",
     "source_url": "https://civitai.red/models/1772230/illustrij-evo?modelVersionId=2182724",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/53dad236-fab9-48a6-85e6-1e3a797be4cf/original=true/125808645.jpeg"
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/53dad236-fab9-48a6-85e6-1e3a797be4cf/original=true/125808645.jpeg",
+    "tags": []
   },
   "loras/sweatill 222.safetensors": {
     "name": "Sweaty / Steamy / Musky (Anima/Illustrious)",
@@ -8597,5 +8598,32 @@
     "tags": [
       "jubjub"
     ]
+  },
+  "checkpoints/z_image_turbo_bf16.safetensors": {
+    "name": "Z Image Turbo",
+    "version": "Turbo",
+    "base_model": "ZImageTurbo",
+    "civitai_url": "https://civitai.red/models/2168935/z-image-turbo?modelVersionId=2442439",
+    "source_url": "https://civitai.red/models/2168935/z-image-turbo?modelVersionId=2442439",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/41150b54-1830-470c-a98e-f46a2e908122/original=true/111679195.jpeg",
+    "tags": []
+  },
+  "vae/ae.safetensors": {
+    "name": "ae.safetensors",
+    "version": "",
+    "base_model": "",
+    "thumbnail_url": null,
+    "civitai_url": "https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/vae/ae.safetensors",
+    "source_url": "https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/vae/ae.safetensors",
+    "tags": []
+  },
+  "text_encoders/qwen_3_4b.safetensors": {
+    "name": "qwen_3_4b.safetensors",
+    "version": "",
+    "base_model": "",
+    "thumbnail_url": null,
+    "civitai_url": "https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/text_encoders/qwen_3_4b.safetensors",
+    "source_url": "https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/text_encoders/qwen_3_4b.safetensors",
+    "tags": []
   }
 }
