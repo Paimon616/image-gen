@@ -92,6 +92,8 @@ async function readImageMeta({
       sizeSemantics: meta.size_semantics === "final" ? "final" : "base",
       timestamp: meta.timestamp ?? timestamp,
       civitaiOrigin: meta.civitai_origin ?? undefined,
+      characterId: meta.character_id ?? undefined,
+      situationId: meta.situation_id ?? undefined,
     };
   } catch {
     return {
@@ -162,6 +164,92 @@ export async function listGeneratedImages({
     nextCursor: end < fileInfos.length ? end : null,
     total: fileInfos.length,
   };
+}
+
+export interface CharacterSituationImage {
+  id: string;
+  filename: string;
+  url: string;
+  thumbnailUrl: string;
+  situationId: string | null;
+  timestamp: number;
+  params: GeneratedImage["params"];
+}
+
+// Scans the output metadata sidecars for images tagged with a character id and
+// returns them (newest first) with their situation id, so the character studio
+// and Paimon picker can group thumbnails under each situation. Sidecar-only: it
+// reads the small `{id}.json` files, not the images themselves.
+export async function listImagesForCharacter(
+  characterId: string
+): Promise<CharacterSituationImage[]> {
+  const files = await readdir(OUTPUT_DIR).catch(() => [] as string[]);
+  const sidecars = files.filter((name) => name.endsWith(".json"));
+
+  const results = await Promise.all(
+    sidecars.map(async (name) => {
+      try {
+        const meta = JSON.parse(
+          await readFile(join(OUTPUT_DIR, name), "utf-8")
+        );
+        if (
+          meta?.character_id !== characterId ||
+          typeof meta?.filename !== "string" ||
+          !isValidImageFilename(meta.filename)
+        ) {
+          return null;
+        }
+        // Confirm the image file still exists (a deleted image leaves no file).
+        const info = await stat(join(OUTPUT_DIR, meta.filename)).catch(() => null);
+        if (!info?.isFile()) return null;
+
+        return {
+          id: typeof meta.id === "string" ? meta.id : meta.filename,
+          filename: meta.filename,
+          url: imageUrl(meta.filename),
+          thumbnailUrl: thumbnailUrl(meta.filename),
+          situationId:
+            typeof meta.situation_id === "string" ? meta.situation_id : null,
+          timestamp: typeof meta.timestamp === "number" ? meta.timestamp : info.mtimeMs,
+          params: meta.params ?? null,
+        } satisfies CharacterSituationImage;
+      } catch {
+        return null;
+      }
+    })
+  );
+
+  return results
+    .filter((item): item is CharacterSituationImage => Boolean(item))
+    .sort((a, b) => b.timestamp - a.timestamp);
+}
+
+// Clears the character/situation link on an image's metadata sidecar so its
+// thumbnail leaves that situation, without deleting the image. Only unlinks when
+// the sidecar actually belongs to the given character (guards against stale ids).
+export async function unlinkImageFromCharacter(
+  characterId: string,
+  filename: string
+): Promise<boolean> {
+  if (!isValidImageFilename(filename)) return false;
+
+  const metaPath = join(OUTPUT_DIR, filename.replace(/\.\w+$/, ".json"));
+  const raw = await readFile(metaPath, "utf-8").catch(() => null);
+  if (!raw) return false;
+
+  let meta: Record<string, unknown>;
+  try {
+    meta = JSON.parse(raw);
+  } catch {
+    return false;
+  }
+
+  if (meta.character_id !== characterId) return false;
+
+  delete meta.character_id;
+  delete meta.situation_id;
+  await writeFile(metaPath, JSON.stringify(meta, null, 2));
+  return true;
 }
 
 export async function readOriginalImage(filename: string) {

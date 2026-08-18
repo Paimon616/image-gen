@@ -24,12 +24,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CharacterPaimonChat } from "@/components/character-paimon-chat";
+import { useStore } from "@/lib/store";
 import {
   composeCharacterPrompt,
   type Character,
   type CharacterBackground,
   type CharacterOutfit,
   type CharacterSituation,
+  type GeneratedImage,
 } from "@/lib/types";
 
 // Native <select> styling to match the app's inputs (mirrors app-sidebar).
@@ -174,6 +176,96 @@ export function CharacterStudio() {
   const selected = useMemo(
     () => characters.find((character) => character.id === selectedId) ?? null,
     [characters, selectedId]
+  );
+
+  const setSelectedImage = useStore((state) => state.setSelectedImage);
+  // Watch the shared detail viewer's selection so we can refresh thumbnails when
+  // it closes — an image deleted inside the viewer must drop out of its situation.
+  const viewerImageId = useStore((state) => state.selectedImage?.id ?? null);
+  // Generated images for the selected character, grouped by situation id, so each
+  // situation card can show its result thumbnails.
+  const [situationImages, setSituationImages] = useState<
+    Record<string, GeneratedImage[]>
+  >({});
+
+  const reloadSituationImages = useCallback(async () => {
+    // No character selected: nothing renders the situation strips, so leaving the
+    // (stale) map untouched is fine and avoids a synchronous effect setState.
+    if (!selectedId) return;
+    try {
+      const res = await fetch(`/api/characters/${selectedId}/images`, {
+        cache: "no-store",
+      });
+      const data = (await res.json()) as {
+        images?: {
+          id: string;
+          filename: string;
+          url: string;
+          thumbnailUrl: string;
+          situationId: string | null;
+          timestamp: number;
+          params: GeneratedImage["params"];
+        }[];
+      };
+      const grouped: Record<string, GeneratedImage[]> = {};
+      for (const image of data.images ?? []) {
+        if (!image.situationId) continue;
+        (grouped[image.situationId] ??= []).push({
+          id: image.id,
+          url: image.url,
+          thumbnailUrl: image.thumbnailUrl,
+          filename: image.filename,
+          params: image.params,
+          timestamp: image.timestamp,
+          characterId: selectedId,
+          situationId: image.situationId,
+        });
+      }
+      setSituationImages(grouped);
+    } catch {
+      setSituationImages({});
+    }
+  }, [selectedId]);
+
+  useEffect(() => {
+    void (async () => {
+      await reloadSituationImages();
+    })();
+  }, [reloadSituationImages]);
+
+  // When the detail viewer closes (id goes from set → null), a delete may have
+  // happened inside it — refresh so the removed image leaves its situation strip.
+  const prevViewerImageId = useRef<string | null>(null);
+  useEffect(() => {
+    if (prevViewerImageId.current && !viewerImageId) {
+      void reloadSituationImages();
+    }
+    prevViewerImageId.current = viewerImageId;
+  }, [viewerImageId, reloadSituationImages]);
+
+  // Remove-from-situation: clears the character/situation link on the image's
+  // metadata so its thumbnail leaves this situation. The image itself stays in
+  // the gallery (use the viewer's Delete to remove the image entirely).
+  const removeSituationImage = useCallback(
+    async (situationId: string, image: GeneratedImage) => {
+      if (!selectedId) return;
+      setSituationImages((prev) => {
+        const next = { ...prev };
+        const remaining = (next[situationId] ?? []).filter(
+          (item) => item.id !== image.id
+        );
+        if (remaining.length > 0) next[situationId] = remaining;
+        else delete next[situationId];
+        return next;
+      });
+      await fetch(
+        `/api/characters/${selectedId}/images?filename=${encodeURIComponent(
+          image.filename
+        )}`,
+        { method: "DELETE" }
+      ).catch(() => {});
+    },
+    [selectedId]
   );
 
   const scheduleSave = useCallback((id: string) => {
@@ -941,6 +1033,46 @@ export function CharacterStudio() {
                               updateSituation(situation.id, { prompt: value })
                             }
                           />
+                          {(situationImages[situation.id]?.length ?? 0) > 0 && (
+                            <div className="space-y-1.5">
+                              <Label className="text-xs text-muted-foreground">
+                                생성된 이미지 (
+                                {situationImages[situation.id].length})
+                              </Label>
+                              <div className="flex flex-wrap gap-2">
+                                {situationImages[situation.id].map((image) => (
+                                  <div
+                                    key={image.id}
+                                    className="group relative size-16"
+                                  >
+                                    <button
+                                      type="button"
+                                      className="size-16 overflow-hidden rounded-md border border-border bg-muted transition-opacity hover:opacity-80"
+                                      onClick={() => setSelectedImage(image)}
+                                      title="이미지 상세 보기"
+                                    >
+                                      <img
+                                        src={image.thumbnailUrl || image.url}
+                                        alt={`${situation.name} 결과`}
+                                        className="h-full w-full object-cover"
+                                      />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="absolute -right-1.5 -top-1.5 rounded-full bg-background/90 p-0.5 text-muted-foreground opacity-0 shadow ring-1 ring-border transition-opacity hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+                                      onClick={() =>
+                                        removeSituationImage(situation.id, image)
+                                      }
+                                      aria-label="이 상황에서 이미지 제거"
+                                      title="이 상황에서 제거"
+                                    >
+                                      <X className="size-3" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ))}
                       <Button

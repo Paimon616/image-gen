@@ -41,6 +41,21 @@ interface PaimonChatProps {
   onApplyParams: (patch: Partial<GenerationParams>) => void;
   attachments: PaimonAttachment[];
   onAttachmentsChange: (attachments: PaimonAttachment[]) => void;
+  // Enqueue a generation with fully-composed params, linked to the character/
+  // situation it came from. Used by the picker's auto-generate and batch modes.
+  onEnqueueGeneration?: (
+    params: GenerationParams,
+    meta: { characterId?: string; situationId?: string }
+  ) => void;
+  // Records the character/situation a composed prompt came from so a later manual
+  // Generate press on the same prompt still links the image.
+  onCharacterContext?: (context: {
+    characterId?: string;
+    situationId?: string;
+    prompt: string;
+  }) => void;
+  // Opens an image in the shared detail viewer (used by situation thumbnails).
+  onOpenImage?: (image: GeneratedImage) => void;
 }
 
 interface PaimonModelAsset {
@@ -243,12 +258,14 @@ async function loadModelContext(
 }
 
 interface PaimonCharacter {
+  id: string;
   name: string;
   summary: string;
   appearancePrompt: string;
   outfits: { name: string; prompt: string }[];
   backgrounds: { name: string; prompt: string }[];
   situations: {
+    id: string;
     name: string;
     prompt: string;
     outfitName?: string;
@@ -285,6 +302,7 @@ async function loadCharacterLibrary(): Promise<PaimonCharacter[]> {
           ])
         );
         return {
+          id: character.id,
           name: character.name,
           summary: character.summary,
           appearancePrompt: character.appearancePrompt,
@@ -300,6 +318,7 @@ async function loadCharacterLibrary(): Promise<PaimonCharacter[]> {
           situations: character.situations
             .filter((situation) => situation.prompt.trim())
             .map((situation) => ({
+              id: situation.id,
               name: situation.name,
               prompt: situation.prompt,
               outfitName: situation.outfitId
@@ -321,6 +340,9 @@ export function PaimonChat({
   onApplyParams,
   attachments,
   onAttachmentsChange,
+  onEnqueueGeneration,
+  onCharacterContext,
+  onOpenImage,
 }: PaimonChatProps) {
   const [open, setOpen] = useState(false);
   const [renderPanel, setRenderPanel] = useState(false);
@@ -334,6 +356,25 @@ export function PaimonChat({
   const [pickerLoading, setPickerLoading] = useState(false);
   const [pickerChars, setPickerChars] = useState<PaimonCharacter[] | null>(null);
   const [pickerActiveName, setPickerActiveName] = useState<string | null>(null);
+  // Picker options: auto-generate queues each picked situation; multi-select lets
+  // the user check several situations and run them one after another.
+  const [autoGenerate, setAutoGenerate] = useState(false);
+  const [multiSelect, setMultiSelect] = useState(false);
+  const [selectedSituationIds, setSelectedSituationIds] = useState<Set<string>>(
+    new Set()
+  );
+  // Sequential batch run state (situation prompts composed + queued in order).
+  const [batchProgress, setBatchProgress] = useState<{
+    done: number;
+    total: number;
+    current: string;
+  } | null>(null);
+  const batchCancelRef = useRef(false);
+  // Thumbnails of already-generated images, grouped by situation id, for the
+  // active character in the picker.
+  const [situationImages, setSituationImages] = useState<
+    Record<string, GeneratedImage[]>
+  >({});
   const previousAttachmentIds = useRef(
     new Set(attachments.map((attachment) => attachment.id))
   );
@@ -402,10 +443,14 @@ export function PaimonChat({
     [messages]
   );
 
-  const sendMessage = useCallback(
-    async (content: string) => {
+  // Runs one Paimon turn: appends the user/assistant messages, streams the reply,
+  // applies any params patch, and RETURNS the sanitized patch (or null on
+  // failure) so callers can compose+generate. The public sendMessage wraps this
+  // with the "don't start while busy" guard.
+  const runTurn = useCallback(
+    async (content: string): Promise<Partial<GenerationParams> | null> => {
       const trimmed = content.trim();
-      if (!trimmed || loading) return;
+      if (!trimmed) return null;
 
       const userMessage: ChatMessage = {
         id: crypto.randomUUID(),
@@ -541,6 +586,7 @@ export function PaimonChat({
             ? "요청을 반영해서 현재 생성 정보를 수정했어요."
             : "이번에는 반영할 내용을 만들지 못했어요. 조금 더 구체적으로 다시 요청해 주세요.");
         setAssistantContent(finalContent);
+        return patch;
       } catch (err) {
         // Drop an empty placeholder so a failed turn doesn't leave a blank bubble.
         if (placeholderAdded) {
@@ -552,13 +598,33 @@ export function PaimonChat({
           );
         }
         setError(err instanceof Error ? err.message : "파이몬 오류");
+        return null;
       } finally {
         setLoading(false);
         setStatus("");
       }
     },
-    [attachments, compactMessages, loading, onApplyParams, params]
+    [attachments, compactMessages, onApplyParams, params]
   );
+
+  const sendMessage = useCallback(
+    (content: string) => {
+      if (loading) return;
+      void runTurn(content);
+    },
+    [loading, runTurn]
+  );
+
+  // Refs so the async batch loop always reads the freshest turn runner and params
+  // without capturing stale closures between iterations.
+  const runTurnRef = useRef(runTurn);
+  useEffect(() => {
+    runTurnRef.current = runTurn;
+  }, [runTurn]);
+  const paramsRef = useRef(params);
+  useEffect(() => {
+    paramsRef.current = params;
+  }, [params]);
 
   const togglePicker = useCallback(async () => {
     if (pickerOpen) {
@@ -568,6 +634,8 @@ export function PaimonChat({
     }
     setPickerOpen(true);
     setPickerActiveName(null);
+    setMultiSelect(false);
+    setSelectedSituationIds(new Set());
     setPickerLoading(true);
     try {
       setPickerChars(await loadCharacterLibrary());
@@ -578,19 +646,153 @@ export function PaimonChat({
     }
   }, [pickerOpen]);
 
-  // Turn a picked character (+ optional situation) into a Paimon request so the
-  // usual pipeline composes identity/outfit/background/situation and adapts them
-  // to the current model, keeping the current negative prompt and image size.
+  // Load already-generated thumbnails for the active character, grouped by
+  // situation id, so each situation row can show what's been made for it.
+  const loadSituationImages = useCallback(async (characterId: string) => {
+    try {
+      const res = await fetch(`/api/characters/${characterId}/images`, {
+        cache: "no-store",
+      });
+      const data = (await res.json()) as {
+        images?: {
+          id: string;
+          filename: string;
+          url: string;
+          thumbnailUrl: string;
+          situationId: string | null;
+          timestamp: number;
+          params: GenerationParams | null;
+        }[];
+      };
+      const grouped: Record<string, GeneratedImage[]> = {};
+      for (const image of data.images ?? []) {
+        const key = image.situationId ?? "__base__";
+        (grouped[key] ??= []).push({
+          id: image.id,
+          url: image.url,
+          thumbnailUrl: image.thumbnailUrl,
+          filename: image.filename,
+          params: image.params,
+          timestamp: image.timestamp,
+          characterId,
+          situationId: image.situationId ?? undefined,
+        });
+      }
+      setSituationImages(grouped);
+    } catch {
+      setSituationImages({});
+    }
+  }, []);
+
+  // Opens a character's situation list and loads its existing thumbnails.
+  const openCharacterSituations = useCallback(
+    (character: PaimonCharacter) => {
+      setPickerActiveName(character.name);
+      setSelectedSituationIds(new Set());
+      setSituationImages({});
+      void loadSituationImages(character.id);
+    },
+    [loadSituationImages]
+  );
+
+  const buildInstruction = (characterName: string, situationName?: string) =>
+    situationName
+      ? `저장된 캐릭터 '${characterName}'를 '${situationName}' 상황으로 만들어줘. 지금 설정된 모델·네거티브·이미지 크기는 그대로 두고, 그 상황의 의상·배경·상황 프롬프트를 캐릭터 정체성과 합쳐서 현재 모델에 맞게 프롬프트에 적용해줘.`
+      : `저장된 캐릭터 '${characterName}'로 만들어줘. 지금 설정된 모델·네거티브·이미지 크기는 그대로 두고, 현재 모델에 맞게 프롬프트를 구성해줘.`;
+
+  // Composes one character/situation into the prompt (via a Paimon turn) and,
+  // when `generate` is set, enqueues it linked to that situation. Returns true on
+  // a successful compose. Reads the latest turn runner/params through refs so it
+  // is safe to call repeatedly inside the batch loop.
+  const composeSituation = useCallback(
+    async (
+      character: PaimonCharacter,
+      situation: PaimonCharacter["situations"][number] | null,
+      generate: boolean
+    ): Promise<boolean> => {
+      const patch = await runTurnRef.current(
+        buildInstruction(character.name, situation?.name)
+      );
+      if (!patch) return false;
+      const merged = { ...paramsRef.current, ...patch } as GenerationParams;
+      onCharacterContext?.({
+        characterId: character.id,
+        situationId: situation?.id,
+        prompt: merged.prompt,
+      });
+      if (generate && merged.prompt.trim()) {
+        onEnqueueGeneration?.(merged, {
+          characterId: character.id,
+          situationId: situation?.id,
+        });
+      }
+      return true;
+    },
+    [onCharacterContext, onEnqueueGeneration]
+  );
+
+  // Single pick (multi-select off): compose the situation, generate if the
+  // auto-generate box is checked. Closes the picker.
   const applyCharacterSituation = useCallback(
-    (characterName: string, situationName?: string) => {
+    (character: PaimonCharacter, situationId?: string) => {
       setPickerOpen(false);
       setPickerActiveName(null);
-      const instruction = situationName
-        ? `저장된 캐릭터 '${characterName}'를 '${situationName}' 상황으로 만들어줘. 지금 설정된 모델·네거티브·이미지 크기는 그대로 두고, 그 상황의 의상·배경·상황 프롬프트를 캐릭터 정체성과 합쳐서 현재 모델에 맞게 프롬프트에 적용해줘.`
-        : `저장된 캐릭터 '${characterName}'로 만들어줘. 지금 설정된 모델·네거티브·이미지 크기는 그대로 두고, 현재 모델에 맞게 프롬프트를 구성해줘.`;
-      void sendMessage(instruction);
+      const situation =
+        character.situations.find((item) => item.id === situationId) ?? null;
+      void composeSituation(character, situation, autoGenerate);
     },
-    [sendMessage]
+    [autoGenerate, composeSituation]
+  );
+
+  // Multi-select: compose + queue each checked situation in order. Each situation
+  // is prompted, queued, then the next — until all are queued or the user cancels.
+  const runBatch = useCallback(
+    async (character: PaimonCharacter) => {
+      const chosen = character.situations.filter((situation) =>
+        selectedSituationIds.has(situation.id)
+      );
+      if (chosen.length === 0) return;
+
+      batchCancelRef.current = false;
+      setPickerOpen(false);
+      setPickerActiveName(null);
+
+      for (let i = 0; i < chosen.length; i += 1) {
+        if (batchCancelRef.current) break;
+        setBatchProgress({
+          done: i,
+          total: chosen.length,
+          current: chosen[i].name || "이름 없음",
+        });
+        // Intentional serial await: compose+queue one situation before the next.
+        await composeSituation(character, chosen[i], true);
+      }
+
+      setBatchProgress(null);
+      setSelectedSituationIds(new Set());
+    },
+    [composeSituation, selectedSituationIds]
+  );
+
+  const cancelBatch = useCallback(() => {
+    batchCancelRef.current = true;
+  }, []);
+
+  const toggleSituationSelected = useCallback((situationId: string) => {
+    setSelectedSituationIds((current) => {
+      const next = new Set(current);
+      if (next.has(situationId)) next.delete(situationId);
+      else next.add(situationId);
+      return next;
+    });
+  }, []);
+
+  const openSituationImage = useCallback(
+    (image: GeneratedImage) => {
+      setPickerOpen(false);
+      onOpenImage?.(image);
+    },
+    [onOpenImage]
   );
 
   const removeAttachment = useCallback((attachmentId: string) => {
@@ -778,6 +980,25 @@ export function PaimonChat({
             {error && <p className="text-xs text-destructive">{error}</p>}
           </div>
 
+          {batchProgress && (
+            <div className="flex items-center gap-2 border-t border-border bg-secondary/40 px-3 py-2 text-xs">
+              <Loader2 className="size-3 shrink-0 animate-spin" />
+              <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                상황 순차 생성 {batchProgress.done + 1}/{batchProgress.total} ·{" "}
+                {batchProgress.current}
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-6 px-2 text-[11px]"
+                onClick={cancelBatch}
+              >
+                취소
+              </Button>
+            </div>
+          )}
+
           <form
             className="border-t border-border p-3"
             onSubmit={(event) => {
@@ -826,15 +1047,15 @@ export function PaimonChat({
                     ) : pickerActiveName === null ? (
                       <ul className="space-y-0.5">
                         {pickerChars.map((character) => (
-                          <li key={character.name}>
+                          <li key={character.id}>
                             <button
                               type="button"
                               className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
                               onClick={() => {
                                 if (character.situations.length === 0) {
-                                  applyCharacterSituation(character.name);
+                                  applyCharacterSituation(character);
                                 } else {
-                                  setPickerActiveName(character.name);
+                                  openCharacterSituations(character);
                                 }
                               }}
                             >
@@ -864,6 +1085,9 @@ export function PaimonChat({
                           (character) => character.name === pickerActiveName
                         );
                         if (!active) return null;
+                        const selectedCount = active.situations.filter(
+                          (situation) => selectedSituationIds.has(situation.id)
+                        ).length;
                         return (
                           <div>
                             <div className="flex items-center gap-1 border-b border-border px-1 pb-1">
@@ -875,22 +1099,52 @@ export function PaimonChat({
                               >
                                 <ArrowLeft className="size-3.5" />
                               </button>
-                              <span className="min-w-0 truncate text-xs font-semibold">
+                              <span className="min-w-0 flex-1 truncate text-xs font-semibold">
                                 {active.name} · 상황 선택
                               </span>
                             </div>
-                            <ul className="mt-1 space-y-0.5">
-                              <li>
-                                <button
-                                  type="button"
-                                  className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
-                                  onClick={() =>
-                                    applyCharacterSituation(active.name)
+
+                            {/* Auto-generate + multi-select toggles */}
+                            <div className="flex items-center justify-end gap-3 px-1 py-1.5">
+                              <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-muted-foreground">
+                                <input
+                                  type="checkbox"
+                                  className="size-3.5 accent-primary"
+                                  checked={autoGenerate}
+                                  onChange={(event) =>
+                                    setAutoGenerate(event.target.checked)
                                   }
-                                >
-                                  상황 없이 (기본 모습)
-                                </button>
-                              </li>
+                                />
+                                자동 생성
+                              </label>
+                              <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-muted-foreground">
+                                <input
+                                  type="checkbox"
+                                  className="size-3.5 accent-primary"
+                                  checked={multiSelect}
+                                  onChange={(event) => {
+                                    setMultiSelect(event.target.checked);
+                                    setSelectedSituationIds(new Set());
+                                  }}
+                                />
+                                여러 장
+                              </label>
+                            </div>
+
+                            <ul className="mt-0.5 space-y-0.5">
+                              {!multiSelect && (
+                                <li>
+                                  <button
+                                    type="button"
+                                    className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                                    onClick={() =>
+                                      applyCharacterSituation(active)
+                                    }
+                                  >
+                                    상황 없이 (기본 모습)
+                                  </button>
+                                </li>
+                              )}
                               {active.situations.map((situation) => {
                                 const meta = [
                                   situation.outfitName,
@@ -898,31 +1152,97 @@ export function PaimonChat({
                                 ]
                                   .filter(Boolean)
                                   .join(" · ");
+                                const thumbs =
+                                  situationImages[situation.id] ?? [];
+                                const checked = selectedSituationIds.has(
+                                  situation.id
+                                );
                                 return (
-                                  <li key={situation.name}>
-                                    <button
-                                      type="button"
-                                      className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
-                                      onClick={() =>
-                                        applyCharacterSituation(
-                                          active.name,
-                                          situation.name
-                                        )
-                                      }
-                                    >
-                                      <span className="block truncate">
-                                        {situation.name || "이름 없음"}
-                                      </span>
-                                      {meta && (
-                                        <span className="block truncate text-[11px] text-muted-foreground">
-                                          {meta}
-                                        </span>
+                                  <li
+                                    key={situation.id}
+                                    className="rounded-md px-1 py-1 hover:bg-accent/50"
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      {multiSelect && (
+                                        <input
+                                          type="checkbox"
+                                          className="size-3.5 shrink-0 accent-primary"
+                                          checked={checked}
+                                          onChange={() =>
+                                            toggleSituationSelected(situation.id)
+                                          }
+                                          aria-label={`${situation.name} 선택`}
+                                        />
                                       )}
-                                    </button>
+                                      <button
+                                        type="button"
+                                        className="min-w-0 flex-1 rounded-md px-1 py-0.5 text-left text-sm hover:text-accent-foreground"
+                                        onClick={() => {
+                                          if (multiSelect) {
+                                            toggleSituationSelected(
+                                              situation.id
+                                            );
+                                          } else {
+                                            applyCharacterSituation(
+                                              active,
+                                              situation.id
+                                            );
+                                          }
+                                        }}
+                                      >
+                                        <span className="block truncate">
+                                          {situation.name || "이름 없음"}
+                                        </span>
+                                        {meta && (
+                                          <span className="block truncate text-[11px] text-muted-foreground">
+                                            {meta}
+                                          </span>
+                                        )}
+                                      </button>
+                                    </div>
+                                    {thumbs.length > 0 && (
+                                      <div className="mt-1 flex gap-1 overflow-x-auto pl-1">
+                                        {thumbs.map((image) => (
+                                          <button
+                                            key={image.id}
+                                            type="button"
+                                            className="size-12 shrink-0 overflow-hidden rounded border border-border bg-muted"
+                                            onClick={() =>
+                                              openSituationImage(image)
+                                            }
+                                            title="이미지 상세 보기"
+                                          >
+                                            <img
+                                              src={
+                                                image.thumbnailUrl || image.url
+                                              }
+                                              alt={`${situation.name} 결과`}
+                                              className="h-full w-full object-cover"
+                                            />
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
                                   </li>
                                 );
                               })}
                             </ul>
+
+                            {multiSelect && (
+                              <div className="mt-1 border-t border-border px-1 pt-2">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  className="h-8 w-full text-xs"
+                                  disabled={
+                                    selectedCount === 0 || batchProgress !== null
+                                  }
+                                  onClick={() => void runBatch(active)}
+                                >
+                                  선택 {selectedCount}개 순차 생성
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         );
                       })()

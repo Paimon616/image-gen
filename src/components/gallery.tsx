@@ -53,6 +53,7 @@ function generatedScrapKeys(entry: HistoryEntry) {
 
 interface GalleryCardProps {
   img: GeneratedImage;
+  index: number;
   scrapped: boolean;
   scrapping: boolean;
   sentToPaimon: boolean;
@@ -60,6 +61,8 @@ interface GalleryCardProps {
   selected: boolean;
   onOpen: (img: GeneratedImage) => void;
   onToggleSelect: (img: GeneratedImage) => void;
+  onSelectPointerDown: (index: number) => void;
+  onSelectPointerEnter: (index: number) => void;
   onReuse: (img: GeneratedImage) => void;
   onScrap: (img: GeneratedImage) => void;
   onDelete: (img: GeneratedImage) => void;
@@ -69,6 +72,7 @@ interface GalleryCardProps {
 
 const GalleryCard = memo(function GalleryCard({
   img,
+  index,
   scrapped,
   scrapping,
   sentToPaimon,
@@ -76,6 +80,8 @@ const GalleryCard = memo(function GalleryCard({
   selected,
   onOpen,
   onToggleSelect,
+  onSelectPointerDown,
+  onSelectPointerEnter,
   onReuse,
   onScrap,
   onDelete,
@@ -170,7 +176,24 @@ const GalleryCard = memo(function GalleryCard({
         selected
           ? "border-primary ring-2 ring-primary/50"
           : "border-border hover:border-primary/50"
-      } ${selectionMode ? "cursor-pointer" : ""}`}
+      } ${selectionMode ? "cursor-pointer select-none" : ""}`}
+      onPointerDown={(event) => {
+        if (!selectionMode) return;
+        if (event.button !== 0) return;
+
+        const target = event.target as HTMLElement;
+        const control = target.closest("button,a,input,select,textarea");
+        // Let real action controls (e.g. the Civitai origin thumbnail) work as
+        // usual; the image itself is flagged as a selection drag surface.
+        if (control && !control.hasAttribute("data-select-surface")) return;
+
+        event.preventDefault();
+        onSelectPointerDown(index);
+      }}
+      onPointerEnter={() => {
+        if (!selectionMode) return;
+        onSelectPointerEnter(index);
+      }}
       onClick={(event) => {
         if (!selectionMode) return;
 
@@ -183,6 +206,7 @@ const GalleryCard = memo(function GalleryCard({
       {hasImage ? (
         <button
           type="button"
+          data-select-surface="true"
           className="block h-full w-full cursor-pointer overflow-hidden"
           onClick={(event) => {
             if (selectionMode) {
@@ -199,6 +223,7 @@ const GalleryCard = memo(function GalleryCard({
           <img
             src={displayUrl}
             alt=""
+            draggable={false}
             className="block h-full w-full object-cover"
             loading="lazy"
             decoding="async"
@@ -580,6 +605,7 @@ interface GalleryProps {
   selectionMode?: boolean;
   selectedImageIds?: ReadonlySet<string>;
   onToggleImageSelection?: (img: GeneratedImage) => void;
+  onReplaceSelection?: (ids: Set<string>) => void;
 }
 
 export function Gallery({
@@ -590,6 +616,7 @@ export function Gallery({
   selectionMode = false,
   selectedImageIds,
   onToggleImageSelection,
+  onReplaceSelection,
 }: GalleryProps) {
   const images = useStore((state) => state.images);
   const pendingImages = useStore((state) => state.pendingImages);
@@ -638,6 +665,78 @@ export function Gallery({
     return ids;
   }, [visibleImages, scrapIdByKey]);
   const hasMoreImages = nextCursor !== null;
+
+  // Drag-to-range selection. Handlers stay stable (read from refs) so the
+  // memoized cards don't re-render on every pointer move.
+  const visibleImagesRef = useRef(visibleImages);
+  visibleImagesRef.current = visibleImages;
+  const selectedImageIdsRef = useRef(selectedImageIds);
+  selectedImageIdsRef.current = selectedImageIds;
+  const dragRef = useRef<{
+    anchor: number;
+    mode: boolean; // true = select the range, false = deselect it
+    moved: boolean;
+    baseline: Set<string>;
+  } | null>(null);
+  // Set after a drag so the trailing click doesn't toggle the anchor back.
+  const suppressClickRef = useRef(false);
+
+  useEffect(() => {
+    const endDrag = () => {
+      dragRef.current = null;
+    };
+    window.addEventListener("pointerup", endDrag);
+    window.addEventListener("pointercancel", endDrag);
+    return () => {
+      window.removeEventListener("pointerup", endDrag);
+      window.removeEventListener("pointercancel", endDrag);
+    };
+  }, []);
+
+  const handleSelectPointerDown = useCallback((index: number) => {
+    suppressClickRef.current = false;
+    const img = visibleImagesRef.current[index];
+    if (!img) {
+      dragRef.current = null;
+      return;
+    }
+    const baseline = new Set(selectedImageIdsRef.current ?? []);
+    // Drag from an unselected image selects; from a selected image deselects.
+    const mode = !baseline.has(img.id);
+    dragRef.current = { anchor: index, mode, moved: false, baseline };
+  }, []);
+
+  const handleSelectPointerEnter = useCallback(
+    (index: number) => {
+      const drag = dragRef.current;
+      if (!drag) return;
+      drag.moved = true;
+      suppressClickRef.current = true;
+      const list = visibleImagesRef.current;
+      const lo = Math.min(drag.anchor, index);
+      const hi = Math.max(drag.anchor, index);
+      const next = new Set(drag.baseline);
+      for (let i = lo; i <= hi; i++) {
+        const id = list[i]?.id;
+        if (!id) continue;
+        if (drag.mode) next.add(id);
+        else next.delete(id);
+      }
+      onReplaceSelection?.(next);
+    },
+    [onReplaceSelection]
+  );
+
+  const handleCardToggle = useCallback(
+    (img: GeneratedImage) => {
+      if (suppressClickRef.current) {
+        suppressClickRef.current = false;
+        return;
+      }
+      onToggleImageSelection?.(img);
+    },
+    [onToggleImageSelection]
+  );
 
   useEffect(() => {
     fetchImagePage(0).catch(() => {});
@@ -835,17 +934,20 @@ export function Gallery({
           gridAutoRows: "8px",
         }}
       >
-        {visibleImages.map((img) => (
+        {visibleImages.map((img, index) => (
           <GalleryCard
             key={img.id}
             img={img}
+            index={index}
             scrapped={scrappedImageIds.has(img.id)}
             scrapping={scrappingIds.has(img.id)}
             sentToPaimon={paimonImageIds?.has(img.id) ?? false}
             selectionMode={selectionMode}
             selected={selectedImageIds?.has(img.id) ?? false}
             onOpen={handleOpen}
-            onToggleSelect={(image) => onToggleImageSelection?.(image)}
+            onToggleSelect={handleCardToggle}
+            onSelectPointerDown={handleSelectPointerDown}
+            onSelectPointerEnter={handleSelectPointerEnter}
             onReuse={handleReuse}
             onScrap={handleScrap}
             onDelete={handleDelete}

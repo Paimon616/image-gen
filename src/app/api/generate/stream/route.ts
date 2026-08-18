@@ -50,6 +50,8 @@ async function saveBufferedImages({
   endpoint,
   civitaiOrigin,
   workspaceId,
+  characterId,
+  situationId,
   workflow,
 }: {
   images: ComfyGeneratedImage[];
@@ -57,6 +59,8 @@ async function saveBufferedImages({
   endpoint: string;
   civitaiOrigin?: CivitaiOrigin;
   workspaceId?: string;
+  characterId?: string;
+  situationId?: string;
   workflow?: unknown;
 }) {
   await ensureOutputDir();
@@ -84,6 +88,8 @@ async function saveBufferedImages({
             original_url: img.originalUrl,
             index: i,
             civitai_origin: civitaiOrigin,
+            ...(characterId ? { character_id: characterId } : {}),
+            ...(situationId ? { situation_id: situationId } : {}),
             ...(workflow ? { workflow } : {}),
           },
           null,
@@ -107,6 +113,8 @@ async function saveBufferedImages({
         timestamp,
         civitaiOrigin,
         workspaces,
+        ...(characterId ? { characterId } : {}),
+        ...(situationId ? { situationId } : {}),
       };
     })
   );
@@ -152,6 +160,8 @@ export async function POST(req: NextRequest) {
     generationTarget,
     runpodPodId,
     resources,
+    characterId,
+    situationId,
     ...rawBody
   } = (await req.json()) as GenerationParams & {
     civitaiOrigin?: CivitaiOrigin;
@@ -159,6 +169,8 @@ export async function POST(req: NextRequest) {
     generationTarget?: "local" | "runpod";
     runpodPodId?: string;
     resources?: ImportedCivitaiResource[];
+    characterId?: string;
+    situationId?: string;
   };
   const body: GenerationParams = {
     ...rawBody,
@@ -318,6 +330,8 @@ export async function POST(req: NextRequest) {
             endpoint: `${body.backend}/local`,
             civitaiOrigin,
             workspaceId,
+            characterId,
+            situationId,
           });
           send("progress", { progress: 100, message: "Done" });
           send("complete", { images: savedImages });
@@ -371,6 +385,8 @@ export async function POST(req: NextRequest) {
           endpoint: runpodPod ? `runpod/${runpodPod.label || runpodPod.podId}` : modelConfig.id,
           civitaiOrigin,
           workspaceId,
+          characterId,
+          situationId,
           workflow: queued.workflow,
         });
 

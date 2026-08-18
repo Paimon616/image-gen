@@ -172,6 +172,19 @@ interface GenerationQueueItem {
   workspaceId?: string;
   generationTarget: "local" | "runpod";
   runpodPodId?: string;
+  // Links the generated image back to the saved character/situation it was
+  // composed from (set when generation is triggered from the Paimon picker).
+  characterId?: string;
+  situationId?: string;
+}
+
+// Links a composed prompt to the character/situation it came from so a manual
+// Generate press (after picking a situation without auto-generate) can still tag
+// the image. Only used while the prompt still matches what was composed.
+interface CharacterContext {
+  characterId?: string;
+  situationId?: string;
+  prompt: string;
 }
 
 function cloneGenerationParams(params: GenerationParamsType) {
@@ -205,6 +218,7 @@ export default function Home() {
     imagesNextCursor,
     imagesTotal,
     isLoadingMoreImages,
+    setSelectedImage,
   } = useStore();
   const ko = language === "ko";
   const [localControlnets, setLocalControlnets] = useState<string[]>([]);
@@ -223,6 +237,7 @@ export default function Home() {
   const [batchDownloadBusy, setBatchDownloadBusy] = useState(false);
   const layoutRef = useRef<HTMLDivElement | null>(null);
   const [generationQueue, setGenerationQueue] = useState<GenerationQueueItem[]>([]);
+  const characterContextRef = useRef<CharacterContext | null>(null);
   // True from the moment Generate is pressed until the pending gallery card is
   // registered. On the RunPod path an async file check sits in that gap, so the
   // button shows a "registering card" state instead of looking unresponsive.
@@ -740,6 +755,9 @@ export default function Home() {
   );
   const selectedGalleryCount = selectedGalleryImages.length;
   const selectedPersistedGalleryCount = selectedPersistedGalleryImages.length;
+  const allGallerySelected =
+    galleryBatchImages.length > 0 &&
+    selectedGalleryCount === galleryBatchImages.length;
   const selectedBatchWorkspaceId = batchWorkspaceId || workspaces[0]?.id || "";
 
   const toggleGallerySelectionMode = useCallback(() => {
@@ -761,6 +779,18 @@ export default function Home() {
       }
       return next;
     });
+  }, []);
+
+  const replaceGallerySelection = useCallback((ids: Set<string>) => {
+    setSelectedGalleryImageIds(ids);
+  }, []);
+
+  const selectAllGalleryImages = useCallback(() => {
+    setSelectedGalleryImageIds(new Set(galleryBatchImages.map((image) => image.id)));
+  }, [galleryBatchImages]);
+
+  const clearGallerySelection = useCallback(() => {
+    setSelectedGalleryImageIds(new Set());
   }, []);
 
   const deleteSelectedGalleryImages = useCallback(async () => {
@@ -901,6 +931,8 @@ export default function Home() {
       workspaceId,
       generationTarget: jobGenerationTarget,
       runpodPodId,
+      characterId,
+      situationId,
     } = job;
 
     const abortController = new AbortController();
@@ -925,6 +957,8 @@ export default function Home() {
           workspaceId,
           generationTarget: jobGenerationTarget,
           runpodPodId,
+          characterId,
+          situationId,
         }),
         signal: abortController.signal,
       });
@@ -1474,8 +1508,20 @@ export default function Home() {
     void checkRunpodImageNodes();
   }, [checkRunpodImageNodes]);
 
-  const generate = useCallback(async () => {
-    if (!params.prompt.trim()) return;
+  const enqueueGeneration = useCallback(async (
+    sourceParams: GenerationParamsType,
+    meta?: { characterId?: string; situationId?: string }
+  ) => {
+    if (!sourceParams.prompt.trim()) return;
+    // Resolve the character/situation link. An explicit meta (Paimon auto-gen or
+    // batch) wins; otherwise fall back to the last composed context if the prompt
+    // still matches, so a manual Generate after picking a situation still tags.
+    const context = characterContextRef.current;
+    const linkedMeta =
+      meta ??
+      (context && context.prompt === sourceParams.prompt
+        ? { characterId: context.characterId, situationId: context.situationId }
+        : undefined);
     // Flag the "registering card" state up front; the finally below clears it
     // once the pending card exists (or an early return bails out).
     setIsSubmitting(true);
@@ -1524,7 +1570,7 @@ export default function Home() {
       }
     }
 
-    const jobParams = cloneGenerationParams(params);
+    const jobParams = cloneGenerationParams(sourceParams);
     if (jobParams.seed == null || jobParams.seed < 0) {
       jobParams.seed = randomGenerationSeed();
     }
@@ -1555,6 +1601,8 @@ export default function Home() {
       timestamp: Date.now(),
       civitaiOrigin,
       workspaces: workspaceId ? [workspaceId] : [],
+      characterId: linkedMeta?.characterId,
+      situationId: linkedMeta?.situationId,
       generation: {
         state: "queued",
         progress: 0,
@@ -1571,6 +1619,8 @@ export default function Home() {
         workspaceId,
         generationTarget,
         runpodPodId: generationTarget === "runpod" ? selectedRunpodPodId : undefined,
+        characterId: linkedMeta?.characterId,
+        situationId: linkedMeta?.situationId,
       },
     ]);
     setStatus({ state: "idle", progress: 0, message: "" });
@@ -1583,10 +1633,33 @@ export default function Home() {
     generationTarget,
     checkRunpodFiles,
     ko,
-    params,
     selectedRunpodPodId,
     setStatus,
   ]);
+
+  // Manual Generate press uses the current form params.
+  const generate = useCallback(
+    () => enqueueGeneration(params),
+    [enqueueGeneration, params]
+  );
+
+  // Records what character/situation a composed prompt came from, so a later
+  // manual Generate on that same prompt still links the image (see enqueueGeneration).
+  const handleCharacterContext = useCallback((context: CharacterContext) => {
+    characterContextRef.current = context;
+  }, []);
+
+  // Paimon auto-generate / batch: enqueue the composed params with an explicit
+  // character/situation link.
+  const handlePaimonGenerate = useCallback(
+    (
+      composedParams: GenerationParamsType,
+      meta: { characterId?: string; situationId?: string }
+    ) => {
+      void enqueueGeneration(composedParams, meta);
+    },
+    [enqueueGeneration]
+  );
 
   const selectedRunpodPod = useMemo(
     () => runpodPods.find((pod) => pod.id === selectedRunpodPodId),
@@ -2858,6 +2931,22 @@ export default function Home() {
                     ? `${selectedGalleryCount}개 선택`
                     : `${selectedGalleryCount} selected`}
                 </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8"
+                  onClick={
+                    allGallerySelected
+                      ? clearGallerySelection
+                      : selectAllGalleryImages
+                  }
+                  disabled={galleryBatchImages.length === 0}
+                >
+                  {allGallerySelected
+                    ? ko ? "전체 해제" : "Deselect all"
+                    : ko ? "전체 선택" : "Select all"}
+                </Button>
                 <select
                   value={selectedBatchWorkspaceId}
                   onChange={(event) => setBatchWorkspaceId(event.target.value)}
@@ -3004,6 +3093,7 @@ export default function Home() {
           selectionMode={gallerySelectionMode}
           selectedImageIds={selectedGalleryImageIds}
           onToggleImageSelection={toggleGalleryImageSelection}
+          onReplaceSelection={replaceGallerySelection}
         />
       </main>
 
@@ -3012,6 +3102,9 @@ export default function Home() {
         onApplyParams={setParams}
         attachments={paimonAttachments}
         onAttachmentsChange={setPaimonAttachments}
+        onEnqueueGeneration={handlePaimonGenerate}
+        onCharacterContext={handleCharacterContext}
+        onOpenImage={setSelectedImage}
       />
 
       {/* Image Viewer Dialog */}
