@@ -109,9 +109,42 @@ function FieldPair({
 function TabCount({ count }: { count: number }) {
   if (count <= 0) return null;
   return (
-    <span className="ml-1.5 inline-flex min-w-4 items-center justify-center rounded-full bg-primary/15 px-1 text-[10px] font-semibold leading-4 text-primary">
+    <span className="ml-1.5 inline-flex min-w-4 items-center justify-center rounded-full bg-primary/15 px-1 text-[10px] font-semibold leading-4 text-primary [[data-active]_&]:bg-primary-foreground/25 [[data-active]_&]:text-primary-foreground">
       {count}
     </span>
+  );
+}
+
+// Add / clear-all buttons that live on the right of the tab row. The clear
+// button only appears once there's at least one item to remove.
+function TabActions({
+  addLabel,
+  onAdd,
+  count,
+  onClear,
+}: {
+  addLabel: string;
+  onAdd: () => void;
+  count: number;
+  onClear: () => void;
+}) {
+  return (
+    <div className="flex shrink-0 items-center gap-2">
+      <Button type="button" variant="outline" size="sm" onClick={onAdd}>
+        <Plus /> {addLabel}
+      </Button>
+      {count > 0 && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onClear}
+          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+        >
+          <Trash2 /> 모두 제거 ({count})
+        </Button>
+      )}
+    </div>
   );
 }
 
@@ -143,6 +176,7 @@ export function CharacterStudio() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("basic");
   const [thumbBusy, setThumbBusy] = useState(false);
   const [thumbError, setThumbError] = useState("");
 
@@ -456,6 +490,24 @@ export function CharacterStudio() {
     [patchSelected, selected]
   );
 
+  // Wipe every outfit at once, clearing any situation that pointed at one.
+  const clearOutfits = useCallback(() => {
+    if (!selected || selected.outfits.length === 0) return;
+    if (
+      !window.confirm(
+        `의상 ${selected.outfits.length}개를 모두 제거할까요? 이 작업은 되돌릴 수 없어요.`
+      )
+    )
+      return;
+    patchSelected({
+      outfits: [],
+      situations: selected.situations.map((situation) => ({
+        ...situation,
+        outfitId: null,
+      })),
+    });
+  }, [patchSelected, selected]);
+
   // ---- Backgrounds ----
 
   const addBackground = useCallback(() => {
@@ -500,6 +552,24 @@ export function CharacterStudio() {
     },
     [patchSelected, selected]
   );
+
+  // Wipe every background at once, clearing any situation that referenced one.
+  const clearBackgrounds = useCallback(() => {
+    if (!selected || selected.backgrounds.length === 0) return;
+    if (
+      !window.confirm(
+        `배경 ${selected.backgrounds.length}개를 모두 제거할까요? 이 작업은 되돌릴 수 없어요.`
+      )
+    )
+      return;
+    patchSelected({
+      backgrounds: [],
+      situations: selected.situations.map((situation) => ({
+        ...situation,
+        backgroundId: null,
+      })),
+    });
+  }, [patchSelected, selected]);
 
   // ---- Situations ----
 
@@ -664,10 +734,11 @@ export function CharacterStudio() {
             </div>
 
             <Tabs
-              defaultValue="basic"
+              value={activeTab}
+              onValueChange={(value) => setActiveTab(value as string)}
               className="flex min-h-0 flex-1 flex-col gap-0"
             >
-              <div className="border-b border-border px-6 py-3">
+              <div className="flex items-center justify-between gap-3 border-b border-border px-6 py-3">
                 <TabsList>
                   <TabsTrigger value="basic">기본정보</TabsTrigger>
                   <TabsTrigger value="identity">
@@ -683,6 +754,33 @@ export function CharacterStudio() {
                     <TabCount count={selected.situations.length} />
                   </TabsTrigger>
                 </TabsList>
+
+                {/* Add / clear-all actions for the active tab, aligned to the
+                    right of the tab row. */}
+                {activeTab === "identity" && (
+                  <TabActions
+                    addLabel="의상 추가"
+                    onAdd={addOutfit}
+                    count={selected.outfits.length}
+                    onClear={clearOutfits}
+                  />
+                )}
+                {activeTab === "background" && (
+                  <TabActions
+                    addLabel="배경 추가"
+                    onAdd={addBackground}
+                    count={selected.backgrounds.length}
+                    onClear={clearBackgrounds}
+                  />
+                )}
+                {activeTab === "situation" && (
+                  <TabActions
+                    addLabel="상황 추가"
+                    onAdd={addSituation}
+                    count={selected.situations.length}
+                    onClear={clearSituations}
+                  />
+                )}
               </div>
 
               <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
@@ -890,14 +988,6 @@ export function CharacterStudio() {
                           />
                         </div>
                       ))}
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={addOutfit}
-                      >
-                        <Plus /> 의상 추가
-                      </Button>
                     </div>
                   </SectionCard>
                 </TabsContent>
@@ -956,14 +1046,6 @@ export function CharacterStudio() {
                           />
                         </div>
                       ))}
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={addBackground}
-                      >
-                        <Plus /> 배경 추가
-                      </Button>
                     </div>
                   </SectionCard>
                 </TabsContent>
@@ -1109,27 +1191,6 @@ export function CharacterStudio() {
                           )}
                         </div>
                       ))}
-                      <div className="flex items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={addSituation}
-                        >
-                          <Plus /> 상황 추가
-                        </Button>
-                        {selected.situations.length > 0 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={clearSituations}
-                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                          >
-                            <Trash2 /> 모두 제거 ({selected.situations.length})
-                          </Button>
-                        )}
-                      </div>
                     </div>
                   </SectionCard>
 
