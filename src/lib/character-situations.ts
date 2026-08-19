@@ -151,6 +151,30 @@ function labelledLine(label: string, value: string) {
   return value ? `- ${label}: ${value}` : "";
 }
 
+// How much motion one clip can carry before the I2V pipelines start drifting.
+// The start image is injected at frame 0 only, so a long clip that also asks for
+// a big action arc has nothing left anchoring it by the end — which is exactly
+// where the rendering visibly falls apart. Short clips therefore get a
+// micro-motion brief, and long ones get a hard cap on how many beats they may
+// contain instead of a bigger story.
+function motionBudgetLine(seconds: number) {
+  if (seconds <= 4) {
+    return `- ${seconds}초는 아주 짧아. 미세 동작만 넣어줘: 호흡, 눈 깜빡임, 시선 이동, 머리카락·옷의 미세한 흔들림, 그리고 아주 작은 상체 움직임 하나. 자세 자체를 바꾸지 마.`;
+  }
+  if (seconds <= 8) {
+    return `- ${seconds}초 안에 끝나는 주요 동작 1개 + 그에 딸린 미세 동작(호흡·시선·머리카락)으로 구성해. 컷 전환·장면 전환·다른 장소는 넣지 마.`;
+  }
+  return `- ${seconds}초는 길어서 뒤로 갈수록 원본에서 멀어지기 쉬워. 주요 동작은 최대 2개까지만, 같은 자리에서 이어지도록 천천히 전개해. 컷 전환·장면 전환·다른 장소·자세 카테고리 변경은 넣지 마.`;
+}
+
+function cameraLine(seconds: number) {
+  const move =
+    seconds <= 4
+      ? "고정이거나 아주 느린 움직임 하나(미세한 푸시인 또는 드리프트)"
+      : "하나의 명확한 움직임(고정 / 느린 푸시인 / 풀백 / 팬 / 틸트 / 달리 / 오빗 / 핸드헬드 드리프트)";
+  return `- 카메라워크: 샷 사이즈, 카메라 높이·앵글, 그리고 ${move}과 그 속도, 어디서 끝나는지를 명시해줘. 샷 사이즈는 시작 프레임에서 크게 벗어나지 않게 유지해.`;
+}
+
 export interface VideoSituationInstructionOptions {
   character: SituationLibraryCharacter;
   // null = 기본 모습 (no situation picked).
@@ -211,16 +235,29 @@ export function buildVideoSituationInstruction({
   const requirements = [
     "",
     `요구사항:`,
-    `- ${seconds}초 안에 끝나는 하나의 연속된 동작 아크로 구성해. 컷 전환·장면 전환·다른 장소는 넣지 마.`,
+    motionBudgetLine(seconds),
     `- 동작: 손·팔·상체·허리·다리·머리카락·옷자락이 어떤 순서로 어떻게 움직이는지 구체적으로 써줘. 물리적으로 가능한 동작만.`,
     `- 표정: 시선 방향과 그 변화, 눈 깜빡임, 눈썹, 입·입술, 호흡, 감정이 어떻게 번지는지까지 구체적으로 써줘.`,
-    `- 카메라워크: 샷 사이즈, 카메라 높이·앵글, 그리고 하나의 명확한 카메라 움직임(고정 / 느린 푸시인 / 풀백 / 팬 / 틸트 / 달리 / 오빗 / 핸드헬드 드리프트)과 그 속도, 어디서 끝나는지를 명시해줘.`,
+    cameraLine(seconds),
     `- 조명·배경의 미세한 변화와 마지막 비트(끝 프레임)도 적어줘.`,
     `- 태그 나열이 아니라 영상 모델이 읽는 자연어 촬영 지시문으로 써줘. 상황 프롬프트가 태그라면 움직임으로 바꿔서 풀어줘.`,
+    // The dominant failure mode of these I2V pipelines is drift: the start frame
+    // is only injected at frame 0, so anything the prompt asks to RE-STAGE
+    // (standing up, re-framing, a different rendering style) forces the model to
+    // invent it and the clip visibly degrades toward the end.
+    hasStartFrame
+      ? `- 재구성 금지: 시작 프레임의 자세 카테고리(앉음/섬/누움/엎드림), 프레이밍(피사체가 화면에서 차지하는 크기와 위치), 그림체(선 굵기·셰이딩 방식·색감)는 바꾸지 마. 일어서기·자리 이동·의상 교체·장소 변경·다른 화풍으로의 전환은 넣지 마.`
+      : "",
+    hasStartFrame
+      ? `- 렌더링 스타일은 시작 프레임 그대로 유지해줘. 단, 'anime / illustration / cel shading / photorealistic / 3d render' 같은 매체·화풍 이름은 쓰지 마. 대신 선·윤곽 처리, 셰이딩의 부드러움, 피부·재질 표현, 색감과 콘트라스트, 조명 방향을 그대로 유지한다는 식으로 써줘.`
+      : "",
+    withNegativePrompt
+      ? `- 네거티브 프롬프트에는 화질·움직임 항목 외에 style change, restyle, identity change, face morph, outfit change, background change, washed out colors, color banding, loss of detail, softened edges를 넣어줘. 매체·화풍 단어(anime, illustration, cel shading, photorealistic, 3d render, cgi)는 네거티브에 절대 넣지 마 — 시작 프레임이 속한 쪽을 부정하면 화풍이 무너져.`
+      : `- 원치 않는 요소는 네거티브 프롬프트가 없으니 프롬프트 안에서 자연어로 배제해줘(화풍 변화·인물 교체·의상 변경 없음).`,
     withNegativePrompt
       ? `- 프롬프트와 네거티브 프롬프트만 수정하고, 모델·파이프라인·해상도·길이 설정은 그대로 둬.`
       : `- 프롬프트만 수정하고, 모델·해상도·길이·시작 프레임 설정은 그대로 둬.`,
-  ];
+  ].filter(Boolean);
 
   return [header, frameLine, ...info, ...requirements].join("\n");
 }
