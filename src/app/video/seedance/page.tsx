@@ -16,6 +16,8 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { AppSidebar } from "@/components/app-sidebar";
+import { WorkspaceBar } from "@/components/workspace-bar";
+import { MediaWorkspacePicker } from "@/components/workspace-picker";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -27,6 +29,10 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/store";
 import { useSeedanceStore } from "@/lib/seedance-store";
+import {
+  fileMatchesWorkspace,
+  useMediaWorkspaceStore,
+} from "@/lib/media-workspace-store";
 import { useSeedancePaimonStore } from "@/lib/seedance-paimon-store";
 import { PaimonPanel } from "@/components/paimon-panel";
 import {
@@ -42,7 +48,7 @@ import {
   type SeedanceResolution,
   type SeedanceVideo,
 } from "@/lib/seedance";
-import type { GeneratedImage } from "@/lib/types";
+import { UNGROUPED_WORKSPACE_ID, type GeneratedImage } from "@/lib/types";
 
 const MAX_IMAGE_DIM = 1536;
 
@@ -406,6 +412,12 @@ export default function SeedancePage() {
     return () => window.removeEventListener("paste", handler);
   }, [params.mode, setParams]);
 
+  // Workspaces are shared app-wide; on this screen they filter the SeeDance
+  // clips only, never the images filed under the same workspace.
+  const activeWorkspaceId = useMediaWorkspaceStore(
+    (s) => s.byMedia.seedance.activeWorkspaceId
+  );
+
   const startGeneration = useCallback(
     async (source: SeedanceParams) => {
       setError(null);
@@ -455,7 +467,17 @@ export default function SeedancePage() {
         const res = await fetch("/api/seedance/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...source, clientId }),
+          // The clip is filed under the workspace this screen is filtered to, so
+          // it appears there right away. The "ungrouped" sentinel isn't a real
+          // workspace, so it queues as no target at all.
+          body: JSON.stringify({
+            ...source,
+            clientId,
+            workspaceId:
+              activeWorkspaceId && activeWorkspaceId !== UNGROUPED_WORKSPACE_ID
+                ? activeWorkspaceId
+                : undefined,
+          }),
           signal: controller.signal,
         });
         if (!res.body) throw new Error("No response stream");
@@ -512,6 +534,12 @@ export default function SeedancePage() {
             } else if (event === "complete") {
               const video = data.video as SeedanceVideo | undefined;
               if (video) setVideos((prev) => [video, ...prev]);
+              // Refresh the chip counts after the auto-registration above.
+              if (activeWorkspaceId) {
+                void useMediaWorkspaceStore
+                  .getState()
+                  .fetchWorkspaces("seedance");
+              }
               removePending(clientId);
             } else if (event === "error") {
               updatePending(clientId, {
@@ -542,7 +570,14 @@ export default function SeedancePage() {
         delete abortControllers.current[clientId];
       }
     },
-    [addPending, updatePending, removePending, setVideos, language]
+    [
+      activeWorkspaceId,
+      addPending,
+      updatePending,
+      removePending,
+      setVideos,
+      language,
+    ]
   );
 
   const cancelGeneration = useCallback(
@@ -559,6 +594,32 @@ export default function SeedancePage() {
       await fetch(`/api/seedance/videos/${video.filename}`, { method: "DELETE" }).catch(() => {});
     },
     [setVideos]
+  );
+
+  const applyWorkspaces = useCallback(
+    (video: SeedanceVideo, workspaces: string[]) => {
+      setVideos((prev) =>
+        prev.map((item) =>
+          item.filename === video.filename ? { ...item, workspaces } : item
+        )
+      );
+    },
+    [setVideos]
+  );
+
+  const refreshVideos = useCallback(() => {
+    fetch("/api/seedance/videos", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => setVideos(data.videos ?? []))
+      .catch(() => {});
+  }, [setVideos]);
+
+  const visibleVideos = useMemo(
+    () =>
+      videos.filter((video) =>
+        fileMatchesWorkspace(video.workspaces, activeWorkspaceId)
+      ),
+    [videos, activeWorkspaceId]
   );
 
   const isGenerating = pending.some((p) => p.status?.state === "generating" || p.status?.state === "queued");
@@ -841,8 +902,9 @@ export default function SeedancePage() {
         <div className="border-b border-border px-6 py-3">
           <h2 className="text-sm font-semibold">{tr("results", language)}</h2>
         </div>
+        <WorkspaceBar media="seedance" onDownloaded={() => refreshVideos()} />
         <div className="p-6">
-          {pending.length === 0 && videos.length === 0 ? (
+          {pending.length === 0 && visibleVideos.length === 0 ? (
             <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-center text-muted-foreground">
               <Film className="h-10 w-10 opacity-40" />
               <p className="max-w-xs text-sm">{tr("empty", language)}</p>
@@ -862,12 +924,15 @@ export default function SeedancePage() {
                   onDismiss={() => removePending(card.id)}
                 />
               ))}
-              {videos.map((video) => (
+              {visibleVideos.map((video) => (
                 <VideoCard
                   key={video.id}
                   lang={language}
                   video={video}
                   onDelete={() => void deleteVideo(video)}
+                  onWorkspacesChange={(workspaces) =>
+                    applyWorkspaces(video, workspaces)
+                  }
                   onReuse={() => {
                     if (video.params) {
                       patch({
@@ -1041,11 +1106,13 @@ function VideoCard({
   video,
   onDelete,
   onReuse,
+  onWorkspacesChange,
 }: {
   lang: Lang;
   video: SeedanceVideo;
   onDelete: () => void;
   onReuse: () => void;
+  onWorkspacesChange: (workspaceIds: string[]) => void;
 }) {
   return (
     <div className="group overflow-hidden rounded-xl border border-border bg-card">
@@ -1086,13 +1153,25 @@ function VideoCard({
           >
             {tr("reuse", lang)}
           </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            className="ml-auto text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
+          {/* The same workspaces as the image gallery — this screen only ever
+              lists the clips filed under them. */}
+          <div className="ml-auto flex items-center gap-1.5">
+            <MediaWorkspacePicker
+              media="seedance"
+              filename={video.filename}
+              workspaceIds={video.workspaces ?? []}
+              onChange={onWorkspacesChange}
+              triggerVariant="outline"
+              triggerClassName="h-7 w-7"
+            />
+            <button
+              type="button"
+              onClick={onDelete}
+              className="text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       </div>
     </div>

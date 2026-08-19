@@ -74,6 +74,29 @@ function greatestCommonDivisor(a: number, b: number): number {
   return b === 0 ? a : greatestCommonDivisor(b, a % b);
 }
 
+type AspectMode = (typeof ASPECT_PRESETS)[number]["id"] | "custom";
+
+// Which ratio lock a width/height pair corresponds to. Anything that is not one
+// of the presets falls back to "free" (no lock).
+function deriveAspectMode(width: number, height: number): AspectMode {
+  if (width === height) return "square";
+  if (width * 2 === height * 3) return "3:2";
+  if (width * 3 === height * 2) return "2:3";
+  return "free";
+}
+
+// The width:height a lock enforces, or null when nothing is locked.
+function ratioForAspectMode(
+  mode: AspectMode,
+  customRatio: readonly [number, number] | null
+): readonly [number, number] | null {
+  if (mode === "square") return [1, 1];
+  if (mode === "3:2") return [3, 2];
+  if (mode === "2:3") return [2, 3];
+  if (mode === "custom") return customRatio;
+  return null;
+}
+
 function getAspectRatioLabel(width: number, height: number) {
   const divisor = greatestCommonDivisor(width, height);
 
@@ -107,14 +130,9 @@ export function GenerationParams({ section = "output" }: {
   const [draftSize, setDraftSize] = useState<
     Partial<Record<"width" | "height", string>>
   >({});
-  const [aspectMode, setAspectMode] = useState<
-    (typeof ASPECT_PRESETS)[number]["id"] | "custom"
-  >(() => {
-    if (params.width === params.height) return "square";
-    if (params.width * 2 === params.height * 3) return "3:2";
-    if (params.width * 3 === params.height * 2) return "2:3";
-    return "free";
-  });
+  const [chosenAspectMode, setAspectMode] = useState<AspectMode>(() =>
+    deriveAspectMode(params.width, params.height)
+  );
   const [customRatio, setCustomRatio] = useState<{ w: string; h: string }>(
     () => {
       const divisor = greatestCommonDivisor(params.width, params.height) || 1;
@@ -124,6 +142,24 @@ export function GenerationParams({ section = "output" }: {
       };
     }
   );
+  const parsedCustomRatio = ((): readonly [number, number] | null => {
+    const w = Number(customRatio.w);
+    const h = Number(customRatio.h);
+    if (Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0)
+      return [w, h];
+    return null;
+  })();
+  const chosenRatio = ratioForAspectMode(chosenAspectMode, parsedCustomRatio);
+  // Every size change made here keeps the locked ratio, so a width/height that no
+  // longer matches it can only have come from outside this component (restored
+  // params, a metadata/Civitai import, "load params from image"). Read the lock
+  // back off the current size in that case, instead of silently snapping the
+  // user's next edit to the ratio the size no longer has.
+  const aspectMode: AspectMode =
+    chosenRatio &&
+    params.width * chosenRatio[1] !== params.height * chosenRatio[0]
+      ? deriveAspectMode(params.width, params.height)
+      : chosenAspectMode;
   const [draftHiresScale, setDraftHiresScale] = useState<string | null>(null);
   const [adetailerPickerOpen, setAdetailerPickerOpen] = useState(false);
   const [adetailerLoraPickerIndex, setAdetailerLoraPickerIndex] = useState<number | null>(null);
@@ -246,24 +282,7 @@ export function GenerationParams({ section = "output" }: {
     height: draftSize.height ?? String(params.height),
   };
 
-  const parsedCustomRatio = ((): readonly [number, number] | null => {
-    const w = Number(customRatio.w);
-    const h = Number(customRatio.h);
-    if (Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0)
-      return [w, h];
-    return null;
-  })();
-
-  const activeRatio: readonly [number, number] | null =
-    aspectMode === "square"
-      ? [1, 1]
-      : aspectMode === "3:2"
-        ? [3, 2]
-        : aspectMode === "2:3"
-          ? [2, 3]
-          : aspectMode === "custom"
-            ? parsedCustomRatio
-            : null;
+  const activeRatio = ratioForAspectMode(aspectMode, parsedCustomRatio);
 
   const getAspectSize = (
     dimension: "width" | "height",

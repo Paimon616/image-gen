@@ -1,16 +1,33 @@
 import { randomUUID } from "crypto";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { join } from "path";
-import type { Workspace, WorkspaceSummary } from "@/lib/types";
+import {
+  WORKSPACE_MEDIA,
+  type Workspace,
+  type WorkspaceMedia,
+  type WorkspaceSummary,
+} from "@/lib/types";
 
 const DATA_DIR = join(process.cwd(), "data");
 const WORKSPACES_FILE = join(DATA_DIR, "workspaces.json");
 const MAX_WORKSPACE_NAME_LENGTH = 60;
 
+// A workspace holds several kinds of media (gallery images, ComfyUI videos,
+// SeeDance clips) and every screen shows only its own kind, so memberships are
+// tracked per media. Images keep the original `assignments` key so an existing
+// workspaces.json keeps working untouched.
+const ASSIGNMENT_KEYS: Record<WorkspaceMedia, string> = {
+  images: "assignments",
+  videos: "videoAssignments",
+  seedance: "seedanceAssignments",
+};
+
+type AssignmentMap = Record<string, string[]>;
+
 interface WorkspacesData {
   workspaces: Workspace[];
-  // Maps an image filename to the list of workspace ids it belongs to.
-  assignments: Record<string, string[]>;
+  // Maps a filename to the list of workspace ids it belongs to, per media.
+  assignments: Record<WorkspaceMedia, AssignmentMap>;
 }
 
 // All mutations are serialized through this promise chain so concurrent
@@ -36,8 +53,26 @@ export function normalizeWorkspaceName(value: unknown) {
   return value.trim().slice(0, MAX_WORKSPACE_NAME_LENGTH);
 }
 
+function emptyAssignments(): Record<WorkspaceMedia, AssignmentMap> {
+  return { images: {}, videos: {}, seedance: {} };
+}
+
+function normalizeAssignmentMap(raw: unknown): AssignmentMap {
+  const assignments: AssignmentMap = {};
+  if (!raw || typeof raw !== "object") return assignments;
+
+  for (const [filename, ids] of Object.entries(raw as Record<string, unknown>)) {
+    if (!isSafeFilename(filename) || !Array.isArray(ids)) continue;
+    const normalized = ids.filter((id): id is string => typeof id === "string");
+    if (normalized.length > 0) assignments[filename] = normalized;
+  }
+  return assignments;
+}
+
 function normalizeData(raw: unknown): WorkspacesData {
-  if (!raw || typeof raw !== "object") return { workspaces: [], assignments: {} };
+  if (!raw || typeof raw !== "object") {
+    return { workspaces: [], assignments: emptyAssignments() };
+  }
 
   const record = raw as Record<string, unknown>;
   const workspaces = Array.isArray(record.workspaces)
@@ -57,17 +92,9 @@ function normalizeData(raw: unknown): WorkspacesData {
         }))
     : [];
 
-  const assignments: Record<string, string[]> = {};
-  if (record.assignments && typeof record.assignments === "object") {
-    for (const [filename, ids] of Object.entries(
-      record.assignments as Record<string, unknown>
-    )) {
-      if (!isSafeFilename(filename) || !Array.isArray(ids)) continue;
-      const normalized = ids.filter(
-        (id): id is string => typeof id === "string"
-      );
-      if (normalized.length > 0) assignments[filename] = normalized;
-    }
+  const assignments = emptyAssignments();
+  for (const media of WORKSPACE_MEDIA) {
+    assignments[media] = normalizeAssignmentMap(record[ASSIGNMENT_KEYS[media]]);
   }
 
   return { workspaces, assignments };
@@ -78,13 +105,17 @@ async function readData(): Promise<WorkspacesData> {
     const content = await readFile(WORKSPACES_FILE, "utf-8");
     return normalizeData(JSON.parse(content));
   } catch {
-    return { workspaces: [], assignments: {} };
+    return { workspaces: [], assignments: emptyAssignments() };
   }
 }
 
 async function writeData(data: WorkspacesData) {
   await mkdir(DATA_DIR, { recursive: true });
-  await writeFile(WORKSPACES_FILE, JSON.stringify(data, null, 2));
+  const serialized: Record<string, unknown> = { workspaces: data.workspaces };
+  for (const media of WORKSPACE_MEDIA) {
+    serialized[ASSIGNMENT_KEYS[media]] = data.assignments[media];
+  }
+  await writeFile(WORKSPACES_FILE, JSON.stringify(serialized, null, 2));
 }
 
 // Serializes a read-modify-write against the workspaces file.
@@ -102,11 +133,22 @@ function mutate<T>(updater: (data: WorkspacesData) => { data: WorkspacesData; re
   return next;
 }
 
+function withMedia(
+  data: WorkspacesData,
+  media: WorkspaceMedia,
+  assignments: AssignmentMap
+): WorkspacesData {
+  return {
+    ...data,
+    assignments: { ...data.assignments, [media]: assignments },
+  };
+}
+
 function pruneAssignmentsForWorkspace(
-  assignments: Record<string, string[]>,
+  assignments: AssignmentMap,
   workspaceId: string
 ) {
-  const next: Record<string, string[]> = {};
+  const next: AssignmentMap = {};
   for (const [filename, ids] of Object.entries(assignments)) {
     const filtered = ids.filter((id) => id !== workspaceId);
     if (filtered.length > 0) next[filename] = filtered;
@@ -116,12 +158,16 @@ function pruneAssignmentsForWorkspace(
 
 // The stored array order is the user-facing order: new workspaces are appended
 // (so it starts out as creation order) and `reorderWorkspaces` rewrites it when
-// the user drags a chip to a new position.
-export async function listWorkspaceSummaries(): Promise<WorkspaceSummary[]> {
+// the user drags a chip to a new position. `count` is per media — the same
+// workspace shows its image count on the image screen and its video count on
+// the video screen.
+export async function listWorkspaceSummaries(
+  media: WorkspaceMedia = "images"
+): Promise<WorkspaceSummary[]> {
   const { workspaces, assignments } = await readData();
   const counts = new Map<string, number>();
 
-  for (const ids of Object.values(assignments)) {
+  for (const ids of Object.values(assignments[media])) {
     for (const id of ids) {
       counts.set(id, (counts.get(id) ?? 0) + 1);
     }
@@ -133,17 +179,20 @@ export async function listWorkspaceSummaries(): Promise<WorkspaceSummary[]> {
   }));
 }
 
-export async function getAssignments(): Promise<Record<string, string[]>> {
+export async function getAssignments(
+  media: WorkspaceMedia = "images"
+): Promise<AssignmentMap> {
   const { assignments } = await readData();
-  return assignments;
+  return assignments[media];
 }
 
 export async function getWorkspaceFilenames(
-  workspaceId: string
+  workspaceId: string,
+  media: WorkspaceMedia = "images"
 ): Promise<Set<string>> {
   const { assignments } = await readData();
   const filenames = new Set<string>();
-  for (const [filename, ids] of Object.entries(assignments)) {
+  for (const [filename, ids] of Object.entries(assignments[media])) {
     if (ids.includes(workspaceId)) filenames.add(filename);
   }
   return filenames;
@@ -213,19 +262,28 @@ export function reorderWorkspaces(orderedIds: string[]): Promise<Workspace[]> {
 export function deleteWorkspace(workspaceId: string): Promise<boolean> {
   return mutate((data) => {
     const exists = data.workspaces.some((item) => item.id === workspaceId);
+    const assignments = emptyAssignments();
+    for (const media of WORKSPACE_MEDIA) {
+      assignments[media] = pruneAssignmentsForWorkspace(
+        data.assignments[media],
+        workspaceId
+      );
+    }
+
     return {
       data: {
         workspaces: data.workspaces.filter((item) => item.id !== workspaceId),
-        assignments: pruneAssignmentsForWorkspace(data.assignments, workspaceId),
+        assignments,
       },
       result: exists,
     };
   });
 }
 
-// Replaces the full set of workspaces an image belongs to. Unknown workspace
-// ids are dropped so the assignments file never references a deleted workspace.
-export function setImageWorkspaces(
+// Replaces the full set of workspaces a file belongs to. Unknown workspace ids
+// are dropped so the assignments file never references a deleted workspace.
+export function setFileWorkspaces(
+  media: WorkspaceMedia,
   filename: string,
   workspaceIds: string[]
 ): Promise<string[]> {
@@ -235,7 +293,7 @@ export function setImageWorkspaces(
       new Set(workspaceIds.filter((id) => validIds.has(id)))
     );
 
-    const assignments = { ...data.assignments };
+    const assignments = { ...data.assignments[media] };
     if (nextIds.length > 0) {
       assignments[filename] = nextIds;
     } else {
@@ -243,20 +301,21 @@ export function setImageWorkspaces(
     }
 
     return {
-      data: { ...data, assignments },
+      data: withMedia(data, media, assignments),
       result: nextIds,
     };
   });
 }
 
-export function toggleImageWorkspace(
+export function toggleFileWorkspace(
+  media: WorkspaceMedia,
   filename: string,
   workspaceId: string,
   assigned: boolean
 ): Promise<string[]> {
   return mutate((data) => {
     const validIds = new Set(data.workspaces.map((item) => item.id));
-    const current = data.assignments[filename] ?? [];
+    const current = data.assignments[media][filename] ?? [];
     let nextIds: string[];
 
     if (assigned) {
@@ -267,7 +326,7 @@ export function toggleImageWorkspace(
       nextIds = current.filter((id) => id !== workspaceId);
     }
 
-    const assignments = { ...data.assignments };
+    const assignments = { ...data.assignments[media] };
     if (nextIds.length > 0) {
       assignments[filename] = nextIds;
     } else {
@@ -275,21 +334,42 @@ export function toggleImageWorkspace(
     }
 
     return {
-      data: { ...data, assignments },
+      data: withMedia(data, media, assignments),
       result: nextIds,
     };
   });
 }
 
-export function removeImageAssignments(filename: string): Promise<void> {
+export function removeFileAssignments(
+  media: WorkspaceMedia,
+  filename: string
+): Promise<void> {
   return mutate((data) => {
-    if (!(filename in data.assignments)) {
+    if (!(filename in data.assignments[media])) {
       return { data, result: undefined };
     }
-    const assignments = { ...data.assignments };
+    const assignments = { ...data.assignments[media] };
     delete assignments[filename];
-    return { data: { ...data, assignments }, result: undefined };
+    return { data: withMedia(data, media, assignments), result: undefined };
   });
+}
+
+// Image-specific aliases, kept because the gallery, the generation stream and
+// the image API all speak in images and read better without a media argument.
+export function setImageWorkspaces(filename: string, workspaceIds: string[]) {
+  return setFileWorkspaces("images", filename, workspaceIds);
+}
+
+export function toggleImageWorkspace(
+  filename: string,
+  workspaceId: string,
+  assigned: boolean
+) {
+  return toggleFileWorkspace("images", filename, workspaceId, assigned);
+}
+
+export function removeImageAssignments(filename: string) {
+  return removeFileAssignments("images", filename);
 }
 
 // Creates a workspace under a caller-supplied id, or renames it when it already
@@ -324,9 +404,10 @@ export function upsertWorkspace(
   });
 }
 
-// Adds a batch of images to one workspace in a single read-modify-write, so
+// Adds a batch of files to one workspace in a single read-modify-write, so
 // downloading a shared workspace doesn't queue one file mutation per image.
-export function addImagesToWorkspace(
+export function addFilesToWorkspace(
+  media: WorkspaceMedia,
   filenames: string[],
   workspaceId: string
 ): Promise<number> {
@@ -335,7 +416,7 @@ export function addImagesToWorkspace(
       return { data, result: 0 };
     }
 
-    const assignments = { ...data.assignments };
+    const assignments = { ...data.assignments[media] };
     let added = 0;
     for (const filename of filenames) {
       if (!isSafeFilename(filename)) continue;
@@ -345,6 +426,10 @@ export function addImagesToWorkspace(
       added += 1;
     }
 
-    return { data: { ...data, assignments }, result: added };
+    return { data: withMedia(data, media, assignments), result: added };
   });
+}
+
+export function addImagesToWorkspace(filenames: string[], workspaceId: string) {
+  return addFilesToWorkspace("images", filenames, workspaceId);
 }

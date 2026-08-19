@@ -173,6 +173,9 @@ export interface SeedanceVideo {
     referenceCount: number;
   };
   thumbnail?: string | null;
+  // Workspace ids this clip belongs to. Shared with the image gallery and the
+  // ComfyUI video screen — one workspace record, filtered per media.
+  workspaces?: string[];
   // Client-only, present while queued / generating / errored.
   status?: SeedanceGenerationStatus;
 }

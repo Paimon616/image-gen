@@ -1,8 +1,9 @@
 import { readFile, unlink } from "fs/promises";
 import { join } from "path";
 import { NextRequest, NextResponse } from "next/server";
-
-const SEEDANCE_OUTPUT_DIR = join(process.cwd(), "output", "seedance");
+import { removeFileAssignments } from "@/lib/workspaces";
+import { notifyWorkspaceFilesChanged } from "@/lib/runpod-share";
+import { SEEDANCE_OUTPUT_DIR } from "@/lib/server-videos";
 
 function isSafe(filename: string) {
   return !(
@@ -45,6 +46,8 @@ export async function DELETE(
     const filepath = join(SEEDANCE_OUTPUT_DIR, filename);
     await unlink(filepath);
     await unlink(filepath.replace(/\.\w+$/, ".json")).catch(() => {});
+    await removeFileAssignments("seedance", filename).catch(() => {});
+    notifyWorkspaceFilesChanged();
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "Failed to delete" }, { status: 500 });

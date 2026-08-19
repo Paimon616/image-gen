@@ -25,6 +25,8 @@ import {
   resolveVideoPipeline,
   resolveVideoWorkflowPath,
 } from "@/lib/video-pipelines";
+import { toggleFileWorkspace, workspaceExists } from "@/lib/workspaces";
+import { notifyWorkspaceChanged } from "@/lib/runpod-share";
 
 const VIDEO_OUTPUT_DIR = join(process.cwd(), "output", "videos");
 const AUDIO_OUTPUT_DIR = join(process.cwd(), "output", "audios");
@@ -387,9 +389,17 @@ export async function POST(req: NextRequest) {
   const rawBody = (await req.json()) as Partial<VideoGenerationParams> & {
     generationTarget?: "local" | "runpod";
     runpodPodId?: string;
+    workspaceId?: string;
   };
   const body = normalizeVideoParams(rawBody);
   const generationTarget = rawBody.generationTarget === "runpod" ? "runpod" : "local";
+  // Only honor a workspace target that still exists, so a stale id from the
+  // client can't create dangling assignments.
+  const rawWorkspaceId = String(rawBody.workspaceId ?? "").trim();
+  const workspaceId =
+    rawWorkspaceId && (await workspaceExists(rawWorkspaceId))
+      ? rawWorkspaceId
+      : "";
   let comfyBaseUrl = COMFYUI_BASE_URL;
 
   if (!body.prompt) {
@@ -608,6 +618,23 @@ export async function POST(req: NextRequest) {
           params: body,
           audios: savedAudios,
         });
+
+        // File the fresh clip under the workspace the gallery is filtered to, so
+        // it shows up there right away — the same auto-registration the image
+        // generator does.
+        if (workspaceId) {
+          for (const video of savedVideos) {
+            const workspaces = await toggleFileWorkspace(
+              "videos",
+              video.filename,
+              workspaceId,
+              true
+            ).catch(() => [] as string[]);
+            (video as { workspaces?: string[] }).workspaces = workspaces;
+          }
+          // A new clip in a shared workspace is pushed to the pod on its own.
+          void notifyWorkspaceChanged(workspaceId).catch(() => {});
+        }
 
         send("progress", {
           progress: 100,

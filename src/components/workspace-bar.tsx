@@ -13,6 +13,7 @@ import { createPortal } from "react-dom";
 import {
   Check,
   Cloud,
+  CloudAlert,
   CloudDownload,
   CloudOff,
   FolderX,
@@ -26,7 +27,15 @@ import {
   X,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { UNGROUPED_WORKSPACE_ID, type WorkspaceSummary } from "@/lib/types";
+import {
+  useMediaWorkspaceStore,
+  type VideoWorkspaceMedia,
+} from "@/lib/media-workspace-store";
+import {
+  UNGROUPED_WORKSPACE_ID,
+  type WorkspaceMedia,
+  type WorkspaceSummary,
+} from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { RunpodShareDownloadDialog } from "@/components/runpod-share-download";
 
@@ -194,16 +203,42 @@ function WorkspaceChip({
             }
           }}
           className="flex items-center gap-1.5 py-0.5"
-          title={`${workspace.name} \u2014 ${dragHint}`}
+          title={[
+            workspace.name,
+            sharing
+              ? ko
+                ? "RunPod에 공유하는 중…"
+                : "Sharing to RunPod…"
+              : shared && shareError
+                ? shareError
+                : shared
+                  ? ko
+                    ? "RunPod에 공유됨"
+                    : "Shared to RunPod"
+                  : "",
+            dragHint,
+          ]
+            .filter(Boolean)
+            .join(" \u2014 ")}
         >
-          {shared && (
+          {/* Share state sits on the chip itself, not just inside the menu, so
+              an in-flight upload or a failed sync reads without opening it. */}
+          {sharing ? (
+            <Loader2
+              className={`h-3 w-3 shrink-0 animate-spin ${active ? "" : "text-primary"}`}
+              aria-label={ko ? "RunPod에 공유하는 중" : "Sharing to RunPod"}
+            />
+          ) : shared && shareError ? (
+            <CloudAlert
+              className={`h-3 w-3 shrink-0 ${active ? "" : "text-destructive"}`}
+              aria-label={ko ? "RunPod 동기화 실패" : "RunPod sync failed"}
+            />
+          ) : shared ? (
             <Cloud
-              className={`h-3 w-3 shrink-0 ${
-                active ? "" : "text-primary"
-              }`}
+              className={`h-3 w-3 shrink-0 ${active ? "" : "text-primary"}`}
               aria-label={ko ? "RunPod에 공유됨" : "Shared to RunPod"}
             />
-          )}
+          ) : null}
           <span className="max-w-40 truncate font-medium">{workspace.name}</span>
           <span
             className={`rounded-full px-1.5 text-[10px] tabular-nums ${
@@ -288,8 +323,8 @@ function WorkspaceChip({
               </p>
               <p className="mt-0.5 px-1 text-[10px] text-muted-foreground">
                 {ko
-                  ? "이미지는 삭제되지 않습니다."
-                  : "Images are not deleted."}
+                  ? "이미지와 영상은 삭제되지 않습니다."
+                  : "Images and videos are not deleted."}
               </p>
               <div className="mt-2 flex gap-1.5">
                 <Button
@@ -355,8 +390,8 @@ function WorkspaceChip({
                   {shareError
                     ? shareError
                     : ko
-                      ? "이미지가 바뀌면 자동으로 RunPod에 반영됩니다."
-                      : "Image changes sync to RunPod automatically."}
+                      ? "이미지·영상이 바뀌면 자동으로 RunPod에 반영됩니다."
+                      : "Image and video changes sync to RunPod automatically."}
                 </p>
               )}
               <button
@@ -376,18 +411,115 @@ function WorkspaceChip({
   );
 }
 
-export function WorkspaceBar() {
-  const workspaces = useStore((state) => state.workspaces);
-  const ungroupedCount = useStore((state) => state.ungroupedCount);
-  const activeWorkspaceId = useStore((state) => state.activeWorkspaceId);
-  const fetchWorkspaces = useStore((state) => state.fetchWorkspaces);
-  const setActiveWorkspace = useStore((state) => state.setActiveWorkspace);
-  const createWorkspace = useStore((state) => state.createWorkspace);
-  const renameWorkspace = useStore((state) => state.renameWorkspace);
-  const reorderWorkspaces = useStore((state) => state.reorderWorkspaces);
-  const deleteWorkspace = useStore((state) => state.deleteWorkspace);
+// One workspace bar for every screen. The workspaces themselves — and the RunPod
+// share behind each chip — are shared app-wide; `media` only decides which files
+// the counts cover and which list the filter applies to, so the video screens
+// never surface the workspace's images.
+export function WorkspaceBar({
+  media = "images",
+  onDownloaded,
+}: {
+  media?: WorkspaceMedia;
+  /** Called after a shared workspace is pulled, so the screen can refresh. */
+  onDownloaded?: (workspaceId: string) => void;
+} = {}) {
+  const isImages = media === "images";
+  const videoMedia: VideoWorkspaceMedia =
+    media === "seedance" ? "seedance" : "videos";
+
+  // Both sources are read unconditionally (hooks can't be conditional) and the
+  // one matching `media` is used: the image screen's workspace state lives in
+  // the main app store, the video screens' in the media store.
+  const imageWorkspaces = useStore((state) => state.workspaces);
+  const imageUngroupedCount = useStore((state) => state.ungroupedCount);
+  const imageActiveWorkspaceId = useStore((state) => state.activeWorkspaceId);
+  const fetchImageWorkspaces = useStore((state) => state.fetchWorkspaces);
+  const setActiveImageWorkspace = useStore((state) => state.setActiveWorkspace);
+  const createImageWorkspace = useStore((state) => state.createWorkspace);
+  const renameImageWorkspace = useStore((state) => state.renameWorkspace);
+  const reorderImageWorkspaces = useStore((state) => state.reorderWorkspaces);
+  const deleteImageWorkspace = useStore((state) => state.deleteWorkspace);
+
+  const mediaEntry = useMediaWorkspaceStore((state) => state.byMedia[videoMedia]);
+  const fetchMediaWorkspaces = useMediaWorkspaceStore(
+    (state) => state.fetchWorkspaces
+  );
+  const setActiveMediaWorkspace = useMediaWorkspaceStore(
+    (state) => state.setActiveWorkspace
+  );
+  const createMediaWorkspace = useMediaWorkspaceStore(
+    (state) => state.createWorkspace
+  );
+  const renameMediaWorkspace = useMediaWorkspaceStore(
+    (state) => state.renameWorkspace
+  );
+  const reorderMediaWorkspaces = useMediaWorkspaceStore(
+    (state) => state.reorderWorkspaces
+  );
+  const deleteMediaWorkspace = useMediaWorkspaceStore(
+    (state) => state.deleteWorkspace
+  );
+
+  const workspaces = isImages ? imageWorkspaces : mediaEntry.workspaces;
+  const ungroupedCount = isImages
+    ? imageUngroupedCount
+    : mediaEntry.ungroupedCount;
+  const activeWorkspaceId = isImages
+    ? imageActiveWorkspaceId
+    : mediaEntry.activeWorkspaceId;
+
+  const fetchWorkspaces = useCallback(
+    () =>
+      isImages ? fetchImageWorkspaces() : fetchMediaWorkspaces(videoMedia),
+    [isImages, fetchImageWorkspaces, fetchMediaWorkspaces, videoMedia]
+  );
+  const setActiveWorkspace = useCallback(
+    (workspaceId: string | null) =>
+      isImages
+        ? setActiveImageWorkspace(workspaceId)
+        : setActiveMediaWorkspace(videoMedia, workspaceId),
+    [isImages, setActiveImageWorkspace, setActiveMediaWorkspace, videoMedia]
+  );
+  const createWorkspace = useCallback(
+    (name: string) =>
+      isImages
+        ? createImageWorkspace(name)
+        : createMediaWorkspace(videoMedia, name),
+    [isImages, createImageWorkspace, createMediaWorkspace, videoMedia]
+  );
+  const renameWorkspace = useCallback(
+    (workspaceId: string, name: string) =>
+      isImages
+        ? renameImageWorkspace(workspaceId, name)
+        : renameMediaWorkspace(videoMedia, workspaceId, name),
+    [isImages, renameImageWorkspace, renameMediaWorkspace, videoMedia]
+  );
+  const reorderWorkspaces = useCallback(
+    (orderedIds: string[]) =>
+      isImages
+        ? reorderImageWorkspaces(orderedIds)
+        : reorderMediaWorkspaces(videoMedia, orderedIds),
+    [isImages, reorderImageWorkspaces, reorderMediaWorkspaces, videoMedia]
+  );
+  const deleteWorkspace = useCallback(
+    (workspaceId: string) =>
+      isImages
+        ? deleteImageWorkspace(workspaceId)
+        : deleteMediaWorkspace(videoMedia, workspaceId),
+    [isImages, deleteImageWorkspace, deleteMediaWorkspace, videoMedia]
+  );
+
   const language = useStore((state) => state.language);
   const ko = language === "ko";
+  // Only the wording changes with the media — the chips, the share menu and the
+  // download dialog are the same workspace either way.
+  const mediaNoun = isImages
+    ? ko
+      ? "이미지"
+      : "images"
+    : ko
+      ? "영상"
+      : "videos";
 
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
@@ -434,14 +566,17 @@ export function WorkspaceBar() {
         });
         const data = (await res.json()) as {
           imageCount?: number;
+          videoCount?: number;
           podLabel?: string;
           error?: string;
         };
         if (!res.ok) throw new Error(data.error || "공유에 실패했습니다.");
+        // The whole workspace goes up — images and clips — so the message counts
+        // both rather than only what this screen shows.
         setShareMessage(
           ko
-            ? `${data.podLabel ?? "RunPod"}에 공유됨 — 이미지 ${data.imageCount ?? 0}장`
-            : `Shared to ${data.podLabel ?? "RunPod"} — ${data.imageCount ?? 0} images`
+            ? `${data.podLabel ?? "RunPod"}에 공유됨 — 이미지 ${data.imageCount ?? 0}장 · 영상 ${data.videoCount ?? 0}개`
+            : `Shared to ${data.podLabel ?? "RunPod"} — ${data.imageCount ?? 0} images, ${data.videoCount ?? 0} videos`
         );
         await refreshShares();
       } catch (error) {
@@ -517,6 +652,18 @@ export function WorkspaceBar() {
       await refreshShares();
     })();
   }, [refreshShares]);
+  // Background syncs (an image added to a shared workspace, a rename) run
+  // server-side, so poll while something is shared to keep the badges honest —
+  // a failed sync, or its recovery, shows up without a reload.
+  const hasShares = Object.keys(shares).length > 0;
+  useEffect(() => {
+    if (!hasShares) return;
+    const timer = setInterval(() => {
+      void refreshShares();
+    }, 10_000);
+    return () => clearInterval(timer);
+  }, [hasShares, refreshShares]);
+
 
   useEffect(() => {
     if (!creating) return;
@@ -567,7 +714,7 @@ export function WorkspaceBar() {
             : "border-border bg-card text-foreground hover:border-primary/50"
         }`}
       >
-        {ko ? "전체 보기" : "All images"}
+        {ko ? "전체 보기" : isImages ? "All images" : "All videos"}
       </button>
 
       <button
@@ -580,8 +727,10 @@ export function WorkspaceBar() {
         }`}
         title={
           ko
-            ? "어떤 워크스페이스에도 속하지 않은 이미지"
-            : "Images not in any workspace"
+            ? `어떤 워크스페이스에도 속하지 않은 ${mediaNoun}`
+            : isImages
+              ? "Images not in any workspace"
+              : "Videos not in any workspace"
         }
       >
         <FolderX className="h-3.5 w-3.5" />
@@ -712,7 +861,7 @@ export function WorkspaceBar() {
         }
       >
         <CloudDownload className="h-3.5 w-3.5" />
-        {ko ? "공유 이미지 다운로드" : "Download shared"}
+        {ko ? `공유 ${mediaNoun} 다운로드` : "Download shared"}
       </button>
 
       {shareMessage && (
@@ -723,13 +872,15 @@ export function WorkspaceBar() {
 
       <RunpodShareDownloadDialog
         kind="workspaces"
+        media={media}
         open={downloadOpen}
         onOpenChange={setDownloadOpen}
         onDownloaded={(workspaceId) => {
-          // Jump straight to what was just downloaded: this refetches the
-          // gallery filtered to that workspace, so its images show up at once.
+          // Jump straight to what was just downloaded: this refetches the list
+          // filtered to that workspace, so its files show up at once.
           void fetchWorkspaces();
           setActiveWorkspace(workspaceId);
+          onDownloaded?.(workspaceId);
         }}
       />
     </div>

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import Link from "next/link";
 import { AppSidebar } from "@/components/app-sidebar";
+import { WorkspaceBar } from "@/components/workspace-bar";
+import { MediaWorkspacePicker } from "@/components/workspace-picker";
 import { CivitaiMissingResources } from "@/components/civitai-missing-resources";
 import { CopyLinkButton } from "@/components/copy-link-button";
 import { EditorSection } from "@/components/editor-section";
@@ -29,6 +31,10 @@ import {
 } from "@/components/ui/tooltip";
 import { useStore } from "@/lib/store";
 import { useVideoStore } from "@/lib/video-store";
+import {
+  fileMatchesWorkspace,
+  useMediaWorkspaceStore,
+} from "@/lib/media-workspace-store";
 import { useVideoPaimonStore } from "@/lib/video-paimon-store";
 import { PaimonPanel } from "@/components/paimon-panel";
 import {
@@ -38,6 +44,7 @@ import {
 import { takeVideoReference } from "@/lib/video-reference";
 import {
   DEFAULT_VIDEO_PARAMS,
+  UNGROUPED_WORKSPACE_ID,
   type CivitaiImportResult,
   type GeneratedVideo,
   type GenerationStatus,
@@ -215,6 +222,9 @@ interface VideoQueueItem {
   params: VideoGenerationParams;
   generationTarget: "local" | "runpod";
   runpodPodId?: string;
+  /** Workspace the gallery was filtered to when the job was queued; the finished
+   *  clip is filed under it, mirroring the image generator. */
+  workspaceId?: string;
 }
 
 interface GenerationDetail {
@@ -230,6 +240,17 @@ interface GenerationDetail {
 
 const VIDEO_GENERATION_STATE_KEY = "image-gen-video-generation-state";
 const VIDEO_GENERATION_TARGET_KEY = "image-gen-video:generation-target";
+const VIDEO_SELECTED_RUNPOD_POD_KEY = "image-gen-video:selected-runpod-pod-id";
+
+function rememberVideoRunpodPod(podId: string) {
+  try {
+    if (podId) {
+      window.localStorage.setItem(VIDEO_SELECTED_RUNPOD_POD_KEY, podId);
+    } else {
+      window.localStorage.removeItem(VIDEO_SELECTED_RUNPOD_POD_KEY);
+    }
+  } catch {}
+}
 
 interface StoredVideoGenerationState {
   status: GenerationStatus;
@@ -346,6 +367,7 @@ function VideoGalleryCard({
   onReuse,
   onRemovePending,
   onOpenDetail,
+  onWorkspacesChange,
 }: {
   video: GeneratedVideo;
   language: AppLanguage;
@@ -355,6 +377,7 @@ function VideoGalleryCard({
   onReuse: (video: GeneratedVideo) => void;
   onRemovePending: (video: GeneratedVideo) => void;
   onOpenDetail: (video: GeneratedVideo) => void;
+  onWorkspacesChange: (video: GeneratedVideo, workspaceIds: string[]) => void;
 }) {
   const articleRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -707,6 +730,16 @@ function VideoGalleryCard({
         >
           <Maximize2 />
         </Button>
+        {/* Workspaces are shared with the image gallery; this clip only ever
+            shows up under the video screens' view of them. */}
+        <div className="absolute right-11 top-2 z-20 shadow-md">
+          <MediaWorkspacePicker
+            media="videos"
+            filename={video.filename}
+            workspaceIds={video.workspaces ?? []}
+            onChange={(workspaceIds) => onWorkspacesChange(video, workspaceIds)}
+          />
+        </div>
         <Button
           type="button"
           size="icon-sm"
@@ -1444,6 +1477,9 @@ export default function VideoPage() {
   const [startImagePreviewOpen, setStartImagePreviewOpen] = useState(false);
   const activePromptIdRef = useRef("");
   const autoRunpodCheckKeyRef = useRef("");
+  // True once the running-pod auto-select has run for the current stint in
+  // RunPod mode, so it does not fight a manual pick from the dropdown.
+  const autoPodSelectRef = useRef(false);
   const runpodConnectionRef = useRef<RunpodConnectionStatus | null>(null);
   const generationAbortControllerRef = useRef<AbortController | null>(null);
   const activeGenerationRef = useRef<VideoQueueItem | null>(null);
@@ -1661,6 +1697,7 @@ export default function VideoPage() {
 
     const [first] = runningPods;
     setSelectedRunpodPodId(first.id);
+    rememberVideoRunpodPod(first.id);
     setRunpodStatus(
       language === "ko"
         ? runningPods.length > 1
@@ -1679,12 +1716,25 @@ export default function VideoPage() {
         window.localStorage.setItem(VIDEO_GENERATION_TARGET_KEY, target);
       } catch {}
       resetRunpodConnection();
-      if (target === "runpod") {
-        void autoSelectRunningRunpodPod();
+      if (target === "local") {
+        // Leaving RunPod mode arms the auto-select again for the next time it is
+        // turned on (see the effect below).
+        autoPodSelectRef.current = false;
       }
     },
-    [autoSelectRunningRunpodPod, resetRunpodConnection]
+    [resetRunpodConnection]
   );
+
+  // Pick a running pod whenever RunPod mode is active — both when the user flips
+  // the toggle and when the mode is restored from a previous visit — so the
+  // selection is never left pointing at a stopped pod. Runs once per switch into
+  // RunPod mode; a manual pick from the dropdown is not overridden.
+  useEffect(() => {
+    if (generationTarget !== "runpod" || runpodPods.length === 0) return;
+    if (autoPodSelectRef.current) return;
+    autoPodSelectRef.current = true;
+    void autoSelectRunningRunpodPod();
+  }, [autoSelectRunningRunpodPod, generationTarget, runpodPods]);
 
   const applyRunpodStatus = useCallback(
     (data: Record<string, unknown>) => {
@@ -2212,6 +2262,23 @@ export default function VideoPage() {
       .catch(() => {});
   }, [setVideos]);
 
+  // The workspace chips are the image gallery's workspaces; here they filter the
+  // clips only — a workspace's images never appear on this screen.
+  const activeWorkspaceId = useMediaWorkspaceStore(
+    (state) => state.byMedia.videos.activeWorkspaceId
+  );
+
+  const applyVideoWorkspaces = useCallback(
+    (video: GeneratedVideo, workspaces: string[]) => {
+      setVideos((prev) =>
+        prev.map((item) =>
+          item.filename === video.filename ? { ...item, workspaces } : item
+        )
+      );
+    },
+    [setVideos]
+  );
+
   const deleteVideo = useCallback(async (video: GeneratedVideo) => {
     const response = await fetch(
       "/api/videos/" + encodeURIComponent(video.filename),
@@ -2251,8 +2318,23 @@ export default function VideoPage() {
         ).filter((pod) => pod.kind === "video");
         setRunpodPods(pods);
         setSelectedRunpodPodId((current) => {
-          const podExists = pods.some((pod) => pod.id === current);
-          return current && podExists ? current : pods[0]?.id || "";
+          const savedPodId = (() => {
+            try {
+              return window.localStorage.getItem(VIDEO_SELECTED_RUNPOD_POD_KEY) ?? "";
+            } catch {
+              return "";
+            }
+          })();
+          const podExists = (id: string) => pods.some((pod) => pod.id === id);
+          const next =
+            current && podExists(current)
+              ? current
+              : savedPodId && podExists(savedPodId)
+                ? savedPodId
+                : pods[0]?.id || "";
+
+          rememberVideoRunpodPod(next);
+          return next;
         });
       })
       .catch(() => {});
@@ -2427,7 +2509,13 @@ export default function VideoPage() {
 
   const runGenerationJob = useCallback(
     async (job: VideoQueueItem) => {
-      const { id, params: jobParams, generationTarget: jobTarget, runpodPodId } = job;
+      const {
+        id,
+        params: jobParams,
+        generationTarget: jobTarget,
+        runpodPodId,
+        workspaceId,
+      } = job;
 
       const abortController = new AbortController();
       activePromptIdRef.current = "";
@@ -2454,6 +2542,7 @@ export default function VideoPage() {
             ...jobParams,
             generationTarget: jobTarget,
             runpodPodId: jobTarget === "runpod" ? runpodPodId : undefined,
+            workspaceId,
           }),
           signal: abortController.signal,
         });
@@ -2558,6 +2647,12 @@ export default function VideoPage() {
               const generatedVideos = (data?.videos ?? []) as GeneratedVideo[];
               if (generatedVideos.length > 0) {
                 setVideos((current) => [...generatedVideos, ...current]);
+                // Refresh the chip counts after the auto-registration above.
+                if (workspaceId) {
+                  void useMediaWorkspaceStore
+                    .getState()
+                    .fetchWorkspaces("videos");
+                }
               }
               // The finished video moves into the server-backed list, so drop
               // the pending card.
@@ -2706,10 +2801,17 @@ export default function VideoPage() {
         params: jobParams,
         generationTarget,
         runpodPodId: generationTarget === "runpod" ? selectedRunpodPodId : undefined,
+        // The sentinel "ungrouped" filter is not a real workspace, so it queues
+        // as no target at all.
+        workspaceId:
+          activeWorkspaceId && activeWorkspaceId !== UNGROUPED_WORKSPACE_ID
+            ? activeWorkspaceId
+            : undefined,
       },
     ]);
     setStatus({ state: "idle", progress: 0, message: "" });
   }, [
+    activeWorkspaceId,
     addPendingVideo,
     generationTarget,
     language,
@@ -2769,12 +2871,17 @@ export default function VideoPage() {
   );
 
   // Show in-flight generation cards ahead of the saved videos, newest first.
+  // A generation still running has no workspace yet, so it stays visible under
+  // every filter rather than vanishing the moment a chip is selected.
   const visibleVideos = useMemo(() => {
-    if (pendingVideos.length === 0) return videos;
+    const saved = videos.filter((video) =>
+      fileMatchesWorkspace(video.workspaces, activeWorkspaceId)
+    );
+    if (pendingVideos.length === 0) return saved;
     const pendingIds = new Set(pendingVideos.map((video) => video.id));
-    const rest = videos.filter((video) => !pendingIds.has(video.id));
+    const rest = saved.filter((video) => !pendingIds.has(video.id));
     return [...pendingVideos, ...rest].sort((a, b) => b.timestamp - a.timestamp);
-  }, [pendingVideos, videos]);
+  }, [activeWorkspaceId, pendingVideos, videos]);
 
   // Only finished videos (with a playable URL) participate in the detail modal
   // and its prev/next navigation.
@@ -2834,6 +2941,7 @@ export default function VideoPage() {
                 value={selectedRunpodPodId}
                 onChange={(event) => {
                   setSelectedRunpodPodId(event.target.value);
+                  rememberVideoRunpodPod(event.target.value);
                   resetRunpodConnection();
                 }}
                 disabled={isGenerating}
@@ -3995,7 +4103,9 @@ export default function VideoPage() {
               </span>
             </div>
             <span className="text-xs text-muted-foreground">
-              {videos.length} videos
+              {activeWorkspaceId
+                ? `${visibleVideos.filter((video) => video.url).length} / ${videos.length} videos`
+                : `${videos.length} videos`}
             </span>
             <Button
               type="button"
@@ -4008,6 +4118,8 @@ export default function VideoPage() {
             </Button>
           </div>
         </div>
+
+        <WorkspaceBar media="videos" onDownloaded={() => refreshVideos()} />
 
         <div className="flex-1 overflow-y-auto p-4">
           {visibleVideos.length === 0 ? (
@@ -4044,6 +4156,7 @@ export default function VideoPage() {
                   onReuse={reuseVideoParams}
                   onRemovePending={removePendingVideo}
                   onOpenDetail={(item) => setSelectedVideoId(item.id)}
+                  onWorkspacesChange={applyVideoWorkspaces}
                 />
               ))}
             </div>

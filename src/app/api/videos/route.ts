@@ -1,24 +1,23 @@
 import { readFile, readdir } from "fs/promises";
 import { join } from "path";
 import { NextResponse } from "next/server";
-
-const VIDEO_OUTPUT_DIR = join(process.cwd(), "output", "videos");
-
-function contentTypeFor(filename: string) {
-  const lower = filename.toLowerCase();
-  if (lower.endsWith(".webm")) return "video/webm";
-  if (lower.endsWith(".gif")) return "image/gif";
-  return "video/mp4";
-}
+import { getAssignments } from "@/lib/workspaces";
+import { VIDEO_OUTPUT_DIR, videoContentType } from "@/lib/server-videos";
 
 export async function GET() {
   try {
-    const files = await readdir(VIDEO_OUTPUT_DIR).catch(() => [] as string[]);
+    const [files, assignments] = await Promise.all([
+      readdir(VIDEO_OUTPUT_DIR).catch(() => [] as string[]),
+      // Which workspaces each clip belongs to, so the gallery can filter by the
+      // workspace chip without a second request per video.
+      getAssignments("videos").catch(() => ({}) as Record<string, string[]>),
+    ]);
     const videoFiles = files.filter((file) => /\.(mp4|webm|gif)$/i.test(file));
 
     const videos = await Promise.all(
       videoFiles.map(async (filename) => {
         const metaPath = join(VIDEO_OUTPUT_DIR, filename.replace(/\.\w+$/, ".json"));
+        const workspaces = assignments[filename] ?? [];
 
         try {
           const meta = JSON.parse(await readFile(metaPath, "utf-8"));
@@ -29,8 +28,9 @@ export async function GET() {
             filename,
             params: meta.params,
             timestamp: meta.timestamp,
-            contentType: meta.contentType ?? contentTypeFor(filename),
+            contentType: meta.contentType ?? videoContentType(filename),
             audios: Array.isArray(meta.audios) ? meta.audios : [],
+            workspaces,
           };
         } catch {
           return {
@@ -39,8 +39,9 @@ export async function GET() {
             filename,
             params: null,
             timestamp: 0,
-            contentType: contentTypeFor(filename),
+            contentType: videoContentType(filename),
             audios: [],
+            workspaces,
           };
         }
       })

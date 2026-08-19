@@ -1,5 +1,10 @@
-import { create } from "zustand";
+import { create, type StateCreator } from "zustand";
+import { persist } from "zustand/middleware";
 import { DEFAULT_VIDEO_PARAMS, type GeneratedVideo, type VideoGenerationParams } from "./types";
+
+// The video form's inputs are persisted under their own key so the values a user
+// dialed in survive navigating away from the page and a full reload.
+const VIDEO_PARAMS_STORAGE_KEY = "image-gen:video-params";
 
 type VideoListUpdate =
   | GeneratedVideo[]
@@ -37,7 +42,7 @@ interface VideoState {
   setParams: (update: VideoParamsUpdate) => void;
 }
 
-export const useVideoStore = create<VideoState>((set) => ({
+const createVideoState: StateCreator<VideoState> = (set) => ({
   videos: [],
   pendingVideos: [],
   params: DEFAULT_VIDEO_PARAMS,
@@ -66,4 +71,40 @@ export const useVideoStore = create<VideoState>((set) => ({
     set((s) => ({
       params: typeof update === "function" ? update(s.params) : update,
     })),
-}));
+});
+
+// Only the form inputs are persisted; the video lists are server-backed or hold
+// in-flight cards that belong to this visit only.
+interface PersistedVideoState {
+  params: VideoGenerationParams;
+}
+
+export const useVideoStore = create<VideoState>()(
+  persist(createVideoState, {
+    name: VIDEO_PARAMS_STORAGE_KEY,
+    version: 1,
+    // Rehydration is deferred to after mount (see <StoreHydration />) so the
+    // first client render matches the server-rendered HTML.
+    skipHydration: true,
+    partialize: (state): PersistedVideoState => ({ params: state.params }),
+    // Layer the saved values over the current defaults so params added after the
+    // snapshot was written still get their default instead of `undefined`.
+    merge: (persisted, current) => {
+      const savedParams = (persisted as Partial<PersistedVideoState> | undefined)
+        ?.params;
+      return savedParams
+        ? { ...current, params: { ...DEFAULT_VIDEO_PARAMS, ...savedParams } }
+        : current;
+    },
+  })
+);
+
+// Reading localStorage while the store is created would desync the server
+// render, so the page triggers the restore once after mount instead.
+let videoParamsRehydrated = false;
+
+export function hydratePersistedVideoParams() {
+  if (videoParamsRehydrated || typeof window === "undefined") return;
+  videoParamsRehydrated = true;
+  void useVideoStore.persist.rehydrate();
+}

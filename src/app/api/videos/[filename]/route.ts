@@ -1,15 +1,9 @@
 import { readFile, unlink } from "fs/promises";
 import { join } from "path";
 import { NextRequest, NextResponse } from "next/server";
-
-const VIDEO_OUTPUT_DIR = join(process.cwd(), "output", "videos");
-
-function contentTypeFor(filename: string) {
-  const lower = filename.toLowerCase();
-  if (lower.endsWith(".webm")) return "video/webm";
-  if (lower.endsWith(".gif")) return "image/gif";
-  return "video/mp4";
-}
+import { removeFileAssignments } from "@/lib/workspaces";
+import { notifyWorkspaceFilesChanged } from "@/lib/runpod-share";
+import { VIDEO_OUTPUT_DIR, videoContentType } from "@/lib/server-videos";
 
 export async function GET(
   _req: NextRequest,
@@ -26,7 +20,7 @@ export async function GET(
 
     return new NextResponse(buffer, {
       headers: {
-        "Content-Type": contentTypeFor(filename),
+        "Content-Type": videoContentType(filename),
         "Cache-Control": "public, max-age=31536000, immutable",
       },
     });
@@ -49,6 +43,10 @@ export async function DELETE(
     const filepath = join(VIDEO_OUTPUT_DIR, filename);
     await unlink(filepath);
     await unlink(filepath.replace(/\.\w+$/, ".json")).catch(() => {});
+    // The clip may have belonged to a shared workspace, so drop its membership
+    // and let the share re-sync without it.
+    await removeFileAssignments("videos", filename).catch(() => {});
+    notifyWorkspaceFilesChanged();
 
     return NextResponse.json({ success: true });
   } catch {

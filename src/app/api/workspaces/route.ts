@@ -8,22 +8,38 @@ import {
   reorderWorkspaces,
 } from "@/lib/workspaces";
 import { listImageFilenames } from "@/lib/server-images";
+import { isVideoMedia, listVideoFilenames } from "@/lib/server-videos";
+import { isWorkspaceMedia, type WorkspaceMedia } from "@/lib/types";
 
-export async function GET() {
+// Workspaces themselves are shared by every screen; `media` only selects which
+// files the counts are taken over (gallery images, ComfyUI videos, SeeDance
+// clips). An unknown or absent value keeps the original image behaviour.
+function parseMedia(request: NextRequest): WorkspaceMedia {
+  const media = new URL(request.url).searchParams.get("media");
+  return isWorkspaceMedia(media) ? media : "images";
+}
+
+function listFilenames(media: WorkspaceMedia) {
+  return isVideoMedia(media) ? listVideoFilenames(media) : listImageFilenames();
+}
+
+export async function GET(request: NextRequest) {
+  const media = parseMedia(request);
+
   try {
     const [workspaces, filenames, assignments] = await Promise.all([
-      listWorkspaceSummaries(),
-      listImageFilenames(),
-      getAssignments(),
+      listWorkspaceSummaries(media),
+      listFilenames(media),
+      getAssignments(media),
     ]);
-    // An image is "ungrouped" when it exists on disk but has no assignment.
+    // A file is "ungrouped" when it exists on disk but has no assignment.
     const ungroupedCount = filenames.filter(
       (filename) => !(assignments[filename]?.length)
     ).length;
 
-    return NextResponse.json({ workspaces, ungroupedCount });
+    return NextResponse.json({ media, workspaces, ungroupedCount });
   } catch {
-    return NextResponse.json({ workspaces: [], ungroupedCount: 0 });
+    return NextResponse.json({ media, workspaces: [], ungroupedCount: 0 });
   }
 }
 
@@ -69,7 +85,9 @@ export async function PATCH(request: NextRequest) {
 
   try {
     await reorderWorkspaces(orderedIds);
-    return NextResponse.json({ workspaces: await listWorkspaceSummaries() });
+    return NextResponse.json({
+      workspaces: await listWorkspaceSummaries(parseMedia(request)),
+    });
   } catch {
     return NextResponse.json(
       { error: "Failed to reorder workspaces" },

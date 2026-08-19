@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CloudDownload, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { WorkspaceMedia } from "@/lib/types";
 import {
   Dialog,
   DialogContent,
@@ -14,14 +15,16 @@ import {
 export type ShareKind = "workspaces" | "characters";
 
 // The subset of the pod-side manifest the picker renders. The manifest carries
-// more (the images and, for a character, its full record), but pulling that is
-// the download's job — the list stays light.
+// more (the images, the clips and, for a character, its full record), but
+// pulling that is the download's job — the list stays light.
 interface RemoteShare {
   id: string;
   name: string;
   updatedAt: number;
   sharedBy: string;
   imageCount: number;
+  /** Absent on shares pushed before workspaces could hold videos. */
+  videoCount?: number;
 }
 
 interface SharePod {
@@ -56,11 +59,15 @@ function formatWhen(value: number) {
 // and the character studio — only the wording differs.
 export function RunpodShareDownloadDialog({
   kind,
+  media = "images",
   open,
   onOpenChange,
   onDownloaded,
 }: {
   kind: ShareKind;
+  /** Which screen opened the dialog. Only the wording depends on it — a
+   *  workspace is downloaded whole, images and clips together. */
+  media?: WorkspaceMedia;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDownloaded: (id: string) => void;
@@ -131,13 +138,16 @@ export function RunpodShareDownloadDialog({
           name?: string;
           downloaded?: number;
           imageCount?: number;
+          videoCount?: number;
           error?: string;
         };
         if (!res.ok) throw new Error(data.error || "다운로드에 실패했습니다.");
         setStatus(
           `"${data.name || item.name}" 다운로드 완료 — 이미지 ${
             data.imageCount ?? 0
-          }장 (새로 받은 파일 ${data.downloaded ?? 0}개)`
+          }장 · 영상 ${data.videoCount ?? 0}개 (새로 받은 파일 ${
+            data.downloaded ?? 0
+          }개)`
         );
         onDownloaded(item.id);
       } catch (caught) {
@@ -158,7 +168,11 @@ export function RunpodShareDownloadDialog({
           <DialogTitle>공유 {label} 다운로드</DialogTitle>
           <DialogDescription>
             RunPod에 올라온 {label} 목록입니다. 다운로드하면 {label}와 그 안의
-            이미지가 이 컴퓨터로 내려받아집니다.
+            {kind === "workspaces" ? "이미지·영상이" : "이미지가"} 이 컴퓨터로
+            내려받아집니다.
+            {kind === "workspaces" && media !== "images"
+              ? " 영상은 이 화면에, 이미지는 이미지 생성 화면에 나타납니다."
+              : ""}
           </DialogDescription>
         </DialogHeader>
 
@@ -181,7 +195,9 @@ export function RunpodShareDownloadDialog({
             </select>
           ) : (
             <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-              {pods[0]?.label || "설정된 포드 없음"}
+              {pods.length === 0 && loading
+                ? "포드 확인 중…"
+                : pods[0]?.label || "설정된 포드 없음"}
             </span>
           )}
           <Button
@@ -220,6 +236,7 @@ export function RunpodShareDownloadDialog({
                   </p>
                   <p className="truncate text-[11px] text-muted-foreground">
                     이미지 {item.imageCount ?? 0}장
+                    {kind === "workspaces" ? ` · 영상 ${item.videoCount ?? 0}개` : ""}
                     {item.sharedBy ? ` · ${item.sharedBy}` : ""}
                     {formatWhen(item.updatedAt)
                       ? ` · ${formatWhen(item.updatedAt)}`

@@ -5,6 +5,7 @@ import {
   listRemoteShares,
   listSharePods,
   pushShare,
+  resolveSharePod,
   readShareState,
   unshare,
 } from "@/lib/runpod-share";
@@ -29,18 +30,24 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Invalid share kind" }, { status: 400 });
   }
 
-  const podId = new URL(request.url).searchParams.get("podId");
+  const requestedPodId = new URL(request.url).searchParams.get("podId");
   const pods = await listSharePods().catch(() => []);
+  // Resolved up front so a failed listing still tells the client which pod it
+  // was talking to — otherwise the dialog's pod selector would show one pod
+  // while its state held none.
+  const resolvedPodId = await resolveSharePod(requestedPodId)
+    .then((pod) => pod.id)
+    .catch(() => requestedPodId ?? pods[0]?.id ?? "");
 
   try {
-    const { pod, items } = await listRemoteShares(kind, podId);
-    return NextResponse.json({ pods, podId: pod.id, items });
+    const { items } = await listRemoteShares(kind, resolvedPodId);
+    return NextResponse.json({ pods, podId: resolvedPodId, items });
   } catch (error) {
     // A stopped or unreachable pod is an expected state, not a server fault:
     // report it so the dialog can show the reason next to an empty list.
     return NextResponse.json({
       pods,
-      podId: podId ?? "",
+      podId: resolvedPodId,
       items: [],
       error: errorMessage(error, "RunPod 공유 목록을 불러오지 못했습니다."),
     });
@@ -71,6 +78,7 @@ export async function POST(request: NextRequest) {
       share: state[kind][body.id as string] ?? null,
       uploaded: result.uploaded,
       imageCount: result.imageCount,
+      videoCount: result.videoCount,
       podLabel: result.pod.label || result.pod.podId,
     });
   } catch (error) {

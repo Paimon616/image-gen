@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
       name: result.name,
       downloaded: result.downloaded,
       imageCount: result.imageCount,
+      videoCount: result.videoCount,
     });
   } catch (error) {
     return NextResponse.json(

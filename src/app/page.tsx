@@ -269,6 +269,9 @@ export default function Home() {
     podDesiredStatus: "",
   });
   const runpodConnectionRef = useRef<RunpodConnectionStatus | null>(null);
+  // True once the running-pod auto-select has run for the current stint in
+  // RunPod mode, so it does not fight a manual pick from the dropdown.
+  const autoPodSelectRef = useRef(false);
   const autoRunpodCheckKeyRef = useRef("");
   const autoRunpodFileSigRef = useRef("");
   const [runpodFilesChecked, setRunpodFilesChecked] = useState(false);
@@ -516,11 +519,25 @@ export default function Home() {
       } catch {}
       if (target === "runpod") {
         resetRunpodConnection();
-        void autoSelectRunningRunpodPod();
+      } else {
+        // Leaving RunPod mode arms the auto-select again for the next time it is
+        // turned on (see the effect below).
+        autoPodSelectRef.current = false;
       }
     },
-    [autoSelectRunningRunpodPod, resetRunpodConnection]
+    [resetRunpodConnection]
   );
+
+  // Pick a running pod whenever RunPod mode is active — both when the user flips
+  // the toggle and when the mode is restored from a previous visit — so the
+  // selection is never left pointing at a stopped pod. Runs once per switch into
+  // RunPod mode; a manual pick from the dropdown is not overridden.
+  useEffect(() => {
+    if (generationTarget !== "runpod" || runpodPods.length === 0) return;
+    if (autoPodSelectRef.current) return;
+    autoPodSelectRef.current = true;
+    void autoSelectRunningRunpodPod();
+  }, [autoSelectRunningRunpodPod, generationTarget, runpodPods]);
 
   const refreshComfyStatus = useCallback(async () => {
     try {

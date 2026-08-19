@@ -10,7 +10,11 @@ import {
 import { createPortal } from "react-dom";
 import { Check, FolderPlus, Loader2, Plus } from "lucide-react";
 import { useStore } from "@/lib/store";
-import type { GeneratedImage } from "@/lib/types";
+import {
+  useMediaWorkspaceStore,
+  type VideoWorkspaceMedia,
+} from "@/lib/media-workspace-store";
+import type { GeneratedImage, WorkspaceSummary } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 
 interface WorkspacePickerProps {
@@ -20,18 +24,33 @@ interface WorkspacePickerProps {
   triggerVariant?: "overlay" | "outline";
 }
 
+interface PickerChromeProps {
+  align?: "left" | "right";
+  triggerClassName?: string;
+  triggerVariant?: "overlay" | "outline";
+}
+
 const POPOVER_WIDTH = 224; // matches w-56
 const MARGIN = 8;
 
-export function WorkspacePicker({
-  image,
+// The popover itself, shared by every media. What differs per caller is only the
+// workspace list it renders and what a checkbox does — images, ComfyUI videos
+// and SeeDance clips all pick from the same workspaces.
+function WorkspacePickerBase({
+  workspaces,
+  assignedIds,
+  onToggle,
+  onCreate,
   align = "right",
   triggerClassName = "",
   triggerVariant = "overlay",
-}: WorkspacePickerProps) {
-  const workspaces = useStore((state) => state.workspaces);
-  const setImageWorkspace = useStore((state) => state.setImageWorkspace);
-  const createWorkspace = useStore((state) => state.createWorkspace);
+}: PickerChromeProps & {
+  workspaces: WorkspaceSummary[];
+  assignedIds: string[];
+  onToggle: (workspaceId: string, assigned: boolean) => void | Promise<void>;
+  /** Creates a workspace and assigns this file to it. */
+  onCreate: (name: string) => Promise<void>;
+}) {
   const language = useStore((state) => state.language);
   const ko = language === "ko";
 
@@ -44,7 +63,7 @@ export function WorkspacePicker({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
 
-  const memberIds = new Set(image.workspaces ?? []);
+  const memberIds = new Set(assignedIds);
   const memberCount = memberIds.size;
 
   // The popover renders in a portal on document.body so it is never clipped by
@@ -125,11 +144,8 @@ export function WorkspacePicker({
 
     setCreating(true);
     try {
-      const workspace = await createWorkspace(name);
-      if (workspace) {
-        await setImageWorkspace(image, workspace.id, true);
-        setNewName("");
-      }
+      await onCreate(name);
+      setNewName("");
     } finally {
       setCreating(false);
     }
@@ -165,9 +181,7 @@ export function WorkspacePicker({
                     <button
                       key={workspace.id}
                       type="button"
-                      onClick={() =>
-                        void setImageWorkspace(image, workspace.id, !checked)
-                      }
+                      onClick={() => void onToggle(workspace.id, !checked)}
                       className="flex w-full items-center gap-2 rounded px-1.5 py-1.5 text-left text-sm transition-colors hover:bg-accent"
                     >
                       <span
@@ -247,5 +261,70 @@ export function WorkspacePicker({
       </Button>
       {popover}
     </>
+  );
+}
+
+export function WorkspacePicker({ image, ...chrome }: WorkspacePickerProps) {
+  const workspaces = useStore((state) => state.workspaces);
+  const setImageWorkspace = useStore((state) => state.setImageWorkspace);
+  const createWorkspace = useStore((state) => state.createWorkspace);
+
+  return (
+    <WorkspacePickerBase
+      {...chrome}
+      workspaces={workspaces}
+      assignedIds={image.workspaces ?? []}
+      onToggle={(workspaceId, assigned) =>
+        setImageWorkspace(image, workspaceId, assigned)
+      }
+      onCreate={async (name) => {
+        const workspace = await createWorkspace(name);
+        if (workspace) await setImageWorkspace(image, workspace.id, true);
+      }}
+    />
+  );
+}
+
+// The video screens' picker. It holds no list of its own: the caller owns the
+// video record, so the new membership is handed back and the page updates its
+// list — the same shape the image store handles internally.
+export function MediaWorkspacePicker({
+  media,
+  filename,
+  workspaceIds,
+  onChange,
+  ...chrome
+}: PickerChromeProps & {
+  media: VideoWorkspaceMedia;
+  filename: string;
+  workspaceIds: string[];
+  onChange: (workspaceIds: string[]) => void;
+}) {
+  const workspaces = useMediaWorkspaceStore(
+    (state) => state.byMedia[media].workspaces
+  );
+  const setFileWorkspace = useMediaWorkspaceStore(
+    (state) => state.setFileWorkspace
+  );
+  const createWorkspace = useMediaWorkspaceStore(
+    (state) => state.createWorkspace
+  );
+
+  const assign = async (workspaceId: string, assigned: boolean) => {
+    const next = await setFileWorkspace(media, filename, workspaceId, assigned);
+    if (next) onChange(next);
+  };
+
+  return (
+    <WorkspacePickerBase
+      {...chrome}
+      workspaces={workspaces}
+      assignedIds={workspaceIds}
+      onToggle={assign}
+      onCreate={async (name) => {
+        const workspace = await createWorkspace(media, name);
+        if (workspace) await assign(workspace.id, true);
+      }}
+    />
   );
 }

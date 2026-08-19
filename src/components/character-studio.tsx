@@ -12,6 +12,7 @@ import { createPortal } from "react-dom";
 import {
   Clipboard,
   Cloud,
+  CloudAlert,
   CloudDownload,
   CloudOff,
   Copy,
@@ -329,18 +330,42 @@ function CharacterRow({
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1">
-          {shared && (
+          {/* Share state rides in the row itself, not on the hover-only "…"
+              button, so an in-flight upload or a failed sync is visible at a
+              glance without pointing at the row. */}
+          {sharing ? (
+            <Loader2
+              className="size-3 shrink-0 animate-spin text-primary"
+              aria-label="RunPod에 공유하는 중"
+            />
+          ) : shared && shareError ? (
+            <CloudAlert
+              className="size-3 shrink-0 text-destructive"
+              aria-label="RunPod 동기화 실패"
+            />
+          ) : shared ? (
             <Cloud
               className="size-3 shrink-0 text-primary"
               aria-label="RunPod에 공유됨"
             />
-          )}
+          ) : null}
           <span className="block truncate text-sm font-semibold">
             {character.name || "이름 없음"}
           </span>
         </span>
-        <span className="block truncate text-xs text-muted-foreground">
-          {character.summary || "간단 정보 없음"}
+        <span
+          className={`block truncate text-xs ${
+            !sharing && shared && shareError
+              ? "text-destructive"
+              : "text-muted-foreground"
+          }`}
+          title={!sharing && shared && shareError ? shareError : undefined}
+        >
+          {sharing
+            ? "RunPod에 공유하는 중…"
+            : shared && shareError
+              ? shareError
+              : character.summary || "간단 정보 없음"}
         </span>
       </span>
       <button
@@ -355,11 +380,7 @@ function CharacterRow({
         aria-expanded={menuOpen}
         title="복제·공유·삭제"
       >
-        {sharing ? (
-          <Loader2 className="size-4 animate-spin" />
-        ) : (
-          <MoreHorizontal className="size-4" />
-        )}
+        <MoreHorizontal className="size-4" />
       </button>
 
       {menuOpen &&
@@ -777,6 +798,18 @@ export function CharacterStudio() {
       await refreshShares();
     })();
   }, [refreshShares]);
+  // Background syncs (an image added to a shared character, a studio edit) run
+  // server-side, so poll while something is shared to keep the badges honest —
+  // a failed sync, or its recovery, shows up without a reload.
+  const hasShares = Object.keys(shares).length > 0;
+  useEffect(() => {
+    if (!hasShares) return;
+    const timer = setInterval(() => {
+      void refreshShares();
+    }, 10_000);
+    return () => clearInterval(timer);
+  }, [hasShares, refreshShares]);
+
 
   const shareCharacter = useCallback(
     async (id: string) => {

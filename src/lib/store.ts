@@ -1,4 +1,5 @@
-import { create } from "zustand";
+import { create, type StateCreator } from "zustand";
+import { persist } from "zustand/middleware";
 import {
   DEFAULT_PARAMS,
   normalizeImageDimension,
@@ -83,6 +84,9 @@ interface AppState {
 export type AppLanguage = "ko" | "en";
 
 const LANGUAGE_STORAGE_KEY = "image-gen-language";
+// The generation form's inputs are persisted under their own key so the values a
+// user dialed in survive navigating away from the page and a full reload.
+const PARAMS_STORAGE_KEY = "image-gen:params";
 const IMAGE_PAGE_SIZE = 18;
 
 function getInitialLanguage(): AppLanguage {
@@ -174,7 +178,7 @@ function mergeImages(
   return sortImagesNewestFirst(mergedImages);
 }
 
-export const useStore = create<AppState>((set) => ({
+const createAppState: StateCreator<AppState> = (set) => ({
   params: DEFAULT_PARAMS,
   status: { state: "idle", progress: 0, message: "" },
   images: [],
@@ -602,4 +606,41 @@ export const useStore = create<AppState>((set) => ({
 
     void useStore.getState().fetchWorkspaces();
   },
-}));
+});
+
+// Only the generation form's inputs are persisted. Everything else in the store
+// is either server-backed (images, workspaces) or per-visit (status, selection),
+// so restoring it would show stale data.
+interface PersistedAppState {
+  params: GenerationParams;
+}
+
+export const useStore = create<AppState>()(
+  persist(createAppState, {
+    name: PARAMS_STORAGE_KEY,
+    version: 1,
+    // Rehydration is deferred to after mount (see <StoreHydration />) so the
+    // first client render matches the server-rendered HTML.
+    skipHydration: true,
+    partialize: (state): PersistedAppState => ({ params: state.params }),
+    // Layer the saved values over the current defaults so params added after the
+    // snapshot was written still get their default instead of `undefined`.
+    merge: (persisted, current) => {
+      const savedParams = (persisted as Partial<PersistedAppState> | undefined)
+        ?.params;
+      return savedParams
+        ? { ...current, params: { ...DEFAULT_PARAMS, ...savedParams } }
+        : current;
+    },
+  })
+);
+
+// Reading localStorage while the store is created would desync the server
+// render, so the page triggers the restore once after mount instead.
+let paramsRehydrated = false;
+
+export function hydratePersistedParams() {
+  if (paramsRehydrated || typeof window === "undefined") return;
+  paramsRehydrated = true;
+  void useStore.persist.rehydrate();
+}

@@ -14,6 +14,8 @@ import {
   type SeedanceResolution,
   type SeedanceVideo,
 } from "@/lib/seedance";
+import { toggleFileWorkspace, workspaceExists } from "@/lib/workspaces";
+import { notifyWorkspaceChanged } from "@/lib/runpod-share";
 
 export const runtime = "nodejs";
 // Generation polls ModelArk for up to ~10 minutes; keep the function alive.
@@ -110,6 +112,14 @@ export async function POST(req: NextRequest) {
 
   const params = normalizeParams(rawBody);
   const clientId = typeof rawBody.clientId === "string" ? rawBody.clientId : randomUUID();
+  // Only honor a workspace target that still exists, so a stale id from the
+  // client can't create dangling assignments.
+  const rawWorkspaceId =
+    typeof rawBody.workspaceId === "string" ? rawBody.workspaceId.trim() : "";
+  const workspaceId =
+    rawWorkspaceId && (await workspaceExists(rawWorkspaceId))
+      ? rawWorkspaceId
+      : "";
 
   const encoder = new TextEncoder();
   const abortSignal = req.signal;
@@ -301,6 +311,21 @@ export async function POST(req: NextRequest) {
         };
 
         await writeFile(join(SEEDANCE_OUTPUT_DIR, filename), buffer);
+
+        // File the clip under the workspace the results grid is filtered to, so
+        // it shows up there right away — the same auto-registration the image
+        // and ComfyUI video generators do.
+        if (workspaceId) {
+          video.workspaces = await toggleFileWorkspace(
+            "seedance",
+            filename,
+            workspaceId,
+            true
+          ).catch(() => [] as string[]);
+          // A new clip in a shared workspace is pushed to the pod on its own.
+          void notifyWorkspaceChanged(workspaceId).catch(() => {});
+        }
+
         await writeFile(
           join(SEEDANCE_OUTPUT_DIR, `${fileId}.json`),
           JSON.stringify(video, null, 2),

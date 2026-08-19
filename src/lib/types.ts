@@ -138,9 +138,23 @@ export interface GeneratedImage {
   situationId?: string;
 }
 
-// Sentinel filter id for images that belong to no workspace. Not a real
-// workspace — used as an activeWorkspaceId value and image-list query param.
+// Sentinel filter id for items that belong to no workspace. Not a real
+// workspace — used as an activeWorkspaceId value and list query param.
 export const UNGROUPED_WORKSPACE_ID = "__ungrouped__";
+
+// Workspaces are one shared set of folders across the whole app; what differs
+// per screen is only which media the folder is filtered by. Image generation
+// sees its images, video generation its ComfyUI videos, and the SeeDance screen
+// its SeeDance clips — the workspace (and its RunPod share) is the same record.
+export type WorkspaceMedia = "images" | "videos" | "seedance";
+
+export const WORKSPACE_MEDIA: WorkspaceMedia[] = ["images", "videos", "seedance"];
+
+export function isWorkspaceMedia(value: unknown): value is WorkspaceMedia {
+  return (
+    value === "images" || value === "videos" || value === "seedance"
+  );
+}
 
 export interface Workspace {
   id: string;
@@ -326,6 +340,10 @@ export interface GeneratedVideo {
   filename: string;
   contentType: string;
   audios?: GeneratedAudio[];
+  // Workspace ids this video belongs to — the same workspaces the image gallery
+  // uses, so a folder can hold both images and videos while each screen only
+  // shows its own media.
+  workspaces?: string[];
   // Present while a video is queued/generating (client-only pending card) and
   // set to a terminal state on error/cancel. Reuses the image status shape.
   generation?: ImageGenerationStatus;
