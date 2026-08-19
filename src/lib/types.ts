@@ -292,6 +292,47 @@ export interface ImageGenerationStatus {
 
 export type VideoModelPreset = "wan-smoothmix" | "wan-base" | "ltx-10eros";
 
+// Automatic NSFW censoring applied in-graph, just before frames become a video.
+// The censor node (ComfyUI-Nudenet `ApplyNudenet`) detects the targeted regions
+// per frame and obscures them; `method` picks how (mosaic/blur), `min_score` the
+// detection confidence gate, `blocks` the mosaic/blur coarseness, and `targets`
+// the NudeNet label ids to censor (defaults to genitalia + anus).
+export type CensorMethod = "pixelate" | "blur" | "gaussian_blur";
+
+// NudeNet detection labels. `true` = censor this region, `false` = leave it.
+export type CensorLabel =
+  | "FEMALE_GENITALIA_EXPOSED"
+  | "FEMALE_GENITALIA_COVERED"
+  | "MALE_GENITALIA_EXPOSED"
+  | "ANUS_EXPOSED"
+  | "ANUS_COVERED"
+  | "BUTTOCKS_EXPOSED"
+  | "FEMALE_BREAST_EXPOSED";
+
+export interface CensorSettings {
+  enabled: boolean;
+  method: CensorMethod;
+  min_score: number;
+  blocks: number;
+  targets: CensorLabel[];
+}
+
+// Genitalia-focused default, matching the user's stated goal ("성기 검열").
+export const DEFAULT_CENSOR_TARGETS: CensorLabel[] = [
+  "FEMALE_GENITALIA_EXPOSED",
+  "FEMALE_GENITALIA_COVERED",
+  "MALE_GENITALIA_EXPOSED",
+  "ANUS_EXPOSED",
+];
+
+export const DEFAULT_CENSOR_SETTINGS: CensorSettings = {
+  enabled: false,
+  method: "pixelate",
+  min_score: 0.25,
+  blocks: 8,
+  targets: DEFAULT_CENSOR_TARGETS,
+};
+
 export interface VideoGenerationParams {
   video_model: VideoModelPreset;
   video_pipeline: string;
@@ -321,6 +362,7 @@ export interface VideoGenerationParams {
   sound_prompt: string;
   negative_sound_prompt: string;
   sound_duration_seconds: number;
+  censor: CensorSettings;
 }
 
 export interface GeneratedAudio {
@@ -528,6 +570,7 @@ export const DEFAULT_VIDEO_PARAMS: VideoGenerationParams = {
   sound_prompt: "",
   negative_sound_prompt: "",
   sound_duration_seconds: 6,
+  censor: DEFAULT_CENSOR_SETTINGS,
 };
 
 export const IMAGE_SIZES = [

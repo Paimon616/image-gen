@@ -1,4 +1,6 @@
 import type {
+  CensorLabel,
+  CensorSettings,
   ControlNetConfig,
   EmbeddingConfig,
   GenerationParams,
@@ -2712,7 +2714,116 @@ function applyVideoPipelineSettingsToWorkflow(
     injectVideoPipelineLora(workflow, slot, settings);
   }
 
+  injectCensorNodes(workflow, params.censor);
+
   return workflow;
+}
+
+// Every NudeNet detection label. ComfyUI-Nudenet's `FilterdLabel` node requires a
+// boolean for each; `true` means "censor this region". Kept in sync with the
+// upstream node's LABELS_CLASSIDS_MAPPING so validation never rejects the prompt.
+const NUDENET_ALL_LABELS = [
+  "FEMALE_GENITALIA_COVERED",
+  "FACE_FEMALE",
+  "BUTTOCKS_EXPOSED",
+  "FEMALE_BREAST_EXPOSED",
+  "FEMALE_GENITALIA_EXPOSED",
+  "MALE_BREAST_EXPOSED",
+  "ANUS_EXPOSED",
+  "FEET_EXPOSED",
+  "BELLY_COVERED",
+  "FEET_COVERED",
+  "ARMPITS_COVERED",
+  "ARMPITS_EXPOSED",
+  "FACE_MALE",
+  "BELLY_EXPOSED",
+  "MALE_GENITALIA_EXPOSED",
+  "ANUS_COVERED",
+  "FEMALE_BREAST_COVERED",
+  "BUTTOCKS_COVERED",
+] as const;
+
+// Splice an automatic NSFW censor onto the frame stream of a video workflow. Every
+// native `CreateVideo` and VideoHelperSuite `VHS_VideoCombine` node turns an IMAGE
+// batch into a video via its `images` input, so that edge is the single seam where
+// every pipeline (LTX / WAN / 10Eros) can be intercepted the same way. We insert a
+// NudeNet detect-and-censor node in front of each such node and repoint `images`
+// through it — the same "inject + rewire an edge" technique as the LoRA slots above.
+// The whole decoded batch flows through one ApplyNudenet call, so detection runs on
+// every frame. When censoring is disabled the workflow is left byte-for-byte intact.
+function injectCensorNodes(
+  workflow: Record<string, unknown>,
+  censor: CensorSettings | undefined
+) {
+  if (!censor?.enabled) return;
+
+  const targets = censor.targets?.length ? censor.targets : NUDENET_ALL_LABELS;
+  const targetSet = new Set<CensorLabel | string>(targets);
+
+  // Find the image→video seams: nodes that consume an IMAGE batch as `images`.
+  const seams: Array<{ node: Record<string, unknown>; edge: [string, number] }> = [];
+  for (const node of Object.values(workflow)) {
+    if (!node || typeof node !== "object" || Array.isArray(node)) continue;
+    const classType = (node as { class_type?: string }).class_type;
+    if (classType !== "CreateVideo" && classType !== "VHS_VideoCombine") continue;
+    const inputs = (node as { inputs?: Record<string, unknown> }).inputs;
+    const images = inputs?.images;
+    if (
+      !Array.isArray(images) ||
+      images.length !== 2 ||
+      typeof images[0] !== "string"
+    ) {
+      // `images` is a raw batch rather than an upstream edge (unusual) — nothing to
+      // rewire, so skip rather than dangle a broken connection.
+      continue;
+    }
+    seams.push({
+      node: node as Record<string, unknown>,
+      edge: [images[0], Number(images[1]) || 0],
+    });
+  }
+
+  if (!seams.length) return;
+
+  const modelName = process.env.COMFYUI_NUDENET_MODEL?.trim() || "nudenet.onnx";
+  const modelNodeId = "__censor_nudenet_model";
+  const labelsNodeId = "__censor_labels";
+
+  workflow[modelNodeId] = {
+    class_type: "NudenetModelLoader",
+    inputs: { model: modelName },
+  };
+
+  // `true` = censor. All 18 labels are supplied so the node's required inputs are
+  // fully satisfied; only the targeted regions are flagged for censoring.
+  const labelInputs: Record<string, boolean> = {};
+  for (const label of NUDENET_ALL_LABELS) {
+    labelInputs[label] = targetSet.has(label);
+  }
+  workflow[labelsNodeId] = {
+    class_type: "FilterdLabel",
+    inputs: labelInputs,
+  };
+
+  const minScore = Number.isFinite(censor.min_score) ? censor.min_score : 0.25;
+  const blocks = Number.isFinite(censor.blocks) ? Math.round(censor.blocks) : 8;
+
+  seams.forEach(({ node, edge }, index) => {
+    const applyNodeId = `__censor_apply_${index}`;
+    workflow[applyNodeId] = {
+      class_type: "ApplyNudenet",
+      inputs: {
+        nudenet_model: [modelNodeId, 0],
+        image: edge,
+        censor_method: censor.method,
+        filtered_labels: [labelsNodeId, 0],
+        min_score: minScore,
+        blocks,
+        block_count_scaling: "fixed",
+      },
+    };
+    (node.inputs as Record<string, unknown>).images = [applyNodeId, 0];
+  });
 }
 
 // Splice an optional LoRA loader into a video workflow's model graph. Unlike the

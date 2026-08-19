@@ -32,7 +32,8 @@
     "setup:itp-nodes": "bash scripts/setup-comfyui-itp-nodes.sh",
     "setup:itp-nodes:win": "powershell -ExecutionPolicy Bypass -File scripts/setup-comfyui-itp-nodes.ps1",
     "setup:pulid": "bash scripts/setup-comfyui-pulid.sh",
-    "setup:pulid:win": "powershell -ExecutionPolicy Bypass -File scripts/setup-comfyui-pulid.ps1"
+    "setup:pulid:win": "powershell -ExecutionPolicy Bypass -File scripts/setup-comfyui-pulid.ps1",
+    "setup:comfyui-censor": "bash scripts/setup-comfyui-censor.sh"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

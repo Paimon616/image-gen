@@ -48,10 +48,12 @@ import {
   useRunpodDownloadStore,
   type RunpodDownloadItem,
 } from "@/lib/runpod-download-store";
-import { takeVideoReference } from "@/lib/video-reference";
+import { takeVideoReference, toAbsoluteImageUrl } from "@/lib/video-reference";
 import {
+  DEFAULT_CENSOR_SETTINGS,
   DEFAULT_VIDEO_PARAMS,
   UNGROUPED_WORKSPACE_ID,
+  type CensorMethod,
   type CivitaiImportResult,
   type GeneratedVideo,
   type GenerationStatus,
@@ -86,6 +88,7 @@ import {
   Play,
   RefreshCcw,
   Server,
+  ShieldAlert,
   Wrench,
   RotateCcw,
   Trash2,
@@ -2785,6 +2788,13 @@ export default function VideoPage() {
 
     const jobParams: VideoGenerationParams = {
       ...source,
+      // Generation only uploads the start image into ComfyUI when it looks
+      // remote, so a relative `/api/images/...` would reach LoadImage verbatim
+      // and fail validation. Absolutize here — the last gate every entry point
+      // (gallery import, handoff, Paimon, the situation picker) passes through.
+      source_image: source.source_image
+        ? toAbsoluteImageUrl(source.source_image)
+        : source.source_image,
       // A pipeline that renders its own audio never needs the separate pass; drop
       // any stale toggle so the backend doesn't queue a redundant audio workflow.
       enable_sound: source.enable_sound && !videoIncludesAudio,
@@ -3693,6 +3703,125 @@ export default function VideoPage() {
                 </div>
               )}
               </>
+            )}
+          </EditorSection>
+
+          <Separator />
+
+          <EditorSection
+            title={language === "ko" ? "검열 (자동 모자이크)" : "Censor (auto-mosaic)"}
+            description={
+              language === "ko"
+                ? "성기 등 지정 부위를 프레임마다 자동 탐지해 모자이크/블러 처리합니다. (NudeNet)"
+                : "Automatically detects and mosaics/blurs the targeted regions (e.g. genitalia) on every frame. (NudeNet)"
+            }
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <Label className="flex items-center gap-2 text-xs font-medium text-foreground">
+                  <ShieldAlert className="h-3.5 w-3.5 text-muted-foreground" />
+                  {language === "ko" ? "자동 검열" : "Auto censor"}
+                </Label>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {language === "ko"
+                    ? "생성된 영상의 프레임 배치에 검열 노드를 삽입합니다."
+                    : "Splices a censor node onto the generated frame batch."}
+                </p>
+              </div>
+              <Switch
+                checked={(params.censor ?? DEFAULT_CENSOR_SETTINGS).enabled}
+                disabled={isGenerating}
+                onCheckedChange={(checked) =>
+                  updateParams({
+                    censor: {
+                      ...(params.censor ?? DEFAULT_CENSOR_SETTINGS),
+                      enabled: Boolean(checked),
+                    },
+                  })
+                }
+                aria-label="Auto censor"
+              />
+            </div>
+
+            {(params.censor ?? DEFAULT_CENSOR_SETTINGS).enabled && (
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                <div>
+                  <Label className="mb-1.5 block text-xs text-muted-foreground">
+                    {language === "ko" ? "방식" : "Method"}
+                  </Label>
+                  <select
+                    value={(params.censor ?? DEFAULT_CENSOR_SETTINGS).method}
+                    disabled={isGenerating}
+                    onChange={(event) =>
+                      updateParams({
+                        censor: {
+                          ...(params.censor ?? DEFAULT_CENSOR_SETTINGS),
+                          method: event.target.value as CensorMethod,
+                        },
+                      })
+                    }
+                    className="h-9 w-full rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="pixelate">
+                      {language === "ko" ? "모자이크" : "Pixelate"}
+                    </option>
+                    <option value="blur">{language === "ko" ? "블러" : "Blur"}</option>
+                    <option value="gaussian_blur">
+                      {language === "ko" ? "가우시안 블러" : "Gaussian blur"}
+                    </option>
+                  </select>
+                </div>
+                <div>
+                  <Label className="mb-1.5 block text-xs text-muted-foreground">
+                    {language === "ko" ? "탐지 임계값" : "Min score"}
+                  </Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    disabled={isGenerating}
+                    value={(params.censor ?? DEFAULT_CENSOR_SETTINGS).min_score}
+                    onChange={(event) =>
+                      updateParams({
+                        censor: {
+                          ...(params.censor ?? DEFAULT_CENSOR_SETTINGS),
+                          min_score: numericValue(
+                            event.target.value,
+                            DEFAULT_CENSOR_SETTINGS.min_score
+                          ),
+                        },
+                      })
+                    }
+                    className="h-9 text-xs"
+                  />
+                </div>
+                <div>
+                  <Label className="mb-1.5 block text-xs text-muted-foreground">
+                    {language === "ko" ? "강도(블록)" : "Blocks"}
+                  </Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={100}
+                    step={1}
+                    disabled={isGenerating}
+                    value={(params.censor ?? DEFAULT_CENSOR_SETTINGS).blocks}
+                    onChange={(event) =>
+                      updateParams({
+                        censor: {
+                          ...(params.censor ?? DEFAULT_CENSOR_SETTINGS),
+                          blocks: numericValue(
+                            event.target.value,
+                            DEFAULT_CENSOR_SETTINGS.blocks
+                          ),
+                        },
+                      })
+                    }
+                    className="h-9 text-xs"
+                  />
+                </div>
+              </div>
             )}
           </EditorSection>
 

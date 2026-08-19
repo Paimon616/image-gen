@@ -31,6 +31,18 @@
       "name": "PuLID_ComfyUI",
       "repo": "https://github.com/cubiq/PuLID_ComfyUI.git",
       "ref": "93e0c4c226b87b23c0009d671978bad0e77289ff"
+    },
+    {
+      "$comment": "NSFW auto-censor. Provides ApplyNudenet / NudenetModelLoader / FilterdLabel used by the video censoring feature (injectCensorNodes in src/lib/comfyui.ts). Detects targeted regions per frame and obscures them (pixelate/blur). Needs an ONNX detector under ComfyUI/models/Nudenet — fetch it with: npm run setup:comfyui-censor",
+      "name": "ComfyUI-Nudenet",
+      "repo": "https://github.com/phuvinh010701/ComfyUI-Nudenet.git",
+      "ref": "61a3272e4615272f05cef7e4b5e7acb60c13c646"
+    },
+    {
+      "$comment": "SAM2 (Segment Anything 2) segmentation + video mask propagation. Not yet wired into the shipped censor path (NudeNet handles detect+censor in-graph), but installed so a precise temporally-stable mask pass can be added later. Pairs with the already-installed Florence2 via its Florence2toCoordinates node. SAM2 checkpoints auto-download through its DownloadAndLoadSAM2Model node.",
+      "name": "ComfyUI-segment-anything-2",
+      "repo": "https://github.com/kijai/ComfyUI-segment-anything-2.git",
+      "ref": "0c35fff5f382803e2310103357b5e985f5437f32"
     }
   ]
 }

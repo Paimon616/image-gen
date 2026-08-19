@@ -13,9 +13,14 @@ import {
   type ComfyGeneratedMedia,
 } from "@/lib/comfyui";
 import {
+  DEFAULT_CENSOR_SETTINGS,
+  DEFAULT_CENSOR_TARGETS,
   DEFAULT_VIDEO_PARAMS,
   normalizeGenerationSeed,
   normalizeImageDimension,
+  type CensorLabel,
+  type CensorMethod,
+  type CensorSettings,
   type VideoModelPreset,
   type VideoGenerationParams,
 } from "@/lib/types";
@@ -110,6 +115,36 @@ function clampNumber(value: unknown, fallback: number, min: number, max: number)
   return Math.min(Math.max(numeric, min), max);
 }
 
+const CENSOR_METHODS = new Set<CensorMethod>(["pixelate", "blur", "gaussian_blur"]);
+const CENSOR_LABELS = new Set<CensorLabel>([
+  "FEMALE_GENITALIA_EXPOSED",
+  "FEMALE_GENITALIA_COVERED",
+  "MALE_GENITALIA_EXPOSED",
+  "ANUS_EXPOSED",
+  "ANUS_COVERED",
+  "BUTTOCKS_EXPOSED",
+  "FEMALE_BREAST_EXPOSED",
+]);
+
+function normalizeCensor(raw: Partial<CensorSettings> | undefined): CensorSettings {
+  if (!raw || typeof raw !== "object") return DEFAULT_CENSOR_SETTINGS;
+  const method = CENSOR_METHODS.has(raw.method as CensorMethod)
+    ? (raw.method as CensorMethod)
+    : DEFAULT_CENSOR_SETTINGS.method;
+  const targets = Array.isArray(raw.targets)
+    ? (raw.targets.filter((label) => CENSOR_LABELS.has(label as CensorLabel)) as CensorLabel[])
+    : DEFAULT_CENSOR_TARGETS;
+  return {
+    enabled: Boolean(raw.enabled),
+    method,
+    min_score: clampNumber(raw.min_score, DEFAULT_CENSOR_SETTINGS.min_score, 0, 1),
+    blocks: Math.round(clampNumber(raw.blocks, DEFAULT_CENSOR_SETTINGS.blocks, 1, 100)),
+    // An enabled censor with no targets would censor nothing, silently defeating the
+    // toggle — fall back to the genitalia defaults so "on" always means something.
+    targets: targets.length ? targets : DEFAULT_CENSOR_TARGETS,
+  };
+}
+
 function normalizeVideoParams(rawBody: Partial<VideoGenerationParams>) {
   const videoModel = VIDEO_MODEL_PRESETS.has(rawBody.video_model as VideoModelPreset)
     ? (rawBody.video_model as VideoModelPreset)
@@ -194,6 +229,7 @@ function normalizeVideoParams(rawBody: Partial<VideoGenerationParams>) {
     sound_prompt: String(rawBody.sound_prompt ?? "").trim(),
     negative_sound_prompt: String(rawBody.negative_sound_prompt ?? ""),
     sound_duration_seconds: soundDurationSeconds,
+    censor: normalizeCensor(rawBody.censor),
   } satisfies VideoGenerationParams;
 }
 
