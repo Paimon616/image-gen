@@ -34,7 +34,13 @@ import {
   useMediaWorkspaceStore,
 } from "@/lib/media-workspace-store";
 import { useSeedancePaimonStore } from "@/lib/seedance-paimon-store";
+import { useSeedanceSituationStore } from "@/lib/seedance-situation-store";
+import { DEFAULT_CONVERSATION } from "@/lib/paimon-conversation";
 import { PaimonPanel } from "@/components/paimon-panel";
+import {
+  CharacterSituationPicker,
+  type SituationRunRequest,
+} from "@/components/character-situation-picker";
 import {
   SEEDANCE_DURATION_MAX,
   SEEDANCE_DURATION_MIN,
@@ -607,6 +613,48 @@ export default function SeedancePage() {
     [setVideos]
   );
 
+  // --- Paimon character-situation runs -------------------------------------
+  // A saved situation becomes a clip: its image is inlined as the start frame,
+  // Paimon writes the motion/expression/camera prompt for the requested length,
+  // and (with 자동 생성 on) the clip is submitted. The runner is registered from
+  // here because startGeneration is this page's, so it only exists while the
+  // page is mounted.
+  const situationBatch = useSeedanceSituationStore((s) => s.batch);
+  const cancelSituationBatch = useSeedanceSituationStore((s) => s.cancelBatch);
+  // A turn in flight disables the picker, so a pick can't interleave with it.
+  const paimonLoading = useSeedancePaimonStore(
+    (s) => s.conversations[DEFAULT_CONVERSATION]?.loading ?? false
+  );
+
+  useEffect(() => {
+    useSeedanceSituationStore.getState().setRunner({
+      // Read the params back from the store: the composing turn writes the new
+      // prompt and start frame there ahead of this component's next render.
+      enqueue: () => void startGeneration(useSeedanceStore.getState().params),
+      requiresStartFrame: params.mode === "i2v",
+    });
+    return () => useSeedanceSituationStore.getState().setRunner(null);
+  }, [params.mode, startGeneration]);
+
+  const runSituation = useCallback((request: SituationRunRequest) => {
+    const store = useSeedanceSituationStore.getState();
+    const options = {
+      seconds: request.seconds,
+      autoGenerate: request.autoGenerate,
+      imageBySituation: request.imageBySituation,
+    };
+
+    if (request.situations.length > 1) {
+      void store.runBatch(request.character, request.situations, options);
+    } else {
+      void store.compose(
+        request.character,
+        request.situations[0] ?? null,
+        options
+      );
+    }
+  }, []);
+
   const refreshVideos = useCallback(() => {
     fetch("/api/seedance/videos", { cache: "no-store" })
       .then((res) => res.json())
@@ -981,6 +1029,38 @@ export default function SeedancePage() {
           language === "ko"
             ? "이 인물이 카메라를 보며 천천히 걸어오는 5초 영상 프롬프트를 만들어줘"
             : "Write a 5s prompt of this person walking toward the camera"
+        }
+        toolbar={
+          <CharacterSituationPicker
+            language={language}
+            defaultSeconds={params.duration}
+            minSeconds={SEEDANCE_DURATION_MIN}
+            maxSeconds={SEEDANCE_DURATION_MAX}
+            disabled={paimonLoading}
+            batchRunning={situationBatch !== null}
+            onRun={runSituation}
+          />
+        }
+        footer={
+          situationBatch && (
+            <div className="flex items-center gap-2 border-t border-border bg-secondary/40 px-3 py-2 text-xs">
+              <Loader2 className="size-3 shrink-0 animate-spin" />
+              <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                {language === "ko" ? "상황 순차 생성" : "Situations"}{" "}
+                {situationBatch.done + 1}/{situationBatch.total} ·{" "}
+                {situationBatch.current}
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-6 px-2 text-[11px]"
+                onClick={cancelSituationBatch}
+              >
+                {language === "ko" ? "취소" : "Cancel"}
+              </Button>
+            </div>
+          )
         }
       />
     </div>

@@ -135,6 +135,17 @@ const PAIMON_SYSTEM_PROMPT = [
   "- MULTI-CHARACTER interactions: if the situation involves a second person (tags like 1boy/1male/2girls/patient/another person, or the action targets someone else), NEVER add 'solo' or 'solo focus' — those force a one-person render and make the model reassign the interaction onto the wrong body. Set the correct subject count instead (e.g. 1girl, 1boy) and keep the saved character as the named lead subject.",
   "- Booru/anime models do NOT reliably know WHO acts on WHOM. An action tag like 'holding patient's wrist' or 'wrist grab' is directionally ambiguous and the model often reverses it (the nurse's own wrist gets grabbed instead of her taking the patient's pulse). To lock the direction: (1) make the saved character the clear active agent with explicit self-driven gestures (e.g. 'nurse reaching out, own hand on patient's wrist, pressing two fingers, checking pulse') rather than a symmetric verb; (2) describe the OTHER person minimally and do NOT give them the character's identity/appearance adjectives; (3) when the other person is the one being acted upon, consider POV framing (pov, the acted-upon person as the viewer) or a camera angle that shows the character's hand performing the action on the target; (4) sanity-check the composed prompt reads in the intended direction before emitting it.",
   "- Only use characters present in characterLibrary. Never invent a character that is not listed.",
+  "- A characterLibrary entry may also carry natural-language fields (synopsis, appearanceDescription, and per-situation description / outfitDescription / backgroundDescription). Use them for meaning and staging; use the prompt fields for the model-facing wording.",
+  "",
+  "Character situation to VIDEO rules (mandatory whenever currentParams contains video fields such as video_model / video_pipeline / num_frames / duration):",
+  "- These requests come from the video screens, so the deliverable is a MOTION prompt, not an image prompt. Even when the situation prompt is booru tags, write natural-language cinematography and convert the tags into visible movement.",
+  "- The situation's saved image is usually already installed as the start frame and attached as 시작 이미지. Treat it as frame 0: preserve the face, hair, wardrobe, body, framing, environment, palette, and lighting exactly, and describe only what CHANGES over time. Never restyle or re-stage the start frame.",
+  "- The situation description, prompt, outfit, and background are the scene's ground truth. Do not relocate the scene, change the wardrobe, or add people who are not in the situation.",
+  "- The composed prompt MUST concretely cover, in this order: (1) the subject and wardrobe as seen in the start frame, (2) the ACTION arc with real body mechanics — what the hands, arms, torso, hips, legs, hair, and clothing do and in what order, (3) the FACIAL PERFORMANCE — gaze direction and its shifts, blinks, brows, mouth/lips, breathing, and how the expression evolves, (4) the CAMERA WORK — shot size, camera height/angle, lens feel, and one clear camera move (static, slow push-in, pull-back, pan, tilt, dolly, orbit, handheld drift) with its speed and where it settles, (5) environment and lighting motion, (6) the ending beat.",
+  "- Budget the beats to the requested clip length (roughly one primary beat per 2-3 seconds). A short clip gets ONE continuous action and ONE camera move. Never describe cuts, scene changes, or a second location.",
+  "- Keep every motion physically continuous from the start frame: no teleporting hands, no wardrobe swaps, no identity drift, no extra limbs.",
+  "- Put the result in paramsPatch.prompt (plus a video negative_prompt when negative_prompt exists in currentParams) and leave model, pipeline, resolution, length, duration, and start-frame fields alone unless the user explicitly asked for them.",
+  "- When several situations of the same character are turned into clips in a row, vary the action arc and the camera move instead of repeating one template.",
 
 ].join("\n");
 interface PaimonMessage {
@@ -182,14 +193,24 @@ interface PaimonCharacterSituation {
   prompt: string;
   outfitName?: string;
   backgroundName?: string;
+  // The video surfaces also forward the hand-written natural-language side of
+  // the record (묘사), which is what a motion prompt is written from.
+  description?: string;
+  outfitDescription?: string;
+  outfitPrompt?: string;
+  backgroundDescription?: string;
+  backgroundPrompt?: string;
 }
 
 interface PaimonCharacter {
   name: string;
   summary: string;
   appearancePrompt: string;
-  outfits: PaimonCharacterOutfit[];
-  backgrounds: PaimonCharacterBackground[];
+  // Video surfaces only (see above).
+  synopsis?: string;
+  appearanceDescription?: string;
+  outfits?: PaimonCharacterOutfit[];
+  backgrounds?: PaimonCharacterBackground[];
   situations: PaimonCharacterSituation[];
 }
 

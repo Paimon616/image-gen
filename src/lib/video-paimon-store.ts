@@ -1,3 +1,4 @@
+import { loadSituationLibrary } from "./character-situations";
 import { createPaimonConversationStore } from "./paimon-conversation";
 import { useVideoStore } from "./video-store";
 import { DEFAULT_VIDEO_PARAMS, type VideoGenerationParams } from "./types";
@@ -22,11 +23,14 @@ function sanitizeVideoParamsPatch(value: unknown): Partial<VideoGenerationParams
 export const useVideoPaimonStore = createPaimonConversationStore({
   endpoint: "/api/paimon/chat",
   appliedReply: () => "요청을 반영해서 비디오 설정을 수정했어요.",
-  buildBody: ({ messages, attachments }) => {
+  buildBody: async ({ messages, attachments }) => {
     const params = useVideoStore.getState().params;
     return {
       messages,
       currentParams: params,
+      // The saved characters, so a situation can be named in free-form chat too
+      // (the situation picker also embeds the picked record in its instruction).
+      characterLibrary: await loadSituationLibrary(),
       // Let Paimon actually see the pixels of the start/reference image, not just
       // its URL: send it as the first visual attachment. Local /api/uploads and
       // /api/images URLs are inlined server-side by the chat route.

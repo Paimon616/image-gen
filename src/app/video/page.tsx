@@ -36,7 +36,14 @@ import {
   useMediaWorkspaceStore,
 } from "@/lib/media-workspace-store";
 import { useVideoPaimonStore } from "@/lib/video-paimon-store";
+import { useVideoSituationStore } from "@/lib/video-situation-store";
+import { videoDurationSeconds } from "@/lib/video-duration";
 import { PaimonPanel } from "@/components/paimon-panel";
+import { DEFAULT_CONVERSATION } from "@/lib/paimon-conversation";
+import {
+  CharacterSituationPicker,
+  type SituationRunRequest,
+} from "@/components/character-situation-picker";
 import {
   useRunpodDownloadStore,
   type RunpodDownloadItem,
@@ -2737,9 +2744,13 @@ export default function VideoPage() {
     void runGenerationJob(nextJob);
   }, [activeGeneration, generationQueue, runGenerationJob]);
 
-  const generate = useCallback(() => {
-    if (!params.prompt.trim()) return;
-    if (videoRequiresSourceImage && !params.source_image) {
+  // `override` lets a caller queue params it just wrote to the store without
+  // waiting for this component to re-render with them (the Paimon situation
+  // runner composes a prompt and queues it in the same tick).
+  const generate = useCallback((override?: VideoGenerationParams) => {
+    const source = override ?? params;
+    if (!source.prompt.trim()) return;
+    if (videoRequiresSourceImage && !source.source_image) {
       setStatus({
         state: "error",
         progress: 0,
@@ -2773,11 +2784,11 @@ export default function VideoPage() {
     }
 
     const jobParams: VideoGenerationParams = {
-      ...params,
+      ...source,
       // A pipeline that renders its own audio never needs the separate pass; drop
       // any stale toggle so the backend doesn't queue a redundant audio workflow.
-      enable_sound: soundPassActive,
-      video_pipeline_settings: { ...params.video_pipeline_settings },
+      enable_sound: source.enable_sound && !videoIncludesAudio,
+      video_pipeline_settings: { ...source.video_pipeline_settings },
     };
     const id = crypto.randomUUID();
 
@@ -2822,6 +2833,7 @@ export default function VideoPage() {
     soundWorkflowReady,
     videoConfig.audio.message,
     videoConfig.message,
+    videoIncludesAudio,
     videoRequiresSourceImage,
     videoWorkflowReadyForTarget,
   ]);
@@ -2869,6 +2881,58 @@ export default function VideoPage() {
     },
     [activeGeneration, appendGenerationDetail, generationQueue, updatePendingVideo]
   );
+
+  // --- Paimon character-situation runs -------------------------------------
+  // A saved situation becomes a clip: its image is installed as the start frame,
+  // Paimon writes the motion/expression/camera prompt for the requested length,
+  // and (with 자동 생성 on) the clip is queued. The runner is registered from here
+  // rather than living in the store because the generation queue is this page's
+  // state, so it only exists while this page is mounted.
+  const situationBatch = useVideoSituationStore((state) => state.batch);
+  // A turn in flight disables the picker, so a pick can't interleave with it.
+  const paimonLoading = useVideoPaimonStore(
+    (state) => state.conversations[DEFAULT_CONVERSATION]?.loading ?? false
+  );
+  const cancelSituationBatch = useVideoSituationStore(
+    (state) => state.cancelBatch
+  );
+
+  useEffect(() => {
+    useVideoSituationStore.getState().setRunner({
+      // Read the params back from the store: the composing turn writes the new
+      // prompt and start frame there ahead of this component's next render.
+      enqueue: () => generate(useVideoStore.getState().params),
+      requiresStartFrame: videoRequiresSourceImage,
+    });
+    return () => useVideoSituationStore.getState().setRunner(null);
+  }, [generate, videoRequiresSourceImage]);
+
+  // The clip length the current settings produce — the picker's seconds field
+  // starts here, whichever pair of fields this pipeline takes its length from.
+  const situationSeconds = useMemo(() => {
+    const seconds = videoDurationSeconds(selectedVideoPipeline, params);
+    return seconds > 0 ? Math.max(1, Math.round(seconds)) : 5;
+  }, [params, selectedVideoPipeline]);
+
+  const runSituation = useCallback((request: SituationRunRequest) => {
+    const store = useVideoSituationStore.getState();
+    const options = {
+      seconds: request.seconds,
+      autoGenerate: request.autoGenerate,
+      imageBySituation: request.imageBySituation,
+    };
+
+    if (request.situations.length > 1) {
+      void store.runBatch(request.character, request.situations, options);
+    } else {
+      void store.compose(
+        request.character,
+        request.situations[0] ?? null,
+        options
+      );
+    }
+    setPaimonOpen(true);
+  }, []);
 
   // Show in-flight generation cards ahead of the saved videos, newest first.
   // A generation still running has no workspace yet, so it stays visible under
@@ -4027,7 +4091,7 @@ export default function VideoPage() {
             <Button
               className="relative w-full cursor-pointer overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/40 hover:brightness-110"
               size="lg"
-              onClick={generate}
+              onClick={() => generate()}
               disabled={!canGenerate}
             >
               <span className="relative z-10 flex items-center justify-center gap-2 drop-shadow-sm">
@@ -4182,6 +4246,43 @@ export default function VideoPage() {
         language === "ko"
           ? "이 시작 이미지로 카메라가 천천히 도는 영상 프롬프트를 만들어줘"
           : "Write an i2v prompt with a slow orbiting camera"
+      }
+      toolbar={
+        <CharacterSituationPicker
+          language={language}
+          defaultSeconds={situationSeconds}
+          minSeconds={1}
+          maxSeconds={30}
+          secondsHint={
+            pipelineDuration
+              ? `${pipelineDuration.frames} frames · ${pipelineDuration.fps} fps`
+              : durationLabel
+          }
+          disabled={paimonLoading}
+          batchRunning={situationBatch !== null}
+          onRun={runSituation}
+        />
+      }
+      footer={
+        situationBatch && (
+          <div className="flex items-center gap-2 border-t border-border bg-secondary/40 px-3 py-2 text-xs">
+            <Loader2 className="size-3 shrink-0 animate-spin" />
+            <span className="min-w-0 flex-1 truncate text-muted-foreground">
+              {language === "ko" ? "상황 순차 생성" : "Situations"}{" "}
+              {situationBatch.done + 1}/{situationBatch.total} ·{" "}
+              {situationBatch.current}
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-6 px-2 text-[11px]"
+              onClick={cancelSituationBatch}
+            >
+              {language === "ko" ? "취소" : "Cancel"}
+            </Button>
+          </div>
+        )
       }
     />
     {selectedVideo && (

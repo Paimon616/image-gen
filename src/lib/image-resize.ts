@@ -101,3 +101,41 @@ export async function readImageDataUrlForVision(
     return readFileAsDataUrl(file);
   }
 }
+
+/**
+ * Fetch an app-served image URL and return it as a JPEG data URL, downscaled so
+ * its longest edge is at most `maxEdge` px. Used by the SeeDance surface, whose
+ * API takes frames as data URIs (a local `/api/images/...` URL is unreachable
+ * from BytePlus) and expects JPEG/PNG rather than webp.
+ */
+export async function readImageUrlAsJpegDataUrl(
+  url: string,
+  maxEdge = 1536
+): Promise<string> {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Image fetch failed (${response.status})`);
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const element = new Image();
+      element.onload = () => resolve(element);
+      element.onerror = () => reject(new Error("Image decode failed"));
+      element.src = objectUrl;
+    });
+
+    const scale = Math.min(1, maxEdge / Math.max(image.width, image.height));
+    const width = Math.max(1, Math.round(image.width * scale));
+    const height = Math.max(1, Math.round(image.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("canvas unsupported");
+    ctx.drawImage(image, 0, 0, width, height);
+    return canvas.toDataURL("image/jpeg", 0.92);
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}

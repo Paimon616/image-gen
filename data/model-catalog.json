@@ -7772,7 +7772,7 @@
     "version": "1.0",
     "base_model": "SDXL 1.0",
     "thumbnail_url": null,
-    "civitai_url": null,
+    "civitai_url": "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/resolve/main/sd_xl_base_1.0.safetensors",
     "source_url": "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/resolve/main/sd_xl_base_1.0.safetensors",
     "tags": [
       "sdxl",

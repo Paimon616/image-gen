@@ -343,12 +343,12 @@ export function PaimonChat({
     lastMessage.content.length > 0;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-3">
+    <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex flex-col items-end gap-3">
       {renderPanel && (
         <section
           className={`flex h-[min(76vh,620px)] w-[min(calc(100vw-2rem),420px)] origin-bottom-right flex-col overflow-hidden rounded-lg border border-border bg-card shadow-2xl transition-[opacity,transform,filter] duration-[180ms] ease-out ${
             open
-              ? "translate-y-0 scale-100 opacity-100 blur-0"
+              ? "pointer-events-auto translate-y-0 scale-100 opacity-100 blur-0"
               : "pointer-events-none translate-y-3 scale-95 opacity-0 blur-[1px]"
           } motion-reduce:translate-y-0 motion-reduce:scale-100 motion-reduce:blur-0 motion-reduce:transition-none`}
         >
@@ -840,7 +840,7 @@ export function PaimonChat({
       <Button
         type="button"
         size="icon-lg"
-        className={`size-12 rounded-full shadow-xl transition-[transform,background-color,box-shadow] duration-200 ease-out hover:scale-105 ${
+        className={`pointer-events-auto size-12 rounded-full shadow-xl transition-[transform,background-color,box-shadow] duration-200 ease-out hover:scale-105 ${
           open
             ? "rotate-3 shadow-2xl ring-2 ring-primary/25"
             : "rotate-0"

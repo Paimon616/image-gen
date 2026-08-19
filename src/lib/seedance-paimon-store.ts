@@ -1,3 +1,4 @@
+import { loadSituationLibrary } from "./character-situations";
 import { createPaimonConversationStore } from "./paimon-conversation";
 import { useSeedanceStore } from "./seedance-store";
 import {
@@ -60,10 +61,13 @@ function frameAttachment(frame: string, referenceId: string) {
 export const useSeedancePaimonStore = createPaimonConversationStore({
   endpoint: "/api/paimon/chat",
   appliedReply: () => "요청을 반영해서 SeeDance 설정을 수정했어요.",
-  buildBody: ({ messages, attachments }) => {
+  buildBody: async ({ messages, attachments }) => {
     const params = useSeedanceStore.getState().params;
     return {
       messages,
+      // The saved characters, so a situation can be named in free-form chat too
+      // (the situation picker also embeds the picked record in its instruction).
+      characterLibrary: await loadSituationLibrary(),
       // Image fields are stripped: multi-MB data URIs must not ride along as
       // params (they are sent as attachments below instead).
       currentParams: {
