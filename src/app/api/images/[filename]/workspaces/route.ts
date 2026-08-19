@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { isValidImageFilename } from "@/lib/server-images";
 import { setImageWorkspaces, toggleImageWorkspace } from "@/lib/workspaces";
+import { notifyWorkspaceImagesChanged } from "@/lib/runpod-share";
 
 // POST toggles a single membership: { workspaceId, assigned }
 export async function POST(
@@ -30,6 +31,8 @@ export async function POST(
     body.workspaceId,
     body.assigned !== false
   );
+  // Adding/removing an image from a shared workspace re-pushes it to the pod.
+  notifyWorkspaceImagesChanged();
 
   return NextResponse.json({ workspaces });
 }
@@ -60,6 +63,7 @@ export async function PUT(
     (id): id is string => typeof id === "string"
   );
   const workspaces = await setImageWorkspaces(filename, ids);
+  notifyWorkspaceImagesChanged();
 
   return NextResponse.json({ workspaces });
 }

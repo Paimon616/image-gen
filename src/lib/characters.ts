@@ -320,3 +320,91 @@ export function deleteCharacter(id: string): Promise<boolean> {
     };
   });
 }
+
+// Writes a character record under the id it already carries, creating it when
+// unknown and replacing it when it exists. Downloading a shared character reuses
+// the sharer's id so a later re-download refreshes that same character instead
+// of piling up copies.
+export function upsertCharacter(raw: unknown): Promise<Character | null> {
+  const incoming = normalizeCharacter(raw);
+  if (!incoming) return Promise.resolve(null);
+
+  return mutate((data) => {
+    const existing = data.characters.find((item) => item.id === incoming.id);
+    const maxOrder = data.characters.reduce(
+      (max, item) => Math.max(max, item.order),
+      -1
+    );
+    // Keep the local list position of a character that is being refreshed; a
+    // newly downloaded one lands at the bottom.
+    const merged: Character = {
+      ...incoming,
+      order: existing ? existing.order : maxOrder + 1,
+      createdAt: existing ? existing.createdAt : incoming.createdAt,
+      updatedAt: Date.now(),
+    };
+
+    return {
+      data: {
+        characters: existing
+          ? data.characters.map((item) =>
+              item.id === incoming.id ? merged : item
+            )
+          : [...data.characters, merged],
+      },
+      result: merged,
+    };
+  });
+}
+
+// Copies a character, giving the copy — and every outfit / background /
+// situation inside it — fresh ids, with each situation's outfit/background
+// reference remapped onto the copies. The copy is inserted directly after the
+// original so it shows up next to what was duplicated.
+export function duplicateCharacter(id: string): Promise<Character | null> {
+  return mutate((data) => {
+    const source = data.characters.find((item) => item.id === id);
+    if (!source) return { data, result: null };
+
+    const outfitIds = new Map(source.outfits.map((item) => [item.id, randomUUID()]));
+    const backgroundIds = new Map(
+      source.backgrounds.map((item) => [item.id, randomUUID()])
+    );
+    const now = Date.now();
+
+    const copy: Character = {
+      ...source,
+      id: randomUUID(),
+      name: normalizeCharacterName(`${source.name} 복사`),
+      outfits: source.outfits.map((item) => ({
+        ...item,
+        id: outfitIds.get(item.id) ?? randomUUID(),
+      })),
+      backgrounds: source.backgrounds.map((item) => ({
+        ...item,
+        id: backgroundIds.get(item.id) ?? randomUUID(),
+      })),
+      situations: source.situations.map((item) => ({
+        ...item,
+        id: randomUUID(),
+        outfitId: item.outfitId ? outfitIds.get(item.outfitId) ?? null : null,
+        backgroundId: item.backgroundId
+          ? backgroundIds.get(item.backgroundId) ?? null
+          : null,
+      })),
+      order: source.order + 0.5,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    // Re-rank so the fractional order above collapses back to integers.
+    const characters = [...data.characters, copy]
+      .sort((a, b) => a.order - b.order)
+      .map((item, index) => ({ ...item, order: index }));
+
+    return {
+      data: { characters },
+      result: characters.find((item) => item.id === copy.id) ?? copy,
+    };
+  });
+}

@@ -19,6 +19,7 @@ import { imageUrl, OUTPUT_DIR, thumbnailUrl } from "@/lib/server-images";
 import { buildGenerationResources } from "@/lib/generation-resource-links";
 import { generateWithA1111, interruptA1111 } from "@/lib/a1111";
 import { toggleImageWorkspace, workspaceExists } from "@/lib/workspaces";
+import { notifyWorkspaceChanged } from "@/lib/runpod-share";
 import { getRunpodPod } from "@/lib/settings";
 import {
   checkRunpodGenerationFiles,
@@ -102,6 +103,8 @@ async function saveBufferedImages({
       const workspaces = workspaceId
         ? await toggleImageWorkspace(filename, workspaceId, true).catch(() => [])
         : [];
+      // A new image in a shared workspace is pushed to the pod on its own.
+      if (workspaceId) void notifyWorkspaceChanged(workspaceId).catch(() => {});
 
       return {
         id,

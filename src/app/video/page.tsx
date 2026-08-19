@@ -29,12 +29,13 @@ import {
 } from "@/components/ui/tooltip";
 import { useStore } from "@/lib/store";
 import { useVideoStore } from "@/lib/video-store";
+import { useVideoPaimonStore } from "@/lib/video-paimon-store";
+import { PaimonPanel } from "@/components/paimon-panel";
 import {
   useRunpodDownloadStore,
   type RunpodDownloadItem,
 } from "@/lib/runpod-download-store";
 import { takeVideoReference } from "@/lib/video-reference";
-import { readImageDataUrlForVision } from "@/lib/image-resize";
 import {
   DEFAULT_VIDEO_PARAMS,
   type CivitaiImportResult,
@@ -56,7 +57,6 @@ import {
   FileJson,
   Film,
   GripVertical,
-  Bot,
   Check,
   CheckCircle2,
   AlertTriangle,
@@ -64,17 +64,14 @@ import {
   Clock,
   CopyPlus,
   HelpCircle,
-  ImagePlus,
   LinkIcon,
   Loader2,
   Maximize2,
-  MessageCircle,
   PanelLeftClose,
   PanelLeftOpen,
   Play,
   RefreshCcw,
   Server,
-  Send,
   Wrench,
   RotateCcw,
   Trash2,
@@ -265,29 +262,6 @@ function numericValue(value: string, fallback: number) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-interface VideoPaimonAttachment {
-  id: string;
-  kind: "clipboard_image";
-  label: string;
-  url?: string;
-  dataUrl?: string;
-}
-
-async function uploadPaimonImageFile(file: File) {
-  const formData = new FormData();
-  formData.append("file", file);
-
-  const res = await fetch("/api/upload", { method: "POST", body: formData });
-  const data = (await res.json()) as { url?: string; error?: string };
-
-  if (!res.ok || !data.url) {
-    throw new Error(data.error || "Upload failed");
-  }
-
-  return data.url;
-}
-
-
 function pipelineSettingValue(
   params: VideoGenerationParams,
   control: VideoPipelineControlOption
@@ -356,407 +330,6 @@ function clearStoredGenerationState() {
 
 function isGif(video: GeneratedVideo) {
   return video.contentType === "image/gif" || video.filename.toLowerCase().endsWith(".gif");
-}
-
-const VIDEO_PARAM_KEYS = new Set(Object.keys(DEFAULT_VIDEO_PARAMS));
-
-function sanitizeVideoParamsPatch(value: unknown): Partial<VideoGenerationParams> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-
-  const patch: Partial<VideoGenerationParams> = {};
-  Object.entries(value).forEach(([key, nextValue]) => {
-    if (VIDEO_PARAM_KEYS.has(key)) {
-      (patch as Record<string, unknown>)[key] = nextValue;
-    }
-  });
-  return patch;
-}
-
-function VideoPaimonPanel({
-  params,
-  language,
-  open,
-  onOpenChange,
-  onApplyParams,
-}: {
-  params: VideoGenerationParams;
-  language: AppLanguage;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onApplyParams: (patch: Partial<VideoGenerationParams>) => void;
-}) {
-  const [messages, setMessages] = useState<
-    { id: string; role: "user" | "assistant"; content: string }[]
-  >([
-    {
-      id: "intro",
-      role: "assistant",
-      content:
-        language === "ko"
-          ? "파이몬이에요. 현재 비디오 입력값을 보고 프롬프트, 모델, 사운드 설정을 다듬어드릴게요."
-          : "Paimon here. I can refine the current video prompt, model, and sound settings.",
-    },
-  ]);
-  const [draft, setDraft] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [attachments, setAttachments] = useState<VideoPaimonAttachment[]>([]);
-  const resetChat = useCallback(() => {
-    setMessages([
-      {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content:
-          language === "ko"
-            ? "파이몬이에요. 현재 비디오 입력값을 보고 프롬프트, 모델, 사운드 설정을 다듬어드릴게요."
-            : "Paimon here. I can refine the current video prompt, model, and sound settings.",
-      },
-    ]);
-    setDraft("");
-    setError("");
-    setAttachments([]);
-  }, [language]);
-
-  const removeAttachment = useCallback((attachmentId: string) => {
-    setAttachments((current) =>
-      current.filter((attachment) => attachment.id !== attachmentId)
-    );
-  }, []);
-
-  const handlePaste = useCallback(
-    async (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
-      const imageItem = Array.from(event.clipboardData.items).find((item) =>
-        item.type.startsWith("image/")
-      );
-      const file = imageItem?.getAsFile();
-
-      if (!file) return;
-
-      event.preventDefault();
-      setBusy(true);
-      setError("");
-      try {
-        const [url, dataUrl] = await Promise.all([
-          uploadPaimonImageFile(file),
-          readImageDataUrlForVision(file),
-        ]);
-        const attachment: VideoPaimonAttachment = {
-          id: crypto.randomUUID(),
-          kind: "clipboard_image",
-          label: language === "ko" ? "클립보드 이미지" : "Clipboard image",
-          url,
-          dataUrl,
-        };
-
-        setAttachments((current) => [...current, attachment].slice(-6));
-        setMessages((current) => [
-          ...current,
-          {
-            id: crypto.randomUUID(),
-            role: "assistant",
-            content:
-              language === "ko"
-                ? "클립보드 이미지가 채팅에 첨부됐어요. 무엇을 도와드릴까요?"
-                : "The clipboard image is attached. How can I help?",
-          },
-        ]);
-      } catch (caught) {
-        setError(
-          caught instanceof Error
-            ? caught.message
-            : language === "ko"
-              ? "이미지 업로드 실패"
-              : "Image upload failed"
-        );
-      } finally {
-        setBusy(false);
-      }
-    },
-    [language]
-  );
-
-  const askPaimon = useCallback(async () => {
-    const text = draft.trim();
-    if (!text || busy) return;
-
-    const userMessage = {
-      id: crypto.randomUUID(),
-      role: "user" as const,
-      content: text,
-    };
-    const assistantMessage = {
-      id: crypto.randomUUID(),
-      role: "assistant" as const,
-      content: "",
-    };
-    const nextMessages = [...messages, userMessage];
-
-    // Let Paimon actually see the pixels of the start/reference image, not just
-    // its URL: send it as the first visual attachment. Local /api/uploads and
-    // /api/images URLs are inlined server-side by the chat route.
-    const sentAttachments = [
-      ...(params.source_image
-        ? [
-            {
-              kind: "gallery_image" as const,
-              url: params.source_image,
-              dataUrl: undefined as string | undefined,
-              referenceId: language === "ko" ? "시작 이미지" : "start image",
-            },
-          ]
-        : []),
-      ...attachments.map((attachment, index) => ({
-        kind: attachment.kind,
-        url: attachment.url,
-        dataUrl: attachment.dataUrl,
-        referenceId: `참조${index + 1}`,
-      })),
-    ];
-
-    setMessages([...nextMessages, assistantMessage]);
-    setDraft("");
-    setBusy(true);
-    setError("");
-
-    try {
-      const response = await fetch("/api/paimon/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: nextMessages.map(({ role, content }) => ({ role, content })),
-          currentParams: params,
-          attachments: sentAttachments,
-        }),
-      });
-      const contentType = response.headers.get("content-type") ?? "";
-      if (!response.ok || !response.body || !contentType.includes("text/event-stream")) {
-        const data = (await response.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(data?.error || "Paimon request failed.");
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const events = buffer.split("\n\n");
-        buffer = events.pop() ?? "";
-
-        for (const rawEvent of events) {
-          if (!rawEvent.trim()) continue;
-          const { event, data } = parseSseEvent(rawEvent);
-
-          if (event === "delta") {
-            const delta = String(data?.text ?? "");
-            setMessages((current) =>
-              current.map((message) =>
-                message.id === assistantMessage.id
-                  ? { ...message, content: message.content + delta }
-                  : message
-              )
-            );
-          }
-
-          if (event === "done") {
-            const reply = String(data?.reply ?? "");
-            const patch = sanitizeVideoParamsPatch(data?.paramsPatch);
-            if (Object.keys(patch).length > 0) onApplyParams(patch);
-            setMessages((current) =>
-              current.map((message) =>
-                message.id === assistantMessage.id
-                  ? { ...message, content: reply || message.content || "Done." }
-                  : message
-              )
-            );
-          }
-
-          if (event === "error") {
-            throw new Error(String(data?.error ?? "Paimon failed."));
-          }
-        }
-      }
-    } catch (caught) {
-      const message = caught instanceof Error ? caught.message : "Paimon failed.";
-      setError(message);
-      setMessages((current) =>
-        current.map((item) =>
-          item.id === assistantMessage.id
-            ? { ...item, content: language === "ko" ? `오류: ${message}` : `Error: ${message}` }
-            : item
-        )
-      );
-    } finally {
-      setBusy(false);
-    }
-  }, [attachments, busy, draft, language, messages, onApplyParams, params]);
-
-  return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-3">
-      <section
-        className={`flex h-[min(76vh,620px)] w-[min(calc(100vw-2rem),420px)] origin-bottom-right flex-col overflow-hidden rounded-lg border border-border bg-card shadow-2xl transition-[opacity,transform,filter] duration-[180ms] ease-out ${
-          open
-            ? "translate-y-0 scale-100 opacity-100 blur-0"
-            : "pointer-events-none translate-y-3 scale-95 opacity-0 blur-[1px]"
-        } motion-reduce:translate-y-0 motion-reduce:scale-100 motion-reduce:blur-0 motion-reduce:transition-none`}
-      >
-        <header className="flex h-12 items-center justify-between border-b border-border px-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <Bot className="size-4" />
-            </span>
-            <div className="min-w-0">
-              <h3 className="truncate text-sm font-semibold">Paimon 파이몬</h3>
-              <p className="truncate text-[11px] text-muted-foreground">
-                {language === "ko" ? "비디오 생성 정보를 수정합니다" : "Edits video generation settings"}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-1">
-            <Button
-              type="button"
-              size="icon-sm"
-              variant="ghost"
-              onClick={resetChat}
-              disabled={busy}
-              aria-label="Reset Paimon chat"
-              title={language === "ko" ? "채팅 초기화" : "Reset chat"}
-            >
-              <RotateCcw />
-            </Button>
-            <Button
-              type="button"
-              size="icon-sm"
-              variant="ghost"
-              onClick={() => onOpenChange(false)}
-              aria-label="Close Paimon"
-            >
-              <X />
-            </Button>
-          </div>
-        </header>
-        {attachments.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto border-b border-border px-3 py-2">
-            <span className="shrink-0 self-center text-[10px] text-muted-foreground">
-              {language === "ko" ? "대화에서 참조1, 참조2로 지칭" : "Referenced as 참조1, 참조2"}
-            </span>
-            {attachments.map((attachment, index) => (
-              <div
-                key={attachment.id}
-                className="relative flex w-24 shrink-0 flex-col overflow-hidden rounded-md border border-border bg-secondary text-[11px]"
-                title={attachment.url || attachment.label}
-              >
-                <div className="relative h-16 w-full bg-muted">
-                  {attachment.url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={attachment.url}
-                      alt={`${attachment.label} 미리보기`}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <span className="flex h-full items-center justify-center text-muted-foreground">
-                      <ImagePlus className="size-5" />
-                    </span>
-                  )}
-                  <span className="absolute bottom-1 left-1 rounded bg-background/85 px-1 py-0.5 font-semibold shadow-sm backdrop-blur-sm">
-                    참조{index + 1}
-                  </span>
-                </div>
-                <span className="truncate px-1.5 py-1 text-muted-foreground">
-                  {attachment.label}
-                </span>
-                <button
-                  type="button"
-                  className="absolute right-1 top-1 rounded-full bg-background/85 p-1 text-muted-foreground shadow-sm backdrop-blur-sm hover:bg-background hover:text-foreground"
-                  onClick={() => removeAttachment(attachment.id)}
-                  aria-label={`${attachment.label} 제거`}
-                  title={language === "ko" ? "첨부 제거" : "Remove attachment"}
-                >
-                  <X className="size-3" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-        <div className="flex-1 space-y-3 overflow-y-auto p-3">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`max-w-[85%] rounded-lg px-3 py-2 text-sm leading-5 ${
-                  message.role === "user"
-                    ? "ml-auto bg-primary text-primary-foreground"
-                    : "mr-auto bg-secondary text-secondary-foreground"
-                }`}
-              >
-                {message.content || (language === "ko" ? "작성 중..." : "Writing...")}
-              </div>
-            ))}
-            {busy && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Loader2 className="size-3 animate-spin" />
-                {language === "ko" ? "파이몬이 생각하는 중" : "Paimon is thinking"}
-              </div>
-            )}
-            {error && <p className="text-xs text-destructive">{error}</p>}
-        </div>
-        <form
-          className="border-t border-border p-3"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void askPaimon();
-          }}
-        >
-          <div className="grid grid-cols-[minmax(0,1fr)_2.25rem] gap-2">
-            <Textarea
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              onPaste={handlePaste}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && !event.shiftKey) {
-                  event.preventDefault();
-                  void askPaimon();
-                }
-              }}
-              placeholder={
-                language === "ko"
-                  ? "예: 이 장면을 LTX용 자연스러운 카메라 움직임으로 정리해줘 (Shift+Enter 줄바꿈, Ctrl+V 이미지 첨부)"
-                  : "Example: Rewrite this as a natural LTX camera-motion prompt (Shift+Enter for newline, Ctrl+V to attach)"
-              }
-              className="max-h-28 min-h-10 resize-none text-sm"
-            />
-            <Button
-              type="submit"
-              size="icon-lg"
-              disabled={!draft.trim() || busy}
-              aria-label="Send to Paimon"
-            >
-              {busy ? <Loader2 className="animate-spin" /> : <Send />}
-            </Button>
-          </div>
-        </form>
-      </section>
-      <Button
-        type="button"
-        size="icon-lg"
-        className={`size-12 rounded-full shadow-xl transition-[transform,background-color,box-shadow] duration-200 ease-out hover:scale-105 ${
-          open ? "rotate-3 shadow-2xl ring-2 ring-primary/25" : "rotate-0"
-        } motion-reduce:transform-none motion-reduce:transition-none`}
-        onClick={() => onOpenChange(!open)}
-        aria-label="Open Paimon"
-        title="Paimon 파이몬"
-      >
-        <MessageCircle
-          className={`size-5 transition-transform duration-200 ${
-            open ? "scale-90" : "scale-100"
-          } motion-reduce:transform-none`}
-        />
-      </Button>
-    </div>
-  );
 }
 
 const VIDEO_EDITOR_MIN_WIDTH = 320;
@@ -1785,7 +1358,11 @@ function mapCivitaiParamsToVideoParams(
 
 export default function VideoPage() {
   const language = useStore((state) => state.language);
-  const [params, setParams] = useState<VideoGenerationParams>(DEFAULT_VIDEO_PARAMS);
+  // The form's params live in the module-level video store so they survive
+  // navigating away and back, and so a Paimon answer that lands while this page
+  // is unmounted still applies to the params the user returns to.
+  const params = useVideoStore((state) => state.params);
+  const setParams = useVideoStore((state) => state.setParams);
   const [status, setStatus] = useState<GenerationStatus>({
     state: "idle",
     progress: 0,
@@ -1977,9 +1554,12 @@ export default function VideoPage() {
     runpodTargetReady &&
     runpodConnected;
 
-  const updateParams = useCallback((update: Partial<VideoGenerationParams>) => {
-    setParams((current) => ({ ...current, ...update }));
-  }, []);
+  const updateParams = useCallback(
+    (update: Partial<VideoGenerationParams>) => {
+      setParams((current) => ({ ...current, ...update }));
+    },
+    [setParams]
+  );
 
   // Pick up a reference image handed off from the Image Generation gallery
   // ("비디오 생성" button in the detail modal) and preload it as the start image.
@@ -1988,7 +1568,7 @@ export default function VideoPage() {
     if (!handoff) return;
     setParams((current) => ({ ...current, source_image: handoff.url }));
     setEditorOpen(true);
-  }, []);
+  }, [setParams]);
 
   // Read the reference image's natural dimensions so resize-driven pipelines can
   // preview the expected output size.
@@ -2567,10 +2147,13 @@ export default function VideoPage() {
     [removePendingVideoById]
   );
 
-  const reuseVideoParams = useCallback((video: GeneratedVideo) => {
-    if (!video.params) return;
-    setParams({ ...DEFAULT_VIDEO_PARAMS, ...video.params });
-  }, []);
+  const reuseVideoParams = useCallback(
+    (video: GeneratedVideo) => {
+      if (!video.params) return;
+      setParams({ ...DEFAULT_VIDEO_PARAMS, ...video.params });
+    },
+    [setParams]
+  );
 
   const importCivitaiMetadata = useCallback(async () => {
     if (!civitaiUrl.trim() || isImportingCivitai) return;
@@ -2701,7 +2284,7 @@ export default function VideoPage() {
         );
       })
       .catch(() => {});
-  }, []);
+  }, [setParams]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -4468,12 +4051,25 @@ export default function VideoPage() {
         </div>
       </main>
     </div>
-    <VideoPaimonPanel
-      params={params}
-      language={language}
+    <PaimonPanel
+      store={useVideoPaimonStore}
       open={paimonOpen}
       onOpenChange={setPaimonOpen}
-      onApplyParams={updateParams}
+      subtitle={
+        language === "ko"
+          ? "현재 비디오 입력값을 읽고 설정을 수정합니다"
+          : "Reads the current video inputs and edits them"
+      }
+      intro={
+        language === "ko"
+          ? "파이몬이에요. 현재 비디오 입력값을 보고 프롬프트, 모델, 사운드 설정을 다듬어드릴게요."
+          : "Paimon here. I can refine the current video prompt, model, and sound settings."
+      }
+      placeholder={
+        language === "ko"
+          ? "이 시작 이미지로 카메라가 천천히 도는 영상 프롬프트를 만들어줘"
+          : "Write an i2v prompt with a slow orbiting camera"
+      }
     />
     {selectedVideo && (
       <VideoDetailModal

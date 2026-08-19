@@ -5,6 +5,7 @@ import {
   normalizeWorkspaceName,
   renameWorkspace,
 } from "@/lib/workspaces";
+import { notifyWorkspaceChanged, unshare } from "@/lib/runpod-share";
 
 export async function PATCH(
   request: NextRequest,
@@ -34,6 +35,9 @@ export async function PATCH(
     return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
   }
 
+  // A shared workspace's new name reaches the pod without another click.
+  void notifyWorkspaceChanged(id).catch(() => {});
+
   return NextResponse.json({ workspace });
 }
 
@@ -52,6 +56,9 @@ export async function DELETE(
   if (!deleted) {
     return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
   }
+
+  // Deleting the workspace locally also retires its share on the pod.
+  await unshare("workspaces", id).catch(() => {});
 
   return NextResponse.json({ success: true });
 }

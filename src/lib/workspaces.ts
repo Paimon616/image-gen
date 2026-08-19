@@ -291,3 +291,60 @@ export function removeImageAssignments(filename: string): Promise<void> {
     return { data: { ...data, assignments }, result: undefined };
   });
 }
+
+// Creates a workspace under a caller-supplied id, or renames it when it already
+// exists. Downloading a shared workspace reuses the sharer's id so a later
+// re-download updates that same workspace instead of forking a duplicate.
+export function upsertWorkspace(
+  workspaceId: string,
+  name: string,
+  createdAt?: number
+): Promise<Workspace> {
+  return mutate((data) => {
+    const existing = data.workspaces.find((item) => item.id === workspaceId);
+    const workspace: Workspace = existing
+      ? { ...existing, name }
+      : {
+          id: workspaceId,
+          name,
+          createdAt: typeof createdAt === "number" ? createdAt : Date.now(),
+        };
+
+    return {
+      data: {
+        ...data,
+        workspaces: existing
+          ? data.workspaces.map((item) =>
+              item.id === workspaceId ? workspace : item
+            )
+          : [...data.workspaces, workspace],
+      },
+      result: workspace,
+    };
+  });
+}
+
+// Adds a batch of images to one workspace in a single read-modify-write, so
+// downloading a shared workspace doesn't queue one file mutation per image.
+export function addImagesToWorkspace(
+  filenames: string[],
+  workspaceId: string
+): Promise<number> {
+  return mutate((data) => {
+    if (!data.workspaces.some((item) => item.id === workspaceId)) {
+      return { data, result: 0 };
+    }
+
+    const assignments = { ...data.assignments };
+    let added = 0;
+    for (const filename of filenames) {
+      if (!isSafeFilename(filename)) continue;
+      const current = assignments[filename] ?? [];
+      if (current.includes(workspaceId)) continue;
+      assignments[filename] = [...current, workspaceId];
+      added += 1;
+    }
+
+    return { data: { ...data, assignments }, result: added };
+  });
+}

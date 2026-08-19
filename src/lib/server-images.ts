@@ -224,6 +224,45 @@ export async function listImagesForCharacter(
     .sort((a, b) => b.timestamp - a.timestamp);
 }
 
+// Links an existing gallery image to a character/situation by writing the ids
+// into its metadata sidecar — the same fields the generator writes, so the
+// linked image shows up in the situation strip exactly like a generated one.
+// Images produced before sidecars existed (or whose sidecar is unreadable) get a
+// minimal sidecar created here so the link can still be stored.
+export async function linkImageToCharacter(
+  characterId: string,
+  situationId: string,
+  filename: string
+): Promise<boolean> {
+  if (!isValidImageFilename(filename)) return false;
+
+  const info = await stat(join(OUTPUT_DIR, filename)).catch(() => null);
+  if (!info?.isFile()) return false;
+
+  const metaPath = join(OUTPUT_DIR, filename.replace(/\.\w+$/, ".json"));
+  const raw = await readFile(metaPath, "utf-8").catch(() => null);
+
+  let meta: Record<string, unknown> = {};
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        meta = parsed as Record<string, unknown>;
+      }
+    } catch {
+      // Unreadable sidecar: fall through and rewrite it from scratch.
+    }
+  }
+
+  if (typeof meta.id !== "string") meta.id = filename;
+  meta.filename = filename;
+  if (typeof meta.timestamp !== "number") meta.timestamp = info.mtimeMs;
+  meta.character_id = characterId;
+  meta.situation_id = situationId;
+  await writeFile(metaPath, JSON.stringify(meta, null, 2));
+  return true;
+}
+
 // Clears the character/situation link on an image's metadata sidecar so its
 // thumbnail leaves that situation, without deleting the image. Only unlinks when
 // the sidecar actually belongs to the given character (guards against stale ids).

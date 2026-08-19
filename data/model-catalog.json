@@ -8388,7 +8388,8 @@
     "base_model": "Krea 2",
     "civitai_url": "https://civitai.red/models/2732656/krea-2-turbo?modelVersionId=3072332",
     "source_url": "https://civitai.red/models/2732656/krea-2-turbo?modelVersionId=3072332",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/2d6c922c-af6e-41f7-8ca4-a91da06ece68/original=true/135352641.jpeg"
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/2d6c922c-af6e-41f7-8ca4-a91da06ece68/original=true/135352641.jpeg",
+    "tags": []
   },
   "loras/ass_krea2_loraholic.safetensors": {
     "name": "Ass and Thighs Slider - (Krea-2 + ZIT)",
@@ -8624,6 +8625,24 @@
     "thumbnail_url": null,
     "civitai_url": "https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/text_encoders/qwen_3_4b.safetensors",
     "source_url": "https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/text_encoders/qwen_3_4b.safetensors",
+    "tags": []
+  },
+  "loras/lenovo_krea2.safetensors": {
+    "name": "Lenovo UltraReal",
+    "version": "v1.0 Krea2",
+    "base_model": "Krea 2",
+    "thumbnail_url": null,
+    "civitai_url": "https://civitai.red/models/1662740/lenovo-ultrareal?modelVersionId=3075606",
+    "source_url": "https://civitai.red/models/1662740/lenovo-ultrareal?modelVersionId=3075606",
+    "tags": []
+  },
+  "loras/Purple_Grainy_Kr2_AM.safetensors": {
+    "name": "Purple Grainy || Photography lora",
+    "version": "v1.0 Krea 2",
+    "base_model": "Krea 2",
+    "thumbnail_url": null,
+    "civitai_url": "https://civitai.red/models/2329053/purple-grainy-photography-lora?modelVersionId=3110766",
+    "source_url": "https://civitai.red/models/2329053/purple-grainy-photography-lora?modelVersionId=3110766",
     "tags": []
   }
 }

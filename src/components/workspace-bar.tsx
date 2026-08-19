@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -11,10 +12,14 @@ import {
 import { createPortal } from "react-dom";
 import {
   Check,
+  Cloud,
+  CloudDownload,
+  CloudOff,
   FolderX,
   FolderPlus,
   GripVertical,
   Layers,
+  Loader2,
   MoreHorizontal,
   Pencil,
   Trash2,
@@ -23,6 +28,7 @@ import {
 import { useStore } from "@/lib/store";
 import { UNGROUPED_WORKSPACE_ID, type WorkspaceSummary } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import { RunpodShareDownloadDialog } from "@/components/runpod-share-download";
 
 // A Korean/Japanese/Chinese IME fires a confirming Enter (isComposing / keyCode
 // 229) before the real submit Enter. Treating both as submit double-fires the
@@ -36,9 +42,14 @@ function WorkspaceChip({
   active,
   ko,
   dragging,
+  shared,
+  sharing,
+  shareError,
   onSelect,
   onRename,
   onDelete,
+  onShare,
+  onUnshare,
   onDragStart,
   onDragEnter,
   onDragEnd,
@@ -48,9 +59,15 @@ function WorkspaceChip({
   active: boolean;
   ko: boolean;
   dragging: boolean;
+  /** Already pushed to RunPod — its images stay in sync from here on. */
+  shared: boolean;
+  sharing: boolean;
+  shareError: string;
   onSelect: () => void;
   onRename: (name: string) => void;
   onDelete: () => void;
+  onShare: () => void;
+  onUnshare: () => void;
   onDragStart: () => void;
   onDragEnter: () => void;
   onDragEnd: () => void;
@@ -179,6 +196,14 @@ function WorkspaceChip({
           className="flex items-center gap-1.5 py-0.5"
           title={`${workspace.name} \u2014 ${dragHint}`}
         >
+          {shared && (
+            <Cloud
+              className={`h-3 w-3 shrink-0 ${
+                active ? "" : "text-primary"
+              }`}
+              aria-label={ko ? "RunPod에 공유됨" : "Shared to RunPod"}
+            />
+          )}
           <span className="max-w-40 truncate font-medium">{workspace.name}</span>
           <span
             className={`rounded-full px-1.5 text-[10px] tabular-nums ${
@@ -204,9 +229,13 @@ function WorkspaceChip({
               ? "hover:bg-primary-foreground/20"
               : "text-muted-foreground hover:bg-muted"
           }`}
-          aria-label={ko ? "워크스페이스 관리 (이름 변경·삭제)" : "Manage workspace (rename / delete)"}
+          aria-label={
+            ko
+              ? "워크스페이스 관리 (이름 변경·삭제·공유)"
+              : "Manage workspace (rename / delete / share)"
+          }
           aria-expanded={menuOpen}
-          title={ko ? "이름 변경·삭제" : "Rename / delete"}
+          title={ko ? "이름 변경·삭제·공유" : "Rename / delete / share"}
         >
           <MoreHorizontal className="h-3.5 w-3.5" />
         </button>
@@ -298,6 +327,40 @@ function WorkspaceChip({
               </button>
               <button
                 type="button"
+                disabled={sharing}
+                onClick={() => {
+                  if (shared) onUnshare();
+                  else onShare();
+                  closeMenu();
+                }}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent disabled:opacity-50"
+              >
+                {sharing ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : shared ? (
+                  <CloudOff className="h-3.5 w-3.5" />
+                ) : (
+                  <Cloud className="h-3.5 w-3.5" />
+                )}
+                {shared
+                  ? ko
+                    ? "공유 해제"
+                    : "Stop sharing"
+                  : ko
+                    ? "공유하기"
+                    : "Share to RunPod"}
+              </button>
+              {shared && (
+                <p className="px-2 pb-1 text-[10px] text-muted-foreground">
+                  {shareError
+                    ? shareError
+                    : ko
+                      ? "이미지가 바뀌면 자동으로 RunPod에 반영됩니다."
+                      : "Image changes sync to RunPod automatically."}
+                </p>
+              )}
+              <button
+                type="button"
                 onClick={() => setConfirmingDelete(true)}
                 className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-destructive transition-colors hover:bg-destructive/10"
               >
@@ -330,6 +393,85 @@ export function WorkspaceBar() {
   const [newName, setNewName] = useState("");
   const createRef = useRef<HTMLDivElement>(null);
   const submittingRef = useRef(false);
+
+  // Which workspaces this machine has pushed to RunPod, keyed by id. Read from
+  // local state only (no pod round-trip) so the bar can badge them on load.
+  const [shares, setShares] = useState<Record<string, { error: string }>>({});
+  const [sharingId, setSharingId] = useState("");
+  const [shareMessage, setShareMessage] = useState("");
+  const [downloadOpen, setDownloadOpen] = useState(false);
+
+  const refreshShares = useCallback(async () => {
+    try {
+      const res = await fetch("/api/runpod/share/state?kind=workspaces", {
+        cache: "no-store",
+      });
+      const data = (await res.json()) as {
+        shares?: Record<string, { error?: string }>;
+      };
+      setShares(
+        Object.fromEntries(
+          Object.entries(data.shares ?? {}).map(([id, record]) => [
+            id,
+            { error: record?.error ?? "" },
+          ])
+        )
+      );
+    } catch {
+      // Leave the previous badges in place; sharing still works without them.
+    }
+  }, []);
+
+  const shareWorkspace = useCallback(
+    async (workspaceId: string) => {
+      setSharingId(workspaceId);
+      setShareMessage("");
+      try {
+        const res = await fetch("/api/runpod/share", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ kind: "workspaces", id: workspaceId }),
+        });
+        const data = (await res.json()) as {
+          imageCount?: number;
+          podLabel?: string;
+          error?: string;
+        };
+        if (!res.ok) throw new Error(data.error || "공유에 실패했습니다.");
+        setShareMessage(
+          ko
+            ? `${data.podLabel ?? "RunPod"}에 공유됨 — 이미지 ${data.imageCount ?? 0}장`
+            : `Shared to ${data.podLabel ?? "RunPod"} — ${data.imageCount ?? 0} images`
+        );
+        await refreshShares();
+      } catch (error) {
+        setShareMessage(
+          error instanceof Error ? error.message : "공유에 실패했습니다."
+        );
+      } finally {
+        setSharingId("");
+      }
+    },
+    [ko, refreshShares]
+  );
+
+  const unshareWorkspace = useCallback(
+    async (workspaceId: string) => {
+      setSharingId(workspaceId);
+      setShareMessage("");
+      try {
+        await fetch(
+          `/api/runpod/share?kind=workspaces&id=${encodeURIComponent(workspaceId)}`,
+          { method: "DELETE" }
+        );
+        setShareMessage(ko ? "공유를 해제했습니다." : "Sharing stopped.");
+        await refreshShares();
+      } finally {
+        setSharingId("");
+      }
+    },
+    [ko, refreshShares]
+  );
 
   // Id of the chip being dragged, plus the in-progress order it is being
   // dragged into. `draftOrder` is what the bar renders while a drag is live;
@@ -369,6 +511,12 @@ export function WorkspaceBar() {
   useEffect(() => {
     void fetchWorkspaces();
   }, [fetchWorkspaces]);
+
+  useEffect(() => {
+    void (async () => {
+      await refreshShares();
+    })();
+  }, [refreshShares]);
 
   useEffect(() => {
     if (!creating) return;
@@ -456,9 +604,21 @@ export function WorkspaceBar() {
           active={workspace.id === activeWorkspaceId}
           ko={ko}
           dragging={workspace.id === draggingId}
+          shared={Boolean(shares[workspace.id])}
+          sharing={sharingId === workspace.id}
+          shareError={shares[workspace.id]?.error ?? ""}
           onSelect={() => setActiveWorkspace(workspace.id)}
           onRename={(name) => void renameWorkspace(workspace.id, name)}
-          onDelete={() => void deleteWorkspace(workspace.id)}
+          onDelete={() => {
+            void deleteWorkspace(workspace.id);
+            setShares((current) => {
+              const next = { ...current };
+              delete next[workspace.id];
+              return next;
+            });
+          }}
+          onShare={() => void shareWorkspace(workspace.id)}
+          onUnshare={() => void unshareWorkspace(workspace.id)}
           onDragStart={() => {
             setDraggingId(workspace.id);
             setDraftOrder(orderedWorkspaces.map((item) => item.id));
@@ -540,6 +700,38 @@ export function WorkspaceBar() {
           </button>
         )}
       </div>
+
+      <button
+        type="button"
+        onClick={() => setDownloadOpen(true)}
+        className="flex shrink-0 items-center gap-1 rounded-full border border-dashed border-border px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+        title={
+          ko
+            ? "RunPod에 공유된 워크스페이스를 내려받습니다"
+            : "Download a workspace shared on RunPod"
+        }
+      >
+        <CloudDownload className="h-3.5 w-3.5" />
+        {ko ? "공유 이미지 다운로드" : "Download shared"}
+      </button>
+
+      {shareMessage && (
+        <span className="shrink-0 text-[11px] text-muted-foreground">
+          {shareMessage}
+        </span>
+      )}
+
+      <RunpodShareDownloadDialog
+        kind="workspaces"
+        open={downloadOpen}
+        onOpenChange={setDownloadOpen}
+        onDownloaded={(workspaceId) => {
+          // Jump straight to what was just downloaded: this refetches the
+          // gallery filtered to that workspace, so its images show up at once.
+          void fetchWorkspaces();
+          setActiveWorkspace(workspaceId);
+        }}
+      />
     </div>
   );
 }

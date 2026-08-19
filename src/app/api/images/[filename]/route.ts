@@ -4,6 +4,7 @@ import {
   readOriginalImage,
   toResponseBody,
 } from "@/lib/server-images";
+import { notifyImageDeleted } from "@/lib/runpod-share";
 
 export async function GET(
   _req: NextRequest,
@@ -35,6 +36,10 @@ export async function DELETE(
     if (!deleted) {
       return NextResponse.json({ error: "Invalid filename" }, { status: 400 });
     }
+
+    // The image may have belonged to a shared workspace or a shared character's
+    // situation strip; re-push both so the pod copy drops it too.
+    notifyImageDeleted();
 
     return NextResponse.json({ success: true });
   } catch {

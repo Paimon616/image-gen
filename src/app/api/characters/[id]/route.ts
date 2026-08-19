@@ -5,6 +5,7 @@ import {
   isValidCharacterId,
   updateCharacter,
 } from "@/lib/characters";
+import { notifyCharacterChanged, unshare } from "@/lib/runpod-share";
 
 export async function GET(
   _request: NextRequest,
@@ -41,6 +42,10 @@ export async function PATCH(
     return NextResponse.json({ error: "Character not found" }, { status: 404 });
   }
 
+  // Edits to a shared character are pushed to the pod (debounced, so the
+  // studio's per-field autosave collapses into a single upload).
+  void notifyCharacterChanged(id).catch(() => {});
+
   return NextResponse.json({ character });
 }
 
@@ -59,6 +64,8 @@ export async function DELETE(
   if (!deleted) {
     return NextResponse.json({ error: "Character not found" }, { status: 404 });
   }
+
+  await unshare("characters", id).catch(() => {});
 
   return NextResponse.json({ success: true });
 }

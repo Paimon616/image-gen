@@ -171,6 +171,40 @@ async function fetchRunpodHelper(
   return data;
 }
 
+// Thin POST wrapper around the pod helper for callers outside this module (the
+// share sync). Kept separate from fetchRunpodHelper because share payloads carry
+// base64 image bytes and so need a much longer timeout than a metadata call.
+export async function postRunpodHelper(
+  pod: RunpodPodSettings,
+  path: string,
+  body: unknown,
+  timeoutMs = 180_000
+) {
+  const helperUrl = deriveHelperUrl(pod);
+  if (!helperUrl) {
+    throw new Error("RunPod Image Gen helper URL is not configured.");
+  }
+
+  const response = await fetch(`${helperUrl}${path}`, {
+    method: "POST",
+    cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  const text = await response.text();
+  let data: Record<string, unknown> = {};
+  try {
+    data = text ? (JSON.parse(text) as Record<string, unknown>) : {};
+  } catch {
+    throw new Error(`RunPod helper returned a non-JSON response (HTTP ${response.status}).`);
+  }
+  if (!response.ok) {
+    throw new Error(String(data.error || `RunPod helper HTTP ${response.status}`));
+  }
+  return data;
+}
+
 function shellQuote(value: string) {
   return `'${value.replace(/'/g, `'\\''`)}'`;
 }
@@ -885,11 +919,13 @@ export async function ensureRunpodStatus(pod: RunpodPodSettings) {
 // Must equal HELPER_VERSION inside HELPER_SERVER_SOURCE. Bump both together when
 // the helper source changes so a pod running an older build is flagged as stale
 // (helperOutdated) and the user is offered a redeploy.
-export const RUNPOD_HELPER_VERSION = "5";
+export const RUNPOD_HELPER_VERSION = "6";
 
 const HELPER_SERVER_SOURCE = String.raw`
+import base64
 import json
 import os
+import re
 import shutil
 import signal
 import socket
@@ -903,7 +939,7 @@ from pathlib import Path
 
 # Bumped whenever this helper source changes so the app can tell a running pod is
 # on an old build and offer to redeploy. Must equal RUNPOD_HELPER_VERSION below.
-HELPER_VERSION = "5"
+HELPER_VERSION = "6"
 
 PORT = int(os.environ.get("IMAGE_GEN_HELPER_PORT", "3000"))
 HOST = os.environ.get("IMAGE_GEN_HELPER_HOST", "0.0.0.0")
@@ -999,6 +1035,92 @@ def merge_catalog(entries):
         handle.write(json.dumps(catalog, indent=2))
     tmp.replace(CATALOG_FILE)
     return catalog
+
+# ---- Shared workspaces / characters ----------------------------------------
+# Sharing pushes a workspace (or a character) plus its images onto the pod so
+# every user of that pod can download it. Like the catalog above it lives on the
+# persistent models volume, so a pod restart doesn't lose what people shared.
+SHARE_DIR = MODELS_DIR / ".image-gen-share"
+SHARE_KINDS = ("workspaces", "characters")
+SHARE_ID_RE = re.compile(r"[A-Za-z0-9_-]{1,64}")
+SHARE_FILE_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,119}")
+
+def share_dir(kind, share_id):
+    if kind not in SHARE_KINDS:
+        raise ValueError("Invalid share kind.")
+    ident = str(share_id or "").strip()
+    if not SHARE_ID_RE.fullmatch(ident):
+        raise ValueError("Invalid share id.")
+    return SHARE_DIR / kind / ident
+
+def share_file(kind, share_id, filename):
+    name = str(filename or "").strip()
+    if not SHARE_FILE_RE.fullmatch(name) or ".." in name:
+        raise ValueError("Invalid share filename.")
+    return share_dir(kind, share_id) / "files" / name
+
+def read_share_manifest(kind, share_id):
+    try:
+        with open(share_dir(kind, share_id) / "manifest.json", "r", encoding="utf-8") as handle:
+            data = json.loads(handle.read() or "{}")
+        return data if isinstance(data, dict) else None
+    except Exception:
+        return None
+
+# Listing is deliberately manifest-only (no file bytes) so the download picker
+# stays responsive no matter how many images a share holds.
+def list_shares(kind):
+    if kind not in SHARE_KINDS:
+        return []
+    root = SHARE_DIR / kind
+    if not root.is_dir():
+        return []
+    items = []
+    for entry in sorted(root.iterdir()):
+        if not entry.is_dir():
+            continue
+        manifest = read_share_manifest(kind, entry.name)
+        if manifest:
+            items.append(manifest)
+    return items
+
+# Writes the manifest and returns the referenced files that aren't on the pod
+# yet, so the uploader only sends what's actually missing (re-syncing a share
+# after a name change or a single new image costs one request plus that image).
+# Files the new manifest no longer lists are deleted: removing an image from a
+# shared workspace has to remove it from the share too.
+def write_share_manifest(kind, share_id, manifest):
+    target = share_dir(kind, share_id)
+    files_dir = target / "files"
+    files_dir.mkdir(parents=True, exist_ok=True)
+
+    wanted = set()
+    listed = manifest.get("files")
+    for name in listed if isinstance(listed, list) else []:
+        try:
+            wanted.add(share_file(kind, share_id, name).name)
+        except Exception:
+            continue
+
+    tmp = Path(str(target / "manifest.json") + ".tmp")
+    with open(tmp, "w", encoding="utf-8") as handle:
+        handle.write(json.dumps(manifest, indent=2))
+    tmp.replace(target / "manifest.json")
+
+    for existing in files_dir.iterdir():
+        if existing.is_file() and existing.name not in wanted:
+            try:
+                existing.unlink()
+            except Exception:
+                pass
+    return [name for name in sorted(wanted) if not (files_dir / name).is_file()]
+
+def delete_share(kind, share_id):
+    target = share_dir(kind, share_id)
+    if not target.is_dir():
+        return False
+    shutil.rmtree(target, ignore_errors=True)
+    return True
 
 MODEL_EXTS = (".safetensors", ".ckpt", ".pt", ".pth")
 
@@ -1536,6 +1658,62 @@ class Handler(BaseHTTPRequestHandler):
                 body = read_json(self)
                 entries = body.get("entries") if isinstance(body.get("entries"), dict) else {}
                 write_json(self, 200, {"ok": True, "catalog": merge_catalog(entries)})
+                return
+            # Share endpoints are POST-only (including the reads) so the hand-rolled
+            # router never has to parse query strings, and file bytes travel as
+            # base64 in the same JSON envelope every other endpoint uses.
+            if self.path == "/api/runpod/helper/share/list":
+                body = read_json(self)
+                write_json(self, 200, {"items": list_shares(str(body.get("kind", "")))})
+                return
+            if self.path == "/api/runpod/helper/share/get":
+                body = read_json(self)
+                manifest = read_share_manifest(str(body.get("kind", "")), body.get("id"))
+                if manifest is None:
+                    write_json(self, 404, {"error": "Share not found."})
+                    return
+                write_json(self, 200, {"manifest": manifest})
+                return
+            if self.path == "/api/runpod/helper/share/manifest":
+                body = read_json(self)
+                manifest = body.get("manifest")
+                if not isinstance(manifest, dict):
+                    raise ValueError("A share manifest is required.")
+                missing = write_share_manifest(
+                    str(body.get("kind", "")), body.get("id"), manifest
+                )
+                write_json(self, 200, {"ok": True, "missing": missing})
+                return
+            if self.path == "/api/runpod/helper/share/put":
+                body = read_json(self)
+                target = share_file(
+                    str(body.get("kind", "")), body.get("id"), body.get("filename")
+                )
+                target.parent.mkdir(parents=True, exist_ok=True)
+                raw = base64.b64decode(str(body.get("data", "")))
+                tmp = Path(str(target) + ".part")
+                with open(tmp, "wb") as handle:
+                    handle.write(raw)
+                tmp.replace(target)
+                write_json(self, 200, {"ok": True, "size": len(raw)})
+                return
+            if self.path == "/api/runpod/helper/share/file":
+                body = read_json(self)
+                target = share_file(
+                    str(body.get("kind", "")), body.get("id"), body.get("filename")
+                )
+                if not target.is_file():
+                    write_json(self, 404, {"error": "Shared file not found."})
+                    return
+                with open(target, "rb") as handle:
+                    payload = base64.b64encode(handle.read()).decode("ascii")
+                write_json(self, 200, {"data": payload})
+                return
+            if self.path == "/api/runpod/helper/share/delete":
+                body = read_json(self)
+                write_json(self, 200, {
+                    "ok": delete_share(str(body.get("kind", "")), body.get("id")),
+                })
                 return
             write_json(self, 404, {"error": "Not found."})
         except Exception as error:

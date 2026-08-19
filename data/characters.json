@@ -210,6 +210,7 @@
           "backgroundId": "ae7887cc-3f00-48e9-a9b3-ef62cd080d19"
         }
       ],
+      "order": 0,
       "createdAt": 1786695445952,
       "updatedAt": 1786709501146
     },
@@ -921,8 +922,74 @@
           "backgroundId": "18480d21-f78a-4108-8e9f-c9f77cb42a65"
         }
       ],
+      "order": 1,
       "createdAt": 1787017970596,
       "updatedAt": 1787045879167
+    },
+    {
+      "id": "b73d3c0c-c766-4d89-8dca-1898a1b39bd6",
+      "name": "이서윤",
+      "summary": "직장 동료",
+      "synopsis": "같은 회사에서 일하는 직장 동료. 프로젝트 마감이 겹치는 밤마다 어쩐지 둘만 남아 야근하게 된다. 평소엔 정장을 입던 그녀가 어느 날 갑자기 도발적인 옷차림으로 나타났고, 평소보다 질문이 많아졌다. 결국 둘은 사무실 안에서 관계를 가지게 된다.",
+      "thumbnail": "/api/images/4a8c21e4-8c21-436e-8650-f1ba24ab6629.png",
+      "appearanceDescription": "안경을 쓴 오피스 레이디. 긴 생머리, 갈색 눈, 하얀 피부, 슬림한 체형에 큰 가슴. 은색 테 안경.",
+      "appearancePrompt": "long straight black hair, brown eyes, fair skin, slim build, large bust, silver-rimmed glasses",
+      "outfits": [
+        {
+          "id": "87261479-72ad-4143-a6a5-dedce93acdb9",
+          "name": "회사원 복장",
+          "description": "흰색 실크 블라우스, 검은색 울 펜슬 스커트(무릎 길이), 검은색 테일러드 블레이저, 검은색 시스루 팬티스타킹, 검은색 가죽 펌프스. 단정하고 프로페셔널한 오피스 룩.",
+          "prompt": "white silk button-up blouse, black wool pencil skirt (knee-length), black tailored blazer, black sheer pantyhose, black leather pumps"
+        },
+        {
+          "id": "20be3a0e-9f75-436e-9f26-3266575a1931",
+          "name": "속옷",
+          "description": "검은색 레이스 발코네트 브라, 검은색 레이스 하이웨이스트 팬티, 검은색 시스루 허벅지까지 오는 스타킹. 도발적인 느낌의 란제리 세트.",
+          "prompt": "black lace balconette bra, black lace high-waist panties, black sheer thigh-high stockings"
+        },
+        {
+          "id": "38a5ad03-c37f-4d20-ba45-004dc9a377cd",
+          "name": "알몸",
+          "description": "옷을 전혀 입지 않은 상태. 알몸.",
+          "prompt": "nude, no clothing"
+        }
+      ],
+      "backgrounds": [
+        {
+          "id": "207427bc-fe4f-4d72-86cf-4dc854309e52",
+          "name": "사무실 큐비클",
+          "description": "야간 사무실 큐비클 구역. 형광등이 꺼져 있고 책상 램프만 몇 개 켜져 있다. 빈 책상, 컴퓨터 모니터, 흩어진 서류, 창밖으로 야경이 보인다. 조용하고 한적한 분위기.",
+          "prompt": "office cubicle area at night, dim fluorescent lighting, desk lamps on, empty desks, computer monitors, scattered papers, night city view through window, quiet atmosphere"
+        },
+        {
+          "id": "fbcad0da-4446-4d14-b092-b8b3de290975",
+          "name": "회의실",
+          "description": "야간 회의실. 긴 회의 테이블, 의자, 벽면 프로젝터. 조명이 어둡고 커튼이 쳐진 창문. 테이블 위에 노트북과 서류가 놓여 있다.",
+          "prompt": "conference room at night, long table, chairs, projector, dim lighting, curtained windows, laptop and documents on table, quiet"
+        },
+        {
+          "id": "19bc00c4-75f7-454d-8d02-8271e21e13b6",
+          "name": "휴게실",
+          "description": "야간 사무실 휴게실. 소파, 커피 머신, 전자레인지, 작은 냉장고. 조명이 어둡고 텅 빈 공간. 한산하고 편안한 분위기.",
+          "prompt": "office break room at night, sofa, coffee machine, microwave, small refrigerator, dim lighting, empty, relaxed atmosphere"
+        },
+        {
+          "id": "4eeaec5f-8d35-41c1-a58b-e6430a390339",
+          "name": "CEO 사무실",
+          "description": "야간 CEO 사무실. 고급 나무 책상, 가죽 의자, 책장, 간접 조명. 큰 창문으로 야경이 보인다. 고급스럽고 차분한 분위기.",
+          "prompt": "CEO office at night, wooden desk, leather chair, bookshelf, indirect lighting, large window with night view, luxurious, calm"
+        },
+        {
+          "id": "d63597b7-2ae1-4e43-9da7-b4168e33b311",
+          "name": "창고/서고",
+          "description": "야간 사무실 창고 겸 서고. 좁은 공간, 선반에 파일 상자와 문서, 희미한 전구 하나. 먼지 쌓인 분위기, 은밀한 느낌.",
+          "prompt": "office storage room at night, narrow space, shelves with file boxes and documents, dim single bulb, dusty, intimate atmosphere"
+        }
+      ],
+      "situations": [],
+      "order": 2,
+      "createdAt": 1787043070874,
+      "updatedAt": 1787053741528
     },
     {
       "id": "8a0edc6c-51bc-4c2d-8b09-806dfe53b7bc",
@@ -1054,22 +1121,80 @@
           "backgroundId": "563c837a-e558-41fb-a7bd-b111552f247f"
         }
       ],
+      "order": 3,
       "createdAt": 1787030806120,
       "updatedAt": 1787031075919
     },
     {
-      "id": "b73d3c0c-c766-4d89-8dca-1898a1b39bd6",
-      "name": "",
-      "summary": "",
-      "synopsis": "",
-      "thumbnail": null,
-      "appearanceDescription": "",
-      "appearancePrompt": "",
-      "outfits": [],
-      "backgrounds": [],
+      "id": "bc44654f-9566-4a98-baee-20704aa9b4d4",
+      "name": "아이유",
+      "summary": "최고의 가수",
+      "synopsis": "This alluring young woman lives in a private world of soft fabrics, plush toys, and warm, intimate lighting. Her boudoir is a sanctuary for sensual self-expression, where she poses freely for a hidden camera, indulging in moments of eroticism and comfort. She revels in the contrast between innocence (plush bears, pastel tones) and mature desire (delicate lace, bare skin), exploring her own beauty and vulnerability in a space that feels both safe and seductive.",
+      "thumbnail": "/api/images/8a1b84e8-0339-4e05-8bbe-9cafc3100875.png",
+      "appearanceDescription": "A young woman in her early 20s with long, wavy dark brown hair that falls past her shoulders and frames her face. Her eyes are dark brown, warm and inviting. She has fair, porcelain-like skin with a natural flush on her cheeks. Her build is slender and graceful, with a small to medium bust and a narrow waist. Her facial features are soft and feminine: a small straight nose, full lips, and a gentle jawline. She has no visible tattoos or piercings. Her expression often carries a coy, sultry allure.",
+      "appearancePrompt": "1girl, long wavy dark brown hair, dark brown eyes, fair skin, slender build, small bust, youthful face, soft features, beautiful eyes, natural flush on cheeks, no tattoos, no piercing, graceful posture",
+      "outfits": [
+        {
+          "id": "bbe14aae-93fb-49a9-a955-5095b7fd6949",
+          "name": "알몸 (Nude)",
+          "description": "Fully nude, no clothing or accessories, bare skin, natural state.",
+          "prompt": "nude, bare skin, no clothing, no accessories, showing full body, natural pose"
+        },
+        {
+          "id": "a00b36a0-317c-40eb-829e-9ed6311ce065",
+          "name": "핑크 레이스 란제리 (Pink Lace Lingerie)",
+          "description": "A delicate light pink lace lingerie set consisting of a bralette and high-waist panties, adorned with tiny satin bows at the center front and shoulder straps. The lace is semi-sheer, creating a soft, see-through effect. The set is lightweight and elegant.",
+          "prompt": "light pink lace bralette, light pink lace high-waist panties, tiny satin bows on straps and center, see-through lace, semi-transparent, delicate, soft pink, elegant lingerie"
+        },
+        {
+          "id": "42fb11c3-1b73-49e4-8498-aa9214324364",
+          "name": "화이트 실크 가운 (White Silk Robe)",
+          "description": "A sheer white silk robe, knee-length, with a sash tied at the waist. The fabric has a soft sheen and is semi-transparent, revealing the body underneath. The robe has wide three-quarter sleeves and a notched lapel.",
+          "prompt": "white sheer silk robe, knee-length, sash tied at waist, semi-transparent, soft sheen, wide three-quarter sleeves, notched lapel, elegant loungewear"
+        },
+        {
+          "id": "a903b6ff-11fb-4f49-a6a2-8456c7b3473f",
+          "name": "블랙 새틴 슬립 (Black Satin Chemise)",
+          "description": "A black satin chemise with thin spaghetti straps, a deep V-neckline, and a mid-thigh length. The fabric is smooth, shiny, and solid black. It hugs the body lightly, emphasizing the slender silhouette.",
+          "prompt": "black satin chemise, spaghetti straps, deep V-neckline, mid-thigh length, solid black, smooth satin fabric, body-hugging, sleek"
+        }
+      ],
+      "backgrounds": [
+        {
+          "id": "7b5be1bb-5dc3-4a0a-b310-dfdf19255fe4",
+          "name": "테디베어 침대 (Teddy Bear Bed)",
+          "description": "A large bed covered in numerous plush teddy bears of various sizes and colors (white, grey, brown, pink), creating a cluttered, cozy atmosphere. The bedding is soft white cotton. Soft diffused indoor lighting casts gentle shadows. Shallow depth of field blurs the background.",
+          "prompt": "large bed covered in numerous plush teddy bears, colors white grey brown pink, cluttered cozy atmosphere, soft white cotton sheets, soft diffused indoor lighting, shallow depth of field, bedroom setting"
+        },
+        {
+          "id": "92882243-6a92-4564-8e92-4ffe6edc04a2",
+          "name": "화이트 욕실 (White Bathroom)",
+          "description": "A luxurious white marble bathroom with a stand-alone clawfoot bathtub. Candles of various sizes line the edge of the tub, with rose petals floating in the warm water. Soft yellow candlelight, reflection in a gilded mirror, steam rising. The walls are white tile.",
+          "prompt": "luxurious white marble bathroom, clawfoot bathtub, candles on tub edge, pink rose petals floating in water, warm yellow candlelight, gilded mirror reflection, steam, white tile walls, soft intimate lighting"
+        },
+        {
+          "id": "10c6626e-cc91-43d7-b11f-2ca63e435249",
+          "name": "베이지 소파 거실 (Beige Sofa Living Room)",
+          "description": "A cozy living room with a large beige velvet sofa, fluffy white rug, and soft pink throw pillows. Indoor plants in a ceramic pot in the corner. Warm ambient lighting from a floor lamp, creating a relaxed atmosphere.",
+          "prompt": "large beige velvet sofa, fluffy white rug, soft pink throw pillows, indoor plants in ceramic pot, warm ambient floor lamp, cozy living room, relaxed atmosphere"
+        },
+        {
+          "id": "35542332-5c27-4d7f-91f3-4256e0698a2d",
+          "name": "핑크 드레싱룸 (Pink Dressing Room)",
+          "description": "A dressing room with a vanity table surrounded by warm lightbulbs. The table is white with a mirrored surface, holding makeup brushes, perfume bottles. A clothes rack with silky garments and a plush pink ottoman. Cream and pink color scheme, soft golden light.",
+          "prompt": "vanity table with warm lightbulbs around mirror, white table surface, makeup brushes, perfume bottles, clothes rack with silky garments, plush pink ottoman, cream and pink color scheme, soft golden light, dressing room"
+        },
+        {
+          "id": "7060147f-cc28-41e2-abeb-a625444bf307",
+          "name": "커튼 낀 창가 (Window with Sheer Curtains)",
+          "description": "A large window with sheer white curtains, golden hour sunlight streaming in, casting a warm glow. A cushioned window seat with soft throw pillows in pastel pink and white. A fluffy rug on the floor, and a small side table with a cup of tea.",
+          "prompt": "large window with sheer white curtains, golden hour sunlight, warm glow, cushioned window seat with soft pastel pink and white pillows, fluffy rug on floor, small side table with tea, cozy nook"
+        }
+      ],
       "situations": [],
-      "createdAt": 1787043070874,
-      "updatedAt": 1787043083675
+      "order": 4,
+      "createdAt": 1787111311425,
+      "updatedAt": 1787111412762
     }
   ]
 }

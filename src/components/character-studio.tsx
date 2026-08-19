@@ -8,11 +8,17 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import {
   Clipboard,
+  Cloud,
+  CloudDownload,
+  CloudOff,
+  Copy,
   GripVertical,
   Images as ImagesIcon,
   Loader2,
+  MoreHorizontal,
   Plus,
   Trash2,
   Upload,
@@ -25,6 +31,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CharacterPaimonChat } from "@/components/character-paimon-chat";
+import { RunpodShareDownloadDialog } from "@/components/runpod-share-download";
+import {
+  getRunningCharacterId,
+  registerCharacterPatchApplier,
+} from "@/lib/character-paimon-store";
 import { useStore } from "@/lib/store";
 import {
   composeCharacterPrompt,
@@ -192,9 +203,230 @@ function SectionCard({
   );
 }
 
+// One row of the character list. The row itself selects (and drags to reorder);
+// the trailing "…" opens a menu for the per-character actions — duplicate, share
+// to RunPod, delete. The menu is portalled to the body because the list is a
+// vertical scroller that would otherwise clip it.
+function CharacterRow({
+  character,
+  active,
+  dragging,
+  shared,
+  sharing,
+  shareError,
+  onSelect,
+  onDragStart,
+  onDragOver,
+  onDragEnd,
+  onDuplicate,
+  onShare,
+  onUnshare,
+  onDelete,
+}: {
+  character: Character;
+  active: boolean;
+  dragging: boolean;
+  shared: boolean;
+  sharing: boolean;
+  shareError: string;
+  onSelect: () => void;
+  onDragStart: () => void;
+  onDragOver: () => void;
+  onDragEnd: () => void;
+  onDuplicate: () => void;
+  onShare: () => void;
+  onUnshare: () => void;
+  onDelete: () => void;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(
+    null
+  );
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const place = () => {
+      const rect = triggerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const width = 208; // w-52
+      setMenuPos({
+        top: Math.min(rect.bottom + 6, window.innerHeight - 160),
+        left: Math.min(Math.max(8, rect.right - width), window.innerWidth - width - 8),
+      });
+    };
+    place();
+
+    const close = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        !triggerRef.current?.contains(target) &&
+        !menuRef.current?.contains(target)
+      ) {
+        setMenuOpen(false);
+      }
+    };
+    window.addEventListener("mousedown", close);
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
+    return () => {
+      window.removeEventListener("mousedown", close);
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
+    };
+  }, [menuOpen]);
+
+  const runAndClose = (action: () => void) => () => {
+    setMenuOpen(false);
+    action();
+  };
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      draggable
+      onClick={onSelect}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect();
+        }
+      }}
+      onDragStart={(event) => {
+        onDragStart();
+        event.dataTransfer.effectAllowed = "move";
+      }}
+      onDragOver={(event) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+        onDragOver();
+      }}
+      onDragEnd={onDragEnd}
+      className={`group flex w-full items-center gap-2 rounded-md border p-2 text-left transition-colors ${
+        active
+          ? "border-primary/30 bg-primary/10"
+          : "border-transparent hover:bg-sidebar-accent"
+      } ${dragging ? "opacity-50" : ""}`}
+    >
+      <GripVertical
+        className="size-4 shrink-0 cursor-grab text-muted-foreground/50 transition-colors group-hover:text-muted-foreground"
+        aria-hidden
+      />
+      <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
+        {character.thumbnail ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={character.thumbnail}
+            alt={character.name}
+            className="size-full object-cover"
+          />
+        ) : (
+          <UserRound className="size-5 text-muted-foreground" />
+        )}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-1">
+          {shared && (
+            <Cloud
+              className="size-3 shrink-0 text-primary"
+              aria-label="RunPod에 공유됨"
+            />
+          )}
+          <span className="block truncate text-sm font-semibold">
+            {character.name || "이름 없음"}
+          </span>
+        </span>
+        <span className="block truncate text-xs text-muted-foreground">
+          {character.summary || "간단 정보 없음"}
+        </span>
+      </span>
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          setMenuOpen((current) => !current);
+        }}
+        className="shrink-0 rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-muted focus-visible:opacity-100 group-hover:opacity-100 aria-expanded:opacity-100"
+        aria-label="캐릭터 메뉴 (복제·공유·삭제)"
+        aria-expanded={menuOpen}
+        title="복제·공유·삭제"
+      >
+        {sharing ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <MoreHorizontal className="size-4" />
+        )}
+      </button>
+
+      {menuOpen &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            ref={menuRef}
+            className="fixed z-[200] w-52 rounded-md border border-border bg-popover p-2 text-foreground shadow-xl"
+            style={{
+              top: menuPos?.top ?? -9999,
+              left: menuPos?.left ?? -9999,
+              visibility: menuPos ? "visible" : "hidden",
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="space-y-0.5">
+              <button
+                type="button"
+                onClick={runAndClose(onDuplicate)}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent"
+              >
+                <Copy className="size-3.5" />
+                복제
+              </button>
+              <button
+                type="button"
+                disabled={sharing}
+                onClick={runAndClose(shared ? onUnshare : onShare)}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent disabled:opacity-50"
+              >
+                {shared ? (
+                  <CloudOff className="size-3.5" />
+                ) : (
+                  <Cloud className="size-3.5" />
+                )}
+                {shared ? "공유 해제" : "공유하기"}
+              </button>
+              {shared && (
+                <p className="px-2 pb-1 text-[10px] text-muted-foreground">
+                  {shareError ||
+                    "내용이 바뀌면 자동으로 RunPod에 반영됩니다."}
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={runAndClose(onDelete)}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-destructive transition-colors hover:bg-destructive/10"
+              >
+                <Trash2 className="size-3.5" />
+                삭제
+              </button>
+            </div>
+          </div>,
+          document.body
+        )}
+    </div>
+  );
+}
+
 export function CharacterStudio() {
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // A Paimon answer can still be streaming for some character when this screen
+  // opens (the chat keeps running after the studio unmounts). Captured on the
+  // first render — before the list even arrives — so that character gets
+  // selected and its chat opens instead of the usual first-in-list.
+  const [runningChatCharacterId] = useState(getRunningCharacterId);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
@@ -205,6 +437,12 @@ export function CharacterStudio() {
   const draggingIdRef = useRef<string | null>(null);
   const [thumbBusy, setThumbBusy] = useState(false);
   const [thumbError, setThumbError] = useState("");
+  // Characters this machine has pushed to RunPod, keyed by id. Local state only
+  // (no pod round-trip), so the list can badge them straight away.
+  const [shares, setShares] = useState<Record<string, { error: string }>>({});
+  const [sharingId, setSharingId] = useState("");
+  const [shareMessage, setShareMessage] = useState("");
+  const [downloadOpen, setDownloadOpen] = useState(false);
 
   const charactersRef = useRef<Character[]>([]);
   const saveTimers = useRef<Map<string, number>>(new Map());
@@ -224,8 +462,13 @@ export function CharacterStudio() {
         const data = (await res.json()) as { characters?: Character[] };
         if (!active) return;
         const list = data.characters ?? [];
+        const running =
+          runningChatCharacterId &&
+          list.some((character) => character.id === runningChatCharacterId)
+            ? runningChatCharacterId
+            : null;
         setCharacters(list);
-        setSelectedId((current) => current ?? list[0]?.id ?? null);
+        setSelectedId((current) => current ?? running ?? list[0]?.id ?? null);
       } catch {
         // Leave the list empty on failure; the empty state guides the user.
       } finally {
@@ -235,7 +478,7 @@ export function CharacterStudio() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [runningChatCharacterId]);
 
   useEffect(() => {
     const timers = saveTimers.current;
@@ -259,6 +502,12 @@ export function CharacterStudio() {
   const [situationImages, setSituationImages] = useState<
     Record<string, GeneratedImage[]>
   >({});
+  // Situation whose "갤러리에서 가져오기" picker is open, and the one currently
+  // waiting on a link request (its button shows a spinner).
+  const [situationPickerId, setSituationPickerId] = useState<string | null>(null);
+  const [attachingSituationId, setAttachingSituationId] = useState<string | null>(
+    null
+  );
 
   const reloadSituationImages = useCallback(async () => {
     // No character selected: nothing renders the situation strips, so leaving the
@@ -340,6 +589,32 @@ export function CharacterStudio() {
     [selectedId]
   );
 
+  // Attach existing gallery images to a situation: tags each image's metadata with
+  // this character/situation so it shows up in the situation strip just like a
+  // generated result. An image already linked elsewhere moves to this situation.
+  const attachSituationImages = useCallback(
+    async (situationId: string, images: GeneratedImageLite[]) => {
+      if (!selectedId || images.length === 0) return;
+      setAttachingSituationId(situationId);
+      try {
+        await fetch(`/api/characters/${selectedId}/images`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            situationId,
+            filenames: images.map((image) => image.filename),
+          }),
+        });
+      } catch {
+        // Silent: the reload below shows whatever actually got linked.
+      } finally {
+        setAttachingSituationId(null);
+        await reloadSituationImages();
+      }
+    },
+    [reloadSituationImages, selectedId]
+  );
+
   const scheduleSave = useCallback((id: string) => {
     const timers = saveTimers.current;
     const existing = timers.get(id);
@@ -371,6 +646,14 @@ export function CharacterStudio() {
       scheduleSave(id);
     },
     [scheduleSave]
+  );
+
+  // While the studio is mounted, Paimon's character edits land in this list (and
+  // its debounced save). When it is unmounted mid-answer, the store persists the
+  // patch itself and this list picks it up on the next mount.
+  useEffect(
+    () => registerCharacterPatchApplier(patchCharacter),
+    [patchCharacter]
   );
 
   const patchSelected = useCallback(
@@ -416,9 +699,132 @@ export function CharacterStudio() {
         );
         return remaining[0]?.id ?? null;
       });
+      setShares((current) => {
+        const next = { ...current };
+        delete next[id];
+        return next;
+      });
       await fetch(`/api/characters/${id}`, { method: "DELETE" }).catch(() => {});
     },
     []
+  );
+
+  // Re-reads the list from the server, optionally selecting one character —
+  // used after a download, which can both add a character and refresh an
+  // existing one.
+  const reloadCharacters = useCallback(async (selectId?: string) => {
+    try {
+      const res = await fetch("/api/characters", { cache: "no-store" });
+      const data = (await res.json()) as { characters?: Character[] };
+      const list = data.characters ?? [];
+      setCharacters(list);
+      if (selectId && list.some((item) => item.id === selectId)) {
+        setSelectedId(selectId);
+      }
+    } catch {
+      // Keep the current list; the user can retry from the dialog.
+    }
+  }, []);
+
+  const duplicateCharacter = useCallback(async (id: string) => {
+    try {
+      const res = await fetch(`/api/characters/${id}/duplicate`, {
+        method: "POST",
+      });
+      const data = (await res.json()) as { character?: Character; error?: string };
+      if (!res.ok || !data.character) throw new Error(data.error || "복제 실패");
+      const copy = data.character;
+      // The server stores the copy directly after the original, so mirror that
+      // placement here instead of appending.
+      setCharacters((prev) => {
+        const index = prev.findIndex((item) => item.id === id);
+        if (index === -1) return [...prev, copy];
+        const next = [...prev];
+        next.splice(index + 1, 0, copy);
+        return next;
+      });
+      setSelectedId(copy.id);
+    } catch (error) {
+      setShareMessage(error instanceof Error ? error.message : "복제 실패");
+    }
+  }, []);
+
+  // ---- RunPod sharing ----
+
+  const refreshShares = useCallback(async () => {
+    try {
+      const res = await fetch("/api/runpod/share/state?kind=characters", {
+        cache: "no-store",
+      });
+      const data = (await res.json()) as {
+        shares?: Record<string, { error?: string }>;
+      };
+      setShares(
+        Object.fromEntries(
+          Object.entries(data.shares ?? {}).map(([id, record]) => [
+            id,
+            { error: record?.error ?? "" },
+          ])
+        )
+      );
+    } catch {
+      // Badges are cosmetic; sharing still works without them.
+    }
+  }, []);
+
+  useEffect(() => {
+    void (async () => {
+      await refreshShares();
+    })();
+  }, [refreshShares]);
+
+  const shareCharacter = useCallback(
+    async (id: string) => {
+      setSharingId(id);
+      setShareMessage("");
+      try {
+        const res = await fetch("/api/runpod/share", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ kind: "characters", id }),
+        });
+        const data = (await res.json()) as {
+          imageCount?: number;
+          podLabel?: string;
+          error?: string;
+        };
+        if (!res.ok) throw new Error(data.error || "공유에 실패했습니다.");
+        setShareMessage(
+          `${data.podLabel ?? "RunPod"}에 공유됨 — 이미지 ${data.imageCount ?? 0}장`
+        );
+        await refreshShares();
+      } catch (error) {
+        setShareMessage(
+          error instanceof Error ? error.message : "공유에 실패했습니다."
+        );
+      } finally {
+        setSharingId("");
+      }
+    },
+    [refreshShares]
+  );
+
+  const unshareCharacter = useCallback(
+    async (id: string) => {
+      setSharingId(id);
+      setShareMessage("");
+      try {
+        await fetch(
+          `/api/runpod/share?kind=characters&id=${encodeURIComponent(id)}`,
+          { method: "DELETE" }
+        );
+        setShareMessage("공유를 해제했습니다.");
+        await refreshShares();
+      } finally {
+        setSharingId("");
+      }
+    },
+    [refreshShares]
   );
 
   // ---- List reordering (drag & drop) ----
@@ -727,21 +1133,37 @@ export function CharacterStudio() {
     <div className="flex h-screen min-w-0 flex-1">
       {/* Left: character list */}
       <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-border bg-sidebar">
-        <div className="flex items-center justify-between border-b border-sidebar-border px-4 py-3">
+        {/* Pinned above the scrolling list: creating and downloading a shared
+            character stay reachable no matter how far the list is scrolled. */}
+        <div className="border-b border-sidebar-border px-4 py-3">
           <h2 className="text-sm font-bold">캐릭터</h2>
-          <Button
-            type="button"
-            size="sm"
-            onClick={createCharacter}
-            disabled={creating}
-          >
-            {creating ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <Plus />
-            )}
-            새 캐릭터
-          </Button>
+          <div className="mt-2 flex items-center gap-1.5">
+            <Button
+              type="button"
+              size="sm"
+              className="flex-1"
+              onClick={createCharacter}
+              disabled={creating}
+            >
+              {creating ? <Loader2 className="animate-spin" /> : <Plus />}
+              새 캐릭터
+            </Button>
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="outline"
+              onClick={() => setDownloadOpen(true)}
+              aria-label="공유 캐릭터 다운로드"
+              title="RunPod에 공유된 캐릭터 다운로드"
+            >
+              <CloudDownload />
+            </Button>
+          </div>
+          {shareMessage && (
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              {shareMessage}
+            </p>
+          )}
         </div>
         <div className="flex-1 space-y-1 overflow-y-auto p-2">
           {loading ? (
@@ -753,72 +1175,37 @@ export function CharacterStudio() {
               아직 캐릭터가 없어요. &quot;새 캐릭터&quot;로 시작하세요.
             </p>
           ) : (
-            characters.map((character) => {
-              const active = character.id === selectedId;
-              return (
-                <button
-                  key={character.id}
-                  type="button"
-                  draggable
-                  onClick={() => setSelectedId(character.id)}
-                  onDragStart={(event) => {
-                    startDrag(character.id);
-                    event.dataTransfer.effectAllowed = "move";
-                  }}
-                  onDragOver={(event) => {
-                    event.preventDefault();
-                    event.dataTransfer.dropEffect = "move";
-                    handleDragOver(character.id);
-                  }}
-                  onDragEnd={handleDragEnd}
-                  className={`group flex w-full items-center gap-2 rounded-md border p-2 text-left transition-colors ${
-                    active
-                      ? "border-primary/30 bg-primary/10"
-                      : "border-transparent hover:bg-sidebar-accent"
-                  } ${draggingId === character.id ? "opacity-50" : ""}`}
-                >
-                  <GripVertical
-                    className="size-4 shrink-0 cursor-grab text-muted-foreground/50 transition-colors group-hover:text-muted-foreground"
-                    aria-hidden
-                  />
-                  <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
-                    {character.thumbnail ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={character.thumbnail}
-                        alt={character.name}
-                        className="size-full object-cover"
-                      />
-                    ) : (
-                      <UserRound className="size-5 text-muted-foreground" />
-                    )}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold">
-                      {character.name || "이름 없음"}
-                    </span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {character.summary || "간단 정보 없음"}
-                    </span>
-                  </span>
-                  <span
-                    role="button"
-                    tabIndex={-1}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      void deleteCharacter(character.id);
-                    }}
-                    className="shrink-0 rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
-                    aria-label="캐릭터 삭제"
-                    title="삭제"
-                  >
-                    <Trash2 className="size-4" />
-                  </span>
-                </button>
-              );
-            })
+            characters.map((character) => (
+              <CharacterRow
+                key={character.id}
+                character={character}
+                active={character.id === selectedId}
+                dragging={draggingId === character.id}
+                shared={Boolean(shares[character.id])}
+                sharing={sharingId === character.id}
+                shareError={shares[character.id]?.error ?? ""}
+                onSelect={() => setSelectedId(character.id)}
+                onDragStart={() => startDrag(character.id)}
+                onDragOver={() => handleDragOver(character.id)}
+                onDragEnd={handleDragEnd}
+                onDuplicate={() => void duplicateCharacter(character.id)}
+                onShare={() => void shareCharacter(character.id)}
+                onUnshare={() => void unshareCharacter(character.id)}
+                onDelete={() => void deleteCharacter(character.id)}
+              />
+            ))
           )}
         </div>
+
+        <RunpodShareDownloadDialog
+          kind="characters"
+          open={downloadOpen}
+          onOpenChange={setDownloadOpen}
+          onDownloaded={(characterId) => {
+            void reloadCharacters(characterId);
+            void refreshShares();
+          }}
+        />
       </aside>
 
       {/* Right: character settings */}
@@ -1260,21 +1647,45 @@ export function CharacterStudio() {
                               updateSituation(situation.id, { prompt: value })
                             }
                           />
-                          {(situationImages[situation.id]?.length ?? 0) > 0 && (
-                            <div className="space-y-1.5">
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between gap-2">
                               <Label className="text-xs text-muted-foreground">
-                                생성된 이미지 (
-                                {situationImages[situation.id].length})
+                                생성된 이미지
+                                {(situationImages[situation.id]?.length ?? 0) > 0
+                                  ? ` (${situationImages[situation.id].length})`
+                                  : ""}
                               </Label>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setSituationPickerId(situation.id)}
+                                disabled={attachingSituationId === situation.id}
+                                title="갤러리의 이미지를 이 상황에 등록해요."
+                              >
+                                {attachingSituationId === situation.id ? (
+                                  <Loader2 className="animate-spin" />
+                                ) : (
+                                  <ImagesIcon />
+                                )}
+                                갤러리에서 가져오기
+                              </Button>
+                            </div>
+                            {(situationImages[situation.id]?.length ?? 0) === 0 ? (
+                              <p className="text-xs text-muted-foreground">
+                                아직 이미지가 없어요. 생성하거나 갤러리에서 가져올
+                                수 있어요.
+                              </p>
+                            ) : (
                               <div className="flex flex-wrap gap-2">
                                 {situationImages[situation.id].map((image) => (
                                   <div
                                     key={image.id}
-                                    className="group relative size-16"
+                                    className="group relative size-32"
                                   >
                                     <button
                                       type="button"
-                                      className="size-16 overflow-hidden rounded-md border border-border bg-muted transition-opacity hover:opacity-80"
+                                      className="size-32 overflow-hidden rounded-md border border-border bg-muted transition-opacity hover:opacity-80"
                                       onClick={() => setSelectedImage(image)}
                                       title="이미지 상세 보기"
                                     >
@@ -1298,8 +1709,8 @@ export function CharacterStudio() {
                                   </div>
                                 ))}
                               </div>
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1337,9 +1748,8 @@ export function CharacterStudio() {
 
       {selected && (
         <CharacterPaimonChat
-          key={selected.id}
           character={selected}
-          onApplyPatch={patchSelected}
+          autoOpen={selected.id === runningChatCharacterId}
         />
       )}
 
@@ -1352,27 +1762,61 @@ export function CharacterStudio() {
           }}
         />
       )}
+
+      {situationPickerId && (
+        <GalleryPicker
+          title="갤러리에서 이 상황에 등록할 이미지 선택"
+          multiple
+          confirmLabel="상황에 등록"
+          onClose={() => setSituationPickerId(null)}
+          onPickMany={(images) => {
+            const situationId = situationPickerId;
+            setSituationPickerId(null);
+            void attachSituationImages(situationId, images);
+          }}
+        />
+      )}
     </div>
   );
 }
 
+// Gallery browser used both for picking a character thumbnail (single pick, by
+// url) and for attaching gallery images to a situation (multi pick, by file).
 function GalleryPicker({
+  title = "생성된 이미지에서 선택",
+  multiple = false,
+  confirmLabel = "추가",
   onClose,
   onPick,
+  onPickMany,
 }: {
+  title?: string;
+  multiple?: boolean;
+  confirmLabel?: string;
   onClose: () => void;
-  onPick: (url: string) => void;
+  onPick?: (url: string) => void;
+  onPickMany?: (images: GeneratedImageLite[]) => void;
 }) {
   const [images, setImages] = useState<GeneratedImageLite[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cursor, setCursor] = useState<number | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  // Selected filenames, in click order, so the confirm button can attach a batch.
+  const [picked, setPicked] = useState<string[]>([]);
 
   useEffect(() => {
     let active = true;
     void (async () => {
       try {
         const res = await fetch("/api/images?limit=60", { cache: "no-store" });
-        const data = (await res.json()) as { images?: GeneratedImageLite[] };
-        if (active) setImages(data.images ?? []);
+        const data = (await res.json()) as {
+          images?: GeneratedImageLite[];
+          nextCursor?: number | null;
+        };
+        if (active) {
+          setImages(data.images ?? []);
+          setCursor(data.nextCursor ?? null);
+        }
       } catch {
         if (active) setImages([]);
       } finally {
@@ -1384,6 +1828,44 @@ function GalleryPicker({
     };
   }, []);
 
+  const loadMore = useCallback(async () => {
+    if (cursor === null || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const res = await fetch(`/api/images?limit=60&cursor=${cursor}`, {
+        cache: "no-store",
+      });
+      const data = (await res.json()) as {
+        images?: GeneratedImageLite[];
+        nextCursor?: number | null;
+      };
+      setImages((prev) => [...prev, ...(data.images ?? [])]);
+      setCursor(data.nextCursor ?? null);
+    } catch {
+      setCursor(null);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [cursor, loadingMore]);
+
+  const toggle = useCallback((image: GeneratedImageLite) => {
+    setPicked((prev) =>
+      prev.includes(image.filename)
+        ? prev.filter((name) => name !== image.filename)
+        : [...prev, image.filename]
+    );
+  }, []);
+
+  const confirm = useCallback(() => {
+    if (picked.length === 0) return;
+    const byFilename = new Map(images.map((image) => [image.filename, image]));
+    onPickMany?.(
+      picked
+        .map((filename) => byFilename.get(filename))
+        .filter((image): image is GeneratedImageLite => Boolean(image))
+    );
+  }, [images, onPickMany, picked]);
+
   return (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4"
@@ -1394,7 +1876,7 @@ function GalleryPicker({
         onClick={(event) => event.stopPropagation()}
       >
         <header className="flex items-center justify-between border-b border-border px-4 py-3">
-          <h3 className="text-sm font-semibold">생성된 이미지에서 선택</h3>
+          <h3 className="text-sm font-semibold">{title}</h3>
           <Button
             type="button"
             variant="ghost"
@@ -1415,26 +1897,83 @@ function GalleryPicker({
               생성된 이미지가 없어요.
             </p>
           ) : (
-            <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
-              {images.map((image) => (
-                <button
-                  key={image.id || image.filename}
-                  type="button"
-                  onClick={() => onPick(image.url)}
-                  className="aspect-square overflow-hidden rounded-md border border-border transition-transform hover:scale-[1.03] hover:border-primary/50"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={image.thumbnailUrl || image.url}
-                    alt=""
-                    className="size-full object-cover"
-                    loading="lazy"
-                  />
-                </button>
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
+                {images.map((image) => {
+                  const selectedIndex = picked.indexOf(image.filename);
+                  return (
+                    <button
+                      key={image.id || image.filename}
+                      type="button"
+                      onClick={() =>
+                        multiple ? toggle(image) : onPick?.(image.url)
+                      }
+                      className={`relative aspect-square overflow-hidden rounded-md border transition-transform hover:scale-[1.03] hover:border-primary/50 ${
+                        selectedIndex >= 0
+                          ? "border-primary ring-2 ring-primary/40"
+                          : "border-border"
+                      }`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={image.thumbnailUrl || image.url}
+                        alt=""
+                        className="size-full object-cover"
+                        loading="lazy"
+                      />
+                      {selectedIndex >= 0 && (
+                        <span className="absolute right-1 top-1 flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+                          {selectedIndex + 1}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              {cursor !== null && (
+                <div className="mt-3 flex justify-center">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void loadMore()}
+                    disabled={loadingMore}
+                  >
+                    {loadingMore ? (
+                      <>
+                        <Loader2 className="animate-spin" /> 불러오는 중
+                      </>
+                    ) : (
+                      "더 보기"
+                    )}
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </div>
+        {multiple && (
+          <footer className="flex items-center justify-between gap-3 border-t border-border px-4 py-3">
+            <span className="text-xs text-muted-foreground">
+              {picked.length > 0
+                ? `${picked.length}개 선택됨`
+                : "추가할 이미지를 선택하세요."}
+            </span>
+            <div className="flex gap-2">
+              <Button type="button" variant="ghost" size="sm" onClick={onClose}>
+                취소
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={confirm}
+                disabled={picked.length === 0}
+              >
+                {confirmLabel}
+              </Button>
+            </div>
+          </footer>
+        )}
       </div>
     </div>
   );

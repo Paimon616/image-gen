@@ -27,8 +27,9 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/store";
 import { useSeedanceStore } from "@/lib/seedance-store";
+import { useSeedancePaimonStore } from "@/lib/seedance-paimon-store";
+import { PaimonPanel } from "@/components/paimon-panel";
 import {
-  DEFAULT_SEEDANCE_PARAMS,
   SEEDANCE_DURATION_MAX,
   SEEDANCE_DURATION_MIN,
   SEEDANCE_MAX_REFERENCES,
@@ -44,7 +45,6 @@ import {
 import type { GeneratedImage } from "@/lib/types";
 
 const MAX_IMAGE_DIM = 1536;
-const PARAMS_STORAGE_KEY = "seedance-params-v1";
 
 type Lang = "ko" | "en";
 
@@ -342,7 +342,12 @@ export default function SeedancePage() {
   const updatePending = useSeedanceStore((s) => s.updatePending);
   const removePending = useSeedanceStore((s) => s.removePending);
 
-  const [params, setParams] = useState<SeedanceParams>(DEFAULT_SEEDANCE_PARAMS);
+  // Params live in the module-level store so they survive navigating away and
+  // back, and so a Paimon answer that lands while this page is unmounted still
+  // applies to the params the user returns to.
+  const params = useSeedanceStore((s) => s.params);
+  const setParams = useSeedanceStore((s) => s.setParams);
+  const hydrateParams = useSeedanceStore((s) => s.hydrateParams);
   const [showLastFrame, setShowLastFrame] = useState(false);
   const [showReferences, setShowReferences] = useState(false);
   const [picker, setPicker] = useState<null | ((url: string) => void)>(null);
@@ -350,43 +355,11 @@ export default function SeedancePage() {
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const abortControllers = useRef<Record<string, AbortController>>({});
 
-  // Restore non-image params from a previous session.
+  // One-time restore of the remembered settings (the store writes them back on
+  // every change, including edits Paimon makes while this page is unmounted).
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(PARAMS_STORAGE_KEY);
-      if (raw) {
-        const saved = JSON.parse(raw) as Partial<SeedanceParams>;
-        // One-time hydration from browser storage after mount — reading
-        // localStorage in a lazy initializer would cause an SSR/client mismatch,
-        // so the recommended pattern is to apply it in a mount effect.
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setParams((p) => ({
-          ...p,
-          resolution: saved.resolution ?? p.resolution,
-          ratio: saved.ratio ?? p.ratio,
-          duration: saved.duration ?? p.duration,
-          cameraFixed: saved.cameraFixed ?? p.cameraFixed,
-          watermark: saved.watermark ?? p.watermark,
-          cleanFrame: saved.cleanFrame ?? p.cleanFrame,
-          mode: saved.mode ?? p.mode,
-        }));
-      }
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  useEffect(() => {
-    const { resolution, ratio, duration, cameraFixed, watermark, cleanFrame, mode } = params;
-    try {
-      localStorage.setItem(
-        PARAMS_STORAGE_KEY,
-        JSON.stringify({ resolution, ratio, duration, cameraFixed, watermark, cleanFrame, mode })
-      );
-    } catch {
-      /* ignore */
-    }
-  }, [params]);
+    hydrateParams();
+  }, [hydrateParams]);
 
   // Load finished videos on mount.
   useEffect(() => {
@@ -398,9 +371,12 @@ export default function SeedancePage() {
       .catch(() => {});
   }, [setVideos]);
 
-  const patch = useCallback((update: Partial<SeedanceParams>) => {
-    setParams((p) => ({ ...p, ...update }));
-  }, []);
+  const patch = useCallback(
+    (update: Partial<SeedanceParams>) => {
+      setParams((p) => ({ ...p, ...update }));
+    },
+    [setParams]
+  );
 
   const insertChip = useCallback((text: string) => {
     setParams((p) => {
@@ -409,7 +385,7 @@ export default function SeedancePage() {
       return { ...p, prompt: base ? `${base}${sep}${text}` : text };
     });
     promptRef.current?.focus();
-  }, []);
+  }, [setParams]);
 
   // Page-level paste: fill the first empty image slot in i2v mode.
   useEffect(() => {
@@ -428,7 +404,7 @@ export default function SeedancePage() {
     };
     window.addEventListener("paste", handler);
     return () => window.removeEventListener("paste", handler);
-  }, [params.mode]);
+  }, [params.mode, setParams]);
 
   const startGeneration = useCallback(
     async (source: SeedanceParams) => {
@@ -923,6 +899,25 @@ export default function SeedancePage() {
           }}
         />
       )}
+
+      <PaimonPanel
+        store={useSeedancePaimonStore}
+        subtitle={
+          language === "ko"
+            ? "현재 SeeDance 설정을 읽고 수정합니다"
+            : "Reads the current SeeDance settings and edits them"
+        }
+        intro={
+          language === "ko"
+            ? "파이몬이에요. 시작 이미지와 현재 설정을 보고 SeeDance 프롬프트·해상도·길이를 다듬어드릴게요."
+            : "Paimon here. I can read the start frame and current settings, then refine the SeeDance prompt, resolution, and duration."
+        }
+        placeholder={
+          language === "ko"
+            ? "이 인물이 카메라를 보며 천천히 걸어오는 5초 영상 프롬프트를 만들어줘"
+            : "Write a 5s prompt of this person walking toward the camera"
+        }
+      />
     </div>
   );
 }
