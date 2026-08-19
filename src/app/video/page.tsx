@@ -49,6 +49,7 @@ import {
   type RunpodDownloadItem,
 } from "@/lib/runpod-download-store";
 import { takeVideoReference, toAbsoluteImageUrl } from "@/lib/video-reference";
+import { censorSetupReady, type CensorSetupStatus } from "@/lib/censor-assets";
 import {
   DEFAULT_CENSOR_SETTINGS,
   DEFAULT_VIDEO_PARAMS,
@@ -1461,6 +1462,12 @@ export default function VideoPage() {
   const [pipelineModelsStatus, setPipelineModelsStatus] = useState("");
   const [nodeInstallBusy, setNodeInstallBusy] = useState(false);
   const [nodeInstallStatus, setNodeInstallStatus] = useState("");
+  const [censorSetup, setCensorSetup] = useState<CensorSetupStatus | null>(null);
+  const [censorSetupChecking, setCensorSetupChecking] = useState(false);
+  const [censorInstall, setCensorInstall] = useState<{ running: boolean; message: string }>({
+    running: false,
+    message: "",
+  });
   const [runpodConnection, setRunpodConnection] = useState<RunpodConnectionStatus>({
     checked: false,
     comfyReachable: false,
@@ -2062,6 +2069,110 @@ export default function VideoPage() {
   // Detect which custom-node packs the selected pipeline needs (via the pod's
   // live /object_info) and install the missing ones onto the pod through the
   // helper (git clone + pip + ComfyUI restart), streaming progress.
+  // Probe whether the censor prerequisites (NudeNet node + detector model) are
+  // present on the currently selected target. Local and RunPod each have their own
+  // status route; the result drives the install prompt in the censor section.
+  const censorEnabled = params.censor?.enabled ?? false;
+  const checkCensorSetup = useCallback(async () => {
+    // Nothing to set up while off, or before a RunPod target has a pod chosen.
+    if (!censorEnabled) {
+      setCensorSetup(null);
+      return;
+    }
+    const url =
+      generationTarget === "runpod"
+        ? selectedRunpodPodId
+          ? `/api/runpod/pods/${selectedRunpodPodId}/censor-status`
+          : ""
+        : "/api/comfyui/censor-status";
+    if (!url) {
+      setCensorSetup(null);
+      return;
+    }
+    setCensorSetupChecking(true);
+    try {
+      const res = await fetch(url, { cache: "no-store" });
+      const data = (await res.json()) as CensorSetupStatus & { error?: string };
+      setCensorSetup(res.ok ? data : null);
+    } catch {
+      setCensorSetup(null);
+    } finally {
+      setCensorSetupChecking(false);
+    }
+  }, [censorEnabled, generationTarget, selectedRunpodPodId]);
+
+  // Re-check whenever censoring is toggled on or the target/pod changes. All state
+  // updates live inside the async callback so the effect body stays side-effect free.
+  useEffect(() => {
+    void checkCensorSetup();
+  }, [checkCensorSetup]);
+
+  // Install the censor assets onto the active target, scoped to the mode: the local
+  // route spawns setup-comfyui-censor.sh, the RunPod route installs nodes + fetches
+  // the detector via the pod helper. Streams SSE progress, then re-checks status.
+  const installCensor = useCallback(
+    async (target: "local" | "runpod") => {
+      if (censorInstall.running) return;
+      const ko = language === "ko";
+      if (target === "runpod" && !selectedRunpodPodId) return;
+      const url =
+        target === "runpod"
+          ? `/api/runpod/pods/${selectedRunpodPodId}/censor/install/stream`
+          : "/api/comfyui/censor/install/stream";
+
+      setCensorInstall({ running: true, message: ko ? "설치 시작..." : "Starting install..." });
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+        if (!res.ok || !res.body) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || "Install failed.");
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let streamError = "";
+        const handle = (raw: string) => {
+          if (!raw.startsWith("data:")) return;
+          const event = JSON.parse(raw.slice(5).trim()) as {
+            type?: string;
+            message?: string;
+          };
+          if (event.type === "error") {
+            streamError = event.message || "Install failed.";
+          } else if (event.message) {
+            setCensorInstall({ running: true, message: event.message });
+          }
+        };
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split(/\r?\n/);
+          buffer = lines.pop() ?? "";
+          for (const line of lines) handle(line);
+        }
+        if (buffer) handle(buffer);
+        if (streamError) throw new Error(streamError);
+
+        setCensorInstall({
+          running: false,
+          message: ko ? "설치 완료. 상태를 다시 확인합니다..." : "Installed. Rechecking...",
+        });
+        await checkCensorSetup();
+      } catch (error) {
+        setCensorInstall({
+          running: false,
+          message: error instanceof Error ? error.message : "Install failed.",
+        });
+      }
+    },
+    [censorInstall.running, language, selectedRunpodPodId, checkCensorSetup]
+  );
+
   const installPipelineNodes = useCallback(async () => {
     const pipelineId = params.video_pipeline || params.video_model;
     if (!selectedRunpodPodId || !pipelineId || nodeInstallBusy) return;
@@ -3821,6 +3932,96 @@ export default function VideoPage() {
                     className="h-9 text-xs"
                   />
                 </div>
+              </div>
+            )}
+
+            {(params.censor ?? DEFAULT_CENSOR_SETTINGS).enabled && (
+              <div className="mt-3 rounded-md border border-border/60 bg-muted/30 p-3 text-xs">
+                {censorSetupChecking ? (
+                  <p className="flex items-center gap-1.5 text-muted-foreground">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    {language === "ko" ? "검열 구성요소 확인 중..." : "Checking censor setup..."}
+                  </p>
+                ) : censorSetup?.notLocal ? (
+                  <p className="text-yellow-500">
+                    {language === "ko"
+                      ? "로컬 ComfyUI가 아닙니다. 위에서 RunPod 대상을 선택하면 설치할 수 있습니다."
+                      : "Not a local ComfyUI — select a RunPod target above to install."}
+                  </p>
+                ) : censorSetup?.notInstalled ? (
+                  <p className="text-yellow-500">
+                    {language === "ko"
+                      ? "로컬 ComfyUI가 설치되어 있지 않습니다. 먼저 `npm run setup:comfyui`를 실행하세요."
+                      : "Local ComfyUI is not installed — run `npm run setup:comfyui` first."}
+                  </p>
+                ) : censorSetup && !censorSetupReady(censorSetup) ? (
+                  <div className="space-y-2">
+                    <p className="flex items-center gap-1.5 font-medium text-yellow-500">
+                      <ShieldAlert className="h-3.5 w-3.5" />
+                      {language === "ko"
+                        ? `검열 구성요소가 ${generationTarget === "runpod" ? "이 pod에" : "로컬에"} 없습니다`
+                        : `Censor components are missing on ${generationTarget === "runpod" ? "this pod" : "local"}`}
+                    </p>
+                    <ul className="ml-4 list-disc space-y-0.5 text-muted-foreground">
+                      <li className={censorSetup.nodesInstalled ? "text-emerald-500" : ""}>
+                        {language === "ko" ? "NudeNet 노드" : "NudeNet nodes"}:{" "}
+                        {censorSetup.nodesInstalled
+                          ? language === "ko" ? "설치됨" : "installed"
+                          : language === "ko" ? "없음" : "missing"}
+                      </li>
+                      <li className={censorSetup.modelPresent ? "text-emerald-500" : ""}>
+                        {language === "ko" ? "탐지 모델" : "Detector model"}:{" "}
+                        {censorSetup.modelPresent
+                          ? language === "ko" ? "있음" : "present"
+                          : language === "ko" ? "없음" : "missing"}
+                      </li>
+                    </ul>
+                    {!censorSetup.reachable && generationTarget === "runpod" && (
+                      <p className="text-[11px] text-muted-foreground">
+                        {language === "ko"
+                          ? "ComfyUI에 연결하지 못했습니다. 설치를 진행하면 헬퍼가 자동 복구됩니다."
+                          : "Couldn't reach ComfyUI; installing will self-heal the helper."}
+                      </p>
+                    )}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-8 gap-1.5"
+                      onClick={() => void installCensor(generationTarget)}
+                      disabled={
+                        censorInstall.running ||
+                        isGenerating ||
+                        (generationTarget === "runpod" &&
+                          (!selectedRunpodPodId || !runpodConnection.helperReachable))
+                      }
+                      title={
+                        language === "ko"
+                          ? "NudeNet 노드와 탐지 모델을 현재 대상에 설치합니다"
+                          : "Install the NudeNet node and detector model onto the current target"
+                      }
+                    >
+                      {censorInstall.running ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Wrench className="h-3.5 w-3.5" />
+                      )}
+                      {generationTarget === "runpod"
+                        ? language === "ko" ? "RunPod에 설치" : "Install on RunPod"
+                        : language === "ko" ? "로컬에 설치" : "Install locally"}
+                    </Button>
+                    {censorInstall.message && (
+                      <p className="break-words text-[11px] text-muted-foreground">
+                        {censorInstall.message}
+                      </p>
+                    )}
+                  </div>
+                ) : censorSetup && censorSetupReady(censorSetup) ? (
+                  <p className="flex items-center gap-1.5 text-emerald-500">
+                    <ShieldAlert className="h-3.5 w-3.5" />
+                    {language === "ko" ? "검열 구성요소 준비됨" : "Censor components ready"}
+                  </p>
+                ) : null}
               </div>
             )}
           </EditorSection>

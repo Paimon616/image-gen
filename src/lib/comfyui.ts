@@ -33,6 +33,7 @@ import {
 } from "./comfy-version";
 import { getRunpodCheckpointCapabilities } from "./runpod";
 import { normalizeGenerationSeed } from "./types";
+import { censorModelFile } from "./censor-assets";
 import type { VideoPipelineLoraSlot } from "./video-pipelines";
 import { resolveVideoPipeline, resolveVideoWorkflowPath } from "./video-pipelines";
 
@@ -2785,7 +2786,7 @@ function injectCensorNodes(
 
   if (!seams.length) return;
 
-  const modelName = process.env.COMFYUI_NUDENET_MODEL?.trim() || "nudenet.onnx";
+  const modelName = censorModelFile();
   const modelNodeId = "__censor_nudenet_model";
   const labelsNodeId = "__censor_labels";
 

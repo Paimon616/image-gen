@@ -9,6 +9,14 @@ import { promisify } from "util";
 import type { GenerationParams, ImportedCivitaiResource } from "@/lib/types";
 import { getRunpodPod, readSettings, type RunpodPodSettings } from "@/lib/settings";
 import { PULID_INSIGHTFACE, PULID_NODE_REPO, PULID_WEIGHT } from "@/lib/pulid-assets";
+import {
+  CENSOR_MODEL_DOWNLOAD_URL,
+  CENSOR_NODE_REPOS,
+  CENSOR_REQUIRED_NODE_TYPES,
+  censorModelFile,
+  censorModelTargetFile,
+  type CensorSetupStatus,
+} from "@/lib/censor-assets";
 import { parseCivitaiUrlIds } from "@/lib/civitai-url";
 import {
   RESOURCE_CATALOG_FOLDERS,
@@ -3163,6 +3171,88 @@ export async function streamRunpodPulidInstall(
     type: "complete",
     installed: [PULID_NODE_REPO.name, PULID_WEIGHT.fileName, "antelopev2"],
     message: "PuLID 설치 완료. 다시 생성하세요. (PuLID installed on the pod — generate again.)",
+  });
+}
+
+// Report whether a pod already has the video-censor prerequisites: the NudeNet
+// custom node (probed via /object_info class_types) and the detector model file
+// (probed via the helper /files endpoint). `reachable` is false when ComfyUI could
+// not be queried, so the caller can avoid claiming "not installed" on a cold pod.
+export async function checkRunpodCensorAssets(
+  podId: string
+): Promise<CensorSetupStatus> {
+  const pod = await getRunpodPod(podId);
+  if (!pod) throw new Error("RunPod target was not found.");
+
+  const installedTypes = await fetchRunpodInstalledNodeTypes(pod);
+  const reachable = installedTypes !== null;
+  const nodesInstalled = reachable
+    ? CENSOR_REQUIRED_NODE_TYPES.every((type) => installedTypes!.has(type))
+    : false;
+
+  let modelPresent = false;
+  try {
+    const data = await fetchRunpodHelper(pod, "/api/runpod/helper/files", {
+      method: "POST",
+      body: JSON.stringify({ files: [censorModelTargetFile()] }),
+    });
+    const files = Array.isArray((data as { files?: unknown }).files)
+      ? ((data as { files: Array<{ exists?: boolean }> }).files)
+      : [];
+    modelPresent = files.some((entry) => entry?.exists);
+  } catch {
+    // Helper unreachable / older build — treat the model as absent so the install
+    // button still appears (the install path self-heals a stale helper).
+    modelPresent = false;
+  }
+
+  return { reachable, nodesInstalled, modelPresent };
+}
+
+// Install the censor custom nodes + NudeNet detector model onto a pod. Mirrors
+// streamRunpodPulidInstall: reuse the generic node installer for the nodes, then
+// ask the helper to fetch the detector into models/Nudenet/. The node install's own
+// terminal "complete" is downgraded to a status so only the final event signals done.
+export async function streamRunpodCensorInstall(
+  podId: string,
+  onEvent: (event: RunpodNodeInstallEvent) => void
+) {
+  const relay = (event: RunpodNodeInstallEvent) => {
+    if (event.type === "complete") {
+      onEvent({
+        type: "status",
+        message: "검열 노드 설치 완료 — 탐지 모델을 내려받는 중... (nodes done, fetching detector)",
+      });
+    } else {
+      onEvent(event);
+    }
+  };
+  await streamRunpodNodeInstall(
+    podId,
+    CENSOR_NODE_REPOS.map((repo) => ({ name: repo.name, url: repo.url })),
+    relay,
+    true
+  );
+
+  const pod = await getRunpodPod(podId);
+  if (!pod) throw new Error("RunPod target was not found.");
+
+  onEvent({
+    type: "status",
+    message: `NudeNet 탐지 모델 다운로드 중 (${censorModelFile()}, ~25MB)... (downloading detector)`,
+  });
+  await fetchRunpodHelper(pod, "/api/runpod/helper/download", {
+    method: "POST",
+    body: JSON.stringify({
+      targetFile: censorModelTargetFile(),
+      downloadUrl: CENSOR_MODEL_DOWNLOAD_URL,
+    }),
+  });
+
+  onEvent({
+    type: "complete",
+    installed: [...CENSOR_NODE_REPOS.map((repo) => repo.name), censorModelFile()],
+    message: "검열 설치 완료. 다시 생성하세요. (Censor assets installed on the pod — generate again.)",
   });
 }
 
