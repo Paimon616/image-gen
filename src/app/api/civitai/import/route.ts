@@ -11,7 +11,10 @@ import {
   buildCivitaiMetadataAdvice,
   recommendedCivitaiBackend,
 } from "@/lib/civitai-metadata-advice";
-import { isDiffusionOnlyImageCheckpointName } from "@/lib/comfyui-model-files";
+import {
+  isDiffusionOnlyImageCheckpointName,
+  resolveUpscalerFileName,
+} from "@/lib/comfyui-model-files";
 
 const CIVITAI_IMAGE_URL_PATTERN =
   /(?:https?:\/\/)?(?:www\.)?(civitai\.(?:com|red))\/images\/(\d+)/i;
@@ -930,9 +933,10 @@ function parseImportParams(meta: Record<string, unknown>, item: CivitaiImageItem
   else if (inferredHires) params.hires_upscale = 2;
   if (hiresSteps) params.hires_steps = Math.round(hiresSteps);
   else if (hiresUpscale && hiresUpscale > 1) params.hires_steps = 0;
-  if (hiresUpscaler && hiresUpscaler.toLowerCase() !== "none") {
-    params.upscale_model_name =
-      hiresUpscaler.toLowerCase() === "esrgan_4x" ? "ESRGAN_4x.pth" : hiresUpscaler;
+  if (hiresUpscaler) {
+    // A1111 records its upscaler by display label ("R-ESRGAN 4x+"); ComfyUI needs the
+    // filename, and its latent modes need no file at all.
+    params.upscale_model_name = resolveUpscalerFileName(hiresUpscaler);
   }
   if (vaeName) params.vae_name = vaeName;
   if (width) params.width = width;

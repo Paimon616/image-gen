@@ -3,11 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import { HelpCircle } from "lucide-react";
 import { useStore } from "@/lib/store";
+import { useGenerationQueueStore } from "@/lib/generation-queue-store";
+import { WorkflowRequirements } from "@/components/workflow-requirements";
+import type { GenerationParams as GenerationParamsType } from "@/lib/types";
 import {
   getHiresPreset,
   getModelConfig,
   IMAGE_SIZE_CONSTRAINTS,
   normalizeImageDimension,
+  requiresComfyUiBackend,
 } from "@/lib/types";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
@@ -127,6 +131,9 @@ export function GenerationParams({ section = "output" }: {
   const currentModel = getModelConfig(params.model);
   const isLocal = currentModel.provider === "comfyui";
   const isWebUi = params.backend === "a1111" || params.backend === "forge";
+  const runpodTarget =
+    useGenerationQueueStore((state) => state.config.generationTarget) ===
+    "runpod";
   const [draftSize, setDraftSize] = useState<
     Partial<Record<"width" | "height", string>>
   >({});
@@ -216,13 +223,24 @@ export function GenerationParams({ section = "output" }: {
     };
   }, []);
 
-  // On macOS the WebUI backends aren't available; fall back to ComfyUI if a
-  // restored/imported value still points at one of them.
+  // Why the WebUI backends are off the table right now, if they are: macOS has no
+  // A1111/Forge install, RunPod generation only runs through the pod's ComfyUI,
+  // and Krea 2 / Z-Image checkpoints only have ComfyUI pipelines.
+  const comfyOnlyReason: "runpod" | "model" | "mac" | null = runpodTarget
+    ? "runpod"
+    : requiresComfyUiBackend(params.model_name)
+      ? "model"
+      : isMac
+        ? "mac"
+        : null;
+
+  // Pin ComfyUI in those cases, so a restored/imported WebUI selection fails at
+  // the dropdown instead of at generation time.
   useEffect(() => {
-    if (isMac && (params.backend === "a1111" || params.backend === "forge")) {
+    if (comfyOnlyReason && isWebUi) {
       setParams({ backend: "comfyui" });
     }
-  }, [isMac, params.backend, setParams]);
+  }, [comfyOnlyReason, isWebUi, setParams]);
 
   useEffect(() => {
     if (!isWebUi) return;
@@ -418,13 +436,28 @@ export function GenerationParams({ section = "output" }: {
           className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <option value="comfyui">ComfyUI (Krea / Wan / workflows)</option>
-          {!isMac && (
+          {!comfyOnlyReason && (
             <>
               <option value="a1111">AUTOMATIC1111 v1.10.0 (Civitai SD 1.5 / SDXL)</option>
               <option value="forge">ForgeUI (Forge / Illustrious compatibility)</option>
             </>
           )}
         </select>
+        {comfyOnlyReason && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            {comfyOnlyReason === "runpod"
+              ? ko
+                ? "RunPod 생성은 Pod의 ComfyUI로만 실행되므로 ComfyUI로 고정됩니다."
+                : "RunPod generation runs on the pod's ComfyUI, so the backend is pinned to ComfyUI."
+              : comfyOnlyReason === "model"
+                ? ko
+                  ? "선택한 체크포인트(Krea 2 / Z-Image)는 ComfyUI 전용 파이프라인이라 ComfyUI로 고정됩니다."
+                  : "The selected checkpoint (Krea 2 / Z-Image) only has a ComfyUI pipeline, so the backend is pinned to ComfyUI."
+                : ko
+                  ? "macOS에서는 A1111/Forge를 사용할 수 없어 ComfyUI로 고정됩니다."
+                  : "A1111/Forge aren't available on macOS, so the backend is pinned to ComfyUI."}
+          </p>
+        )}
         {isWebUi && params.generation_mode === "pose_reference" && (
           <p className="mt-2 text-xs text-amber-600">
             Pose Reference requires the ComfyUI backend.
@@ -437,15 +470,16 @@ export function GenerationParams({ section = "output" }: {
               label={ko ? "Krea 워크플로우" : "Krea workflow"}
               help={
                 ko
-                  ? "Krea 2 체크포인트에만 적용됩니다. 범용은 앱 표준 단일 패스 KSampler, 범용 리파인은 범용에 저-denoise 2번째 KSampler 패스를 더해 Turbo 특유의 노이즈를 정리합니다(스톡 노드만 사용, RES4LYF 불필요). PornMaster는 원본 RES4LYF 2단 샘플러(ClownsharKSampler) 재현이며 ComfyUI에 RES4LYF 노드가 설치돼 있어야 합니다."
-                  : "Applies to Krea 2 checkpoints only. Generic uses the app's standard single-pass KSampler; Generic Refined adds a low-denoise second KSampler pass to clean up turbo grain (stock nodes only, no RES4LYF); PornMaster reproduces the original RES4LYF 2-stage sampler (ClownsharKSampler) and requires the RES4LYF nodes installed in ComfyUI."
+                  ? "Krea 2 체크포인트에만 적용됩니다. 범용은 앱 표준 단일 패스 KSampler, 범용 리파인은 범용에 저-denoise 2번째 KSampler 패스를 더해 Turbo 특유의 노이즈를 정리합니다(스톡 노드만 사용, RES4LYF 불필요). PornMaster는 원본 RES4LYF 2단 샘플러(ClownsharKSampler) 재현이며 ComfyUI에 RES4LYF 노드가 설치돼 있어야 합니다. Moody 사진 마감은 Moody 계열 모델 제작자의 공개 레시피(euler_ancestral·beta·10스텝 1패스 뒤 사진 복원 업스케일 블렌드)로, 2차 디퓨전 패스 없이 그레인을 이미지 단계에서 정리합니다."
+                  : "Applies to Krea 2 checkpoints only. Generic uses the app's standard single-pass KSampler; Generic Refined adds a low-denoise second KSampler pass to clean up turbo grain (stock nodes only, no RES4LYF); PornMaster reproduces the original RES4LYF 2-stage sampler (ClownsharKSampler) and requires the RES4LYF nodes installed in ComfyUI. Moody photo finish is the Moody model author's published recipe (one euler_ancestral/beta 10-step pass, then a photo-restoration upscale blended over a lanczos enlargement) — it resolves grain in image space instead of a second diffusion pass."
               }
             />
             <select
               value={params.krea2_workflow}
               onChange={(e) =>
                 setParams({
-                  krea2_workflow: e.target.value as "generic" | "refined" | "pornmaster",
+                  krea2_workflow: e.target
+                    .value as GenerationParamsType["krea2_workflow"],
                 })
               }
               className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -457,7 +491,45 @@ export function GenerationParams({ section = "output" }: {
               <option value="pornmaster">
                 {ko ? "커스텀 Krea PornMaster (RES4LYF 2단)" : "Custom Krea PornMaster (RES4LYF 2-stage)"}
               </option>
+              <option value="moody">
+                {ko
+                  ? "Moody 사진 마감 (1패스 + 업스케일 블렌드)"
+                  : "Moody photo finish (1 pass + upscale blend)"}
+              </option>
             </select>
+            {params.krea2_workflow === "moody" && (
+              <div className="mt-3">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <FieldHelp
+                    label={ko ? "업스케일 블렌드" : "Upscale blend"}
+                    help={
+                      ko
+                        ? "사진 복원 업스케일 결과를 lanczos 확대본 위에 얼마나 섞을지 정합니다. 0은 lanczos만(부드러움), 1은 업스케일러만(가장 선명하고 거칠 수 있음)이며 제작자 레시피는 0.6입니다. 베이스 패스는 '최종 크기 ÷ Hires 배율'에서 샘플링되므로, 2048×3072 + 2배로 두면 제작자와 동일한 1024×1536 베이스가 됩니다."
+                        : "How much of the photo-restoration upscale is mixed over the lanczos enlargement. 0 is lanczos only (soft), 1 is upscaler only (sharpest, can be harsh); the author's recipe is 0.6. The base pass samples at final size ÷ hires factor, so 2048×3072 at 2x reproduces the author's 1024×1536 base."
+                    }
+                  />
+                  <span className="text-xs font-mono text-muted-foreground">
+                    {params.output_upscale_blend.toFixed(2)}
+                  </span>
+                </div>
+                <Slider
+                  value={[params.output_upscale_blend]}
+                  onValueChange={(value) =>
+                    setParams({
+                      output_upscale_blend: clampNumber(
+                        Array.isArray(value) ? value[0] : value,
+                        0,
+                        1
+                      ),
+                    })
+                  }
+                  min={0}
+                  max={1}
+                  step={0.05}
+                />
+              </div>
+            )}
+            <WorkflowRequirements />
           </div>
         )}
       </div>

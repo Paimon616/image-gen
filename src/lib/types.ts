@@ -58,7 +58,10 @@ export interface GenerationParams {
   // RES4LYF) that cleans up the residual grain turbo checkpoints leave behind;
   // "pornmaster" = faithful RES4LYF 2-stage ClownsharKSampler recipe from the PornMaster
   // Krea2 Turbo workflow. Only consulted for Krea 2 checkpoints on ComfyUI.
-  krea2_workflow: "generic" | "refined" | "pornmaster";
+  krea2_workflow: "generic" | "refined" | "pornmaster" | "moody";
+  // Moody finish only: how much of the photo-upscaler pass is mixed over the plain
+  // lanczos enlargement (0 = lanczos only, 1 = upscaler only).
+  output_upscale_blend: number;
   upscale_model_name: string;
   hires_upscale: number;
   hires_steps: number;
@@ -524,6 +527,7 @@ export const DEFAULT_PARAMS: GenerationParams = {
   clip_skip: 1,
   vae_name: "",
   krea2_workflow: "generic",
+  output_upscale_blend: 0.6,
   upscale_model_name: "",
   hires_upscale: 1,
   hires_steps: 12,
@@ -679,6 +683,15 @@ export function detectModelFamily(modelName: string): HiresModelFamily {
   if (/sd_?1\.?5|v1-?5|sd15|1_5/.test(name)) return "sd15";
 
   return "unknown";
+}
+
+// Krea 2 and Z-Image checkpoints ship as diffusion-model (unet) files that only
+// this app's ComfyUI pipelines can load; the A1111/Forge WebUI backends have no
+// workflow for them. The UI pins the backend with this instead of letting a
+// stale WebUI selection fail at generation time.
+export function requiresComfyUiBackend(modelName: string) {
+  const name = modelName ?? "";
+  return /krea[-_ ]?2/i.test(name) || /z[-_ ]?image/i.test(name);
 }
 
 export function getHiresPreset(modelName: string): HiresPreset {

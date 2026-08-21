@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { useStore } from "./store";
 import {
   randomGenerationSeed,
+  requiresComfyUiBackend,
   UNGROUPED_WORKSPACE_ID,
   type CivitaiOrigin,
   type GeneratedImage,
@@ -359,10 +360,22 @@ export const useGenerationQueueStore = create<GenerationQueueState>(
 
     setCharacterContext: (context) => set({ characterContext: context }),
 
-    enqueue: async (sourceParams, meta, hooks) => {
-      if (!sourceParams.prompt.trim()) return;
+    enqueue: async (rawSourceParams, meta, hooks) => {
+      if (!rawSourceParams.prompt.trim()) return;
 
       const { config, characterContext } = get();
+      // A leftover A1111/Forge selection can't run this job: RunPod generation
+      // goes through the pod's ComfyUI, and Krea 2 / Z-Image checkpoints only
+      // have ComfyUI pipelines. The form pins the backend for what the user can
+      // see; pin it here too so a background enqueue (a Paimon batch that
+      // outlives the page) doesn't fail the API's backend check.
+      const needsComfy =
+        config.generationTarget === "runpod" ||
+        requiresComfyUiBackend(rawSourceParams.model_name);
+      const sourceParams =
+        needsComfy && rawSourceParams.backend !== "comfyui"
+          ? { ...rawSourceParams, backend: "comfyui" as const }
+          : rawSourceParams;
       const { addImage, setStatus } = useStore.getState();
       // Resolve the character/situation link. An explicit meta (Paimon auto-gen
       // or batch) wins; otherwise fall back to the last composed context if the

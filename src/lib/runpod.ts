@@ -32,9 +32,12 @@ import {
   ZIMAGE_CLIP_NAME,
   ZIMAGE_VAE_NAME,
   isDiffusionOnlyImageCheckpointName,
+  moodyFinishUpscalerName,
   resolveCheckpointFamily,
+  resolveUpscalerFileName,
   type CheckpointCapabilities,
 } from "@/lib/comfyui-model-files";
+import { SUPPORT_ASSETS } from "@/lib/support-assets";
 
 const execFileAsync = promisify(execFile);
 
@@ -46,56 +49,13 @@ const RESOURCE_FOLDERS: Partial<Record<ImportedCivitaiResource["type"], string>>
   upscaler: "upscale_models",
 };
 
-const RUNPOD_BASE_ASSETS = [
-  {
-    path: "/workspace/ComfyUI/models/upscale_models/4x-UltraSharp.pth",
-    url: "https://huggingface.co/shiertier/upscale_models/resolve/b73626f248084e9af7108621ace5651e1447af44/4x-UltraSharp.pth",
-  },
-  {
-    path: "/workspace/ComfyUI/models/upscale_models/remacri_original.safetensors",
-    url: "https://civitai.com/api/download/models/164821",
-  },
-  {
-    path: `/workspace/ComfyUI/models/text_encoders/${KREA2_CLIP_NAME}`,
-    url: `https://huggingface.co/Comfy-Org/Krea-2/resolve/main/text_encoders/${KREA2_CLIP_NAME}`,
-  },
-  {
-    path: `/workspace/ComfyUI/models/vae/${KREA2_VAE_NAME}`,
-    url: `https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/vae/${KREA2_VAE_NAME}`,
-  },
-  {
-    // Anima's external text encoder (Qwen3-0.6B base). Its VAE is qwen_image_vae,
-    // the same file as KREA2_VAE_NAME above, so no separate VAE entry is needed.
-    path: `/workspace/ComfyUI/models/text_encoders/${ANIMA_CLIP_NAME}`,
-    url: `https://huggingface.co/circlestone-labs/Anima/resolve/main/split_files/text_encoders/${ANIMA_CLIP_NAME}`,
-  },
-  {
-    // PornMaster Krea2 workflow stack (abliterated int8 Qwen3-VL + Wan 2.1 VAE).
-    path: `/workspace/ComfyUI/models/text_encoders/${PORNMASTER_CLIP_NAME}`,
-    url: `https://huggingface.co/DreamFast/Qwen3-VL-4b-Heretic-ComfyUI/resolve/main/${PORNMASTER_CLIP_NAME}`,
-  },
-  {
-    path: `/workspace/ComfyUI/models/vae/${PORNMASTER_VAE_NAME}`,
-    url: `https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/vae/${PORNMASTER_VAE_NAME}`,
-  },
-  {
-    // Z-Image's external stack: Qwen3-4B text encoder + the Flux-style 16ch VAE.
-    path: `/workspace/ComfyUI/models/text_encoders/${ZIMAGE_CLIP_NAME}`,
-    url: `https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/text_encoders/${ZIMAGE_CLIP_NAME}`,
-  },
-  {
-    path: `/workspace/ComfyUI/models/vae/${ZIMAGE_VAE_NAME}`,
-    url: `https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/vae/${ZIMAGE_VAE_NAME}`,
-  },
-  {
-    path: "/workspace/ComfyUI/models/ultralytics/bbox/face_yolov8n_v2.pt",
-    url: "https://huggingface.co/Bingsu/adetailer/resolve/main/face_yolov8n_v2.pt",
-  },
-  {
-    path: "/workspace/ComfyUI/models/ultralytics/bbox/face_yolov8m.pt",
-    url: "https://huggingface.co/Bingsu/adetailer/resolve/main/face_yolov8m.pt",
-  },
-] as const;
+// Every known support file, mapped from the shared table onto the pod's ComfyUI tree.
+// SUPPORT_ASSETS is the single source of truth, so a pod and a local install always
+// pull the same file from the same URL (see src/lib/support-assets.ts).
+const RUNPOD_BASE_ASSETS = SUPPORT_ASSETS.map((asset) => ({
+  path: `/workspace/ComfyUI/models/${asset.folder}/${asset.name}`,
+  url: asset.url,
+}));
 
 function runpodBaseAssetForPath(path: string) {
   const normalized = path.replace(/^\/workspace\/ComfyUI\/models\//, "");
@@ -2549,6 +2509,17 @@ async function namesForParams(
       const pornmaster = params.krea2_workflow === "pornmaster";
       push("other", "text_encoders", pornmaster ? PORNMASTER_CLIP_NAME : KREA2_CLIP_NAME);
       push("vae", "vae", pornmaster ? PORNMASTER_VAE_NAME : KREA2_VAE_NAME);
+      // The "moody" finish ends on a photo-restoration upscale rather than a diffusion
+      // pass, so its upscale model is as required as the CLIP and VAE. Requested here
+      // even when the UI upscaler field is empty, because the builder falls back to
+      // the recipe's own model in that case.
+      if (params.krea2_workflow === "moody") {
+        push(
+          "upscaler",
+          "upscale_models",
+          moodyFinishUpscalerName(params.upscale_model_name ?? "")
+        );
+      }
     } else if (family === "zimage") {
       // Z-Image loads an external Qwen3-4B text encoder + Flux-style 16ch VAE that the
       // diffusion-only weights do not bundle. Same family order as buildDefaultWorkflow.
@@ -2574,8 +2545,13 @@ async function namesForParams(
   if (params.vae_name.trim()) {
     push("vae", "vae", params.vae_name.trim());
   }
-  if (params.upscale_model_name.trim()) {
-    push("upscaler", "upscale_models", params.upscale_model_name.trim());
+  // Params saved from Civitai/A1111 metadata can hold a display label rather than a
+  // filename ("R-ESRGAN 4x+"), which would be reported as a missing file no download
+  // source could ever satisfy. Resolving first also keeps this in step with the
+  // workflow builder, which requires the same resolved file.
+  const upscaleModelFile = resolveUpscalerFileName(params.upscale_model_name ?? "");
+  if (upscaleModelFile) {
+    push("upscaler", "upscale_models", upscaleModelFile);
   }
   if (params.adetailer_enabled) {
     const requestedModel = params.adetailer_model.trim();

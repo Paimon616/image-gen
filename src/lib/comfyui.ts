@@ -20,7 +20,10 @@ import {
   ZIMAGE_VAE_NAME,
   getCheckpointCapabilities,
   getMissingRequiredModelFiles,
+  moodyFinishUpscalerName,
   resolveCheckpointFamily,
+  resolveUpscalerFileName,
+  resolveZImageTurbo,
   type CheckpointCapabilities,
 } from "./comfyui-model-files";
 import {
@@ -30,7 +33,7 @@ import {
   requiredComfyVersionForCheckpoint,
 } from "./comfy-version";
 import { getRunpodCheckpointCapabilities } from "./runpod";
-import { normalizeGenerationSeed } from "./types";
+import { DEFAULT_PARAMS, normalizeGenerationSeed } from "./types";
 import { censorModelFile } from "./censor-assets";
 import type { VideoPipelineLoraSlot } from "./video-pipelines";
 import { resolveVideoPipeline, resolveVideoWorkflowPath } from "./video-pipelines";
@@ -131,10 +134,13 @@ async function addUpscaleWorkflowNodes(
   params: GenerationParams,
   imageRef: [string, number],
   loaderNodeId: string,
-  upscaleNodeId: string
+  upscaleNodeId: string,
+  options?: ComfyClientOptions,
+  modelNameOverride?: string
 ) {
   const modelName = await resolveAvailableUpscaleModelName(
-    params.upscale_model_name?.trim() ?? ""
+    modelNameOverride ?? params.upscale_model_name?.trim() ?? "",
+    options
   );
 
   if (!modelName) {
@@ -340,6 +346,42 @@ function withEmbeddingTokens(prompt: string, embeddings: EmbeddingConfig[]) {
 function generationDimension(value: number, scale: number) {
   const divisor = Number.isFinite(scale) && scale > 1 ? scale : 1;
   return Math.max(8, Math.floor(value / divisor / 8) * 8);
+}
+
+// A distilled Turbo graph zeroes its negative conditioning out, so cfg has nothing
+// to push against: anything much above 1 only amplifies the positive branch and
+// burns the image into chroma noise. Civitai imports routinely carry SD-style cfg
+// (7~8), so treat those as "not a distilled value" and fall back to the recipe's
+// own cfg rather than trusting them.
+const DISTILLED_MAX_CFG = 2;
+
+function distilledCfg(requested: number, distilledDefault: number) {
+  return Number.isFinite(requested) &&
+    requested > 0 &&
+    requested <= DISTILLED_MAX_CFG
+    ? requested
+    : distilledDefault;
+}
+
+// Krea 2 and Z-Image are distilled DiTs trained around 1 megapixel, and their
+// structure collapses at resolutions SDXL still handles. Hires-fix samples the base
+// pass at width/hires_upscale, so a 672x1000 request at 2x sampled 336x496 — mush
+// that no low-denoise second pass can rescue. Cap the divisor so the base pass keeps
+// at least this much on the short side; a request already at or below it samples at
+// full size, and the hires pass then drops out because there is nothing to upscale.
+const DISTILLED_MIN_SHORT_SIDE = 768;
+
+function clampUpscaleBlend(value: unknown) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return DEFAULT_PARAMS.output_upscale_blend;
+  return Math.min(Math.max(numeric, 0), 1);
+}
+
+function distilledBaseScale(width: number, height: number, requested: number) {
+  const scale = Number.isFinite(requested) && requested > 1 ? requested : 1;
+  const shortSide = Math.min(width, height);
+  if (shortSide <= DISTILLED_MIN_SHORT_SIDE) return 1;
+  return Math.min(scale, shortSide / DISTILLED_MIN_SHORT_SIDE);
 }
 
 function isRemoteImageRef(image: string) {
@@ -670,7 +712,7 @@ async function buildAnimaWorkflow(
   let saveImageRef: [string, number];
 
   if (useHiresFix) {
-    const upscaledRef = await addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71");
+    const upscaledRef = await addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71", options);
     workflow["72"] = {
       class_type: "ImageScale",
       inputs: {
@@ -795,16 +837,39 @@ async function buildKrea2Workflow(
   await assertKrea2SupportFiles(checkpoint, "generic", options);
 
   const loras = cleanLoras(params.loras);
-  const vaeName = (await resolveAvailableVaeName(params.vae_name)) || KREA2_VAE_NAME;
+  const vaeName = (await resolveAvailableVaeName(params.vae_name, options)) || KREA2_VAE_NAME;
   const seed = normalizeGenerationSeed(params.seed);
+  // The "moody" finish reproduces the Moody-family author's own published recipe
+  // (verified against the generation metadata embedded in that model's Civitai
+  // gallery): a single euler_ancestral/beta pass at ~1.5MP, then a photo-restoration
+  // upscale blended over a plain lanczos enlargement — no second diffusion pass at
+  // all. Krea 2's grain is meant to be resolved in image space, not re-sampled.
+  const moody = params.krea2_workflow === "moody";
+  // Only untouched UI defaults are remapped, so an explicit choice always wins.
   const samplerName =
     !params.sampler_name || params.sampler_name === "dpmpp_2m"
-      ? "euler"
+      ? moody
+        ? "euler_ancestral"
+        : "euler"
       : params.sampler_name;
   const scheduler =
-    !params.scheduler || params.scheduler === "karras" ? "simple" : params.scheduler;
-  // Krea 2 Turbo is distilled and runs at cfg 1 with a zeroed-out negative.
-  const cfg = params.guidance_scale === 7.5 ? 1 : params.guidance_scale;
+    !params.scheduler || params.scheduler === "karras"
+      ? moody
+        ? "beta"
+        : "simple"
+      : params.scheduler;
+  const steps =
+    moody && params.num_inference_steps === DEFAULT_PARAMS.num_inference_steps
+      ? 10
+      : params.num_inference_steps;
+  // Krea 2 Turbo is distilled and runs at cfg 1 with a zeroed-out negative, so an
+  // imported SD-style cfg (7~8) has to be dropped rather than honoured.
+  const cfg = distilledCfg(params.guidance_scale, 1);
+  const baseScale = distilledBaseScale(
+    params.width,
+    params.height,
+    Number(params.hires_upscale)
+  );
   const workflow: Record<string, unknown> = {
     "1": {
       class_type: "UNETLoader",
@@ -878,8 +943,8 @@ async function buildKrea2Workflow(
       inputs: {
         image: ["4", 0],
         upscale_method: "lanczos",
-        width: generationDimension(params.width, Number(params.hires_upscale)),
-        height: generationDimension(params.height, Number(params.hires_upscale)),
+        width: generationDimension(params.width, baseScale),
+        height: generationDimension(params.height, baseScale),
         crop: "center",
       },
     };
@@ -896,8 +961,8 @@ async function buildKrea2Workflow(
     workflow["4"] = {
       class_type: "EmptyLatentImage",
       inputs: {
-        width: generationDimension(params.width, Number(params.hires_upscale)),
-        height: generationDimension(params.height, Number(params.hires_upscale)),
+        width: generationDimension(params.width, baseScale),
+        height: generationDimension(params.height, baseScale),
         batch_size: Math.min(Math.max(Number(params.num_images) || 1, 1), 4),
       },
     };
@@ -907,7 +972,7 @@ async function buildKrea2Workflow(
     class_type: "KSampler",
     inputs: {
       seed,
-      steps: params.num_inference_steps,
+      steps,
       cfg,
       sampler_name: samplerName,
       scheduler,
@@ -953,12 +1018,76 @@ async function buildKrea2Workflow(
       vae: vaeRef,
     },
   };
-  const hiresScale = Number(params.hires_upscale);
-  const useHiresFix = Number.isFinite(hiresScale) && hiresScale > 1;
+  // baseScale, not the raw hires_upscale: when the floor above pinned the base pass
+  // to the requested size there is nothing for a hires pass to enlarge.
+  const useHiresFix = !moody && baseScale > 1;
   let saveImageRef: [string, number];
 
+  if (moody) {
+    // Detail the base image first: an ADetailer pass on the finished 2048px output
+    // would re-diffuse the very grain this finish exists to remove.
+    const baseImageRef = addFaceDetailerWorkflowNode(
+      workflow,
+      params,
+      ["6", 0],
+      modelRef,
+      clipRef,
+      vaeRef,
+      ["2", 0],
+      ["3", 0],
+      seed,
+      { cfg, sampler_name: samplerName, scheduler }
+    );
+    const upscaledRef = await addUpscaleWorkflowNodes(
+      workflow,
+      params,
+      baseImageRef,
+      "70",
+      "71",
+      options,
+      moodyFinishUpscalerName(params.upscale_model_name ?? "")
+    );
+    // image1 sets the output size, and ImageBlend resizes image2 to match, so the
+    // upscaler's native 4x lands back on exactly the requested width/height.
+    workflow["72"] = {
+      class_type: "ImageScale",
+      inputs: {
+        image: baseImageRef,
+        upscale_method: "lanczos",
+        width: params.width,
+        height: params.height,
+        crop: "disabled",
+      },
+    };
+    if (upscaledRef === baseImageRef) {
+      // No upscale model resolved on the target backend: blending would just mix the
+      // enlargement with itself, so save the plain lanczos result instead.
+      saveImageRef = ["72", 0];
+    } else {
+      workflow["73"] = {
+        class_type: "ImageBlend",
+        inputs: {
+          image1: ["72", 0],
+          image2: upscaledRef,
+          blend_factor: clampUpscaleBlend(params.output_upscale_blend),
+          blend_mode: "normal",
+        },
+      };
+      saveImageRef = ["73", 0];
+    }
+    workflow["7"] = {
+      class_type: "SaveImage",
+      inputs: {
+        filename_prefix: "image-gen-krea2-moody",
+        images: saveImageRef,
+      },
+    };
+
+    return workflow;
+  }
+
   if (useHiresFix) {
-    const upscaledRef = await addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71");
+    const upscaledRef = await addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71", options);
     workflow["72"] = {
       class_type: "ImageScale",
       inputs: {
@@ -978,9 +1107,11 @@ async function buildKrea2Workflow(
       inputs: {
         seed,
         steps: params.hires_steps > 0 ? params.hires_steps : params.num_inference_steps,
-        cfg: params.guidance_scale,
-        sampler_name: params.sampler_name || "dpmpp_2m",
-        scheduler: params.scheduler || "karras",
+        // The hires pass shares the base pass's sampling recipe: at the raw UI cfg a
+        // distilled Turbo model would blow out the pass it is meant to refine.
+        cfg,
+        sampler_name: samplerName,
+        scheduler,
         denoise: clampDenoiseStrength(params.hires_denoise),
         model: modelRef,
         positive: ["2", 0],
@@ -1000,7 +1131,7 @@ async function buildKrea2Workflow(
     // inflating output well past the requested width/height. Keep the base decode.
     saveImageRef = ["6", 0];
   }
-  saveImageRef = addFaceDetailerWorkflowNode(workflow, params, saveImageRef, modelRef, clipRef, vaeRef, ["2", 0], ["3", 0], seed);
+  saveImageRef = addFaceDetailerWorkflowNode(workflow, params, saveImageRef, modelRef, clipRef, vaeRef, ["2", 0], ["3", 0], seed, { cfg, sampler_name: samplerName, scheduler });
   workflow["7"] = {
     class_type: "SaveImage",
     inputs: {
@@ -1137,7 +1268,7 @@ async function buildKrea2PornmasterWorkflow(
   const loras = cleanLoras(params.loras);
   // Faithful to the original: the abliterated int8 Qwen3-VL text encoder and the
   // Wan 2.1 VAE. The VAE stays overridable from the UI VAE picker.
-  const vaeName = (await resolveAvailableVaeName(params.vae_name)) || PORNMASTER_VAE_NAME;
+  const vaeName = (await resolveAvailableVaeName(params.vae_name, options)) || PORNMASTER_VAE_NAME;
   const seed = normalizeGenerationSeed(params.seed);
 
   const workflow: Record<string, unknown> = {
@@ -1397,10 +1528,6 @@ async function addPulidWorkflowNodes(
 // with ModelSamplingAuraFlow(shift 3) in front of the sampler.
 const ZIMAGE_SHIFT = 3;
 
-function isZImageTurboCheckpointName(checkpoint: string) {
-  return /turbo/i.test(checkpoint);
-}
-
 // The diffusion weights are valid in either models/diffusion_models (UNETLoader — the
 // folder the official install uses) or models/checkpoints (CheckpointLoaderSimple,
 // which falls back to a diffusion-model-only load and returns a null CLIP we replace).
@@ -1507,7 +1634,7 @@ async function buildZImageWorkflow(
   ]);
   const loras = cleanLoras(params.loras);
   const seed = normalizeGenerationSeed(params.seed);
-  const turbo = isZImageTurboCheckpointName(checkpoint);
+  const turbo = await resolveZImageTurbo(checkpoint);
   // Only untouched UI defaults are remapped, so an explicit choice always wins.
   // Blueprint recipes: Turbo = 8 steps / cfg 1 / zeroed negative, Base = cfg 3~5.
   const samplerName =
@@ -1516,9 +1643,20 @@ async function buildZImageWorkflow(
       : params.sampler_name;
   const scheduler =
     !params.scheduler || params.scheduler === "karras" ? "simple" : params.scheduler;
-  const cfg = params.guidance_scale === 7.5 ? (turbo ? 1 : 4) : params.guidance_scale;
+  // Turbo zeroes its negative out, so an imported SD-style cfg burns the image the
+  // same way it does on Krea 2; Base runs a real negative and honours the UI value.
+  const cfg = turbo
+    ? distilledCfg(params.guidance_scale, 1)
+    : params.guidance_scale === 7.5
+      ? 4
+      : params.guidance_scale;
   const steps =
     turbo && params.num_inference_steps === 30 ? 8 : params.num_inference_steps;
+  const baseScale = distilledBaseScale(
+    params.width,
+    params.height,
+    Number(params.hires_upscale)
+  );
   const workflow: Record<string, unknown> = {
     "1":
       loaderClass === "UNETLoader"
@@ -1602,8 +1740,8 @@ async function buildZImageWorkflow(
       inputs: {
         image: ["4", 0],
         upscale_method: "lanczos",
-        width: generationDimension(params.width, Number(params.hires_upscale)),
-        height: generationDimension(params.height, Number(params.hires_upscale)),
+        width: generationDimension(params.width, baseScale),
+        height: generationDimension(params.height, baseScale),
         crop: "center",
       },
     };
@@ -1618,8 +1756,8 @@ async function buildZImageWorkflow(
     workflow["4"] = {
       class_type: "EmptySD3LatentImage",
       inputs: {
-        width: generationDimension(params.width, Number(params.hires_upscale)),
-        height: generationDimension(params.height, Number(params.hires_upscale)),
+        width: generationDimension(params.width, baseScale),
+        height: generationDimension(params.height, baseScale),
         batch_size: Math.min(Math.max(Number(params.num_images) || 1, 1), 4),
       },
     };
@@ -1645,12 +1783,13 @@ async function buildZImageWorkflow(
     inputs: { samples: ["5", 0], vae: vaeRef },
   };
 
-  const hiresScale = Number(params.hires_upscale);
-  const useHiresFix = Number.isFinite(hiresScale) && hiresScale > 1;
+  // baseScale, not the raw hires_upscale: when the resolution floor pinned the base
+  // pass to the requested size there is nothing for a hires pass to enlarge.
+  const useHiresFix = baseScale > 1;
   let saveImageRef: [string, number];
 
   if (useHiresFix) {
-    const upscaledRef = await addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71");
+    const upscaledRef = await addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71", options);
     workflow["72"] = {
       class_type: "ImageScale",
       inputs: {
@@ -1773,7 +1912,7 @@ async function buildDefaultWorkflow(params: GenerationParams, options?: ComfyCli
     );
   }
 
-  const vaeName = await resolveAvailableVaeName(params.vae_name);
+  const vaeName = await resolveAvailableVaeName(params.vae_name, options);
 
   if (checkpointCapabilities?.vae === false && !vaeName) {
     throw new Error(
@@ -1979,7 +2118,7 @@ async function buildDefaultWorkflow(params: GenerationParams, options?: ComfyCli
   let saveImageRef: [string, number];
 
   if (useHiresFix) {
-    const upscaledRef = await addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71");
+    const upscaledRef = await addUpscaleWorkflowNodes(workflow, params, ["6", 0], "70", "71", options);
     workflow["72"] = {
       class_type: "ImageScale",
       inputs: {
@@ -2159,7 +2298,10 @@ async function getComfyObjectInputOptions(
   return [];
 }
 
-async function resolveAvailableVaeName(vaeName: string) {
+async function resolveAvailableVaeName(
+  vaeName: string,
+  options?: ComfyClientOptions
+) {
   const trimmed = vaeName.trim();
 
   if (!trimmed) {
@@ -2167,7 +2309,11 @@ async function resolveAvailableVaeName(vaeName: string) {
   }
 
   try {
-    const vaeNames = await getComfyObjectInputOptions("VAELoader", "vae_name");
+    const vaeNames = await getComfyObjectInputOptions(
+      "VAELoader",
+      "vae_name",
+      options
+    );
     return vaeNames.includes(trimmed) ? trimmed : "";
   } catch {
     return trimmed;
@@ -2187,12 +2333,23 @@ function promptIdFromQueueItem(item: unknown) {
   return "";
 }
 
-async function resolveAvailableUpscaleModelName(modelName: string) {
-  const trimmed = modelName.trim();
+async function resolveAvailableUpscaleModelName(
+  modelName: string,
+  options?: ComfyClientOptions
+) {
+  // Legacy params and Civitai imports can carry an A1111 display label, which matches
+  // no filename ComfyUI lists; without this the upscale pass would be dropped.
+  const trimmed = resolveUpscalerFileName(modelName);
   if (!trimmed) return "";
 
   try {
-    const names = await getComfyObjectInputOptions("UpscaleModelLoader", "model_name");
+    // Against the backend that will run the job: resolving a RunPod generation's
+    // upscaler on the local ComfyUI would drop every model the pod alone has.
+    const names = await getComfyObjectInputOptions(
+      "UpscaleModelLoader",
+      "model_name",
+      options
+    );
     if (names.includes(trimmed)) return trimmed;
     const normalize = (value: string) =>
       value
