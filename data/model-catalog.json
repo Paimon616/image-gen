@@ -8739,5 +8739,49 @@
     "source_url": "https://civitai.red/models/2098342/realistic-asian-beauty-enhancer?modelVersionId=2374085",
     "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/553011bb-091d-4808-927d-d8c14b81af79/original=true/111447737.mp4",
     "tags": []
+  },
+  "checkpoints/moodyRealMix_zitV7.safetensors": {
+    "name": "Moody Real Mix",
+    "version": "ZIT V7",
+    "base_model": "ZImageTurbo",
+    "civitai_url": "https://civitai.red/models/621441/moody-real-mix?modelVersionId=3005060",
+    "source_url": "https://civitai.red/models/621441/moody-real-mix?modelVersionId=3005060",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/9afcc4e3-f67e-4342-a42b-6f0e1dbc849b/original=true/132824809.mp4"
+  },
+  "diffusion_models/moodyAmateurMixKrea2_v10.safetensors": {
+    "name": "Moody Amateur Mix (Krea2 Uncensored)",
+    "version": "v1.0",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2859971/moody-amateur-mix-krea2-uncensored?modelVersionId=3230531",
+    "source_url": "https://civitai.red/models/2859971/moody-amateur-mix-krea2-uncensored?modelVersionId=3230531",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/dd1ab4a5-bb1f-467a-944c-a5bafc34dde6/original=true/139759609.mp4",
+    "tags": []
+  },
+  "upscale_models/RealESRGAN_x4plus.pth": {
+    "name": "RealESRGAN_x4Plus",
+    "version": "v1",
+    "base_model": "Upscaler",
+    "thumbnail_url": null,
+    "civitai_url": "https://civitai.red/models/147817/realesrgan-x4plus?modelVersionId=164898",
+    "source_url": "https://civitai.red/models/147817/realesrgan-x4plus?modelVersionId=164898",
+    "tags": []
+  },
+  "upscale_models/RealESRGAN_x4plus_anime_6B.pth": {
+    "name": "RealESRGAN_x4Plus Anime 6B",
+    "version": "v1",
+    "base_model": "Upscaler",
+    "thumbnail_url": null,
+    "civitai_url": "https://civitai.red/models/147821/realesrgan-x4plus-anime-6b?modelVersionId=164904",
+    "source_url": "https://civitai.red/models/147821/realesrgan-x4plus-anime-6b?modelVersionId=164904",
+    "tags": []
+  },
+  "upscale_models/4xNomosWebPhoto_RealPLKSR.safetensors": {
+    "name": "4xNomosWebPhoto_RealPLKSR.safetensors",
+    "version": "",
+    "base_model": "",
+    "thumbnail_url": null,
+    "civitai_url": "https://huggingface.co/Phips/4xNomosWebPhoto_RealPLKSR/resolve/49d5da19489e645e870eb076ea84815471f27ef4/4xNomosWebPhoto_RealPLKSR.safetensors",
+    "source_url": "https://huggingface.co/Phips/4xNomosWebPhoto_RealPLKSR/resolve/49d5da19489e645e870eb076ea84815471f27ef4/4xNomosWebPhoto_RealPLKSR.safetensors",
+    "tags": []
   }
 }
