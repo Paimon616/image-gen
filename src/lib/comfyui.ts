@@ -20,9 +20,7 @@ import {
   ZIMAGE_VAE_NAME,
   getCheckpointCapabilities,
   getMissingRequiredModelFiles,
-  isAnimaCheckpointName,
-  isKrea2CheckpointName,
-  isZImageCheckpointName,
+  resolveCheckpointFamily,
   type CheckpointCapabilities,
 } from "./comfyui-model-files";
 import {
@@ -549,7 +547,7 @@ async function buildAnimaWorkflow(
   let denoise = 1;
 
   if (params.generation_mode === "image_to_image" && params.source_image) {
-    const sourceImage = await resolveControlNetImage(params.source_image);
+    const sourceImage = await resolveControlNetImage(params.source_image, options);
 
     workflow["4"] = {
       class_type: "LoadImage",
@@ -867,7 +865,7 @@ async function buildKrea2Workflow(
   let denoise = 1;
 
   if (params.generation_mode === "image_to_image" && params.source_image) {
-    const sourceImage = await resolveControlNetImage(params.source_image);
+    const sourceImage = await resolveControlNetImage(params.source_image, options);
 
     workflow["4"] = {
       class_type: "LoadImage",
@@ -1593,7 +1591,7 @@ async function buildZImageWorkflow(
   let denoise = 1;
 
   if (params.generation_mode === "image_to_image" && params.source_image) {
-    const sourceImage = await resolveControlNetImage(params.source_image);
+    const sourceImage = await resolveControlNetImage(params.source_image, options);
 
     workflow["4"] = {
       class_type: "LoadImage",
@@ -1731,7 +1729,12 @@ function assertNoCharacterReference(params: GenerationParams, family: string) {
 async function buildDefaultWorkflow(params: GenerationParams, options?: ComfyClientOptions) {
   const checkpoint = params.model_name.trim() || "sd_xl_base_1.0.safetensors";
 
-  if (isKrea2CheckpointName(checkpoint)) {
+  // Filename first, catalog base_model as fallback: a checkpoint whose name doesn't
+  // carry its family (e.g. animij_ai.safetensors, an Anima base) still routes to the
+  // right pipeline instead of failing in the standard SDXL graph.
+  const family = await resolveCheckpointFamily(checkpoint);
+
+  if (family === "krea2") {
     return params.krea2_workflow === "pornmaster"
       ? buildKrea2PornmasterWorkflow(params, checkpoint, options)
       : buildKrea2Workflow(params, checkpoint, options);
@@ -1751,12 +1754,12 @@ async function buildDefaultWorkflow(params: GenerationParams, options?: ComfyCli
   // models/diffusion_models, where the capability probe (which reads models/checkpoints)
   // sees nothing at all. A checkpoint that really does bundle CLIP is left alone, so an
   // unrelated SD/SDXL merge whose name happens to contain "z image" still builds normally.
-  if (isZImageCheckpointName(checkpoint) && checkpointCapabilities?.clip !== true) {
+  if (family === "zimage" && checkpointCapabilities?.clip !== true) {
     return buildZImageWorkflow(params, checkpoint, checkpointCapabilities, options);
   }
 
   if (checkpointCapabilities?.clip === false) {
-    if (isAnimaCheckpointName(checkpoint)) {
+    if (family === "anima") {
       return buildAnimaWorkflow(params, checkpoint, options);
     }
 
@@ -1853,7 +1856,7 @@ async function buildDefaultWorkflow(params: GenerationParams, options?: ComfyCli
   let denoise = 1;
 
   if (params.generation_mode === "image_to_image" && params.source_image) {
-    const sourceImage = await resolveControlNetImage(params.source_image);
+    const sourceImage = await resolveControlNetImage(params.source_image, options);
 
     workflow["4"] = {
       class_type: "LoadImage",
@@ -3102,10 +3105,15 @@ async function buildInterrogateWorkflow({
   };
 }
 
-export async function generateWithComfyUI(params: GenerationParams) {
-  const queued = await queueComfyPrompt(params);
-  const imageRefs = await waitForComfyImageRefs(queued.prompt_id);
-  const images = await fetchComfyImages(imageRefs);
+export async function generateWithComfyUI(
+  params: GenerationParams,
+  options?: ComfyClientOptions
+) {
+  const queued = await queueComfyPrompt(params, undefined, options);
+  const imageRefs = await waitForComfyImageRefs(queued.prompt_id, {
+    baseUrl: options?.baseUrl,
+  });
+  const images = await fetchComfyImages(imageRefs, options);
 
   return { images, workflow: queued.workflow };
 }

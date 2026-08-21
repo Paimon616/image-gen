@@ -1174,7 +1174,8 @@
       "allowCommercialUse": [
         "RentCivit"
       ]
-    }
+    },
+    "source_url": "https://civitai.red/models/1593793/pie-models?modelVersionId=3009657"
   },
   "checkpoints/plantMilkModelSuite_flax.safetensors": {
     "name": "Plant Milk 🌿 - Model Suite",
@@ -8643,6 +8644,100 @@
     "thumbnail_url": null,
     "civitai_url": "https://civitai.red/models/2329053/purple-grainy-photography-lora?modelVersionId=3110766",
     "source_url": "https://civitai.red/models/2329053/purple-grainy-photography-lora?modelVersionId=3110766",
+    "tags": []
+  },
+  "diffusion_models/z_image_turbo_bf16.safetensors": {
+    "name": "Z Image Turbo",
+    "version": "Turbo",
+    "base_model": "ZImageTurbo",
+    "civitai_url": "https://civitai.red/models/2168935/z-image-turbo?modelVersionId=2442439",
+    "source_url": "https://civitai.red/models/2168935/z-image-turbo?modelVersionId=2442439",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/41150b54-1830-470c-a98e-f46a2e908122/original=true/111679195.jpeg",
+    "tags": []
+  },
+  "loras/ElfinSmoothAnime.safetensors": {
+    "name": "ElfinSmooth",
+    "version": "Classic",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/1719319/elfinsmooth?modelVersionId=1945697",
+    "source_url": "https://civitai.red/models/1719319/elfinsmooth?modelVersionId=1945697",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/95019131-6d6f-4e6d-9cda-88d14556d8a3/original=true/88633592.jpeg",
+    "tags": [
+      "\"ElfinSmooth\""
+    ]
+  },
+  "loras/ade-nikke-richy-v2_ixl.safetensors": {
+    "name": "Ade (NIKKE) SDXL LoRA [Illustrious] | 3 Outfits",
+    "version": "ade-nikke-richy-v2_ixl",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/1008601/ade-nikke-sdxl-lora-illustrious-3-outfits?modelVersionId=2212577",
+    "source_url": "https://civitai.red/models/1008601/ade-nikke-sdxl-lora-illustrious-3-outfits?modelVersionId=2212577",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/9f2db3f0-4d73-4733-b02b-cfc5538d8cf8/original=true/100147361.jpeg",
+    "tags": []
+  },
+  "loras/SantaDress_Doaxvv_v1.safetensors": {
+    "name": "サンタ / Santa Dress - DOAXVV Outfit (Illustrious)",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/2208066/santa-dress-doaxvv-outfit-illustrious?modelVersionId=2486068",
+    "source_url": "https://civitai.red/models/2208066/santa-dress-doaxvv-outfit-illustrious?modelVersionId=2486068",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/dec3be26-6ff2-4229-a657-6d84fa8e623d/original=true/113234446.jpeg",
+    "tags": []
+  },
+  "loras/gpt-image-2_anima-base1_v1-1.safetensors": {
+    "name": "Style > gpt-image-2",
+    "version": "Anima-base1 v1.1",
+    "base_model": "Anima",
+    "civitai_url": "https://civitai.red/models/2564225/style-gpt-image-2?modelVersionId=2998634",
+    "source_url": "https://civitai.red/models/2564225/style-gpt-image-2?modelVersionId=2998634",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/eb04c719-1d9e-4309-9f06-c49b2cc6ba1f/original=true/132699696.jpeg",
+    "tags": [
+      "@gpt-image-2,"
+    ]
+  },
+  "checkpoints/animij_ai.safetensors": {
+    "name": "Animij",
+    "version": "AI",
+    "base_model": "Anima",
+    "civitai_url": "https://civitai.red/models/1353314/animij?modelVersionId=3166879",
+    "source_url": "https://civitai.red/models/1353314/animij?modelVersionId=3166879",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/132002ab-8b85-4c3e-8240-7cc57ba6ac40/original=true/137957663.mp4",
+    "tags": []
+  },
+  "checkpoints/amanesseWorks_v20.safetensors": {
+    "name": "Amanesse Works",
+    "version": "v2.0",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/1965943/amanesse-works?modelVersionId=2414241",
+    "source_url": "https://civitai.red/models/1965943/amanesse-works?modelVersionId=2414241",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/faf39b7d-059b-43e6-b534-f245fadbbbfb/original=true/110679365.jpeg",
+    "tags": []
+  },
+  "checkpoints/pieModels_mango.safetensors": {
+    "name": "Pie - Models 🥧",
+    "version": "Mango",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/1593793/pie-models?modelVersionId=2913030",
+    "source_url": "https://civitai.red/models/1593793/pie-models?modelVersionId=2913030",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/2a7511fa-a5f7-4a01-8f8b-c02be6a7cb58/original=true/129400918.jpeg",
+    "tags": []
+  },
+  "checkpoints/perfectAsian_perfectAsian.safetensors": {
+    "name": "Perfect Asian",
+    "version": "Perfect Asian",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/2131682/perfect-asian?modelVersionId=2411362",
+    "source_url": "https://civitai.red/models/2131682/perfect-asian?modelVersionId=2411362",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/f57ffcfe-94c0-42be-9c04-8c319af537e4/original=true/110398252.jpeg",
+    "tags": []
+  },
+  "loras/Realistic_Asian_Beauty.safetensors": {
+    "name": "Realistic Asian Beauty Enhancer",
+    "version": "V1",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/2098342/realistic-asian-beauty-enhancer?modelVersionId=2374085",
+    "source_url": "https://civitai.red/models/2098342/realistic-asian-beauty-enhancer?modelVersionId=2374085",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/553011bb-091d-4808-927d-d8c14b81af79/original=true/111447737.mp4",
     "tags": []
   }
 }

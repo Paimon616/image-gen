@@ -3,11 +3,18 @@ import { randomUUID } from "crypto";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import {
+  isValidImageFilename,
+  readImageMetadata,
+  thumbnailUrl,
+} from "@/lib/server-images";
+import {
   createEmptyCharacter,
   type Character,
   type CharacterBackground,
+  type CharacterMainImage,
   type CharacterOutfit,
   type CharacterSituation,
+  type GenerationParams,
 } from "@/lib/types";
 
 const DATA_DIR = join(process.cwd(), "data");
@@ -47,7 +54,7 @@ export function normalizeCharacterName(value: unknown): string {
 
 // Only accept app-served relative image URLs (or null). Blocks arbitrary
 // remote/`javascript:` URLs from being persisted into a character record.
-function normalizeThumbnail(value: unknown): string | null {
+function normalizeImageUrl(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   if (!trimmed) return null;
@@ -55,6 +62,57 @@ function normalizeThumbnail(value: unknown): string | null {
     return trimmed.slice(0, 500);
   }
   return null;
+}
+
+// The generation metadata of the main image is an opaque GenerationParams blob
+// written by the generator itself, so it is stored as-is rather than field-by-
+// field. Only its shape and size are policed, so a runaway payload can't bloat
+// characters.json.
+const MAX_MAIN_IMAGE_PARAMS_BYTES = 64_000;
+
+function normalizeMainImageParams(value: unknown): GenerationParams | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  try {
+    if (JSON.stringify(value).length > MAX_MAIN_IMAGE_PARAMS_BYTES) return null;
+  } catch {
+    return null;
+  }
+  return value as GenerationParams;
+}
+
+function basenameFromUrl(url: string): string {
+  const path = url.split(/[?#]/)[0];
+  const name = path.slice(path.lastIndexOf("/") + 1);
+  return name.includes("..") ? "" : name.slice(0, 300);
+}
+
+// 메인 이미지. Records written before it existed carry a plain `thumbnail` URL
+// string instead; those are folded in here (with no baseline metadata, which is
+// all a legacy upload could ever have offered).
+function normalizeMainImage(
+  value: unknown,
+  legacyThumbnail: unknown
+): CharacterMainImage | null {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const record = value as Record<string, unknown>;
+    const url = normalizeImageUrl(record.url);
+    if (!url) return null;
+    const filename = str(record.filename, 300).trim() || basenameFromUrl(url);
+    return {
+      url,
+      thumbnailUrl: normalizeImageUrl(record.thumbnailUrl) ?? undefined,
+      filename,
+      params: normalizeMainImageParams(record.params),
+    };
+  }
+
+  const legacyUrl = normalizeImageUrl(legacyThumbnail);
+  if (!legacyUrl) return null;
+  return {
+    url: legacyUrl,
+    filename: basenameFromUrl(legacyUrl),
+    params: null,
+  };
 }
 
 function normalizeOutfits(value: unknown): CharacterOutfit[] {
@@ -130,7 +188,7 @@ function normalizeCharacter(raw: unknown): Character | null {
     name: normalizeCharacterName(record.name),
     summary: str(record.summary, MAX_SUMMARY_LENGTH),
     synopsis: str(record.synopsis, MAX_TEXT_LENGTH),
-    thumbnail: normalizeThumbnail(record.thumbnail),
+    mainImage: normalizeMainImage(record.mainImage, record.thumbnail),
     appearanceDescription: str(record.appearanceDescription, MAX_TEXT_LENGTH),
     appearancePrompt: str(record.appearancePrompt, MAX_TEXT_LENGTH),
     outfits: normalizeOutfits(record.outfits),
@@ -175,9 +233,26 @@ async function readData(): Promise<CharactersData> {
   }
 }
 
+// The record as it is persisted: the live shape plus a legacy `thumbnail`
+// mirror of the main image's URL. Another copy of this app (an older build, a
+// RunPod pod, the packaged launcher) can be pointed at the same data folder and
+// still writes/reads `thumbnail`; keeping the mirror means such a build shows
+// the right image, and that a record it rewrites still carries enough for
+// normalizeMainImage to rebuild 메인 이미지 on the next read.
+function toStoredCharacter(character: Character) {
+  return { ...character, thumbnail: character.mainImage?.url ?? null };
+}
+
 async function writeData(data: CharactersData) {
   await mkdir(DATA_DIR, { recursive: true });
-  await writeFile(CHARACTERS_FILE, JSON.stringify(data, null, 2));
+  await writeFile(
+    CHARACTERS_FILE,
+    JSON.stringify(
+      { ...data, characters: data.characters.map(toStoredCharacter) },
+      null,
+      2
+    )
+  );
 }
 
 function mutate<T>(
@@ -193,14 +268,56 @@ function mutate<T>(
   return next;
 }
 
+// A main image that came from a legacy `thumbnail` string carries no baseline
+// metadata, but the generation sidecar is usually still on disk next to the
+// image. Recover it on read so an existing character keeps working as a
+// baseline without the user having to re-pick its image. (The recovered value
+// is persisted the next time the character is saved.)
+async function withRecoveredMainImage(character: Character): Promise<Character> {
+  const mainImage = character.mainImage;
+  if (
+    !mainImage ||
+    mainImage.params ||
+    !mainImage.url.startsWith("/api/images/") ||
+    !isValidImageFilename(mainImage.filename)
+  ) {
+    return character;
+  }
+
+  const sidecar = await readImageMetadata(mainImage.filename).catch(() => null);
+  if (!sidecar) return character;
+
+  try {
+    const meta = JSON.parse(sidecar.toString("utf-8")) as { params?: unknown };
+    const params = normalizeMainImageParams(meta.params);
+    if (!params) return character;
+    return {
+      ...character,
+      mainImage: {
+        ...mainImage,
+        thumbnailUrl:
+          mainImage.thumbnailUrl ?? thumbnailUrl(mainImage.filename),
+        params,
+      },
+    };
+  } catch {
+    return character;
+  }
+}
+
 export async function listCharacters(): Promise<Character[]> {
   const { characters } = await readData();
-  return [...characters].sort((a, b) => a.order - b.order);
+  return Promise.all(
+    [...characters]
+      .sort((a, b) => a.order - b.order)
+      .map((character) => withRecoveredMainImage(character))
+  );
 }
 
 export async function getCharacter(id: string): Promise<Character | null> {
   const { characters } = await readData();
-  return characters.find((item) => item.id === id) ?? null;
+  const character = characters.find((item) => item.id === id) ?? null;
+  return character ? withRecoveredMainImage(character) : null;
 }
 
 export function createCharacter(name: string): Promise<Character> {
@@ -273,10 +390,10 @@ export function updateCharacter(
         "synopsis" in record
           ? str(record.synopsis, MAX_TEXT_LENGTH)
           : existing.synopsis,
-      thumbnail:
-        "thumbnail" in record
-          ? normalizeThumbnail(record.thumbnail)
-          : existing.thumbnail,
+      mainImage:
+        "mainImage" in record
+          ? normalizeMainImage(record.mainImage, null)
+          : existing.mainImage,
       appearanceDescription:
         "appearanceDescription" in record
           ? str(record.appearanceDescription, MAX_TEXT_LENGTH)

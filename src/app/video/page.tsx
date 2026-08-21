@@ -3992,8 +3992,9 @@ export default function VideoPage() {
                       disabled={
                         censorInstall.running ||
                         isGenerating ||
-                        (generationTarget === "runpod" &&
-                          (!selectedRunpodPodId || !runpodConnection.helperReachable))
+                        // The install path self-heals a down helper, so only a pod
+                        // must be chosen — helper reachability is not required here.
+                        (generationTarget === "runpod" && !selectedRunpodPodId)
                       }
                       title={
                         language === "ko"

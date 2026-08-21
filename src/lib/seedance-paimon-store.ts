@@ -1,4 +1,7 @@
-import { loadSituationLibrary } from "./character-situations";
+import {
+  loadSituationLibrary,
+  situationLibraryPayload,
+} from "./character-situations";
 import { createPaimonConversationStore } from "./paimon-conversation";
 import { useSeedanceStore } from "./seedance-store";
 import {
@@ -67,7 +70,10 @@ export const useSeedancePaimonStore = createPaimonConversationStore({
       messages,
       // The saved characters, so a situation can be named in free-form chat too
       // (the situation picker also embeds the picked record in its instruction).
-      characterLibrary: await loadSituationLibrary(),
+      characterLibrary: situationLibraryPayload(
+        await loadSituationLibrary(),
+        messages[messages.length - 1]?.content ?? ""
+      ),
       // Image fields are stripped: multi-MB data URIs must not ride along as
       // params (they are sent as attachments below instead).
       currentParams: {

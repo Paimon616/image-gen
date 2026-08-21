@@ -3,6 +3,13 @@ import "server-only";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { dirname, join } from "path";
 
+import {
+  DEFAULT_PAIMON_CHAT_MODEL,
+  DEFAULT_PAIMON_CHAT_PROVIDER,
+  isChatProviderId,
+  type ChatProviderId,
+} from "@/lib/chat-models";
+
 export type RunpodPodKind = "image" | "video";
 
 export interface RunpodPodSettings {
@@ -20,7 +27,28 @@ export interface AppSettings {
   huggingfaceApiKey: string;
   runpodApiKey: string;
   runpodPods: RunpodPodSettings[];
+  // Chat (LLM) providers Paimon can run on. One key per vendor; the selected
+  // provider/model pair below decides which one Paimon actually uses.
+  openrouterApiKey: string;
+  anthropicApiKey: string;
+  openaiApiKey: string;
+  googleApiKey: string;
+  paimonChatProvider: ChatProviderId;
+  paimonChatModel: string;
+  // Let a thinking-capable chat model reason before it answers. Off by default:
+  // on the hybrid models (e.g. deepseek-v4) the reasoning pass runs BEFORE the
+  // first answer token, which pushed a character-situation compose from ~4s to
+  // ~60s+ before anything could be queued. Turn it on when prompt-editing
+  // quality matters more than how fast the render starts.
+  paimonChatReasoning: boolean;
 }
+
+export const CHAT_PROVIDER_KEY_FIELDS = {
+  openrouter: "openrouterApiKey",
+  anthropic: "anthropicApiKey",
+  openai: "openaiApiKey",
+  google: "googleApiKey",
+} as const satisfies Record<ChatProviderId, keyof AppSettings>;
 
 const SETTINGS_PATH = join(process.cwd(), ".local", "settings.json");
 // Version-controlled pod list used to seed a fresh clone. It holds pod
@@ -32,6 +60,13 @@ const DEFAULT_SETTINGS: AppSettings = {
   huggingfaceApiKey: "",
   runpodApiKey: "",
   runpodPods: [],
+  openrouterApiKey: "",
+  anthropicApiKey: "",
+  openaiApiKey: "",
+  googleApiKey: "",
+  paimonChatProvider: DEFAULT_PAIMON_CHAT_PROVIDER,
+  paimonChatModel: DEFAULT_PAIMON_CHAT_MODEL,
+  paimonChatReasoning: false,
 };
 
 async function readDefaultPods(): Promise<RunpodPodSettings[]> {
@@ -51,6 +86,16 @@ function cleanSettings(value: Partial<AppSettings>): AppSettings {
     civitaiApiKey: String(value.civitaiApiKey ?? "").trim(),
     huggingfaceApiKey: String(value.huggingfaceApiKey ?? "").trim(),
     runpodApiKey: String(value.runpodApiKey ?? "").trim(),
+    openrouterApiKey: String(value.openrouterApiKey ?? "").trim(),
+    anthropicApiKey: String(value.anthropicApiKey ?? "").trim(),
+    openaiApiKey: String(value.openaiApiKey ?? "").trim(),
+    googleApiKey: String(value.googleApiKey ?? "").trim(),
+    paimonChatProvider: isChatProviderId(value.paimonChatProvider)
+      ? value.paimonChatProvider
+      : DEFAULT_PAIMON_CHAT_PROVIDER,
+    paimonChatModel:
+      String(value.paimonChatModel ?? "").trim() || DEFAULT_PAIMON_CHAT_MODEL,
+    paimonChatReasoning: Boolean(value.paimonChatReasoning),
     runpodPods: Array.isArray(value.runpodPods)
       ? value.runpodPods.map((pod) => ({
           id: String(pod.id || crypto.randomUUID()),
@@ -104,4 +149,37 @@ export async function getHuggingfaceApiKey() {
     process.env.HUGGING_FACE_HUB_TOKEN?.trim() ||
     ""
   );
+}
+
+export async function getChatProviderApiKey(provider: ChatProviderId) {
+  const settings = await readSettings();
+  const stored = settings[CHAT_PROVIDER_KEY_FIELDS[provider]];
+  if (stored) return stored;
+  // Env fallbacks, so an existing .env keeps working without re-entering keys.
+  switch (provider) {
+    case "openrouter":
+      return process.env.OPENROUTER_API_KEY?.trim() ?? "";
+    case "anthropic":
+      return process.env.ANTHROPIC_API_KEY?.trim() ?? "";
+    case "openai":
+      return process.env.OPENAI_API_KEY?.trim() ?? "";
+    case "google":
+      return (
+        process.env.GOOGLE_API_KEY?.trim() ||
+        process.env.GEMINI_API_KEY?.trim() ||
+        ""
+      );
+  }
+}
+
+/** Provider + model + key Paimon should talk to right now. */
+export async function getPaimonChatConfig() {
+  const settings = await readSettings();
+  const provider = settings.paimonChatProvider;
+  return {
+    provider,
+    model: settings.paimonChatModel,
+    apiKey: await getChatProviderApiKey(provider),
+    reasoning: settings.paimonChatReasoning,
+  };
 }

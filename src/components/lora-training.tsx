@@ -132,6 +132,9 @@ export function LoraTraining() {
   const [category, setCategory] = useState("");
   const [checkpoints, setCheckpoints] = useState<LocalCheckpoint[]>([]);
   const [baseModel, setBaseModel] = useState("");
+  // Training target: "local" (sd-scripts on this machine) or a RunPod pod id.
+  const [target, setTarget] = useState("local");
+  const [pods, setPods] = useState<{ podId: string; label?: string; comfyUrl?: string }[]>([]);
   const [state, setState] = useState<TrainingState>("idle");
   const [runnerState, setRunnerState] = useState<RunnerState>("checking");
   const [runnerStatus, setRunnerStatus] = useState<RunnerStatus | null>(null);
@@ -211,6 +214,13 @@ export function LoraTraining() {
             checkpointAssets[0]?.path ||
             ""
         );
+      })
+      .catch(() => {});
+    fetch("/api/settings")
+      .then((res) => res.json())
+      .then((data) => {
+        const list = Array.isArray(data.runpodPods) ? data.runpodPods : [];
+        setPods(list.filter((p: { comfyUrl?: string }) => p.comfyUrl));
       })
       .catch(() => {});
   }, []);
@@ -358,8 +368,113 @@ export function LoraTraining() {
     return () => window.clearInterval(intervalId);
   }, [fetchJobStatus, trainingResult.runId, trainingResult.status]);
 
+  async function startRunpodTraining() {
+    setState("training");
+    setProgress(1);
+    setOutputFile("");
+    const datasetName = loraName.trim().replace(/[^A-Za-z0-9._가-힣-]+/g, "_") || "character";
+    const baseModelFile = baseModel.split(/[/\\]/).pop() || baseModel;
+    setStatusMessage("RunPod: 데이터셋 업로드 준비 중...");
+    setTrainingResult({
+      runId: `runpod:${target}`,
+      imageCount: dataset.length,
+      outputName: datasetName,
+      outputPath: "",
+      logPath: "",
+      status: "running",
+      lines: ["Uploading dataset to the pod..."],
+      error: "",
+    });
+
+    try {
+      // 1) persist the uploaded images to a named dataset the pod trainer reads
+      const form = new FormData();
+      form.append("name", datasetName);
+      form.append("triggerWords", triggerWords);
+      dataset.forEach((image) => form.append("images", image.file, image.name));
+      const saveRes = await fetch("/api/lora-training/dataset/save", { method: "POST", body: form });
+      if (!saveRes.ok) throw new Error((await saveRes.json()).error || "Dataset save failed.");
+
+      // 2) stream the RunPod training run
+      const res = await fetch("/api/lora-training/runpod/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          runpodPodId: target,
+          datasetName,
+          baseModelFile,
+          triggerWords,
+          category,
+          outputName: datasetName,
+        }),
+      });
+      if (!res.ok || !res.body) throw new Error((await res.json().catch(() => ({}))).error || "RunPod training failed.");
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let done = false;
+      const handle = (raw: string) => {
+        if (!raw.startsWith("data:")) return;
+        const ev = JSON.parse(raw.slice(5).trim()) as {
+          type?: string;
+          message?: string;
+          step?: number;
+          total?: number;
+          loraFile?: string;
+        };
+        if (ev.message) {
+          setStatusMessage(ev.message);
+          appendResultLine(ev.message);
+        }
+        if (ev.type === "progress" && ev.step != null && ev.total) {
+          setProgress(Math.max(1, Math.min(99, Math.round((ev.step / ev.total) * 100))));
+        }
+        if (ev.type === "complete") {
+          done = true;
+          setProgress(100);
+          setOutputFile(ev.loraFile ?? "");
+          setState("completed");
+          setTrainingResult((c) => ({
+            ...c,
+            status: "completed",
+            outputPath: ev.message?.split(": ")[1] ?? c.outputPath,
+          }));
+        }
+        if (ev.type === "error") {
+          throw new Error(ev.message || "RunPod training error.");
+        }
+      };
+      for (;;) {
+        const { value, done: rdone } = await reader.read();
+        if (rdone) break;
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() ?? "";
+        for (const part of parts) {
+          const line = part.split("\n").find((l) => l.startsWith("data:"));
+          if (line) handle(line);
+        }
+      }
+      if (!done) {
+        setState("ready");
+        setStatusMessage("RunPod 학습 스트림이 완료 이벤트 없이 종료되었습니다.");
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "RunPod training failed.";
+      setState("ready");
+      setProgress(0);
+      setStatusMessage(message);
+      setTrainingResult((c) => ({ ...c, status: "failed", error: message }));
+    }
+  }
+
   async function startTraining() {
     if (!canStart || state === "training") return;
+    if (target !== "local") {
+      await startRunpodTraining();
+      return;
+    }
     setState("training");
     setProgress(1);
     setStatusMessage("Dataset을 전송하는 중...");
@@ -646,6 +761,31 @@ export function LoraTraining() {
                   </select>
                   <ChevronDown className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-muted-foreground" />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="train-target" className="text-base font-bold">생성 대상</Label>
+                <div className="relative">
+                  <select
+                    id="train-target"
+                    value={target}
+                    onChange={(event) => setTarget(event.currentTarget.value)}
+                    className="h-11 w-full appearance-none rounded-md border border-input bg-background px-3 pr-9 text-base font-medium outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/25"
+                  >
+                    <option value="local">로컬 (이 컴퓨터)</option>
+                    {pods.map((pod) => (
+                      <option key={pod.podId} value={pod.podId}>
+                        RunPod · {pod.label || pod.podId}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-muted-foreground" />
+                </div>
+                <p className="text-xs font-medium text-muted-foreground">
+                  {target === "local"
+                    ? "로컬 sd-scripts로 학습합니다 (GPU 필요)."
+                    : "RunPod 팟에서 학습합니다. 데이터셋과 결과는 자동으로 전송·회수됩니다."}
+                </p>
               </div>
 
               <div className="space-y-2">

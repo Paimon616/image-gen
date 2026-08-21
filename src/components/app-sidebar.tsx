@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
-import { Bookmark, BrainCircuit, Clapperboard, DownloadCloud, Film, Images, Languages, Layers3, Search, Settings, UserRound } from "lucide-react";
+import { Bookmark, BrainCircuit, Clapperboard, DownloadCloud, Film, Images, Languages, Layers3, Search, Settings, Sparkles, UserRound } from "lucide-react";
 import { useStore, type AppLanguage } from "@/lib/store";
 import { useDownloadManagerStore } from "@/lib/download-manager-store";
 
@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { href: "/interrogate", labels: { ko: "프롬프트 추출", en: "Prompt Extraction" }, icon: Search },
   { href: "/models", labels: { ko: "모델", en: "Models" }, icon: Layers3 },
   { href: "/lora-training", labels: { ko: "LoRA 훈련", en: "LoRA Training" }, icon: BrainCircuit },
+  { href: "/dataset-bootstrap", labels: { ko: "데이터셋 부트스트랩", en: "Dataset Bootstrap" }, icon: Sparkles },
   { href: "/downloads", labels: { ko: "다운로드 매니저", en: "Downloads" }, icon: DownloadCloud },
   { href: "/scrap", labels: { ko: "스크랩", en: "Scrap" }, icon: Bookmark },
   { href: "/settings", labels: { ko: "설정", en: "Settings" }, icon: Settings },

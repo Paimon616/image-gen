@@ -197,6 +197,23 @@ export interface CharacterSituation {
   backgroundId: string | null;
 }
 
+// 메인 이미지 — the character's reference image. It doubles as the list
+// thumbnail, but its real job is to be the BASELINE every other image of this
+// character is generated from: its generation metadata carries the prompt
+// format and the model settings a new situation render should keep. Only a
+// generated image can be set here — an upload or a clipboard paste has no
+// generation metadata, so it could never act as that baseline.
+export interface CharacterMainImage {
+  // App-served image URL, e.g. "/api/images/<file>".
+  url: string;
+  // Gallery thumbnail URL for the same file, when known.
+  thumbnailUrl?: string;
+  filename: string;
+  // The image's generation metadata. null only for a legacy record whose
+  // sidecar is gone; such a main image still shows, but carries no baseline.
+  params: GenerationParams | null;
+}
+
 export interface Character {
   id: string;
   name: string;
@@ -205,9 +222,8 @@ export interface Character {
   // 기본정보 — a longer synopsis/story that Paimon can read to generate
   // situations (and choose fitting outfits/backgrounds for each).
   synopsis: string;
-  // Image URL string (e.g. "/api/uploads/<file>") or null. Mirrors how uploads
-  // are referenced everywhere else in the app.
-  thumbnail: string | null;
+  // 메인 이미지 — see CharacterMainImage. null until one is picked.
+  mainImage: CharacterMainImage | null;
   // 아이덴티티 — detailed appearance.
   appearanceDescription: string;
   appearancePrompt: string;
@@ -237,7 +253,7 @@ export function createEmptyCharacter(name: string): Omit<
     name,
     summary: "",
     synopsis: "",
-    thumbnail: null,
+    mainImage: null,
     appearanceDescription: "",
     appearancePrompt: "",
     outfits: [],

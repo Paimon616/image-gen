@@ -1,4 +1,4 @@
-import { access, open } from "fs/promises";
+import { access, open, readFile, stat } from "fs/promises";
 import { join, normalize } from "path";
 
 const MODEL_EXTENSIONS = new Set([".ckpt", ".pt", ".pth", ".safetensors"]);
@@ -54,6 +54,61 @@ export function isZImageCheckpointName(modelName: string) {
   return /z[-_ ]?image/i.test(modelName);
 }
 
+export type CheckpointFamily = "krea2" | "zimage" | "anima" | null;
+
+const MODEL_CATALOG_PATH = join(process.cwd(), "data", "model-catalog.json");
+let catalogFamilyCache: { mtimeMs: number; families: Map<string, CheckpointFamily> } | null =
+  null;
+
+function familyFromLabel(label: string): CheckpointFamily {
+  if (isKrea2CheckpointName(label)) return "krea2";
+  if (isZImageCheckpointName(label)) return "zimage";
+  if (isAnimaCheckpointName(label)) return "anima";
+  return null;
+}
+
+// data/model-catalog.json records the Civitai base model for every checkpoint this app
+// downloaded or imported, keyed by "<folder>/<filename>". Cached by mtime because the
+// model listing routes resolve a family per asset.
+async function readCatalogFamilies() {
+  try {
+    const { mtimeMs } = await stat(MODEL_CATALOG_PATH);
+    if (catalogFamilyCache?.mtimeMs === mtimeMs) return catalogFamilyCache.families;
+
+    const catalog = JSON.parse(await readFile(MODEL_CATALOG_PATH, "utf8")) as Record<
+      string,
+      { base_model?: string } | null
+    >;
+    const families = new Map<string, CheckpointFamily>();
+    for (const [key, entry] of Object.entries(catalog)) {
+      const match = /^(?:checkpoints|diffusion_models)\/(.+)$/.exec(key);
+      if (!match) continue;
+      const family = familyFromLabel(entry?.base_model ?? "");
+      if (family) families.set(match[1], family);
+    }
+    catalogFamilyCache = { mtimeMs, families };
+    return families;
+  } catch {
+    return new Map<string, CheckpointFamily>();
+  }
+}
+
+// Which dedicated pipeline a checkpoint belongs to. The filename is the primary signal
+// (it is all ComfyUI itself knows), but plenty of merges don't carry their family in the
+// name — animij_ai.safetensors is an Anima base, moodyProMix is Z-Image — so fall back to
+// the catalog's base_model. Without that fallback those checkpoints reach the standard
+// SDXL workflow and die on their missing bundled CLIP.
+export async function resolveCheckpointFamily(modelName: string): Promise<CheckpointFamily> {
+  const name = modelName.trim();
+  if (!name) return null;
+
+  const fromName = familyFromLabel(name);
+  if (fromName) return fromName;
+
+  const families = await readCatalogFamilies();
+  return families.get(name) ?? families.get(name.replace(/^.*\//, "")) ?? null;
+}
+
 // Diffusion-only image checkpoints. They are usually installed under
 // models/diffusion_models (UNETLoader) rather than models/checkpoints, yet they
 // generate images, so the image model list has to reach into that folder too.
@@ -74,16 +129,17 @@ export async function getMissingRequiredModelFiles(
   checkpointName: string,
   krea2Workflow: "generic" | "refined" | "pornmaster" = "generic"
 ) {
-  const isKrea2 = isKrea2CheckpointName(checkpointName);
+  const family = await resolveCheckpointFamily(checkpointName);
+  const isKrea2 = family === "krea2";
   const isPornmaster = isKrea2 && krea2Workflow === "pornmaster";
-  const isZImage = !isKrea2 && isZImageCheckpointName(checkpointName);
+  const isZImage = family === "zimage";
   const clipName = isKrea2
     ? isPornmaster
       ? PORNMASTER_CLIP_NAME
       : KREA2_CLIP_NAME
     : isZImage
       ? ZIMAGE_CLIP_NAME
-      : isAnimaCheckpointName(checkpointName)
+      : family === "anima"
         ? ANIMA_CLIP_NAME
         : null;
 

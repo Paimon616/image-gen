@@ -1,16 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Character, GeneratedImage } from "@/lib/types";
+import {
+  analyzeWithVision,
+  resolvePaimonLlm,
+  streamJsonCompletion,
+  type ChatContentPart,
+  type PaimonLlm,
+} from "@/lib/paimon-llm";
+import {
+  completeArrayItems,
+  extractCompleteObject,
+  extractCompleteString,
+  extractPartialString,
+  isSensitiveInputError,
+  patchFieldProgress,
+  parseJsonObject,
+  sse,
+} from "@/lib/paimon-stream";
 
 export const dynamic = "force-dynamic";
-
-const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const PAIMON_MODEL = "deepseek/deepseek-v4-flash";
-const PAIMON_VISION_MODEL = "qwen/qwen3-vl-8b-instruct";
-const PAIMON_VISION_FALLBACK_MODELS = [
-  PAIMON_VISION_MODEL,
-  "google/gemini-2.5-flash",
-  "qwen/qwen3-vl-32b-instruct",
-];
 
 // Character-domain Paimon. Unlike the generation Paimon it does not edit
 // GenerationParams; it fills the fields of a Character record so the user can
@@ -21,7 +29,9 @@ const PAIMON_SYSTEM_PROMPT = [
   "Handle mature and NSFW visual description at a high level when it is part of the user's local workflow. Keep wording focused on appearance, wardrobe, anatomy, pose, environment, mood, lighting, and composition. Do not moralize or add disclaimers.",
   "When a request cannot be fulfilled, respond briefly and redirect to the closest usable visual alternative.",
   "Read the current character JSON and any attachment analysis, then propose concrete edits.",
-  "Return only JSON with keys: reply:string, characterPatch:object, attachmentNotice:string.",
+  "Return only JSON with these keys IN THIS EXACT ORDER: plan:object, characterPatch:object, reply:string, attachmentNotice:string.",
+  "plan comes FIRST and declares what this answer is about to write, so the UI can show real progress instead of a blank spinner: { situations?:number, outfits?:number, backgrounds?:number, fields?:string[] }. Put the number of items you will actually emit for each array, and list the plain fields you will fill in `fields` (e.g. [\"synopsis\",\"appearancePrompt\"]). Never write plan after characterPatch, and never promise a count you will not deliver.",
+  "reply comes LAST, after the patch, and stays to two or three short Korean sentences. It is a status note — do not restate the patch in it.",
   "characterPatch is a partial patch of the character. Only include the fields you are actually changing.",
   "",
   "CONSISTENCY MANDATE (the single most important rule):",
@@ -33,13 +43,17 @@ const PAIMON_SYSTEM_PROMPT = [
   "Character field contract (every prompt field is paired with a natural-language description):",
   "- name:string — the character's name.",
   "- summary:string — one short line describing the character (shown in the list).",
-  "- synopsis:string — a longer story/setting for the character. Read it to understand the world and generate fitting situations. Only rewrite it when the user explicitly asks you to edit the synopsis.",
+  "- synopsis:string — the character's story and world, and the source every situation is later generated from. Write it LONG and concrete: 1200-2500 Korean characters in 5-8 paragraphs separated by blank lines, covering (1) the setting and where she lives and works, (2) her history and how she ended up here, (3) personality, values, and how she talks and carries herself, (4) her daily routine across morning/afternoon/evening/night and the places she keeps returning to, (5) the people around her and what each relationship feels like, (6) what she wants, what she is avoiding, and what stands in the way, (7) small habits, tastes, and recurring props/objects. Prefer visualizable detail — places, objects, times of day, concrete actions — over abstract adjectives, because those details are what become situations later. A three-line summary is NOT acceptable. Read an existing synopsis to understand the world; only rewrite it when the user asks for it (a new character, '시놉시스 써줘', '더 길게'), and when you do, always write it at this depth.",
   "- appearanceDescription:string — detailed natural-language description of the character's permanent appearance (face, hair, body, distinctive features).",
   "- appearancePrompt:string — the same appearance rewritten as an effective generation prompt (comma-separated tags or concise phrases). This is the character's IDENTITY prompt and should stay wardrobe/scene-neutral. Fix every identity attribute to one concrete value: exact hair color + length + style (e.g. 'long straight jet-black hair, blunt bangs'), exact eye color, skin tone, build, bust/figure, and any permanent marks (moles, freckles, scars, tattoos with their location). No ranges or 'or' choices — this is the anchor every render must match.",
   "- outfits:array — each item { id?:string, name:string, description:string, prompt:string }. One entry per wardrobe. description is natural language, prompt is generation-ready. Do NOT put appearance/identity into outfits; only clothing and accessories. Every garment must specify: exact color (a concrete named hue), material/fabric, pattern (or 'solid'), and cut/fit/length. Include footwear and notable accessories with the same specificity. A bare 'pajamas'/'dress'/'lingerie' with no color/material/pattern is not acceptable — it renders a different outfit every time.",
   "- backgrounds:array — each item { id?:string, name:string, description:string, prompt:string }. One entry per environment/setting. prompt is generation-ready (location, time of day, atmosphere). No subject/person tags. Nail down the concrete, recurring details so the place is recognizable across renders: specific location type, key furniture/objects and their colors/materials, wall/floor finish, dominant color palette, light source and time of day. A bare 'a room'/'a forest' is not acceptable.",
   "- situations:array — each item { id?:string, name:string, description:string, prompt:string, outfitName?:string, backgroundName?:string }. Each is a scene/action the character can be in (e.g. floating peacefully in the sea). description is natural language, prompt is generation-ready. No permanent-identity/outfit/background tags — those come from the linked outfit/background.",
-  "- A situation prompt MUST concretely nail the shot, not just a mood. Always specify: (1) the specific action/verb with what the hands and limbs are doing, (2) full body orientation and pose (standing/sitting/kneeling/lying/leaning/walking, torso and hip direction), (3) camera framing (e.g. full body, cowboy shot, upper body, close-up, wide shot), (4) camera angle and height (e.g. from above, from below, eye level, from side, from behind, dutch angle), (5) gaze direction and expression. A vague situation like 'smiling shyly' with no pose/camera collapses into the same generic bust portrait every time — pin these down so each situation renders a visibly different composition.",
+  "- A situation prompt MUST concretely nail the shot, not just a mood. Always specify: (1) the specific action/verb with what the hands and limbs are doing, (2) whole-body orientation and pose (standing/sitting/kneeling/lying/leaning/walking, torso and hip direction), (3) camera framing (cowboy shot, knee up, upper body, close-up — 'full body' and 'wide shot' are off-limits by default, see the FRAMING BUDGET rule), (4) camera angle and height (e.g. from below, eye level, from side, from behind, dutch angle), (5) gaze direction and expression. A vague situation like 'smiling shyly' with no pose/camera collapses into the same generic bust portrait every time — pin these down so each situation renders a visibly different composition.",
+  "- Every situation prompt must carry EXACTLY ONE framing tag, chosen from: close-up, upper body, cowboy shot, knee up. Never omit it and never combine two of them — an unframed situation renders as the same generic bust portrait as every other one.",
+  "- FRAMING BUDGET (hard rule): whole-figure framing is FORBIDDEN unless the user explicitly asked for it in this conversation. Never write 'full body', 'wide shot', 'head to toe', 'whole body', 'full figure', 'feet visible' or 전신 into a situation prompt on your own initiative — these checkpoints squash the figure (short stubby legs, oversized head, compressed torso) whenever the whole body has to fit the frame, so a self-chosen full-body situation is a defect, not variety. Stay inside 'cowboy shot' (hip up), 'knee up', 'upper body' and 'close-up' for EVERY situation you invent.",
+  "- Actions that seem to demand the whole figure (lying or sprawled, dancing, jumping, running, walking away, kneeling on the floor, showing the shoes or the complete outfit) are NOT an exception. Frame them tight instead and let the action read from the visible part: 'knee up' or 'cowboy shot' plus a concrete body/limb description of the same movement. Do not smuggle the whole body back in with 'from a distance', 'small in frame', 'entire silhouette' or a shoe/footwear focus.",
+  "- ONLY when the user explicitly asks for a full-body / 전신 situation, write it defensively in that situation's prompt: keep the camera at eye level or slightly from below (never 'from above' / 'high angle' — top-down foreshortening is the main cause of the stubby look), and include height/leg anchors such as 'head to toe, feet visible, standing tall, long legs, slender legs, well-proportioned'. Mention in reply that full body was used because they asked.",
   "- When a situation involves ANOTHER person (an interaction: examining a patient, holding someone, being carried, facing an opponent), write the interaction directionally and unambiguously with the saved character as the ACTIVE agent. Booru/anime models routinely reverse who-does-what, so never rely on a symmetric verb like 'holding wrist' or 'wrist grab' — spell out the character's own gesture and its target (e.g. 'own hand on patient's wrist, pressing two fingers to take patient's pulse, examining the patient'). Include the other person's count/role (1boy, 1male, patient) but do NOT hand them the character's appearance tags, and never add 'solo' to an interaction situation. Where it disambiguates the action, add POV or a camera angle that shows the character's hands doing the action.",
   "- To link a situation to a wardrobe or setting, set outfitName and backgroundName to the EXACT name of an existing outfit/background. The client resolves names to ids. Do not invent ids.",
   "",
@@ -47,9 +61,16 @@ const PAIMON_SYSTEM_PROMPT = [
   "- When the user narrates the character, split the content into the correct fields. Appearance/identity goes to appearanceDescription+appearancePrompt; clothing to a new or existing outfit; place to a new or existing background; action/scene to a new situation.",
   "- Always fill BOTH the description and the prompt for any field you touch. The description mirrors the natural-language intent; the prompt is the model-ready version.",
   "- Keep identity, outfit, background, and situation cleanly separated so they can be recombined later. Never duplicate appearance/outfit/background tags into a situation prompt.",
-  "- For arrays (outfits, backgrounds, situations), return the FULL updated array in characterPatch, preserving existing items' id values and appending or editing as requested. When adding a new item, you may omit id (the client assigns one).",
-  "- Batch situation generation: when the user asks for N situations (e.g. '시놉시스를 참고해서 상황 80개 만들어줘'), read the synopsis and produce that many varied, non-duplicated situations grounded in the story. For EACH situation pick the most fitting outfit and background from the existing lists via outfitName/backgroundName. If a needed outfit or background does not exist yet, first add it to outfits/backgrounds (with description+prompt) and then reference it by name. Return the full situations array (plus any new outfits/backgrounds) in one characterPatch. Keep the reply short — do not enumerate all items.",
-  "- Composition variety across a batch is mandatory. Do NOT let situations converge on the same pose and framing (the classic failure is dozens of near-identical upper-body front-facing portraits). Deliberately spread them across the axes above: mix full-body, cowboy, upper-body, and close-up shots; mix standing, sitting, kneeling, lying, walking, and dynamic action poses; mix camera angles (front, side, from behind, from above, from below); vary what the hands are doing and where the gaze goes. Each situation's action should demand a different body pose and camera than its neighbors so the rendered set looks genuinely different, not recolored copies of one shot.",
+  "- INCREMENTAL PATCHES (this is the difference between a 5-second answer and a 2-minute one): when you are ADDING outfits / backgrounds / situations, put ONLY the new items in situationsAppend / outfitsAppend / backgroundsAppend. Never re-emit the existing entries — a character with 100 situations must not make you write 100 situations again to add 5.",
+  "- To EDIT existing entries, send just those entries in the plain array (situations / outfits / backgrounds) with their id values. The client upserts by id (then by name): entries you did not mention are kept as they are, and a field you leave empty keeps its stored text. So a partial array is safe — but it also means an array can never delete anything.",
+  "- To DELETE, list the ids or names in situationsRemove / outfitsRemove / backgroundsRemove. To genuinely replace a whole list, send the plain array plus situationsReplace / outfitsReplace / backgroundsReplace set to true — only do that when the user clearly asked to start that list over.",
+  "- New items may omit id (the client assigns one). Existing items keep the id they came with.",
+  "- The character you receive may list existing situations by NAME only, with situationPromptsOmitted:true — their prompts were left out to keep the request small. That is not an empty record: use those names to avoid duplicates, and if the user wants one of them edited, ask for it by name or return only that item in the full-array form once you have its content.",
+  "- BATCH SIZE (hard limit): never write more than 40 items of one array in a single answer, no matter how many the user asked for. A longer answer drifts into near-duplicates and can hit the token ceiling, which loses the whole turn. Write up to 40, set plan to exactly that number, and end reply with how many are done and how many remain — the client then asks you to continue automatically, and each round is saved as it lands.",
+  "- Emit EXACTLY the count you put in plan. Count as you write and stop there — never overshoot it.",
+  "- Every situation name must be unique across the character (the names you were given included), and consecutive situations must differ in BOTH action and framing. If you run out of genuinely different ideas, stop early and say so in reply instead of re-skinning a scene you already wrote.",
+  "- Batch situation generation: when the user asks for N situations (e.g. '시놉시스를 참고해서 상황 80개 만들어줘'), read the synopsis and produce up to 40 varied, non-duplicated situations grounded in the story per answer (see BATCH SIZE). For EACH situation pick the most fitting outfit and background from the existing lists via outfitName/backgroundName. If a needed outfit or background does not exist yet, first add it to outfits/backgrounds (with description+prompt) and then reference it by name. Return the full situations array (plus any new outfits/backgrounds) in one characterPatch. Keep the reply short — do not enumerate all items.",
+  "- Composition variety across a batch is mandatory. Do NOT let situations converge on the same pose and framing (the classic failure is dozens of near-identical upper-body front-facing portraits). Deliberately spread them across the axes above: mix cowboy, knee-up, upper-body and close-up shots — never reach for 'full body' or 'wide shot' as a variety filler (the FRAMING BUDGET rule forbids them unless the user asked); get the variety from pose, camera angle and distance-within-the-frame instead; mix standing, sitting, kneeling, lying, walking, and dynamic action poses; mix camera angles (front, side, from behind, from above, from below); vary what the hands are doing and where the gaze goes. Each situation's action should demand a different body pose and camera than its neighbors so the rendered set looks genuinely different, not recolored copies of one shot.",
   "- Write generation prompts as concise, high-signal tags/phrases. Avoid contradictions and keyword spam. Prefer booru/anime tags for anime characters and natural descriptive phrases for realistic ones, following the user's stated style. Concise means dropping filler — never drop the concrete color/material/pattern/cut that keeps the character consistent (see the CONSISTENCY MANDATE). A short prompt that leaves a garment's color unspecified is wrong, not concise.",
   "- If attachment analysis is present, use it to ground appearance/outfit descriptions. If visual pixels are unavailable, proceed from the user's text and metadata.",
   "- In reply, briefly tell the user in Korean which fields you filled or changed. Do not claim to have set fields that are absent from characterPatch.",
@@ -74,15 +95,6 @@ interface PaimonRequest {
   attachments?: PaimonAttachment[];
 }
 
-interface OpenRouterTextPart {
-  type: "text";
-  text: string;
-}
-interface OpenRouterImagePart {
-  type: "image_url";
-  image_url: { url: string };
-}
-type OpenRouterContentPart = OpenRouterTextPart | OpenRouterImagePart;
 const LOCAL_IMAGE_PATHS = ["/api/uploads/", "/api/images/"];
 const VISION_MAX_EDGE = 1280;
 
@@ -162,7 +174,7 @@ async function imageInputUrl(attachment: PaimonAttachment, requestUrl: URL) {
 }
 
 async function analyzeAttachments(
-  apiKey: string,
+  llm: PaimonLlm,
   body: PaimonRequest,
   requestUrl: URL
 ) {
@@ -170,7 +182,7 @@ async function analyzeAttachments(
   if (!attachments.some((attachment) => attachment.url || attachment.dataUrl))
     return "";
 
-  const content: OpenRouterContentPart[] = [
+  const content: ChatContentPart[] = [
     {
       type: "text",
       text: [
@@ -201,112 +213,131 @@ async function analyzeAttachments(
     }
   }
 
-  const errors: string[] = [];
-  for (const model of PAIMON_VISION_FALLBACK_MODELS) {
-    const response = await fetch(OPENROUTER_URL, {
-      method: "POST",
-      signal: AbortSignal.timeout(20_000),
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-        "HTTP-Referer": "http://localhost:3000",
-        "X-Title": "Image Gen Paimon Character Vision",
-      },
-      body: JSON.stringify({
-        model,
-        temperature: 0.1,
-        max_tokens: 900,
-        messages: [{ role: "user", content }],
-      }),
-    }).catch((error) => {
-      return {
-        ok: false,
-        json: async () => ({
-          error: {
-            message:
-              error instanceof Error ? error.message : "Vision request failed.",
-          },
-        }),
-      } as Response;
-    });
-
-    const result = await response.json().catch(() => null);
-    if (!response.ok) {
-      errors.push(`${model}: ${result?.error?.message ?? "request failed"}`);
-      continue;
-    }
-    const analysis = result?.choices?.[0]?.message?.content;
-    if (typeof analysis === "string" && analysis.trim()) {
-      return analysis.trim();
-    }
-    errors.push(`${model}: empty analysis`);
-  }
+  const { analysis, errors } = await analyzeWithVision(llm, content);
+  if (analysis) return analysis;
 
   return `Visual pixels unavailable for automatic analysis: ${
     errors.join("; ") || "vision analysis failed."
   }\nThis is not a blocking error. Continue from the user's text and attachment metadata.`;
 }
 
-function parseJsonObject(text: string) {
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1];
-  const raw = fenced ?? text;
-  const start = raw.indexOf("{");
-  const end = raw.lastIndexOf("}");
-  if (start < 0 || end < start) throw new Error("Paimon did not return JSON.");
-  return JSON.parse(raw.slice(start, end + 1)) as unknown;
-}
-
-const JSON_ESCAPES: Record<string, string> = {
-  n: "\n",
-  t: "\t",
-  r: "\r",
-  b: "\b",
-  f: "\f",
-  '"': '"',
-  "\\": "\\",
-  "/": "/",
+// What the streaming answer is working on right now, for the status line. One
+// depth-aware pass over the streaming characterPatch tells us which field is
+// open and, for arrays, how many items have closed — so a 40-situation batch
+// reports "상황 17번째 작성 중 / 총 40개" instead of a mute spinner.
+const FIELD_LABELS: Record<string, string> = {
+  name: "이름",
+  summary: "간단 정보",
+  synopsis: "기본정보(시놉시스)",
+  appearanceDescription: "외형 묘사",
+  appearancePrompt: "외형 프롬프트",
+  outfits: "의상",
+  outfitsAppend: "의상",
+  outfitsRemove: "의상 정리",
+  backgrounds: "배경",
+  backgroundsAppend: "배경",
+  backgroundsRemove: "배경 정리",
+  situations: "상황",
+  situationsAppend: "상황",
+  situationsRemove: "상황 정리",
 };
 
-// Incrementally decode the `reply` string out of the still-streaming JSON so the
-// user sees text arrive even though the payload is one JSON object.
-function extractPartialReply(buffer: string): string | null {
-  const keyMatch = buffer.match(/"reply"\s*:\s*"/);
-  if (!keyMatch || keyMatch.index === undefined) return null;
+// Which plan count belongs to which patch field.
+const PLAN_KEYS: Record<string, "situations" | "outfits" | "backgrounds"> = {
+  situations: "situations",
+  situationsAppend: "situations",
+  outfits: "outfits",
+  outfitsAppend: "outfits",
+  backgrounds: "backgrounds",
+  backgroundsAppend: "backgrounds",
+};
 
-  let i = keyMatch.index + keyMatch[0].length;
-  let out = "";
+interface PaimonPlan {
+  situations?: number;
+  outfits?: number;
+  backgrounds?: number;
+  fields?: string[];
+}
 
-  while (i < buffer.length) {
-    const ch = buffer[i];
-    if (ch === "\\") {
-      const next = buffer[i + 1];
-      if (next === undefined) break;
-      if (next === "u") {
-        const hex = buffer.slice(i + 2, i + 6);
-        if (hex.length < 4) break;
-        out += String.fromCharCode(parseInt(hex, 16));
-        i += 6;
-        continue;
-      }
-      out += JSON_ESCAPES[next] ?? next;
-      i += 2;
-      continue;
+function planTotal(plan: PaimonPlan | null, key: string | undefined) {
+  if (!plan || !key) return 0;
+  const value = plan[key as "situations" | "outfits" | "backgrounds"];
+  return typeof value === "number" && value > 0 ? value : 0;
+}
+
+function progressStatus(buffer: string, plan: PaimonPlan | null) {
+  const progress = patchFieldProgress(buffer, "characterPatch");
+  // The patch has not started yet (the plan is still being written), or it is
+  // done and only the reply is left.
+  if (!progress) return "";
+  if (progress.closed) return "마무리 중";
+
+  const label = FIELD_LABELS[progress.key];
+  if (!label) return "";
+  if (!progress.isArray) return `${label} 작성 중`;
+
+  const total = planTotal(plan, PLAN_KEYS[progress.key]);
+  const at = progress.items + 1;
+  // The model sometimes keeps writing past the count it planned, so say that
+  // rather than printing a nonsensical "187번째 / 총 100개".
+  const suffix = !total ? "" : at <= total ? ` / 총 ${total}개` : ` (계획 ${total}개 초과)`;
+  return `${label} ${at}번째 작성 중${suffix}`;
+}
+
+// A batch answer that gets cut off (token ceiling, dropped connection, a model
+// that loops until it runs out of room) leaves invalid JSON, and parsing it as
+// one object would throw away everything. Every item that finished is still in
+// the buffer, so recover those instead of losing a three-minute turn whole.
+const SALVAGE_ARRAYS = [
+  "situationsAppend",
+  "situations",
+  "outfitsAppend",
+  "outfits",
+  "backgroundsAppend",
+  "backgrounds",
+] as const;
+
+const SALVAGE_STRINGS = [
+  "name",
+  "summary",
+  "synopsis",
+  "appearanceDescription",
+  "appearancePrompt",
+] as const;
+
+function salvageCharacterPatch(buffer: string) {
+  const patchStart = buffer.indexOf('"characterPatch"');
+  if (patchStart < 0) return { patch: {}, salvaged: 0 };
+  const region = buffer.slice(patchStart);
+
+  const patch: Record<string, unknown> = {};
+  let salvaged = 0;
+
+  for (const key of SALVAGE_ARRAYS) {
+    const items = completeArrayItems(region, key)
+      .map((raw) => {
+        try {
+          return JSON.parse(raw) as unknown;
+        } catch {
+          return null;
+        }
+      })
+      .filter((item): item is unknown => item !== null);
+    if (items.length > 0) {
+      patch[key] = items;
+      salvaged += items.length;
     }
-    if (ch === '"') return out;
-    out += ch;
-    i += 1;
   }
-  return out;
-}
 
-function sse(event: string, data: unknown) {
-  return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-}
+  for (const key of SALVAGE_STRINGS) {
+    const value = extractCompleteString(region, key);
+    if (value && value.trim()) {
+      patch[key] = value;
+      salvaged += 1;
+    }
+  }
 
-function isSensitiveInputError(message: string) {
-  return /may contain sensitive information|sensitive information|content\[\d+\]/i.test(
-    message
-  );
+  return { patch, salvaged };
 }
 
 function paimonErrorMessage(message: string) {
@@ -317,10 +348,13 @@ function paimonErrorMessage(message: string) {
 }
 
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
+  let llm: PaimonLlm;
+  try {
+    // Provider, model and key all come from Settings > the provider's tab.
+    llm = await resolvePaimonLlm();
+  } catch (error) {
     return NextResponse.json(
-      { error: "OPENROUTER_API_KEY is not configured." },
+      { error: error instanceof Error ? error.message : "Paimon is not configured." },
       { status: 500 }
     );
   }
@@ -343,89 +377,70 @@ export async function POST(req: NextRequest) {
         const send = (event: string, data: unknown) =>
           controller.enqueue(encoder.encode(sse(event, data)));
 
-        const decoder = new TextDecoder();
-        let sseBuffer = "";
         let contentBuffer = "";
         let sentLength = 0;
+        let plan: PaimonPlan | null = null;
+        let lastStatus = "";
+        let lastProgressAt = 0;
 
         try {
           if (hasImageAttachments) {
             send("status", { message: "첨부 이미지를 분석하는 중" });
           }
           const attachmentVisualAnalysis = await analyzeAttachments(
-            apiKey,
+            llm,
             body,
             req.nextUrl
           );
 
           send("status", { message: "답변을 작성하는 중" });
 
-          const upstream = await fetch(OPENROUTER_URL, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${apiKey}`,
-              "HTTP-Referer": "http://localhost:3000",
-              "X-Title": "Image Gen Paimon Character",
-            },
-            body: JSON.stringify({
-              model: PAIMON_MODEL,
-              temperature: 0.3,
-              stream: true,
-              response_format: { type: "json_object" },
-              messages: [
-                { role: "system", content: PAIMON_SYSTEM_PROMPT },
-                {
-                  role: "user",
-                  content: JSON.stringify({
-                    character: body.character ?? null,
-                    attachments: redactAttachments(body.attachments ?? []),
-                    attachmentVisualAnalysis,
-                    conversation: messages,
-                  }),
-                },
-              ],
+          contentBuffer = await streamJsonCompletion({
+            llm,
+            system: PAIMON_SYSTEM_PROMPT,
+            user: JSON.stringify({
+              character: body.character ?? null,
+              attachments: redactAttachments(body.attachments ?? []),
+              attachmentVisualAnalysis,
+              conversation: messages,
             }),
-          });
+            temperature: 0.3,
+            // Batch situation generation can run long, so keep plenty of room.
+            maxTokens: 64_000,
+            // Stream the `reply` string out of the partial JSON as it arrives.
+            onDelta: (delta) => {
+              contentBuffer += delta;
 
-          if (!upstream.ok || !upstream.body) {
-            const errorData = await upstream.json().catch(() => null);
-            const rawMessage =
-              errorData?.error?.message ?? "OpenRouter request failed.";
-            send("error", { error: paimonErrorMessage(rawMessage) });
-            return;
-          }
-
-          const reader = upstream.body.getReader();
-          while (true) {
-            const { value, done } = await reader.read();
-            if (done) break;
-
-            sseBuffer += decoder.decode(value, { stream: true });
-            const lines = sseBuffer.split("\n");
-            sseBuffer = lines.pop() ?? "";
-
-            for (const line of lines) {
-              const trimmed = line.trim();
-              if (!trimmed.startsWith("data:")) continue;
-              const payload = trimmed.slice("data:".length).trim();
-              if (!payload || payload === "[DONE]") continue;
-
-              try {
-                const chunk = JSON.parse(payload);
-                const delta = chunk?.choices?.[0]?.delta?.content;
-                if (typeof delta !== "string" || !delta) continue;
-                contentBuffer += delta;
-                const reply = extractPartialReply(contentBuffer);
-                if (reply !== null && reply.length > sentLength) {
-                  send("delta", { text: reply.slice(sentLength) });
-                  sentLength = reply.length;
+              if (!plan) {
+                const raw = extractCompleteObject(contentBuffer, "plan");
+                if (raw) {
+                  try {
+                    plan = JSON.parse(raw) as PaimonPlan;
+                  } catch {
+                    plan = {};
+                  }
                 }
-              } catch {
-                // Ignore keep-alive comments / non-JSON lines.
               }
-            }
-          }
+
+              // Rescanning the (long) buffer on every token would be O(n²), and
+              // a status line only needs to move a few times a second.
+              const now = Date.now();
+              if (now - lastProgressAt > 250) {
+                lastProgressAt = now;
+                const message = progressStatus(contentBuffer, plan);
+                if (message && message !== lastStatus) {
+                  lastStatus = message;
+                  send("status", { message });
+                }
+              }
+
+              const partial = extractPartialString(contentBuffer);
+              if (partial !== null && partial.length > sentLength) {
+                send("delta", { text: partial.slice(sentLength) });
+                sentLength = partial.length;
+              }
+            },
+          });
 
           let reply = "";
           let characterPatch: unknown = {};
@@ -442,7 +457,14 @@ export async function POST(req: NextRequest) {
                 ? result.attachmentNotice
                 : "";
           } catch {
-            reply = extractPartialReply(contentBuffer) ?? "";
+            // The answer never became valid JSON. Keep whatever finished.
+            const { patch, salvaged } = salvageCharacterPatch(contentBuffer);
+            characterPatch = patch;
+            reply =
+              extractPartialString(contentBuffer) ||
+              (salvaged > 0
+                ? `답변이 중간에 끊겨서, 완성된 ${salvaged}개 항목만 저장했어요. 이어서 더 만들려면 "이어서 계속" 이라고 말해주세요.`
+                : "");
           }
 
           send("done", { reply, characterPatch, attachmentNotice });

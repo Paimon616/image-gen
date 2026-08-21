@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { useStore } from "./store";
 import {
   randomGenerationSeed,
+  UNGROUPED_WORKSPACE_ID,
   type CivitaiOrigin,
   type GeneratedImage,
   type GenerationParams,
@@ -436,7 +437,15 @@ export const useGenerationQueueStore = create<GenerationQueueState>(
       }
       const id = crypto.randomUUID();
       const civitaiOrigin = useStore.getState().civitaiReference ?? undefined;
-      const workspaceId = useStore.getState().activeWorkspaceId ?? undefined;
+      // The sentinel "ungrouped" filter is not a real workspace: tagging the
+      // placeholder with it would make the card fail the ungrouped view's
+      // "no workspaces" test, so the queued card stays invisible until the
+      // finished image (which the server saves unassigned) replaces it.
+      const activeWorkspaceId = useStore.getState().activeWorkspaceId;
+      const workspaceId =
+        activeWorkspaceId && activeWorkspaceId !== UNGROUPED_WORKSPACE_ID
+          ? activeWorkspaceId
+          : undefined;
 
       addImage({
         id,

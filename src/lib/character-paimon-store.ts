@@ -94,6 +94,89 @@ const STRING_KEYS: (keyof Character)[] = [
   "appearancePrompt",
 ];
 
+// One list field (outfits / backgrounds / situations) merged out of whatever the
+// answer sent for it. Four forms, none of which can silently wipe the record:
+//
+//   <field>Append   only the new items → appended (the fast, preferred form)
+//   <field>         upsert by id, then by name → existing entries the answer did
+//                   NOT mention are KEPT, and an empty field on a returned item
+//                   keeps the stored text
+//   <field>Remove   ids or names to delete
+//   <field>Replace  true → the array really is the new complete list
+//
+// The upsert default matters: Paimon regularly answers "add one situation" with
+// a one-item `situations` array, and a character's 100 saved situations must not
+// disappear because of it. Wiping them takes the explicit Replace flag (or the
+// studio's own 전체 삭제 button).
+function mergeList<T extends { id: string; name: string; description: string; prompt: string }>(
+  existing: T[],
+  record: Record<string, unknown>,
+  field: "outfits" | "backgrounds" | "situations",
+  normalize: (value: unknown) => T[]
+): T[] | null {
+  const appendKey = `${field}Append`;
+  const removeKey = `${field}Remove`;
+  const replaceKey = `${field}Replace`;
+
+  const hasFull = field in record;
+  const hasAppend = appendKey in record;
+  const hasRemove = removeKey in record;
+  if (!hasFull && !hasAppend && !hasRemove) return null;
+
+  if (hasFull && record[replaceKey] === true) {
+    return normalize(record[field]);
+  }
+
+  let merged = [...existing];
+
+  const upsert = (items: T[], appendOnly: boolean) => {
+    for (const item of items) {
+      const index = appendOnly
+        ? -1
+        : merged.findIndex(
+            (entry) =>
+              entry.id === item.id ||
+              (Boolean(item.name.trim()) &&
+                entry.name.trim().toLowerCase() === item.name.trim().toLowerCase())
+          );
+      if (index === -1) {
+        merged.push(item);
+        continue;
+      }
+      const current = merged[index];
+      // An empty field on the returned item means "unchanged", not "cleared" —
+      // the answer may have been written from a name-only listing.
+      merged[index] = {
+        ...current,
+        ...item,
+        id: current.id,
+        name: item.name.trim() ? item.name : current.name,
+        description: item.description.trim() ? item.description : current.description,
+        prompt: item.prompt.trim() ? item.prompt : current.prompt,
+      };
+    }
+  };
+
+  if (hasFull) upsert(normalize(record[field]), false);
+  if (hasAppend) upsert(normalize(record[appendKey]), true);
+
+  if (hasRemove && Array.isArray(record[removeKey])) {
+    const targets = (record[removeKey] as unknown[])
+      .filter((value): value is string => typeof value === "string")
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean);
+    if (targets.length > 0) {
+      merged = merged.filter(
+        (entry) =>
+          !targets.includes(entry.id.toLowerCase()) &&
+          !targets.includes(entry.name.trim().toLowerCase())
+      );
+    }
+  }
+
+  return merged;
+}
+
 // Keep only known character fields, coercing arrays through the normalizers so
 // Paimon-authored outfits/backgrounds/situations always carry a client id.
 // `character` supplies the existing outfits/backgrounds so a situation can be
@@ -108,23 +191,61 @@ function sanitizePatch(value: unknown, character: Character): Partial<Character>
       (patch as Record<string, unknown>)[key] = record[key];
     }
   }
-  if ("outfits" in record) patch.outfits = normalizeOutfits(record.outfits);
-  if ("backgrounds" in record)
-    patch.backgrounds = normalizeBackgrounds(record.backgrounds);
+  const outfits = mergeList(
+    character.outfits,
+    record,
+    "outfits",
+    normalizeOutfits
+  );
+  if (outfits) patch.outfits = outfits;
+
+  const backgrounds = mergeList(
+    character.backgrounds,
+    record,
+    "backgrounds",
+    normalizeBackgrounds
+  );
+  if (backgrounds) patch.backgrounds = backgrounds;
 
   // Situations reference outfits/backgrounds by id or name — resolve against the
   // merged set (patch overrides existing) so references resolve either way.
   const outfitsForRefs = patch.outfits ?? character.outfits;
   const backgroundsForRefs = patch.backgrounds ?? character.backgrounds;
-  if ("situations" in record) {
-    patch.situations = normalizeSituations(
-      record.situations,
-      outfitsForRefs,
-      backgroundsForRefs
-    );
-  }
+  const situations = mergeList(character.situations, record, "situations", (value) =>
+    normalizeSituations(value, outfitsForRefs, backgroundsForRefs)
+  );
+  if (situations) patch.situations = situations;
 
   return patch;
+}
+
+// What of the character actually rides along in the request. Two things are cut:
+// the main image's generation metadata (this Paimon authors text, it never needs
+// the baseline params) and the prompts of situations the message is not about —
+// a 100-situation character was sending ~40KB of prompts the model had to read
+// before writing anything. Names always stay, so it can still avoid duplicates
+// and address an existing situation.
+function characterPayload(character: Character, focusText: string) {
+  const haystack = focusText.toLowerCase();
+  const situations = character.situations.map((situation) => {
+    const name = situation.name.trim();
+    const mentioned =
+      Boolean(name) && haystack.includes(name.toLowerCase());
+    return mentioned
+      ? situation
+      : { id: situation.id, name: situation.name };
+  });
+  const omitted = situations.some((situation) => !("prompt" in situation));
+
+  return {
+    ...character,
+    mainImage: character.mainImage
+      ? { url: character.mainImage.url }
+      : null,
+    situations,
+    // Marks the trim so an omitted prompt never reads as an empty situation.
+    situationPromptsOmitted: omitted || undefined,
+  };
 }
 
 // Latest snapshot of every character the studio has shown, kept at module scope
@@ -151,12 +272,67 @@ export function registerCharacterPatchApplier(
   };
 }
 
+// "상황 100개 만들어줘" is one request but several answers. A single answer that
+// tries to write 100 items drifts into near-duplicates and can run past the
+// token ceiling (which loses the whole turn), so the route caps each answer at
+// 40 and the rest is fetched by continuing automatically — each round lands and
+// is saved before the next one starts.
+const MAX_BATCH_ROUNDS = 8;
+
+interface BatchRun {
+  target: number;
+  got: number;
+  rounds: number;
+}
+
+const batchRuns: Record<string, BatchRun> = {};
+
+// How many situations the user asked for in this message, or 0 when it is not a
+// counted batch request.
+function requestedSituationCount(text: string) {
+  if (!/상황|situation/i.test(text)) return 0;
+  const match = text.match(/(\d{1,3})\s*개/) ?? text.match(/(\d{1,3})/);
+  const value = match ? Number(match[1]) : 0;
+  return Number.isFinite(value) && value > 1 ? Math.min(value, 300) : 0;
+}
+
+function lastUserMessage(conversationId: string) {
+  const messages =
+    useCharacterPaimonStore.getState().conversations[conversationId]?.messages ??
+    [];
+  return [...messages].reverse().find((message) => message.role === "user")
+    ?.content ?? "";
+}
+
+// Sends the follow-up once the finished turn has released the conversation.
+function continueBatch(conversationId: string, remaining: number, attempt = 0) {
+  const store = useCharacterPaimonStore.getState();
+  if (store.conversations[conversationId]?.loading) {
+    if (attempt < 6) {
+      window.setTimeout(
+        () => continueBatch(conversationId, remaining, attempt + 1),
+        400
+      );
+    }
+    return;
+  }
+  store.send(
+    conversationId,
+    `이어서 상황 ${remaining}개 더 만들어줘. 기존 상황과 이름·동작·구도가 겹치지 않게.`
+  );
+}
+
 export const useCharacterPaimonStore = createPaimonConversationStore({
   endpoint: "/api/paimon/character",
   historyLimit: 10,
   appliedReply: () => "요청을 반영해서 캐릭터 설정을 수정했어요.",
   buildBody: ({ conversationId, messages, attachments }) => ({
-    character: characterSnapshots[conversationId] ?? null,
+    character: characterSnapshots[conversationId]
+      ? characterPayload(
+          characterSnapshots[conversationId],
+          messages[messages.length - 1]?.content ?? ""
+        )
+      : null,
     attachments: attachments.map((attachment, index) => ({
       kind: attachment.kind,
       url: attachment.url,
@@ -175,6 +351,30 @@ export const useCharacterPaimonStore = createPaimonConversationStore({
     // Keep the snapshot current so a follow-up turn sees the applied edit even
     // while the studio is unmounted.
     characterSnapshots[conversationId] = { ...character, ...patch };
+
+    // Batch bookkeeping: how many situations this round actually added, and
+    // whether the counted request the user made is still short.
+    const added = patch.situations
+      ? patch.situations.length - character.situations.length
+      : 0;
+    const run =
+      batchRuns[conversationId] ??
+      ({
+        target: requestedSituationCount(lastUserMessage(conversationId)),
+        got: 0,
+        rounds: 0,
+      } satisfies BatchRun);
+    run.got += Math.max(0, added);
+    run.rounds += 1;
+    const remaining = run.target - run.got;
+    // added <= 0 means the model has nothing new to give; stop instead of
+    // looping on an answer that never grows the list.
+    if (run.target > 0 && remaining > 0 && added > 0 && run.rounds < MAX_BATCH_ROUNDS) {
+      batchRuns[conversationId] = run;
+      continueBatch(conversationId, remaining);
+    } else {
+      delete batchRuns[conversationId];
+    }
 
     if (liveApplier) {
       liveApplier(conversationId, patch);

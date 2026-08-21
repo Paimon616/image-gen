@@ -1,11 +1,25 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
   Clapperboard,
+  Download,
+  FileJson,
   Film,
   ImagePlus,
   Loader2,
+  Maximize2,
+  RefreshCcw,
   Sparkles,
   Trash2,
   Wand2,
@@ -26,6 +40,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/store";
 import { useSeedanceStore } from "@/lib/seedance-store";
@@ -57,6 +72,11 @@ import {
 import { UNGROUPED_WORKSPACE_ID, type GeneratedImage } from "@/lib/types";
 
 const MAX_IMAGE_DIM = 1536;
+
+// The gallery packs clips of mixed aspect ratios into 8px grid rows, exactly
+// like the ComfyUI video screen, so the slider below controls the same range.
+const SEEDANCE_THUMBNAIL_MIN_WIDTH = 180;
+const SEEDANCE_THUMBNAIL_MAX_WIDTH = 560;
 
 type Lang = "ko" | "en";
 
@@ -128,6 +148,37 @@ const T = {
   pickerTitle: { ko: "내 이미지에서 선택", en: "Pick from my images" },
   pickerEmpty: { ko: "이미지가 없습니다.", en: "No images." },
   close: { ko: "닫기", en: "Close" },
+  galleryTitle: { ko: "영상 갤러리", en: "Video Gallery" },
+  thumbWidth: { ko: "영상 크기", en: "Video width" },
+  refresh: { ko: "새로고침", en: "Refresh" },
+  viewDetail: { ko: "상세 보기", en: "View details" },
+  detailTitle: { ko: "영상 상세 정보", en: "Video Details" },
+  detailHeading: { ko: "생성된 영상", en: "Generated Video" },
+  copyMetadata: { ko: "메타데이터 복사", en: "Copy metadata" },
+  copied: { ko: "복사됨", en: "Copied" },
+  deleteConfirm: { ko: "이 영상을 삭제할까요?", en: "Delete this video?" },
+  deleteFailed: { ko: "삭제하지 못했습니다.", en: "Failed to delete video." },
+  fitScreen: { ko: "화면에 맞추기", en: "Fit to screen" },
+  originalSizeLabel: { ko: "원본 크기", en: "Original" },
+  prevVideo: { ko: "이전 영상", en: "Previous video" },
+  nextVideo: { ko: "다음 영상", en: "Next video" },
+  sectionPrompt: { ko: "프롬프트", en: "Prompt" },
+  sectionGeneration: { ko: "생성 정보", en: "Generation" },
+  sectionStartFrame: { ko: "시작 프레임", en: "Start frame" },
+  noPrompt: { ko: "프롬프트 없음", en: "No prompt" },
+  noParams: {
+    ko: "이 영상에 대한 생성 정보가 없습니다.",
+    en: "No generation details are available for this video.",
+  },
+  fieldMode: { ko: "모드", en: "Mode" },
+  fieldSeed: { ko: "시드", en: "Seed" },
+  fieldActual: { ko: "실제 해상도", en: "Actual resolution" },
+  fieldReferences: { ko: "참조 이미지", en: "References" },
+  fieldEndFrame: { ko: "종료 프레임", en: "End frame" },
+  on: { ko: "켜짐", en: "On" },
+  off: { ko: "꺼짐", en: "Off" },
+  present: { ko: "있음", en: "Yes" },
+  absent: { ko: "없음", en: "No" },
 } as const;
 
 function tr(key: keyof typeof T, lang: Lang): string {
@@ -364,6 +415,8 @@ export default function SeedancePage() {
   const [showReferences, setShowReferences] = useState(false);
   const [picker, setPicker] = useState<null | ((url: string) => void)>(null);
   const [error, setError] = useState<string | null>(null);
+  const [thumbnailWidth, setThumbnailWidth] = useState(320);
+  const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const abortControllers = useRef<Record<string, AbortController>>({});
 
@@ -613,6 +666,27 @@ export default function SeedancePage() {
     [setVideos]
   );
 
+  // Shared by the gallery card and the detail modal, so both load the same
+  // subset of a finished clip's settings back into the form.
+  const reuseVideoParams = useCallback(
+    (video: SeedanceVideo) => {
+      const source = video.params;
+      if (!source) return;
+      setParams((p) => ({
+        ...p,
+        mode: source.mode,
+        prompt: source.prompt ?? p.prompt,
+        resolution: source.resolution,
+        ratio: source.ratio,
+        duration: source.duration,
+        cameraFixed: source.cameraFixed,
+        watermark: source.watermark,
+        cleanFrame: source.cleanFrame,
+      }));
+    },
+    [setParams]
+  );
+
   // --- Paimon character-situation runs -------------------------------------
   // A saved situation becomes a clip: its image is inlined as the start frame,
   // Paimon writes the motion/expression/camera prompt for the requested length,
@@ -668,6 +742,18 @@ export default function SeedancePage() {
         fileMatchesWorkspace(video.workspaces, activeWorkspaceId)
       ),
     [videos, activeWorkspaceId]
+  );
+
+  // Only finished clips (with a playable URL) participate in the detail modal
+  // and its prev/next navigation. A stale id simply resolves to null, so the
+  // modal closes itself when the open clip is deleted or filtered away.
+  const detailVideos = useMemo(
+    () => visibleVideos.filter((video) => video.url),
+    [visibleVideos]
+  );
+  const selectedVideo = useMemo(
+    () => detailVideos.find((video) => video.id === selectedVideoId) ?? null,
+    [detailVideos, selectedVideoId]
   );
 
   const isGenerating = pending.some((p) => p.status?.state === "generating" || p.status?.state === "queued");
@@ -946,19 +1032,67 @@ export default function SeedancePage() {
       </aside>
 
       {/* Results */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="border-b border-border px-6 py-3">
-          <h2 className="text-sm font-semibold">{tr("results", language)}</h2>
+      <main className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex items-center justify-between gap-3 border-b border-border px-6 py-3">
+          <div className="flex items-center gap-3">
+            <Film className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold">{tr("galleryTitle", language)}</h2>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              <span className="whitespace-nowrap text-xs text-muted-foreground">
+                {tr("thumbWidth", language)}
+              </span>
+              <Slider
+                value={[thumbnailWidth]}
+                onValueChange={(value) =>
+                  setThumbnailWidth(Array.isArray(value) ? value[0] : value)
+                }
+                min={SEEDANCE_THUMBNAIL_MIN_WIDTH}
+                max={SEEDANCE_THUMBNAIL_MAX_WIDTH}
+                step={20}
+                className="w-28"
+              />
+              <span className="w-8 text-right font-mono text-xs tabular-nums">
+                {thumbnailWidth}
+              </span>
+            </div>
+            <span className="whitespace-nowrap text-xs text-muted-foreground">
+              {activeWorkspaceId
+                ? `${detailVideos.length} / ${videos.length}`
+                : `${videos.length}`}
+              {language === "ko" ? "개" : " videos"}
+            </span>
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="outline"
+              onClick={refreshVideos}
+              aria-label={tr("refresh", language)}
+              title={tr("refresh", language)}
+            >
+              <RefreshCcw className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </div>
         <WorkspaceBar media="seedance" onDownloaded={() => refreshVideos()} />
-        <div className="p-6">
+        <div className="flex-1 overflow-y-auto p-6">
           {pending.length === 0 && visibleVideos.length === 0 ? (
-            <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-center text-muted-foreground">
+            <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-muted-foreground">
               <Film className="h-10 w-10 opacity-40" />
               <p className="max-w-xs text-sm">{tr("empty", language)}</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div
+              className="grid grid-flow-row-dense gap-4"
+              style={{
+                gridTemplateColumns:
+                  "repeat(auto-fill, minmax(min(100%, " +
+                  thumbnailWidth +
+                  "px), 1fr))",
+                gridAutoRows: "8px",
+              }}
+            >
               {pending.map((card) => (
                 <PendingCard
                   key={card.id}
@@ -972,29 +1106,17 @@ export default function SeedancePage() {
                   onDismiss={() => removePending(card.id)}
                 />
               ))}
-              {visibleVideos.map((video) => (
+              {detailVideos.map((video) => (
                 <VideoCard
                   key={video.id}
                   lang={language}
                   video={video}
-                  onDelete={() => void deleteVideo(video)}
+                  onOpenDetail={() => setSelectedVideoId(video.id)}
+                  onDelete={() => deleteVideo(video)}
                   onWorkspacesChange={(workspaces) =>
                     applyWorkspaces(video, workspaces)
                   }
-                  onReuse={() => {
-                    if (video.params) {
-                      patch({
-                        prompt: video.params.prompt ?? params.prompt,
-                        resolution: video.params.resolution,
-                        ratio: video.params.ratio,
-                        duration: video.params.duration,
-                        cameraFixed: video.params.cameraFixed,
-                        watermark: video.params.watermark,
-                        cleanFrame: video.params.cleanFrame,
-                        mode: video.params.mode,
-                      });
-                    }
-                  }}
+                  onReuse={() => reuseVideoParams(video)}
                 />
               ))}
             </div>
@@ -1063,6 +1185,19 @@ export default function SeedancePage() {
           )
         }
       />
+
+      {selectedVideo && (
+        <VideoDetailModal
+          key={selectedVideo.id}
+          lang={language}
+          video={selectedVideo}
+          videos={detailVideos}
+          onClose={() => setSelectedVideoId(null)}
+          onSelectVideo={(item) => setSelectedVideoId(item.id)}
+          onReuse={reuseVideoParams}
+          onDelete={deleteVideo}
+        />
+      )}
     </div>
   );
 }
@@ -1114,6 +1249,48 @@ function ToggleRow({
   );
 }
 
+/** One gallery tile. It measures its content and claims that many 8px grid
+ *  rows, so clips of different aspect ratios pack without leaving gaps — the
+ *  same masonry the ComfyUI video gallery uses. */
+function MasonryCell({
+  className,
+  children,
+}: {
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const cellRef = useRef<HTMLElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const cell = cellRef.current;
+    const content = contentRef.current;
+    if (!cell || !content) return;
+
+    const updateSpan = () => {
+      cell.style.gridRowEnd =
+        "span " + Math.max(1, Math.ceil((content.offsetHeight + 16) / 24));
+    };
+    const observer = new ResizeObserver(updateSpan);
+    observer.observe(content);
+    updateSpan();
+
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <article
+      ref={cellRef}
+      className={cn(
+        "relative overflow-hidden rounded-xl border border-border bg-card shadow-sm",
+        className
+      )}
+    >
+      <div ref={contentRef}>{children}</div>
+    </article>
+  );
+}
+
 function PendingCard({
   lang,
   card,
@@ -1130,7 +1307,7 @@ function PendingCard({
   const status = card.status;
   const isError = status?.state === "error";
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
+    <MasonryCell>
       <div className="relative flex aspect-video items-center justify-center bg-muted/40">
         {card.thumbnail ? (
           <>
@@ -1177,47 +1354,136 @@ function PendingCard({
           </div>
         </div>
       )}
-    </div>
+    </MasonryCell>
   );
 }
 
 function VideoCard({
   lang,
   video,
+  onOpenDetail,
   onDelete,
   onReuse,
   onWorkspacesChange,
 }: {
   lang: Lang;
   video: SeedanceVideo;
-  onDelete: () => void;
+  onOpenDetail: () => void;
+  onDelete: () => Promise<void>;
   onReuse: () => void;
   onWorkspacesChange: (workspaceIds: string[]) => void;
 }) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
   return (
-    <div className="group overflow-hidden rounded-xl border border-border bg-card">
+    <MasonryCell className="group">
+      <Button
+        type="button"
+        size="icon-sm"
+        variant="secondary"
+        className="absolute left-2 top-2 z-20 shadow-md"
+        onClick={onOpenDetail}
+        aria-label={tr("viewDetail", lang)}
+        title={tr("viewDetail", lang)}
+      >
+        <Maximize2 />
+      </Button>
+      {/* The same workspaces as the image gallery — this screen only ever
+          lists the clips filed under them. */}
+      <div className="absolute right-11 top-2 z-20 shadow-md">
+        <MediaWorkspacePicker
+          media="seedance"
+          filename={video.filename}
+          workspaceIds={video.workspaces ?? []}
+          onChange={onWorkspacesChange}
+        />
+      </div>
+      <Button
+        type="button"
+        size="icon-sm"
+        variant="destructive"
+        className="absolute right-2 top-2 z-20 shadow-md"
+        onClick={() => setConfirmingDelete((current) => !current)}
+        disabled={deleting}
+        aria-label={tr("delete", lang)}
+        title={tr("delete", lang)}
+      >
+        {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
+      </Button>
+      {confirmingDelete && (
+        <div className="absolute right-2 top-12 z-30 w-44 rounded-md border border-border bg-popover p-2.5 shadow-xl">
+          <p className="text-[11px] font-medium text-popover-foreground">
+            {tr("deleteConfirm", lang)}
+          </p>
+          {deleteError && (
+            <p className="mt-1 text-[11px] text-destructive">{deleteError}</p>
+          )}
+          <div className="mt-2 flex gap-1.5">
+            <Button
+              type="button"
+              size="sm"
+              variant="destructive"
+              className="h-7 flex-1 text-[11px]"
+              disabled={deleting}
+              onClick={async () => {
+                setDeleting(true);
+                setDeleteError("");
+                try {
+                  await onDelete();
+                  setConfirmingDelete(false);
+                } catch (error) {
+                  setDeleteError(
+                    error instanceof Error ? error.message : tr("deleteFailed", lang)
+                  );
+                } finally {
+                  setDeleting(false);
+                }
+              }}
+            >
+              {tr("delete", lang)}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 flex-1 text-[11px]"
+              disabled={deleting}
+              onClick={() => setConfirmingDelete(false)}
+            >
+              {tr("cancel", lang)}
+            </Button>
+          </div>
+        </div>
+      )}
       <video
         src={video.url}
         controls
         loop
+        muted
         playsInline
-        className="aspect-video w-full bg-black object-contain"
+        preload="metadata"
+        className="block h-auto w-full bg-black"
       />
-      <div className="space-y-2 p-3">
-        <p className="line-clamp-2 text-xs text-muted-foreground">{video.prompt || "—"}</p>
-        <div className="flex flex-wrap gap-1">
-          {video.params && (
-            <>
-              <Badge variant="secondary">{video.params.resolution}</Badge>
-              <Badge variant="secondary">{video.params.duration}s</Badge>
-              <Badge variant="secondary">
-                {video.params.ratio === "adaptive" ? "auto" : video.params.ratio}
-              </Badge>
-              {video.params.mode === "i2v" && <Badge variant="outline">I2V</Badge>}
-            </>
-          )}
-        </div>
-        <div className="flex items-center gap-1.5">
+      <div className="space-y-1 border-t border-border p-3">
+        <p className="line-clamp-2 text-sm font-medium">
+          {video.prompt || tr("noPrompt", lang)}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {new Date(video.timestamp).toLocaleString()}
+        </p>
+        {video.params && (
+          <div className="flex flex-wrap gap-1 pt-1">
+            <Badge variant="secondary">{video.params.resolution}</Badge>
+            <Badge variant="secondary">{video.params.duration}s</Badge>
+            <Badge variant="secondary">
+              {video.params.ratio === "adaptive" ? "auto" : video.params.ratio}
+            </Badge>
+            <Badge variant="outline">{video.params.mode.toUpperCase()}</Badge>
+          </div>
+        )}
+        <div className="flex items-center gap-1.5 pt-1">
           <a
             href={video.url}
             download={video.filename}
@@ -1233,27 +1499,434 @@ function VideoCard({
           >
             {tr("reuse", lang)}
           </button>
-          {/* The same workspaces as the image gallery — this screen only ever
-              lists the clips filed under them. */}
-          <div className="ml-auto flex items-center gap-1.5">
-            <MediaWorkspacePicker
-              media="seedance"
-              filename={video.filename}
-              workspaceIds={video.workspaces ?? []}
-              onChange={onWorkspacesChange}
-              triggerVariant="outline"
-              triggerClassName="h-7 w-7"
-            />
-            <button
-              type="button"
-              onClick={onDelete}
-              className="text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          </div>
         </div>
       </div>
+    </MasonryCell>
+  );
+}
+
+function DetailField({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <div className="rounded-md border border-border bg-card px-3 py-2">
+      <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </div>
+      <div className="mt-1 break-words text-sm font-semibold text-foreground">
+        {value}
+      </div>
     </div>
+  );
+}
+
+function DetailSection({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-lg border border-border bg-card p-3 shadow-sm">
+      <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </h3>
+      <div className="mt-3">{children}</div>
+    </section>
+  );
+}
+
+/** Full-screen detail view for one finished clip, with prev/next navigation
+ *  over the same list the gallery shows — the SeeDance counterpart of the
+ *  ComfyUI video screen's detail modal. */
+function VideoDetailModal({
+  lang,
+  video,
+  videos,
+  onClose,
+  onSelectVideo,
+  onReuse,
+  onDelete,
+}: {
+  lang: Lang;
+  video: SeedanceVideo;
+  videos: SeedanceVideo[];
+  onClose: () => void;
+  onSelectVideo: (video: SeedanceVideo) => void;
+  onReuse: (video: SeedanceVideo) => void;
+  onDelete: (video: SeedanceVideo) => Promise<void>;
+}) {
+  const [originalSize, setOriginalSize] = useState(false);
+  const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 });
+  const [metadataCopied, setMetadataCopied] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
+  const params = video.params;
+  const index = videos.findIndex((item) => item.id === video.id);
+  const hasNavigation = videos.length > 1;
+
+  const navigate = useCallback(
+    (direction: "prev" | "next") => {
+      if (videos.length === 0) return;
+      const current = videos.findIndex((item) => item.id === video.id);
+      if (current === -1) return;
+      const nextIndex =
+        direction === "prev"
+          ? (current - 1 + videos.length) % videos.length
+          : (current + 1) % videos.length;
+      onSelectVideo(videos[nextIndex]);
+    },
+    [onSelectVideo, video.id, videos]
+  );
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      navigate(event.key === "ArrowLeft" ? "prev" : "next");
+    };
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
+  }, [navigate]);
+
+  const downloadVideo = () => {
+    const a = document.createElement("a");
+    a.href = video.url;
+    a.download = video.filename || "video";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
+  const copyMetadata = async () => {
+    const metadata = {
+      id: video.id,
+      filename: video.filename,
+      url: video.url,
+      contentType: video.contentType,
+      timestamp: video.timestamp,
+      createdAt: new Date(video.timestamp).toISOString(),
+      prompt: video.prompt,
+      params: video.params,
+    };
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(metadata, null, 2));
+      setMetadataCopied(true);
+      window.setTimeout(() => setMetadataCopied(false), 1500);
+    } catch {
+      setMetadataCopied(false);
+    }
+  };
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <DialogContent className="!block h-[94vh] max-h-[94vh] w-[96vw] max-w-[96vw] overflow-hidden border border-border bg-card p-0 shadow-xl sm:max-w-[96vw]">
+        <DialogTitle className="sr-only">{tr("detailTitle", lang)}</DialogTitle>
+
+        <div className="flex h-full w-full flex-col bg-background">
+          <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(22rem,34rem)]">
+            <div className="relative min-w-0 overflow-auto border-r border-border bg-[radial-gradient(circle_at_1px_1px,color-mix(in_oklch,var(--border)_55%,transparent)_1px,transparent_0)] [background-size:24px_24px]">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={downloadVideo}
+                className="absolute right-4 top-4 z-10 h-11 w-11 rounded-full bg-card/90 shadow-lg backdrop-blur hover:bg-card"
+                aria-label={tr("download", lang)}
+                title={tr("download", lang)}
+              >
+                <Download className="h-5 w-5" />
+              </Button>
+              {hasNavigation && (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => navigate("prev")}
+                    className="absolute left-4 top-1/2 z-10 h-11 w-11 -translate-y-1/2 rounded-full bg-card/90 shadow-lg backdrop-blur hover:bg-card"
+                    aria-label={tr("prevVideo", lang)}
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => navigate("next")}
+                    className="absolute right-4 top-1/2 z-10 h-11 w-11 -translate-y-1/2 rounded-full bg-card/90 shadow-lg backdrop-blur hover:bg-card"
+                    aria-label={tr("nextVideo", lang)}
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </Button>
+                </>
+              )}
+              <div className="flex h-full min-h-0 min-w-full items-center justify-center p-6">
+                <div
+                  className={
+                    originalSize
+                      ? "m-auto rounded-lg border border-border bg-card p-2 shadow-lg"
+                      : "m-auto flex max-h-full max-w-full rounded-lg border border-border bg-card p-2 shadow-lg"
+                  }
+                >
+                  <video
+                    src={video.url}
+                    controls
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    onLoadedMetadata={(event) =>
+                      setNaturalSize({
+                        width: event.currentTarget.videoWidth,
+                        height: event.currentTarget.videoHeight,
+                      })
+                    }
+                    className={
+                      originalSize
+                        ? "block h-auto max-h-none w-auto max-w-none rounded-md"
+                        : "block h-auto max-h-[calc(94vh-9rem)] max-w-full rounded-md object-contain"
+                    }
+                  />
+                </div>
+              </div>
+              {naturalSize.width > 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setOriginalSize((current) => !current)}
+                  className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 gap-1.5 rounded-full bg-card/90 shadow-lg backdrop-blur hover:bg-card"
+                >
+                  <Maximize2 className="h-3.5 w-3.5" />
+                  {originalSize
+                    ? tr("fitScreen", lang)
+                    : `${tr("originalSizeLabel", lang)} (${naturalSize.width}×${naturalSize.height})`}
+                </Button>
+              )}
+            </div>
+
+            <aside className="flex min-h-0 flex-col bg-card">
+              <header className="border-b border-border bg-secondary/50 px-5 py-4 pr-12">
+                <div className="text-xs font-bold uppercase tracking-wide text-primary">
+                  {tr("detailHeading", lang)}
+                </div>
+                <div className="mt-1 truncate text-sm font-semibold text-foreground">
+                  {video.filename || "video"}
+                </div>
+                <div className="mt-1 text-xs font-medium text-muted-foreground">
+                  {new Date(video.timestamp).toLocaleString()}
+                  {hasNavigation && index >= 0
+                    ? ` · ${index + 1} / ${videos.length}`
+                    : ""}
+                </div>
+              </header>
+
+              <div className="flex flex-wrap gap-2 border-b border-border px-5 py-3">
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    onReuse(video);
+                    onClose();
+                  }}
+                  disabled={!params}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  {tr("reuse", lang)}
+                </Button>
+                <Button size="sm" variant="outline" onClick={downloadVideo}>
+                  <Download className="h-4 w-4" />
+                  {tr("download", lang)}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => void copyMetadata()}>
+                  {metadataCopied ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <FileJson className="h-4 w-4" />
+                  )}
+                  {metadataCopied ? tr("copied", lang) : tr("copyMetadata", lang)}
+                </Button>
+                <div className="relative">
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    disabled={deleting}
+                    onClick={() => setConfirmingDelete((current) => !current)}
+                  >
+                    {deleting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                    {tr("delete", lang)}
+                  </Button>
+                  {confirmingDelete && (
+                    <div className="absolute right-0 top-11 z-20 w-44 rounded-md border border-border bg-popover p-2.5 shadow-xl">
+                      <p className="text-[11px] font-medium leading-4 text-popover-foreground">
+                        {tr("deleteConfirm", lang)}
+                      </p>
+                      {deleteError && (
+                        <p className="mt-1 text-[11px] text-destructive">{deleteError}</p>
+                      )}
+                      <div className="mt-2 flex gap-1.5">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="destructive"
+                          className="h-7 flex-1 text-[11px]"
+                          disabled={deleting}
+                          onClick={async () => {
+                            setDeleting(true);
+                            setDeleteError("");
+                            try {
+                              // Step to a neighbour so the modal stays open on
+                              // the list; only the last clip closes it.
+                              const neighbor =
+                                index > 0
+                                  ? videos[index - 1]
+                                  : videos[index + 1] ?? null;
+                              await onDelete(video);
+                              setConfirmingDelete(false);
+                              if (neighbor && neighbor.id !== video.id) {
+                                onSelectVideo(neighbor);
+                              } else {
+                                onClose();
+                              }
+                            } catch (error) {
+                              setDeleteError(
+                                error instanceof Error
+                                  ? error.message
+                                  : tr("deleteFailed", lang)
+                              );
+                            } finally {
+                              setDeleting(false);
+                            }
+                          }}
+                        >
+                          {tr("delete", lang)}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 flex-1 text-[11px]"
+                          disabled={deleting}
+                          onClick={() => setConfirmingDelete(false)}
+                        >
+                          {tr("cancel", lang)}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-background/70 p-5">
+                <DetailSection label={tr("sectionPrompt", lang)}>
+                  <p className="whitespace-pre-wrap break-words text-sm leading-6 text-foreground">
+                    {params?.prompt || video.prompt || tr("noPrompt", lang)}
+                  </p>
+                </DetailSection>
+
+                {params ? (
+                  <>
+                    <DetailSection label={tr("sectionGeneration", lang)}>
+                      <div className="grid grid-cols-2 gap-2">
+                        <DetailField
+                          label={tr("fieldMode", lang)}
+                          value={params.mode.toUpperCase()}
+                        />
+                        <DetailField
+                          label={tr("resolution", lang)}
+                          value={params.resolution}
+                        />
+                        {naturalSize.width > 0 && (
+                          <DetailField
+                            label={tr("fieldActual", lang)}
+                            value={`${naturalSize.width} × ${naturalSize.height}`}
+                          />
+                        )}
+                        <DetailField
+                          label={tr("ratio", lang)}
+                          value={
+                            params.ratio === "adaptive"
+                              ? tr("ratioAdaptive", lang)
+                              : params.ratio
+                          }
+                        />
+                        <DetailField
+                          label={tr("duration", lang)}
+                          value={`${params.duration}${tr("seconds", lang)}`}
+                        />
+                        <DetailField
+                          label={tr("fieldSeed", lang)}
+                          value={params.seed ?? tr("seedPlaceholder", lang)}
+                        />
+                        <DetailField
+                          label={tr("cameraFixed", lang)}
+                          value={params.cameraFixed ? tr("on", lang) : tr("off", lang)}
+                        />
+                        <DetailField
+                          label={tr("watermark", lang)}
+                          value={params.watermark ? tr("on", lang) : tr("off", lang)}
+                        />
+                        <DetailField
+                          label={tr("cleanFrame", lang)}
+                          value={params.cleanFrame ? tr("on", lang) : tr("off", lang)}
+                        />
+                        <DetailField
+                          label={tr("fieldEndFrame", lang)}
+                          value={params.hasLastFrame ? tr("present", lang) : tr("absent", lang)}
+                        />
+                        <DetailField
+                          label={tr("fieldReferences", lang)}
+                          value={params.referenceCount}
+                        />
+                      </div>
+                    </DetailSection>
+
+                    {video.thumbnail && (
+                      <DetailSection label={tr("sectionStartFrame", lang)}>
+                        <div className="overflow-hidden rounded-md border border-border bg-background">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={video.thumbnail}
+                            alt={tr("sectionStartFrame", lang)}
+                            className="block h-auto w-full object-contain"
+                          />
+                        </div>
+                      </DetailSection>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">{tr("noParams", lang)}</p>
+                )}
+              </div>
+            </aside>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

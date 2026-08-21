@@ -22,7 +22,6 @@ import {
   MoreHorizontal,
   Plus,
   Trash2,
-  Upload,
   UserRound,
   X,
 } from "lucide-react";
@@ -43,8 +42,12 @@ import {
   type Character,
   type CharacterBackground,
   type CharacterOutfit,
+  type CharacterMainImage,
   type CharacterSituation,
   type GeneratedImage,
+  type GenerationParams,
+  type WorkspaceSummary,
+  UNGROUPED_WORKSPACE_ID,
 } from "@/lib/types";
 
 // Native <select> styling to match the app's inputs (mirrors app-sidebar).
@@ -56,15 +59,9 @@ interface GeneratedImageLite {
   url: string;
   thumbnailUrl?: string;
   filename: string;
-}
-
-async function uploadImageFile(file: File) {
-  const formData = new FormData();
-  formData.append("file", file);
-  const res = await fetch("/api/upload", { method: "POST", body: formData });
-  const data = (await res.json()) as { url?: string; error?: string };
-  if (!res.ok || !data.url) throw new Error(data.error || "업로드 실패");
-  return data.url;
+  // Present for anything the generator wrote a sidecar for; the main image
+  // keeps it as this character's baseline settings.
+  params?: GenerationParams | null;
 }
 
 // A natural-language description + a generation prompt for one concept, both
@@ -204,6 +201,72 @@ function SectionCard({
   );
 }
 
+// What the main image contributes as a baseline: the model settings the
+// character's other renders start from, plus the prompt whose FORMAT Paimon
+// keeps when it composes a situation. Shown so the "기준 세팅값" is inspectable
+// rather than invisible.
+function MainImageBaseline({
+  mainImage,
+}: {
+  mainImage: CharacterMainImage | null;
+}) {
+  if (!mainImage) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        아직 메인 이미지가 없어요. 생성된 이미지를 하나 지정하면 그 이미지의
+        모델·LoRA·샘플러 설정과 프롬프트 양식이 이 캐릭터의 기준이 돼요.
+      </p>
+    );
+  }
+
+  const params = mainImage.params;
+  if (!params) {
+    return (
+      <p className="text-xs text-destructive">
+        이 이미지에는 생성 정보가 없어서 기준 세팅으로 쓸 수 없어요. 생성 정보가
+        남아 있는 다른 이미지를 선택해 주세요.
+      </p>
+    );
+  }
+
+  const facts = [
+    params.model_name && `모델 ${params.model_name}`,
+    params.loras?.length ? `LoRA ${params.loras.length}개` : "",
+    params.sampler_name &&
+      `${params.sampler_name}${params.scheduler ? ` · ${params.scheduler}` : ""}`,
+    `${params.num_inference_steps} steps · CFG ${params.guidance_scale}`,
+    `${params.width}×${params.height}`,
+  ].filter(Boolean) as string[];
+
+  return (
+    <div className="space-y-1.5">
+      <p className="text-[11px] font-medium text-muted-foreground">
+        기준 세팅 (상황 이미지 생성에 사용)
+      </p>
+      <ul className="flex flex-wrap gap-1">
+        {facts.map((fact) => (
+          <li
+            key={fact}
+            className="rounded bg-secondary px-1.5 py-0.5 text-[10px] text-secondary-foreground"
+          >
+            {fact}
+          </li>
+        ))}
+      </ul>
+      {params.prompt && (
+        <details className="text-xs">
+          <summary className="cursor-pointer text-muted-foreground">
+            기준 프롬프트 보기
+          </summary>
+          <p className="mt-1 whitespace-pre-wrap break-words font-mono text-[11px] text-muted-foreground">
+            {params.prompt}
+          </p>
+        </details>
+      )}
+    </div>
+  );
+}
+
 // One row of the character list. The row itself selects (and drags to reorder);
 // the trailing "…" opens a menu for the per-character actions — duplicate, share
 // to RunPod, delete. The menu is portalled to the body because the list is a
@@ -317,10 +380,10 @@ function CharacterRow({
         aria-hidden
       />
       <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
-        {character.thumbnail ? (
+        {character.mainImage ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={character.thumbnail}
+            src={character.mainImage.thumbnailUrl || character.mainImage.url}
             alt={character.name}
             className="size-full object-cover"
           />
@@ -456,8 +519,6 @@ export function CharacterStudio() {
   const [draggingId, setDraggingId] = useState<string | null>(null);
   // Mirror of draggingId so drag-over handlers read it without re-subscribing.
   const draggingIdRef = useRef<string | null>(null);
-  const [thumbBusy, setThumbBusy] = useState(false);
-  const [thumbError, setThumbError] = useState("");
   // Characters this machine has pushed to RunPod, keyed by id. Local state only
   // (no pod round-trip), so the list can badge them straight away.
   const [shares, setShares] = useState<Record<string, { error: string }>>({});
@@ -467,7 +528,6 @@ export function CharacterStudio() {
 
   const charactersRef = useRef<Character[]>([]);
   const saveTimers = useRef<Map<string, number>>(new Map());
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Keep a ref of the latest characters so debounced save timers read fresh data
   // without needing to be recreated on every edit.
@@ -896,59 +956,25 @@ export function CharacterStudio() {
     }).catch(() => {});
   }, []);
 
-  // ---- Thumbnail sources ----
+  // ---- 메인 이미지 ----
 
-  const applyThumbnail = useCallback(
-    (url: string) => {
-      patchSelected({ thumbnail: url });
+  // Only a generated image can become the main image: it is the baseline the
+  // character's other renders are composed from, so it has to carry generation
+  // metadata. Uploads and clipboard pastes have none, hence no such buttons.
+  const applyMainImage = useCallback(
+    (image: GeneratedImageLite | null) => {
+      const mainImage: CharacterMainImage | null = image
+        ? {
+            url: image.url,
+            thumbnailUrl: image.thumbnailUrl,
+            filename: image.filename,
+            params: image.params ?? null,
+          }
+        : null;
+      patchSelected({ mainImage });
     },
     [patchSelected]
   );
-
-  const handleUploadFile = useCallback(
-    async (file: File | undefined | null) => {
-      if (!file || !selectedId) return;
-      setThumbBusy(true);
-      setThumbError("");
-      try {
-        const url = await uploadImageFile(file);
-        applyThumbnail(url);
-      } catch (err) {
-        setThumbError(err instanceof Error ? err.message : "업로드 실패");
-      } finally {
-        setThumbBusy(false);
-      }
-    },
-    [applyThumbnail, selectedId]
-  );
-
-  const handlePasteThumbnail = useCallback(async () => {
-    if (!selectedId) return;
-    setThumbBusy(true);
-    setThumbError("");
-    try {
-      if (!navigator.clipboard?.read) {
-        throw new Error("이 브라우저에서는 클립보드 읽기를 지원하지 않아요.");
-      }
-      const items = await navigator.clipboard.read();
-      for (const item of items) {
-        const type = item.types.find((t) => t.startsWith("image/"));
-        if (!type) continue;
-        const blob = await item.getType(type);
-        const file = new File([blob], "clipboard", { type });
-        const url = await uploadImageFile(file);
-        applyThumbnail(url);
-        return;
-      }
-      throw new Error("클립보드에 이미지가 없어요.");
-    } catch (err) {
-      setThumbError(
-        err instanceof Error ? err.message : "클립보드 이미지를 가져오지 못했어요."
-      );
-    } finally {
-      setThumbBusy(false);
-    }
-  }, [applyThumbnail, selectedId]);
 
   // ---- Outfits ----
 
@@ -1318,15 +1344,18 @@ export function CharacterStudio() {
                 {/* 기본정보 */}
                 <TabsContent value="basic" className="space-y-4">
                   <SectionCard
-                    title="썸네일"
-                    description="생성된 이미지에서 선택하거나, 파일 업로드 또는 클립보드에서 붙여넣을 수 있어요."
+                    title="메인 이미지"
+                    description="이 캐릭터의 기준 이미지예요. 목록 썸네일로도 쓰이지만, 이 캐릭터의 다른 이미지를 생성할 때 프롬프트 양식과 모델 설정의 기준이 돼요. 그래서 생성된 이미지에서만 선택할 수 있어요 (업로드·클립보드 이미지는 생성 정보가 없어서 기준이 될 수 없어요)."
                   >
                     <div className="flex items-start gap-4">
                       <span className="flex size-28 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
-                        {selected.thumbnail ? (
+                        {selected.mainImage ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
-                            src={selected.thumbnail}
+                            src={
+                              selected.mainImage.thumbnailUrl ||
+                              selected.mainImage.url
+                            }
                             alt={selected.name}
                             className="size-full object-cover"
                           />
@@ -1334,65 +1363,31 @@ export function CharacterStudio() {
                           <UserRound className="size-10 text-muted-foreground" />
                         )}
                       </span>
-                      <div className="space-y-2">
+                      <div className="min-w-0 flex-1 space-y-2">
                         <div className="flex flex-wrap gap-2">
                           <Button
                             type="button"
                             variant="outline"
                             size="sm"
                             onClick={() => setGalleryOpen(true)}
-                            disabled={thumbBusy}
                           >
-                            <ImagesIcon /> 생성된 이미지
+                            <ImagesIcon />
+                            {selected.mainImage
+                              ? "생성된 이미지에서 변경"
+                              : "생성된 이미지에서 선택"}
                           </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => fileInputRef.current?.click()}
-                            disabled={thumbBusy}
-                          >
-                            <Upload /> 업로드
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={handlePasteThumbnail}
-                            disabled={thumbBusy}
-                          >
-                            <Clipboard /> 클립보드
-                          </Button>
-                          {selected.thumbnail && (
+                          {selected.mainImage && (
                             <Button
                               type="button"
                               variant="ghost"
                               size="sm"
-                              onClick={() => applyThumbnail("")}
-                              disabled={thumbBusy}
+                              onClick={() => applyMainImage(null)}
                             >
                               <X /> 제거
                             </Button>
                           )}
                         </div>
-                        {thumbBusy && (
-                          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <Loader2 className="size-3 animate-spin" /> 처리 중…
-                          </p>
-                        )}
-                        {thumbError && (
-                          <p className="text-xs text-destructive">{thumbError}</p>
-                        )}
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(event) => {
-                            void handleUploadFile(event.target.files?.[0]);
-                            event.target.value = "";
-                          }}
-                        />
+                        <MainImageBaseline mainImage={selected.mainImage} />
                       </div>
                     </div>
                   </SectionCard>
@@ -1788,9 +1783,10 @@ export function CharacterStudio() {
 
       {galleryOpen && (
         <GalleryPicker
+          title="메인 이미지로 사용할 생성 이미지 선택"
           onClose={() => setGalleryOpen(false)}
-          onPick={(url) => {
-            applyThumbnail(url);
+          onPick={(image) => {
+            applyMainImage(image);
             setGalleryOpen(false);
           }}
         />
@@ -1813,8 +1809,25 @@ export function CharacterStudio() {
   );
 }
 
-// Gallery browser used both for picking a character thumbnail (single pick, by
-// url) and for attaching gallery images to a situation (multi pick, by file).
+// Tile size of the picker grid, in px. Persisted so the size the user dialed in
+// survives closing the modal (and a reload).
+const PICKER_TILE_KEY = "character-gallery-picker:tile";
+const PICKER_TILE_MIN = 64;
+const PICKER_TILE_MAX = 240;
+const PICKER_TILE_DEFAULT = 96;
+
+function readStoredTileSize() {
+  if (typeof window === "undefined") return PICKER_TILE_DEFAULT;
+  const stored = Number(window.localStorage.getItem(PICKER_TILE_KEY));
+  if (!Number.isFinite(stored) || stored <= 0) return PICKER_TILE_DEFAULT;
+  return Math.min(PICKER_TILE_MAX, Math.max(PICKER_TILE_MIN, Math.round(stored)));
+}
+
+const PICKER_PAGE_SIZE = 60;
+
+// Gallery browser used both for picking a character's 메인 이미지 (single pick,
+// with its generation metadata) and for attaching gallery images to a situation
+// (multi pick, by file). Both get the same tile-size and workspace controls.
 function GalleryPicker({
   title = "생성된 이미지에서 선택",
   multiple = false,
@@ -1827,7 +1840,7 @@ function GalleryPicker({
   multiple?: boolean;
   confirmLabel?: string;
   onClose: () => void;
-  onPick?: (url: string) => void;
+  onPick?: (image: GeneratedImageLite) => void;
   onPickMany?: (images: GeneratedImageLite[]) => void;
 }) {
   const [images, setImages] = useState<GeneratedImageLite[]>([]);
@@ -1836,12 +1849,64 @@ function GalleryPicker({
   const [loadingMore, setLoadingMore] = useState(false);
   // Selected filenames, in click order, so the confirm button can attach a batch.
   const [picked, setPicked] = useState<string[]>([]);
+  const [tileSize, setTileSize] = useState(readStoredTileSize);
+  // "" = every image; UNGROUPED_WORKSPACE_ID = only images in no workspace.
+  const [workspaceId, setWorkspaceId] = useState("");
+  const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
+  const [ungroupedCount, setUngroupedCount] = useState(0);
 
+  const changeTileSize = useCallback((next: number) => {
+    setTileSize(next);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(PICKER_TILE_KEY, String(next));
+    }
+  }, []);
+
+  // The gallery's workspaces, so the picker can narrow a large library the same
+  // way the gallery itself does.
   useEffect(() => {
     let active = true;
     void (async () => {
       try {
-        const res = await fetch("/api/images?limit=60", { cache: "no-store" });
+        const res = await fetch("/api/workspaces?media=images", {
+          cache: "no-store",
+        });
+        const data = (await res.json()) as {
+          workspaces?: WorkspaceSummary[];
+          ungroupedCount?: number;
+        };
+        if (!active) return;
+        setWorkspaces(data.workspaces ?? []);
+        setUngroupedCount(data.ungroupedCount ?? 0);
+      } catch {
+        if (active) setWorkspaces([]);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const listUrl = useCallback(
+    (nextCursor: number) => {
+      const query = new URLSearchParams({
+        limit: String(PICKER_PAGE_SIZE),
+        cursor: String(nextCursor),
+      });
+      if (workspaceId) query.set("workspaceId", workspaceId);
+      return `/api/images?${query.toString()}`;
+    },
+    [workspaceId]
+  );
+
+  // Reloads page one. Runs on open and again whenever the workspace changes —
+  // the workspace <select> flips `loading` itself, so this effect only has to
+  // clear it once the fetch settles.
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const res = await fetch(listUrl(0), { cache: "no-store" });
         const data = (await res.json()) as {
           images?: GeneratedImageLite[];
           nextCursor?: number | null;
@@ -1851,7 +1916,10 @@ function GalleryPicker({
           setCursor(data.nextCursor ?? null);
         }
       } catch {
-        if (active) setImages([]);
+        if (active) {
+          setImages([]);
+          setCursor(null);
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -1859,15 +1927,13 @@ function GalleryPicker({
     return () => {
       active = false;
     };
-  }, []);
+  }, [listUrl]);
 
   const loadMore = useCallback(async () => {
     if (cursor === null || loadingMore) return;
     setLoadingMore(true);
     try {
-      const res = await fetch(`/api/images?limit=60&cursor=${cursor}`, {
-        cache: "no-store",
-      });
+      const res = await fetch(listUrl(cursor), { cache: "no-store" });
       const data = (await res.json()) as {
         images?: GeneratedImageLite[];
         nextCursor?: number | null;
@@ -1879,7 +1945,7 @@ function GalleryPicker({
     } finally {
       setLoadingMore(false);
     }
-  }, [cursor, loadingMore]);
+  }, [cursor, listUrl, loadingMore]);
 
   const toggle = useCallback((image: GeneratedImageLite) => {
     setPicked((prev) =>
@@ -1905,7 +1971,7 @@ function GalleryPicker({
       onClick={onClose}
     >
       <div
-        className="flex max-h-[80vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-2xl"
+        className="flex max-h-[85vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
         <header className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -1920,6 +1986,47 @@ function GalleryPicker({
             <X />
           </Button>
         </header>
+        {/* Workspace filter + tile size. Both only change how the grid is
+            browsed, so neither touches the current selection. */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border px-4 py-2">
+          <label className="flex min-w-0 items-center gap-2 whitespace-nowrap text-xs text-muted-foreground">
+            워크스페이스
+            <select
+              value={workspaceId}
+              onChange={(event) => {
+                setLoading(true);
+                setWorkspaceId(event.target.value);
+              }}
+              className={`${SELECT_CLASS} w-48`}
+            >
+              <option value="">전체</option>
+              {workspaces.map((workspace) => (
+                <option key={workspace.id} value={workspace.id}>
+                  {workspace.name} ({workspace.count})
+                </option>
+              ))}
+              <option value={UNGROUPED_WORKSPACE_ID}>
+                미분류 ({ungroupedCount})
+              </option>
+            </select>
+          </label>
+          <label className="flex flex-1 items-center gap-2 text-xs text-muted-foreground">
+            <span className="whitespace-nowrap">이미지 크기</span>
+            <input
+              type="range"
+              min={PICKER_TILE_MIN}
+              max={PICKER_TILE_MAX}
+              step={8}
+              value={tileSize}
+              onChange={(event) => changeTileSize(Number(event.target.value))}
+              className="h-1.5 min-w-24 max-w-56 flex-1 accent-primary"
+              aria-label="이미지 크기"
+            />
+            <span className="w-10 shrink-0 text-right tabular-nums">
+              {tileSize}px
+            </span>
+          </label>
+        </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
           {loading ? (
             <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
@@ -1927,11 +2034,18 @@ function GalleryPicker({
             </div>
           ) : images.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted-foreground">
-              생성된 이미지가 없어요.
+              {workspaceId
+                ? "이 워크스페이스에는 이미지가 없어요."
+                : "생성된 이미지가 없어요."}
             </p>
           ) : (
             <>
-              <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
+              <div
+                className="grid gap-2"
+                style={{
+                  gridTemplateColumns: `repeat(auto-fill, minmax(${tileSize}px, 1fr))`,
+                }}
+              >
                 {images.map((image) => {
                   const selectedIndex = picked.indexOf(image.filename);
                   return (
@@ -1939,7 +2053,7 @@ function GalleryPicker({
                       key={image.id || image.filename}
                       type="button"
                       onClick={() =>
-                        multiple ? toggle(image) : onPick?.(image.url)
+                        multiple ? toggle(image) : onPick?.(image)
                       }
                       className={`relative aspect-square overflow-hidden rounded-md border transition-transform hover:scale-[1.03] hover:border-primary/50 ${
                         selectedIndex >= 0

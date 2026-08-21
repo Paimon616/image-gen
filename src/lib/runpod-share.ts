@@ -425,9 +425,9 @@ async function buildCharacterManifest(
   );
 
   const files = images.map((entry) => entry.filename);
-  const thumbnail = thumbnailRef(character.thumbnail);
-  // The portrait is usually one of the linked images, but it can also be an
-  // upload or an image that was later unlinked — ship it either way.
+  const thumbnail = thumbnailRef(character.mainImage?.url ?? null);
+  // The 메인 이미지 is usually one of the linked images, but it can also be an
+  // image that was later unlinked (or a legacy upload) — ship it either way.
   if (thumbnail && !files.includes(thumbnail.filename)) {
     files.push(thumbnail.filename);
   }

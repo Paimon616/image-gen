@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   Bot,
@@ -19,10 +19,14 @@ import { ChatMarkdown } from "@/components/chat-markdown";
 import type { GeneratedImage, GenerationParams } from "@/lib/types";
 import { readImageDataUrlForVision } from "@/lib/image-resize";
 import {
+  baseImageFromParams,
+  FULL_COMPOSE_SCOPE,
   loadCharacterLibrary,
   usePaimonChatStore,
   type PaimonAttachment,
   type PaimonCharacter,
+  type PaimonComposeOptions,
+  type PaimonComposeScope,
 } from "@/lib/paimon-chat-store";
 
 export type { PaimonAttachment } from "@/lib/paimon-chat-store";
@@ -81,6 +85,12 @@ export function PaimonChat({
   // the user check several situations and run them one after another.
   const [autoGenerate, setAutoGenerate] = useState(false);
   const [multiSelect, setMultiSelect] = useState(false);
+  // Which segments of the baseline prompt this compose is allowed to rewrite.
+  // All three on = the old behavior (a full re-compose of the situation).
+  const [scope, setScope] = useState<PaimonComposeScope>(FULL_COMPOSE_SCOPE);
+  // Picked 기준 이미지 (an already-generated image of this character whose
+  // metadata becomes the baseline). null = the character's main image.
+  const [baseImageId, setBaseImageId] = useState<string | null>(null);
   const [selectedSituationIds, setSelectedSituationIds] = useState<Set<string>>(
     new Set()
   );
@@ -168,6 +178,7 @@ export function PaimonChat({
     setPickerActiveName(null);
     setMultiSelect(false);
     setSelectedSituationIds(new Set());
+    setBaseImageId(null);
     setPickerLoading(true);
     try {
       setPickerChars(await loadCharacterLibrary());
@@ -226,10 +237,45 @@ export function PaimonChat({
       setPickerActiveName(character.name);
       setSelectedSituationIds(new Set());
       setSituationImages({});
+      setBaseImageId(null);
       void loadSituationImages(character.id);
     },
     [loadSituationImages]
   );
+
+  // Saved images of the active character that can serve as the 기준 이미지 —
+  // only those whose metadata sidecar still carries a prompt, newest first.
+  const baseImageChoices = useMemo(
+    () =>
+      Object.values(situationImages)
+        .flat()
+        .filter((image) => (image.params?.prompt ?? "").trim())
+        .sort((a, b) => b.timestamp - a.timestamp)
+        .slice(0, 24),
+    [situationImages]
+  );
+
+  const selectedBaseImage = useMemo(
+    () => baseImageChoices.find((image) => image.id === baseImageId) ?? null,
+    [baseImageChoices, baseImageId]
+  );
+
+  // The two picker options that change WHAT gets composed: which prompt segments
+  // are in scope, and which image's metadata is the baseline.
+  const composeOptions = useMemo<PaimonComposeOptions>(
+    () => ({
+      scope,
+      baseImage: selectedBaseImage
+        ? baseImageFromParams(selectedBaseImage.params)
+        : undefined,
+      baseImageLabel: selectedBaseImage?.filename,
+    }),
+    [scope, selectedBaseImage]
+  );
+
+  const toggleScope = useCallback((key: keyof PaimonComposeScope) => {
+    setScope((current) => ({ ...current, [key]: !current[key] }));
+  }, []);
 
   // Single pick (multi-select off): compose the situation, generate if the
   // auto-generate box is checked. Closes the picker.
@@ -239,9 +285,15 @@ export function PaimonChat({
       setPickerActiveName(null);
       void usePaimonChatStore
         .getState()
-        .composeSituation(character, situationId, autoGenerate, attachments);
+        .composeSituation(
+          character,
+          situationId,
+          autoGenerate,
+          attachments,
+          composeOptions
+        );
     },
-    [attachments, autoGenerate]
+    [attachments, autoGenerate, composeOptions]
   );
 
   const runBatch = useCallback(
@@ -256,9 +308,9 @@ export function PaimonChat({
       setSelectedSituationIds(new Set());
       void usePaimonChatStore
         .getState()
-        .runBatch(character, chosen, attachments);
+        .runBatch(character, chosen, attachments, composeOptions);
     },
-    [attachments, selectedSituationIds]
+    [attachments, composeOptions, selectedSituationIds]
   );
 
   const toggleSituationSelected = useCallback((situationId: string) => {
@@ -595,6 +647,100 @@ export function PaimonChat({
                               <span className="min-w-0 flex-1 truncate text-xs font-semibold">
                                 {active.name} · 상황 선택
                               </span>
+                            </div>
+
+                            {/* Which prompt segments this compose may rewrite.
+                                Everything unchecked stays exactly as the base
+                                image had it. */}
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 pt-1.5">
+                              <span className="text-[11px] font-medium text-muted-foreground">
+                                교체 항목
+                              </span>
+                              {(
+                                [
+                                  ["outfit", "의상"],
+                                  ["background", "배경"],
+                                  ["situation", "상황"],
+                                ] as [keyof PaimonComposeScope, string][]
+                              ).map(([key, label]) => (
+                                <label
+                                  key={key}
+                                  className="flex cursor-pointer items-center gap-1.5 text-[11px] text-muted-foreground"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    className="size-3.5 accent-primary"
+                                    checked={scope[key]}
+                                    onChange={() => toggleScope(key)}
+                                  />
+                                  {label}
+                                </label>
+                              ))}
+                            </div>
+
+                            {/* 기준 이미지: whose metadata is loaded before the
+                                checked segments are rewritten. */}
+                            <div className="px-1 pt-1.5">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[11px] font-medium text-muted-foreground">
+                                  기준 이미지
+                                </span>
+                                <span className="min-w-0 truncate text-[10px] text-muted-foreground">
+                                  {selectedBaseImage
+                                    ? selectedBaseImage.filename
+                                    : active.mainImage
+                                      ? "메인 이미지"
+                                      : "없음 · 현재 설정 사용"}
+                                </span>
+                              </div>
+                              <div className="mt-1 flex gap-1 overflow-x-auto pb-0.5">
+                                <button
+                                  type="button"
+                                  className={`flex size-12 shrink-0 flex-col items-center justify-center rounded border text-[10px] ${
+                                    baseImageId === null
+                                      ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary"
+                                      : "border-border bg-muted text-muted-foreground"
+                                  }`}
+                                  onClick={() => setBaseImageId(null)}
+                                  title={
+                                    active.mainImage
+                                      ? "캐릭터 메인 이미지를 기준으로"
+                                      : "기준 이미지 없이 현재 설정 사용"
+                                  }
+                                >
+                                  {active.mainImage ? "메인" : "없음"}
+                                </button>
+                                {situationImagesLoading && (
+                                  <span className="flex size-12 shrink-0 items-center justify-center rounded border border-border bg-muted">
+                                    <Loader2 className="size-3 animate-spin text-muted-foreground" />
+                                  </span>
+                                )}
+                                {baseImageChoices.map((image) => (
+                                  <button
+                                    key={image.id}
+                                    type="button"
+                                    className={`size-12 shrink-0 overflow-hidden rounded border ${
+                                      baseImageId === image.id
+                                        ? "border-primary ring-1 ring-primary"
+                                        : "border-border"
+                                    } bg-muted`}
+                                    onClick={() =>
+                                      setBaseImageId(
+                                        baseImageId === image.id
+                                          ? null
+                                          : image.id
+                                      )
+                                    }
+                                    title={`${image.filename} 를 기준 이미지로`}
+                                  >
+                                    <img
+                                      src={image.thumbnailUrl || image.url}
+                                      alt="기준 이미지 후보"
+                                      className="h-full w-full object-cover"
+                                    />
+                                  </button>
+                                ))}
+                              </div>
                             </div>
 
                             {/* Auto-generate + multi-select toggles */}

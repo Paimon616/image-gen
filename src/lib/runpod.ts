@@ -31,10 +31,8 @@ import {
   PORNMASTER_VAE_NAME,
   ZIMAGE_CLIP_NAME,
   ZIMAGE_VAE_NAME,
-  isAnimaCheckpointName,
   isDiffusionOnlyImageCheckpointName,
-  isKrea2CheckpointName,
-  isZImageCheckpointName,
+  resolveCheckpointFamily,
   type CheckpointCapabilities,
 } from "@/lib/comfyui-model-files";
 
@@ -172,7 +170,23 @@ async function fetchRunpodHelper(
     },
   });
   const text = await response.text();
-  const data = text ? JSON.parse(text) as Record<string, unknown> : {};
+  const contentType = response.headers.get("content-type") || "";
+
+  // When the helper process is down, the RunPod proxy answers with its
+  // "Waiting for service to respond" HTML page. Detect it and raise a clear,
+  // actionable error instead of letting JSON.parse throw on the markup.
+  if (contentType.includes("text/html") || text.trimStart().startsWith("<")) {
+    throw new Error(
+      `RunPod 헬퍼가 응답하지 않습니다 (HTTP ${response.status}). pod에서 헬퍼를 먼저 준비하세요. (The pod helper is not responding — prepare it from the RunPod connection panel and retry.)`
+    );
+  }
+
+  let data: Record<string, unknown> = {};
+  try {
+    data = text ? (JSON.parse(text) as Record<string, unknown>) : {};
+  } catch {
+    throw new Error(`Unexpected RunPod helper response (HTTP ${response.status}).`);
+  }
   if (!response.ok) {
     throw new Error(String(data.error || `RunPod helper HTTP ${response.status}`));
   }
@@ -927,7 +941,7 @@ export async function ensureRunpodStatus(pod: RunpodPodSettings) {
 // Must equal HELPER_VERSION inside HELPER_SERVER_SOURCE. Bump both together when
 // the helper source changes so a pod running an older build is flagged as stale
 // (helperOutdated) and the user is offered a redeploy.
-export const RUNPOD_HELPER_VERSION = "6";
+export const RUNPOD_HELPER_VERSION = "7";
 
 const HELPER_SERVER_SOURCE = String.raw`
 import base64
@@ -939,6 +953,7 @@ import signal
 import socket
 import subprocess
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -947,7 +962,7 @@ from pathlib import Path
 
 # Bumped whenever this helper source changes so the app can tell a running pod is
 # on an old build and offer to redeploy. Must equal RUNPOD_HELPER_VERSION below.
-HELPER_VERSION = "6"
+HELPER_VERSION = "7"
 
 PORT = int(os.environ.get("IMAGE_GEN_HELPER_PORT", "3000"))
 HOST = os.environ.get("IMAGE_GEN_HELPER_HOST", "0.0.0.0")
@@ -1324,12 +1339,94 @@ def restart_comfyui():
     log.write(("ComfyUI restart requested, pid=%s\n" % process.pid).encode("utf-8"))
     return process.pid
 
+# File size a .safetensors header implies: 8 (length prefix) + header + the largest
+# tensor end offset. A file that disagrees with its own header is corrupt, and the
+# usual cause is a download that appended onto a stale or parallel partial: the
+# weights load without a single error and every image comes out pure black.
+def safetensors_expected_size(target):
+    try:
+        with open(target, "rb") as handle:
+            size_bytes = handle.read(8)
+            if len(size_bytes) < 8:
+                return None
+            header_size = int.from_bytes(size_bytes, "little")
+            if header_size <= 0 or header_size > 64 * 1024 * 1024:
+                return None
+            header_bytes = handle.read(header_size)
+            if len(header_bytes) < header_size:
+                return None
+            header = json.loads(header_bytes.decode("utf-8"))
+        if not isinstance(header, dict):
+            return None
+        ends = []
+        for key, entry in header.items():
+            if key == "__metadata__" or not isinstance(entry, dict):
+                continue
+            offsets = entry.get("data_offsets")
+            if isinstance(offsets, list) and len(offsets) == 2:
+                ends.append(int(offsets[1]))
+        if not ends:
+            return None
+        return 8 + header_size + max(ends)
+    except Exception:
+        return None
+
+# Returns a message when the file is PROVABLY corrupt, "" when it is fine or when
+# we cannot tell (non-safetensors, unreadable header). Only a proven mismatch is
+# reported, because callers delete what this flags.
+def corrupt_model_reason(path):
+    if not str(path).endswith(".safetensors"):
+        return ""
+    expected = safetensors_expected_size(path)
+    if expected is None:
+        return ""
+    actual = path.stat().st_size
+    if actual == expected:
+        return ""
+    return (
+        "%s is corrupt: %d bytes on disk, but its safetensors header describes %d."
+        % (path.name, actual, expected)
+    )
+
+_download_locks = {}
+_download_locks_guard = threading.Lock()
+
+def download_lock(key):
+    with _download_locks_guard:
+        lock = _download_locks.get(key)
+        if lock is None:
+            lock = threading.Lock()
+            _download_locks[key] = lock
+        return lock
+
 def download_to_file(target, url, token="", progress=None):
     target.parent.mkdir(parents=True, exist_ok=True)
-    if target.is_file():
-        return str(target)
+    # One writer per target file. Two concurrent requests for the same model used to
+    # both append to the same .download temp — each streaming its own byte range into
+    # a single append-mode handle — which produced a file longer than its own header,
+    # loadable by ComfyUI and black in every render.
+    with download_lock(str(target)):
+        if target.is_file():
+            reason = corrupt_model_reason(target)
+            if not reason:
+                return str(target)
+            # Nothing can use a file whose bytes don't match its header, and the
+            # is_file() short-circuit above would keep serving it forever.
+            target.unlink()
+            if progress:
+                progress(0, 0)
+        return download_stream_to_file(target, url, token, progress)
+
+def download_stream_to_file(target, url, token="", progress=None):
     tmp = Path(str(target) + ".download")
+    stamp = Path(str(target) + ".download.url")
     existing = tmp.stat().st_size if tmp.exists() else 0
+    # A partial left over from a different version of the same filename cannot be
+    # resumed — the bytes would interleave two files.
+    if existing > 0:
+        previous = stamp.read_text(encoding="utf-8").strip() if stamp.is_file() else ""
+        if previous != url:
+            existing = 0
     headers = {"User-Agent": "image-gen-runpod-download/1.0"}
     if token:
         headers["Authorization"] = "Bearer " + token
@@ -1361,8 +1458,20 @@ def download_to_file(target, url, token="", progress=None):
         raise RuntimeError("Too many redirects.")
 
     with response:
-        total = int(response.headers.get("Content-Length") or "0")
-        total = existing + total if total > 0 else 0
+        status = getattr(response, "status", None) or response.getcode()
+        content_range = (response.headers.get("Content-Range") or "").strip()
+        if existing > 0:
+            match = re.match(r"^bytes\s+(\d+)-\d+/(?:\d+|\*)$", content_range)
+            # A plain 200 means the Range was ignored and the body is the WHOLE file
+            # again (what a Civitai CDN redirect does). Appending it onto the partial
+            # is exactly how a checkpoint ends up longer than its header claims, so
+            # start the file over instead.
+            if status != 206 or not match or int(match.group(1)) != existing:
+                existing = 0
+        length = int(response.headers.get("Content-Length") or "0")
+        expected_total = existing + length if length > 0 else 0
+        stamp.parent.mkdir(parents=True, exist_ok=True)
+        stamp.write_text(url, encoding="utf-8")
         downloaded = existing
         with open(tmp, "ab" if existing > 0 else "wb") as out:
             while True:
@@ -1372,10 +1481,31 @@ def download_to_file(target, url, token="", progress=None):
                 out.write(chunk)
                 downloaded += len(chunk)
                 if progress:
-                    progress(downloaded, total)
+                    progress(downloaded, expected_total)
+
+    written = tmp.stat().st_size
+    if expected_total and written != expected_total:
+        # Truncated or over-long transfer. Drop the partial so the retry starts clean
+        # rather than resuming from a byte count nothing vouches for.
+        tmp.unlink()
+        stamp.unlink()
+        raise RuntimeError(
+            "%s transfer is %d bytes but %d were announced. Download again."
+            % (target.name, written, expected_total)
+        )
+
+    reason = corrupt_model_reason(tmp)
+    if reason:
+        tmp.unlink()
+        stamp.unlink()
+        raise RuntimeError(reason + " Download again.")
+
     tmp.replace(target)
+    if stamp.is_file():
+        stamp.unlink()
     if progress:
         progress(target.stat().st_size, target.stat().st_size)
+    return str(target)
     return str(target)
 
 def comfy_python():
@@ -2067,6 +2197,117 @@ export async function deployRunpodHelperViaJupyter(pod: RunpodPodSettings) {
   }
 }
 
+// Run a shell command on the pod through the Jupyter kernel channel — the same
+// proxy-stable transport used to deploy the helper (unlike SSH, the -8888 proxy
+// endpoint survives pod restarts). Returns the command's combined stdout+stderr.
+// This is the foundation for RunPod-side LoRA training orchestration.
+export async function runPythonOnPod(
+  pod: RunpodPodSettings,
+  pythonCode: string,
+  timeoutMs = 120_000
+): Promise<string> {
+  const jupyterUrl = deriveJupyterUrl(pod);
+  if (!jupyterUrl) {
+    throw new Error("RunPod ComfyUI URL is required to derive the Jupyter endpoint.");
+  }
+  if (!pod.podId) throw new Error("RunPod pod ID is required.");
+
+  const env = await fetchRunpodPodEnv(pod.podId);
+  const password = env.JUPYTER_PASSWORD || "";
+  if (!password) {
+    throw new Error("This pod does not expose a JUPYTER_PASSWORD, so commands cannot run via Jupyter.");
+  }
+  const tokenQuery = `token=${encodeURIComponent(password)}`;
+
+  const labResponse = await fetch(`${jupyterUrl}/lab?${tokenQuery}`, {
+    redirect: "manual",
+    cache: "no-store",
+    signal: AbortSignal.timeout(15_000),
+  });
+  const jar = cookieJarFrom(labResponse);
+  const xsrf = jar["_xsrf"] || "";
+  const cookieHeader = Object.entries(jar).map(([k, v]) => `${k}=${v}`).join("; ");
+  if (!xsrf) throw new Error("Failed to obtain a Jupyter XSRF token (check JUPYTER_PASSWORD).");
+
+  const kernelResponse = await fetch(`${jupyterUrl}/api/kernels?${tokenQuery}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-XSRFToken": xsrf, Cookie: cookieHeader },
+    body: JSON.stringify({ name: "python3" }),
+    cache: "no-store",
+    signal: AbortSignal.timeout(20_000),
+  });
+  const kernelText = await kernelResponse.text();
+  if (!kernelResponse.ok) {
+    throw new Error(`Jupyter kernel creation failed: HTTP ${kernelResponse.status} ${kernelText}`);
+  }
+  const kernelId = (JSON.parse(kernelText) as { id?: string }).id || "";
+  if (!kernelId) throw new Error("Jupyter did not return a kernel id.");
+
+  try {
+    return await runJupyterKernelCode(jupyterUrl, kernelId, password, cookieHeader, pythonCode, timeoutMs);
+  } finally {
+    await fetch(
+      `${jupyterUrl}/api/kernels/${encodeURIComponent(kernelId)}?${tokenQuery}`,
+      { method: "DELETE", headers: { "X-XSRFToken": xsrf, Cookie: cookieHeader }, cache: "no-store", signal: AbortSignal.timeout(10_000) }
+    ).catch(() => {});
+  }
+}
+
+// Download a file from the pod via the Jupyter Contents API (HTTP GET, base64).
+// Unlike kernel stdout (which truncates large output), this streams whole files
+// reliably. `rootRelativePath` is relative to Jupyter's root_dir (/workspace).
+export async function downloadPodFileViaContents(
+  pod: RunpodPodSettings,
+  rootRelativePath: string
+): Promise<Buffer> {
+  const jupyterUrl = deriveJupyterUrl(pod);
+  if (!jupyterUrl) throw new Error("RunPod ComfyUI URL is required to derive the Jupyter endpoint.");
+  if (!pod.podId) throw new Error("RunPod pod ID is required.");
+  const env = await fetchRunpodPodEnv(pod.podId);
+  const password = env.JUPYTER_PASSWORD || "";
+  if (!password) throw new Error("This pod does not expose a JUPYTER_PASSWORD.");
+  const tokenQuery = `token=${encodeURIComponent(password)}`;
+
+  const labResponse = await fetch(`${jupyterUrl}/lab?${tokenQuery}`, {
+    redirect: "manual",
+    cache: "no-store",
+    signal: AbortSignal.timeout(15_000),
+  });
+  const jar = cookieJarFrom(labResponse);
+  const cookieHeader = Object.entries(jar).map(([k, v]) => `${k}=${v}`).join("; ");
+
+  const encodedPath = rootRelativePath.split("/").map(encodeURIComponent).join("/");
+  const url = `${jupyterUrl}/api/contents/${encodedPath}?content=1&format=base64&${tokenQuery}`;
+  const res = await fetch(url, {
+    headers: { Cookie: cookieHeader },
+    cache: "no-store",
+    signal: AbortSignal.timeout(300_000),
+  });
+  if (!res.ok) {
+    throw new Error(`Jupyter Contents API GET failed: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
+  }
+  const data = (await res.json()) as { content?: string; format?: string };
+  if (!data.content) throw new Error("Jupyter Contents API returned no content.");
+  return Buffer.from(data.content, "base64");
+}
+
+export async function execOnPodViaJupyter(
+  pod: RunpodPodSettings,
+  shellCommand: string,
+  timeoutMs = 120_000
+): Promise<string> {
+  // base64 the command so arbitrary quoting/newlines survive the Python literal.
+  const b64 = Buffer.from(shellCommand, "utf8").toString("base64");
+  const code = [
+    "import base64, subprocess",
+    `__cmd = base64.b64decode('${b64}').decode('utf-8')`,
+    "__r = subprocess.run(['bash','-lc',__cmd], capture_output=True, text=True)",
+    "print(__r.stdout, end='')",
+    "print(__r.stderr, end='')",
+  ].join("\n");
+  return runPythonOnPod(pod, code, timeoutMs);
+}
+
 // Install the helper using whichever mechanism the pod supports: prefer Jupyter
 // (works without an sshd) and fall back to SSH. Returns which method succeeded.
 export async function installRunpodHelper(pod: RunpodPodSettings) {
@@ -2297,15 +2538,18 @@ async function namesForParams(
   };
   const checkpointName = params.model_name.trim();
   if (checkpointName) {
+    // Same family resolution buildDefaultWorkflow uses (filename, then catalog
+    // base_model), so the support files we require match the workflow that will run.
+    const family = await resolveCheckpointFamily(checkpointName);
     push("checkpoint", checkpointFolder, checkpointName);
-    if (isKrea2CheckpointName(checkpointName)) {
+    if (family === "krea2") {
       // "generic" and "refined" share the official Krea 2 stack (qwen3vl CLIP + qwen
       // image VAE); only "pornmaster" swaps in its abliterated int8 CLIP + Wan 2.1 VAE.
       // "refined" adds a second stock KSampler pass, so it needs no extra files or nodes.
       const pornmaster = params.krea2_workflow === "pornmaster";
       push("other", "text_encoders", pornmaster ? PORNMASTER_CLIP_NAME : KREA2_CLIP_NAME);
       push("vae", "vae", pornmaster ? PORNMASTER_VAE_NAME : KREA2_VAE_NAME);
-    } else if (isZImageCheckpointName(checkpointName)) {
+    } else if (family === "zimage") {
       // Z-Image loads an external Qwen3-4B text encoder + Flux-style 16ch VAE that the
       // diffusion-only weights do not bundle. Same family order as buildDefaultWorkflow.
       push("other", "text_encoders", ZIMAGE_CLIP_NAME);
@@ -2356,19 +2600,20 @@ export async function checkRunpodGenerationFiles(
   params: GenerationParams,
   importedResources: ImportedCivitaiResource[] = []
 ) {
-  // An Anima checkpoint routes to the dedicated Anima pipeline only when it is
-  // Anima-named AND ships no bundled CLIP (diffusion-only) — the same gate
+  // An Anima checkpoint routes to the dedicated Anima pipeline only when it resolves
+  // to the Anima family (by filename or catalog base_model) AND ships no bundled
+  // CLIP (diffusion-only) — the same gate
   // buildDefaultWorkflow uses. Only then does the pod need the external Qwen3-0.6B
   // text encoder + Qwen-Image VAE, so probe the pod's capabilities before requiring
   // them (avoids false "missing file" flags for CLIP-bundling SDXL/Anima merges).
   const checkpointName = params.model_name.trim();
-  const isKrea2 = isKrea2CheckpointName(checkpointName);
-  const isZImage = !isKrea2 && isZImageCheckpointName(checkpointName);
+  const family = await resolveCheckpointFamily(checkpointName);
+  const isKrea2 = family === "krea2";
+  const isZImage = family === "zimage";
   // Probing costs a helper round-trip, so only do it for the two families whose routing
   // actually depends on it (Anima: dedicated pipeline or not; Z-Image: which folder).
   const capabilities =
-    checkpointName.length > 0 &&
-    (isZImage || (!isKrea2 && isAnimaCheckpointName(checkpointName)))
+    checkpointName.length > 0 && (isZImage || family === "anima")
       ? await getRunpodCheckpointCapabilities(pod.comfyUrl, checkpointName)
       : null;
   const needsAnimaSupport = !isZImage && capabilities?.clip === false;
@@ -3057,20 +3302,35 @@ export async function streamRunpodNodeInstall(
       body: JSON.stringify({ repos, restart }),
     });
 
+  // The helper is not serving on :3000 when either (a) an older build lacks this
+  // route and answers 404, or (b) the process is down entirely — in which case the
+  // RunPod proxy returns its "Waiting for service to respond" page (a 5xx or a 200
+  // with a text/html body). A healthy helper answers this endpoint with
+  // text/event-stream, so an HTML content-type is a reliable "helper down" signal.
+  const helperNotServing = (res: Response) => {
+    const contentType = res.headers.get("content-type") || "";
+    return (
+      res.status === 404 ||
+      res.status === 500 ||
+      res.status === 502 ||
+      res.status === 503 ||
+      contentType.includes("text/html")
+    );
+  };
+
   let response = await postInstall();
 
-  // A pod running an older helper build lacks this route and answers 404
-  // ("Not found."). Its /status route still responds, so the status probe
-  // reports the helper as healthy and it is never redeployed. Detect the stale
-  // helper here, redeploy the current build in place, wait for it to serve, and
-  // retry the install once.
-  if (response.status === 404) {
+  // Redeploy the current helper build in place, wait for it to serve, then retry
+  // the install once. installRunpodHelper throws a clear message if neither Jupyter
+  // nor SSH is available to deploy it.
+  if (helperNotServing(response)) {
     onEvent({
       type: "status",
-      message: "Updating the pod helper to a build that supports node install...",
+      message:
+        "pod 헬퍼가 응답하지 않아 준비하는 중... (preparing the pod helper, this can take a minute)",
     });
     await installRunpodHelper(pod);
-    for (let attempt = 0; attempt < 8; attempt += 1) {
+    for (let attempt = 0; attempt < 12; attempt += 1) {
       await wait(3_000);
       try {
         await fetchRunpodHelper(pod, "/api/runpod/helper/status", {
@@ -3084,9 +3344,16 @@ export async function streamRunpodNodeInstall(
     response = await postInstall();
   }
 
-  if (!response.ok || !response.body) {
-    const text = await response.text();
-    throw new Error(text || `RunPod helper HTTP ${response.status}`);
+  if (!response.ok || !response.body || helperNotServing(response)) {
+    const contentType = response.headers.get("content-type") || "";
+    // Never surface the RunPod HTML placeholder page as an "error message".
+    const detail = contentType.includes("text/html")
+      ? ""
+      : (await response.text().catch(() => "")).slice(0, 300);
+    throw new Error(
+      detail ||
+        `RunPod 헬퍼가 응답하지 않습니다 (HTTP ${response.status}). pod에서 헬퍼가 실행 중인지 확인하고, RunPod 연결 패널에서 헬퍼를 준비한 뒤 다시 시도하세요. (The pod helper is not responding — prepare the helper from the RunPod connection panel, then retry.)`
+    );
   }
 
   const reader = response.body.getReader();

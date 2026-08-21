@@ -106,6 +106,53 @@ export async function loadSituationLibrary(): Promise<
   }
 }
 
+// A video turn, like an image turn, only needs the prompts of the character it
+// is ABOUT: the situation picker already embeds the picked record in its
+// instruction, and free-form chat names the character. Sending every situation
+// of every character makes each turn carry tens of thousands of tokens the model
+// has to read before it writes anything, so unmentioned characters keep their
+// identity and their situation NAMES only.
+const MAX_SITUATION_PROMPTS = 40;
+
+function mentions(haystack: string, name: string) {
+  const trimmed = name.trim().toLowerCase();
+  return Boolean(trimmed) && haystack.includes(trimmed);
+}
+
+export function situationLibraryPayload(
+  library: SituationLibraryCharacter[],
+  focusText: string
+) {
+  const haystack = focusText.toLowerCase();
+  return library.map((character) => {
+    const focused = mentions(haystack, character.name);
+    const named = focused
+      ? character.situations.filter((situation) =>
+          mentions(haystack, situation.name)
+        )
+      : [];
+    const kept =
+      named.length > 0
+        ? named
+        : focused
+          ? character.situations.slice(0, MAX_SITUATION_PROMPTS)
+          : [];
+    if (kept.length === character.situations.length) return character;
+
+    const keptIds = new Set(kept.map((situation) => situation.id));
+    return {
+      ...character,
+      situations: character.situations.map((situation) =>
+        keptIds.has(situation.id)
+          ? situation
+          : { id: situation.id, name: situation.name }
+      ),
+      // Marks the trim so an omitted prompt never reads as an empty record.
+      situationPromptsOmitted: true,
+    };
+  });
+}
+
 // Situation id used for a character's images that aren't tied to a situation.
 export const BASE_SITUATION_KEY = "__base__";
 

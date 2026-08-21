@@ -241,9 +241,7 @@ export function AssetPickerDialog({
                           fallbackClassName="text-3xl font-semibold"
                         />
                         <Badge className="absolute left-2 top-2 bg-background/80 text-foreground backdrop-blur">
-                          {asset.exists === false
-                            ? "현재 로컬에 없음"
-                            : asset.base_model || "Local"}
+                          {asset.base_model || "Unknown"}
                         </Badge>
                       </div>
                     </button>
@@ -286,6 +284,8 @@ type PickerTarget =
   | { type: "embedding-new" }
   | null;
 
+const DEFAULT_LORA_SCALE = 0.8;
+
 function roundToStep(value: number, step: number) {
   return Math.round(value / step) * step;
 }
@@ -309,6 +309,12 @@ function LoraScaleSlider({
   min?: number;
   max?: number;
 }) {
+  // A weight that came from outside the form (a Paimon patch, imported
+  // metadata, a persisted snapshot from before the field existed) can be
+  // missing or non-numeric. This renders mid-tree, so dereferencing it blindly
+  // would take the whole page down instead of showing one wrong number.
+  const scale = Number.isFinite(value) ? value : DEFAULT_LORA_SCALE;
+
   return (
     <div className="grid min-w-32 gap-1">
       <div className="flex items-center justify-between gap-2">
@@ -318,7 +324,7 @@ function LoraScaleSlider({
           min={min}
           max={max}
           step={0.05}
-          value={formatScale(value)}
+          value={formatScale(scale)}
           onChange={(event) => {
             const nextValue = Number(event.target.value);
             if (!Number.isFinite(nextValue)) return;
@@ -328,11 +334,11 @@ function LoraScaleSlider({
         />
       </div>
       <Slider
-        value={[value]}
+        value={[scale]}
         onValueChange={(nextValue) =>
           onChange(
             roundToStep(
-              Array.isArray(nextValue) ? nextValue[0] ?? value : nextValue,
+              Array.isArray(nextValue) ? nextValue[0] ?? scale : nextValue,
               0.05
             )
           )
@@ -524,7 +530,7 @@ export function ModelSelector({
     : null;
 
   const addEmptyLora = () => {
-    setParams({ loras: [...params.loras, { path: "", scale: 0.8 }] });
+    setParams({ loras: [...params.loras, { path: "", scale: DEFAULT_LORA_SCALE }] });
   };
 
   const addLora = () => {
@@ -639,7 +645,7 @@ export function ModelSelector({
     }
 
     if (pickerTarget?.type === "lora-new") {
-      setParams({ loras: [...params.loras, { path: asset.path, scale: 0.8 }] });
+      setParams({ loras: [...params.loras, { path: asset.path, scale: DEFAULT_LORA_SCALE }] });
     }
 
     if (pickerTarget?.type === "embedding") {
