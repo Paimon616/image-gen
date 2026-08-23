@@ -1,36 +1,30 @@
 "use client";
 
-import { useCallback, useRef, useState, type UIEvent } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-
-interface GalleryPick {
-  url: string;
-  thumbnailUrl?: string;
-}
+import {
+  ImageLibraryPicker,
+  ImageLightbox,
+} from "@/components/image-library-picker";
+import { useStore } from "@/lib/store";
+import type { GeneratedImage } from "@/lib/types";
 
 interface ImageUploadProps {
   label: string;
   description: string;
   value: string | null;
   onChange: (url: string | null) => void;
+  // Overrides the built-in click-to-enlarge on the loaded image (used where the
+  // caller already has a richer viewer for it).
   onPreview?: () => void;
   previewClassName?: string;
-  // When provided, a "Gallery" action lets the user pick one of these images as
-  // the value. URLs may be relative (e.g. /api/images/x.png) — they are resolved
-  // to absolute before being emitted so the generation backend can fetch them.
-  galleryImages?: GalleryPick[];
+  // Set false on slots that must not accept an already-generated image.
+  allowGallery?: boolean;
   // Fired (after onChange) when the value came from the gallery picker, with the
-  // picked item as passed in via galleryImages — lets the parent read extra
-  // metadata it attached (e.g. generation params) beyond the URL.
-  onPickFromGallery?: (image: GalleryPick) => void;
-  // Paginated gallery: when there are older images to fetch, the picker shows a
-  // "load more" button and auto-loads as the grid nears its bottom.
-  onLoadMoreGallery?: () => void;
-  galleryHasMore?: boolean;
-  galleryLoadingMore?: boolean;
-  galleryTotal?: number;
+  // full library image — lets the parent read extra metadata (e.g. generation
+  // params) beyond the URL.
+  onPickFromGallery?: (image: GeneratedImage) => void;
 }
 
 export function ImageUpload({
@@ -40,17 +34,16 @@ export function ImageUpload({
   onChange,
   onPreview,
   previewClassName = "h-40 w-full object-cover",
-  galleryImages,
+  allowGallery = true,
   onPickFromGallery,
-  onLoadMoreGallery,
-  galleryHasMore = false,
-  galleryLoadingMore = false,
-  galleryTotal,
 }: ImageUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const language = useStore((state) => state.language);
+  const ko = language === "ko";
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [zoomOpen, setZoomOpen] = useState(false);
   const [pasteError, setPasteError] = useState("");
 
   const upload = useCallback(
@@ -121,34 +114,24 @@ export function ImageUpload({
     }
   }, [upload]);
 
+  // URLs from the picker may be relative (e.g. /api/images/x.png) — resolve them
+  // to absolute so the generation backend can fetch them.
   const pickFromGallery = useCallback(
-    (img: GalleryPick) => {
-      let absolute = img.url;
+    (image: GeneratedImage) => {
+      let absolute = image.url;
       try {
-        absolute = new URL(img.url, window.location.href).href;
+        absolute = new URL(image.url, window.location.href).href;
       } catch {
         // Keep the raw value if it can't be parsed (already absolute or opaque).
       }
       onChange(absolute);
-      onPickFromGallery?.(img);
+      onPickFromGallery?.(image);
       setPickerOpen(false);
     },
     [onChange, onPickFromGallery]
   );
 
-  // Auto-load older images as the grid nears the bottom (mirrors the main gallery).
-  const handlePickerScroll = useCallback(
-    (event: UIEvent<HTMLDivElement>) => {
-      if (!galleryHasMore || galleryLoadingMore || !onLoadMoreGallery) return;
-      const el = event.currentTarget;
-      if (el.scrollHeight - el.scrollTop - el.clientHeight <= 120) {
-        onLoadMoreGallery();
-      }
-    },
-    [galleryHasMore, galleryLoadingMore, onLoadMoreGallery]
-  );
-
-  const hasGallery = Array.isArray(galleryImages);
+  const enlarge = onPreview ?? (() => setZoomOpen(true));
 
   return (
     <>
@@ -178,18 +161,19 @@ export function ImageUpload({
 
       {value ? (
         <div
-          role={onPreview ? "button" : undefined}
-          tabIndex={onPreview ? 0 : undefined}
-          onClick={onPreview}
+          role="button"
+          tabIndex={0}
+          onClick={enlarge}
           onKeyDown={(event) => {
-            if (!onPreview) return;
             if (event.key === "Enter" || event.key === " ") {
               event.preventDefault();
-              onPreview();
+              enlarge();
             }
           }}
-          className={`relative group ${onPreview ? "cursor-zoom-in focus:outline-none focus-visible:ring-3 focus-visible:ring-ring/30" : ""}`}
+          title={ko ? "클릭하면 크게 볼 수 있어요" : "Click to view larger"}
+          className="relative group cursor-zoom-in focus:outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
         >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={value} alt={label} className={previewClassName} />
           <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
             <Button
@@ -202,7 +186,7 @@ export function ImageUpload({
             >
               Replace
             </Button>
-            {hasGallery && (
+            {allowGallery && (
               <Button
                 size="sm"
                 variant="secondary"
@@ -270,14 +254,18 @@ export function ImageUpload({
             >
               Paste
             </Button>
-            {hasGallery && (
+            {allowGallery && (
               <Button
                 size="sm"
                 variant="ghost"
                 className="h-7 px-2 text-xs"
                 onClick={() => setPickerOpen(true)}
                 disabled={uploading}
-                title="Pick an image from your gallery"
+                title={
+                  ko
+                    ? "생성된 이미지에서 선택합니다"
+                    : "Pick an image from your gallery"
+                }
               >
                 Gallery
               </Button>
@@ -290,60 +278,16 @@ export function ImageUpload({
       )}
     </Card>
 
-    {hasGallery && (
-      <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
-        <DialogContent className="max-h-[88vh] w-[94vw] max-w-5xl overflow-hidden border border-border bg-card p-0 sm:max-w-5xl">
-          <DialogTitle className="border-b border-border px-5 py-3 text-sm font-semibold">
-            {label}
-          </DialogTitle>
-          <div
-            className="max-h-[calc(88vh-3.25rem)] overflow-y-auto p-4"
-            onScroll={handlePickerScroll}
-          >
-            {galleryImages && galleryImages.length > 0 ? (
-              <>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                  {galleryImages.map((img, index) => (
-                    <button
-                      key={`${img.url}-${index}`}
-                      type="button"
-                      onClick={() => pickFromGallery(img)}
-                      className="group relative overflow-hidden rounded-lg border border-border bg-muted/40 transition-colors hover:border-primary focus:outline-none focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-ring/30"
-                    >
-                      <img
-                        src={img.thumbnailUrl || img.url}
-                        alt=""
-                        loading="lazy"
-                        className="aspect-square w-full object-contain"
-                      />
-                    </button>
-                  ))}
-                </div>
-                {galleryHasMore && (
-                  <div className="flex flex-col items-center gap-2 py-4">
-                    <p className="text-xs text-muted-foreground">
-                      {galleryImages.length}
-                      {typeof galleryTotal === "number" ? ` / ${galleryTotal}` : ""}
-                    </p>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => onLoadMoreGallery?.()}
-                      disabled={galleryLoadingMore}
-                    >
-                      {galleryLoadingMore ? "Loading..." : "더보기"}
-                    </Button>
-                  </div>
-                )}
-              </>
-            ) : (
-              <p className="py-12 text-center text-sm text-muted-foreground">
-                No saved images yet
-              </p>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+    {pickerOpen && (
+      <ImageLibraryPicker
+        title={label}
+        onClose={() => setPickerOpen(false)}
+        onPick={pickFromGallery}
+      />
+    )}
+
+    {zoomOpen && value && (
+      <ImageLightbox src={value} alt={label} onClose={() => setZoomOpen(false)} />
     )}
     </>
   );

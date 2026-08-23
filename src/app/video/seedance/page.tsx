@@ -32,6 +32,10 @@ import {
 import { AppSidebar } from "@/components/app-sidebar";
 import { WorkspaceBar } from "@/components/workspace-bar";
 import { MediaWorkspacePicker } from "@/components/workspace-picker";
+import {
+  ImageLibraryPicker,
+  ImageLightbox,
+} from "@/components/image-library-picker";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -69,7 +73,7 @@ import {
   type SeedanceResolution,
   type SeedanceVideo,
 } from "@/lib/seedance";
-import { UNGROUPED_WORKSPACE_ID, type GeneratedImage } from "@/lib/types";
+import { UNGROUPED_WORKSPACE_ID } from "@/lib/types";
 
 const MAX_IMAGE_DIM = 1536;
 
@@ -238,6 +242,7 @@ function DropZone({ lang, value, onChange, onPickGallery, label, hint, large }: 
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [zoomOpen, setZoomOpen] = useState(false);
 
   const handleFile = useCallback(
     async (file: File | undefined) => {
@@ -279,12 +284,13 @@ function DropZone({ lang, value, onChange, onPickGallery, label, hint, large }: 
           setDragOver(false);
           void handleFile(e.dataTransfer.files?.[0]);
         }}
-        onClick={() => !value && inputRef.current?.click()}
+        onClick={() => (value ? setZoomOpen(true) : inputRef.current?.click())}
+        title={value ? (lang === "ko" ? "클릭하면 크게 볼 수 있어요" : "Click to view larger") : undefined}
         className={cn(
           "relative flex items-center justify-center overflow-hidden rounded-lg border border-dashed border-border bg-card/50 transition-colors",
           large ? "aspect-video" : "h-24",
           dragOver && "border-primary bg-primary/5",
-          !value && "cursor-pointer hover:border-primary/60"
+          value ? "cursor-zoom-in" : "cursor-pointer hover:border-primary/60"
         )}
       >
         {value ? (
@@ -320,78 +326,9 @@ function DropZone({ lang, value, onChange, onPickGallery, label, hint, large }: 
           e.target.value = "";
         }}
       />
-    </div>
-  );
-}
-
-interface GalleryPickerProps {
-  lang: Lang;
-  onClose: () => void;
-  onPick: (url: string) => void;
-}
-
-function GalleryPicker({ lang, onClose, onPick }: GalleryPickerProps) {
-  const [images, setImages] = useState<GeneratedImage[] | null>(null);
-
-  useEffect(() => {
-    let alive = true;
-    fetch("/api/images?limit=80&cursor=0")
-      .then((r) => r.json())
-      .then((data) => {
-        if (alive) setImages(Array.isArray(data?.images) ? data.images : []);
-      })
-      .catch(() => alive && setImages([]));
-    return () => {
-      alive = false;
-    };
-  }, []);
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="flex max-h-[80vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-border bg-background shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <h3 className="text-sm font-semibold">{tr("pickerTitle", lang)}</h3>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-        <div className="overflow-y-auto p-3">
-          {images === null ? (
-            <div className="flex h-40 items-center justify-center text-muted-foreground">
-              <Loader2 className="h-6 w-6 animate-spin" />
-            </div>
-          ) : images.length === 0 ? (
-            <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
-              {tr("pickerEmpty", lang)}
-            </div>
-          ) : (
-            <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
-              {images.map((img) => (
-                <button
-                  key={img.id}
-                  type="button"
-                  onClick={() => onPick(img.thumbnailUrl ? img.url : img.url)}
-                  className="group relative aspect-square overflow-hidden rounded-md border border-border hover:border-primary"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={img.thumbnailUrl || img.url}
-                    alt={img.filename}
-                    className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                    loading="lazy"
-                  />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+      {zoomOpen && value && (
+        <ImageLightbox src={value} onClose={() => setZoomOpen(false)} />
+      )}
     </div>
   );
 }
@@ -1125,11 +1062,11 @@ export default function SeedancePage() {
       </main>
 
       {picker && (
-        <GalleryPicker
-          lang={language}
+        <ImageLibraryPicker
+          title={tr("pickerTitle", language)}
           onClose={() => setPicker(null)}
-          onPick={(url) => {
-            picker(url);
+          onPick={(image) => {
+            picker(image.url);
             setPicker(null);
           }}
         />

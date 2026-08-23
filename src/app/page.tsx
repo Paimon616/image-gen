@@ -2316,15 +2316,6 @@ export default function Home() {
                       description={ko ? "업로드 · 붙여넣기(⌘/Ctrl+V) · 갤러리에서 선택" : "Upload, paste (⌘/Ctrl+V), or pick from gallery"}
                       value={params.character_image}
                       onChange={(url) => setParams({ character_image: url })}
-                      galleryImages={images}
-                      galleryHasMore={imagesNextCursor !== null}
-                      galleryLoadingMore={isLoadingMoreImages}
-                      galleryTotal={imagesTotal}
-                      onLoadMoreGallery={() => {
-                        if (imagesNextCursor !== null) {
-                          void fetchImagePage(imagesNextCursor);
-                        }
-                      }}
                     />
                     {params.character_image && (
                       <div className="mt-2">

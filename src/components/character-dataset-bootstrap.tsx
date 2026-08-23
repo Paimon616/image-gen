@@ -34,14 +34,7 @@ interface DatasetSummary {
 type Phase = "idle" | "running" | "done" | "error";
 
 export function CharacterDatasetBootstrap() {
-  const {
-    images,
-    language,
-    fetchImagePage,
-    imagesNextCursor,
-    imagesTotal,
-    isLoadingMoreImages,
-  } = useStore();
+  const { language } = useStore();
   const ko = language === "ko";
 
   const [checkpoints, setCheckpoints] = useState<LocalCheckpoint[]>([]);
@@ -119,13 +112,6 @@ export function CharacterDatasetBootstrap() {
   useEffect(() => {
     void refreshDatasetList();
   }, [refreshDatasetList]);
-
-  // Load the first gallery page so the source picker's "Gallery" modal has images
-  // even when the user lands here directly (the main gallery isn't mounted here).
-  useEffect(() => {
-    if (images.length === 0) void fetchImagePage(0).catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   useEffect(() => {
     fetch("/api/models")
@@ -352,8 +338,7 @@ export function CharacterDatasetBootstrap() {
                 setSourceModel(null);
               }}
               onPickFromGallery={(picked) => {
-                const match = images.find((img) => img.url === picked.url);
-                const modelName = match?.params?.model_name;
+                const modelName = picked.params?.model_name;
                 const checkpoint = modelName
                   ? checkpoints.find((c) => c.path === modelName)
                   : undefined;
@@ -361,13 +346,6 @@ export function CharacterDatasetBootstrap() {
                 if (checkpoint) setBaseModel(checkpoint.path);
               }}
               onPreview={sourceImage ? () => setLightboxUrl(sourceImage) : undefined}
-              galleryImages={images}
-              galleryHasMore={imagesNextCursor !== null}
-              galleryLoadingMore={isLoadingMoreImages}
-              galleryTotal={imagesTotal}
-              onLoadMoreGallery={() => {
-                if (imagesNextCursor !== null) void fetchImagePage(imagesNextCursor);
-              }}
             />
           </div>
 
