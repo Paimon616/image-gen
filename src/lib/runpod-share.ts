@@ -557,6 +557,29 @@ export async function pushShare(
   };
 }
 
+// Deletes a share straight off the given pod, whoever pushed it — the download
+// picker's "제거" button. Unlike unshare(), a dead pod is a hard error here: the
+// user is looking at the pod's list and expects the row to actually disappear.
+// If this machine's own record points at that pod, drop it too so auto-sync
+// doesn't immediately re-push the share.
+export async function deleteRemoteShare(
+  kind: ShareKind,
+  id: string,
+  podId?: string | null
+) {
+  const pod = await resolveSharePod(podId);
+  await helperPost(pod, "delete", { kind, id });
+
+  await mutateState((state) => {
+    if (state[kind][id]?.podId !== pod.id) return state;
+    const group = { ...state[kind] };
+    delete group[id];
+    return { ...state, [kind]: group };
+  });
+
+  return pod;
+}
+
 export async function unshare(kind: ShareKind, id: string) {
   const record = await getShareRecord(kind, id);
   if (record) {

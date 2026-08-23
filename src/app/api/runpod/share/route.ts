@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import {
+  deleteRemoteShare,
   isShareKind,
   isValidShareId,
   listRemoteShares,
@@ -89,23 +90,27 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Removes the share from the pod and forgets it locally (the local workspace /
-// character itself is untouched).
+// Removes a share. Without podId it is "내 공유 해제": drop this machine's share
+// record and best-effort delete on its pod. With podId it is the download
+// picker's remove — delete off that pod directly, whoever pushed the share.
 export async function DELETE(request: NextRequest) {
   const kind = parseKind(request);
-  const id = new URL(request.url).searchParams.get("id");
+  const url = new URL(request.url);
+  const id = url.searchParams.get("id");
+  const podId = url.searchParams.get("podId");
 
   if (!kind || !isValidShareId(kind, id)) {
     return NextResponse.json({ error: "Invalid share target" }, { status: 400 });
   }
 
   try {
-    await unshare(kind, id as string);
+    if (podId) await deleteRemoteShare(kind, id as string, podId);
+    else await unshare(kind, id as string);
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: errorMessage(error, "공유 해제에 실패했습니다.") },
-      { status: 500 }
+      { error: errorMessage(error, "공유 제거에 실패했습니다.") },
+      { status: 502 }
     );
   }
 }

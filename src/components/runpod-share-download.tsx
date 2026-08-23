@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CloudDownload, Loader2, RefreshCw } from "lucide-react";
+import { CloudDownload, Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { WorkspaceMedia } from "@/lib/types";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -82,6 +83,9 @@ export function RunpodShareDownloadDialog({
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState("");
   const [status, setStatus] = useState("");
+  // The item awaiting removal confirmation; the nested dialog renders while set.
+  const [confirmTarget, setConfirmTarget] = useState<RemoteShare | null>(null);
+  const [removing, setRemoving] = useState(false);
 
   const label = kind === "workspaces" ? "워크스페이스" : "캐릭터";
 
@@ -160,6 +164,33 @@ export function RunpodShareDownloadDialog({
     },
     [kind, onDownloaded, podId]
   );
+
+  // Deletes the share off the pod itself, so it disappears for every machine —
+  // already-downloaded copies and the sharer's original are untouched.
+  const remove = useCallback(async () => {
+    if (!confirmTarget) return;
+    setRemoving(true);
+    setStatus("");
+    setError("");
+    try {
+      const query = new URLSearchParams({ kind, id: confirmTarget.id });
+      if (podId) query.set("podId", podId);
+      const res = await fetch(`/api/runpod/share?${query}`, {
+        method: "DELETE",
+      });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) throw new Error(data.error || "공유 제거에 실패했습니다.");
+      setItems((prev) => prev.filter((item) => item.id !== confirmTarget.id));
+      setStatus(`"${confirmTarget.name || "이름 없음"}" 공유를 제거했습니다.`);
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : "공유 제거에 실패했습니다."
+      );
+    } finally {
+      setRemoving(false);
+      setConfirmTarget(null);
+    }
+  }, [confirmTarget, kind, podId]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -256,11 +287,59 @@ export function RunpodShareDownloadDialog({
                   )}
                   다운로드
                 </Button>
+                <Button
+                  type="button"
+                  size="icon-sm"
+                  variant="destructive"
+                  onClick={() => setConfirmTarget(item)}
+                  disabled={Boolean(busyId) || removing}
+                  aria-label={`"${item.name || "이름 없음"}" 공유 제거`}
+                  title="공유 제거"
+                >
+                  <Trash2 />
+                </Button>
               </div>
             ))
           )}
         </div>
       </DialogContent>
+
+      <Dialog
+        open={Boolean(confirmTarget)}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen && !removing) setConfirmTarget(null);
+        }}
+      >
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>공유 {label} 제거</DialogTitle>
+            <DialogDescription>
+              {`"${confirmTarget?.name || "이름 없음"}" 공유를 RunPod에서
+              제거할까요? 다른 사람도 더 이상 다운로드할 수 없게 됩니다. 이미
+              다운로드한 파일과 공유한 사람의 원본은 삭제되지 않습니다.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirmTarget(null)}
+              disabled={removing}
+            >
+              취소
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => void remove()}
+              disabled={removing}
+            >
+              {removing ? <Loader2 className="animate-spin" /> : <Trash2 />}
+              제거
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
