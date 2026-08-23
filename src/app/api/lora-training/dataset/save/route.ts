@@ -1,7 +1,11 @@
 import { mkdir, writeFile } from "fs/promises";
 import { join } from "path";
 import { NextRequest } from "next/server";
-import { trainingDatasetPath, safeImageExtension } from "@/lib/lora-training";
+import {
+  trainingDatasetPath,
+  safeImageExtension,
+  writeTrainingDatasetMeta,
+} from "@/lib/lora-training";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -12,6 +16,7 @@ export async function POST(req: NextRequest) {
   const form = await req.formData();
   const name = String(form.get("name") ?? "").trim();
   const triggerWords = String(form.get("triggerWords") ?? "").trim();
+  const baseModel = String(form.get("baseModel") ?? "").trim();
   if (!name) return Response.json({ error: "name is required" }, { status: 400 });
 
   const images = form
@@ -28,6 +33,10 @@ export async function POST(req: NextRequest) {
 
   await mkdir(dir, { recursive: true });
   const caption = triggerWords || name;
+  await writeTrainingDatasetMeta(name, {
+    ...(baseModel ? { baseModel } : {}),
+    triggerWords: caption,
+  }).catch(() => {});
   await Promise.all(
     images.map(async (file, index) => {
       const stem = String(index + 1).padStart(3, "0");

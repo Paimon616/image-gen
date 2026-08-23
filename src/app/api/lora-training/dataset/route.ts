@@ -1,6 +1,11 @@
 import { readdir, readFile, unlink, stat } from "fs/promises";
 import { NextRequest } from "next/server";
-import { trainingDatasetPath, trainingDatasetFilePath } from "@/lib/lora-training";
+import {
+  trainingDatasetsDir,
+  trainingDatasetPath,
+  trainingDatasetFilePath,
+  readTrainingDatasetMeta,
+} from "@/lib/lora-training";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -16,12 +21,52 @@ function extOf(file: string) {
   return (file.split(".").pop() ?? "").toLowerCase();
 }
 
+const IMAGE_RE = /\.(png|jpe?g|webp)$/i;
+
+// GET                      -> list all datasets (name, image count, thumbnail)
 // GET ?name=X              -> list the images in a dataset
 // GET ?name=X&file=001.png -> serve one image
 export async function GET(req: NextRequest) {
   const name = req.nextUrl.searchParams.get("name")?.trim();
   const file = req.nextUrl.searchParams.get("file")?.trim();
-  if (!name) return Response.json({ error: "name is required" }, { status: 400 });
+
+  if (!name) {
+    try {
+      const root = trainingDatasetsDir();
+      const entries = await readdir(root, { withFileTypes: true });
+      const datasets = await Promise.all(
+        entries
+          .filter((e) => e.isDirectory())
+          .map(async (e) => {
+            try {
+              const files = (await readdir(trainingDatasetPath(e.name)))
+                .filter((f) => IMAGE_RE.test(f))
+                .sort();
+              const dirStat = await stat(trainingDatasetPath(e.name));
+              const meta = await readTrainingDatasetMeta(e.name);
+              return {
+                name: e.name,
+                count: files.length,
+                updatedAt: dirStat.mtimeMs,
+                baseModel: meta?.baseModel ?? null,
+                triggerWords: meta?.triggerWords ?? null,
+                thumbnail: files[0]
+                  ? `/api/lora-training/dataset?name=${encodeURIComponent(e.name)}&file=${encodeURIComponent(files[0])}`
+                  : null,
+              };
+            } catch {
+              return null;
+            }
+          })
+      );
+      const list = datasets
+        .filter((d): d is NonNullable<typeof d> => d !== null)
+        .sort((a, b) => b.updatedAt - a.updatedAt);
+      return Response.json({ datasets: list });
+    } catch {
+      return Response.json({ datasets: [] });
+    }
+  }
 
   if (file) {
     try {
@@ -41,16 +86,23 @@ export async function GET(req: NextRequest) {
   try {
     const dir = trainingDatasetPath(name);
     const entries = await readdir(dir);
+    const meta = await readTrainingDatasetMeta(name);
     const images = entries
-      .filter((f) => /\.(png|jpe?g|webp)$/i.test(f))
+      .filter((f) => IMAGE_RE.test(f))
       .sort()
       .map((f) => ({
         file: f,
         url: `/api/lora-training/dataset?name=${encodeURIComponent(name)}&file=${encodeURIComponent(f)}`,
       }));
-    return Response.json({ name, count: images.length, images });
+    return Response.json({
+      name,
+      count: images.length,
+      images,
+      baseModel: meta?.baseModel ?? null,
+      triggerWords: meta?.triggerWords ?? null,
+    });
   } catch {
-    return Response.json({ name, count: 0, images: [] });
+    return Response.json({ name, count: 0, images: [], baseModel: null, triggerWords: null });
   }
 }
 

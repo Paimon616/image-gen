@@ -3,7 +3,7 @@ import { join } from "path";
 import { NextRequest } from "next/server";
 import { generateWithComfyUI } from "@/lib/comfyui";
 import { getRunpodPod } from "@/lib/settings";
-import { trainingDatasetPath } from "@/lib/lora-training";
+import { trainingDatasetPath, writeTrainingDatasetMeta } from "@/lib/lora-training";
 import { DEFAULT_PARAMS, randomGenerationSeed } from "@/lib/types";
 import type { GenerationParams } from "@/lib/types";
 
@@ -102,6 +102,12 @@ export async function POST(req: NextRequest) {
       };
       try {
         await mkdir(datasetDir, { recursive: true });
+        // Remember how this dataset was made so the training screen can
+        // pre-select the same checkpoint later.
+        await writeTrainingDatasetMeta(datasetName, {
+          baseModel,
+          triggerWords: caption,
+        }).catch(() => {});
         let saved = await countExistingImages(datasetDir);
         safeSend({ type: "status", message: `Generating ${count} variation(s)...`, total: count });
 

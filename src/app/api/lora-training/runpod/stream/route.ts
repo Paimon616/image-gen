@@ -1,5 +1,11 @@
 import { NextRequest } from "next/server";
 import { streamRunpodLoraTraining, type RunpodTrainingOptions } from "@/lib/runpod-training";
+import {
+  firstImageInDir,
+  getTrainingTarget,
+  registerSelfTrainedLora,
+  trainingDatasetPath,
+} from "@/lib/lora-training";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -40,8 +46,33 @@ export async function POST(req: NextRequest) {
       const safeSend = (d: unknown) => {
         if (!closed) send(controller, d);
       };
+      // On completion, register the retrieved LoRA in the model catalog (name,
+      // base model, trigger-word tags, preview from the dataset) — marked
+      // self-trained with no Civitai/source link. Best-effort: metadata failure
+      // must not fail the training stream.
+      const registerMetadata = async () => {
+        const target = await getTrainingTarget(opts.baseModelFile).catch(() => null);
+        await registerSelfTrainedLora({
+          outputName: opts.outputName,
+          loraName: opts.outputName,
+          triggerWords: opts.triggerWords,
+          category: opts.category,
+          baseModelLabel:
+            target && target.kind !== "unsupported" ? target.label : opts.baseModelFile,
+          baseModelFile: opts.baseModelFile,
+          previewImagePath: await firstImageInDir(trainingDatasetPath(opts.datasetName)),
+        });
+      };
       try {
-        await streamRunpodLoraTraining(runpodPodId, opts, (e) => safeSend(e), abort.signal);
+        await streamRunpodLoraTraining(
+          runpodPodId,
+          opts,
+          (e) => {
+            safeSend(e);
+            if (e.type === "complete") void registerMetadata().catch(() => {});
+          },
+          abort.signal
+        );
       } catch (error) {
         safeSend({ type: "error", message: error instanceof Error ? error.message : "Training failed." });
       } finally {

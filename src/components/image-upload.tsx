@@ -21,6 +21,10 @@ interface ImageUploadProps {
   // the value. URLs may be relative (e.g. /api/images/x.png) — they are resolved
   // to absolute before being emitted so the generation backend can fetch them.
   galleryImages?: GalleryPick[];
+  // Fired (after onChange) when the value came from the gallery picker, with the
+  // picked item as passed in via galleryImages — lets the parent read extra
+  // metadata it attached (e.g. generation params) beyond the URL.
+  onPickFromGallery?: (image: GalleryPick) => void;
   // Paginated gallery: when there are older images to fetch, the picker shows a
   // "load more" button and auto-loads as the grid nears its bottom.
   onLoadMoreGallery?: () => void;
@@ -37,6 +41,7 @@ export function ImageUpload({
   onPreview,
   previewClassName = "h-40 w-full object-cover",
   galleryImages,
+  onPickFromGallery,
   onLoadMoreGallery,
   galleryHasMore = false,
   galleryLoadingMore = false,
@@ -117,17 +122,18 @@ export function ImageUpload({
   }, [upload]);
 
   const pickFromGallery = useCallback(
-    (url: string) => {
-      let absolute = url;
+    (img: GalleryPick) => {
+      let absolute = img.url;
       try {
-        absolute = new URL(url, window.location.href).href;
+        absolute = new URL(img.url, window.location.href).href;
       } catch {
         // Keep the raw value if it can't be parsed (already absolute or opaque).
       }
       onChange(absolute);
+      onPickFromGallery?.(img);
       setPickerOpen(false);
     },
-    [onChange]
+    [onChange, onPickFromGallery]
   );
 
   // Auto-load older images as the grid nears the bottom (mirrors the main gallery).
@@ -301,7 +307,7 @@ export function ImageUpload({
                     <button
                       key={`${img.url}-${index}`}
                       type="button"
-                      onClick={() => pickFromGallery(img.url)}
+                      onClick={() => pickFromGallery(img)}
                       className="group relative overflow-hidden rounded-lg border border-border bg-muted/40 transition-colors hover:border-primary focus:outline-none focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-ring/30"
                     >
                       <img

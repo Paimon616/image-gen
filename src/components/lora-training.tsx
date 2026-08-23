@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -33,6 +34,17 @@ interface LocalCheckpoint {
   path: string;
   name: string;
   base_model: string;
+}
+
+// A dataset saved under training/datasets/ (built by the bootstrap page or a
+// previous RunPod run), as returned by GET /api/lora-training/dataset.
+interface SavedDataset {
+  name: string;
+  count: number;
+  updatedAt: number;
+  baseModel: string | null;
+  triggerWords: string | null;
+  thumbnail: string | null;
 }
 
 interface RunnerStatus {
@@ -152,6 +164,16 @@ export function LoraTraining() {
     error: "",
   });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  // "이전 데이터셋에서 가져오기" picker: saved datasets on disk + import progress.
+  const [datasetPickerOpen, setDatasetPickerOpen] = useState(false);
+  const [savedDatasets, setSavedDatasets] = useState<SavedDataset[]>([]);
+  const [savedDatasetsLoading, setSavedDatasetsLoading] = useState(false);
+  const [importingDataset, setImportingDataset] = useState<string | null>(null);
+  const [importError, setImportError] = useState("");
+  // Checkpoint the imported dataset was generated with (from its _meta.json),
+  // when it maps to an installed, trainable checkpoint — drives the ★ highlight
+  // on the base-model select.
+  const [datasetModel, setDatasetModel] = useState<string | null>(null);
 
   const datasetPercent = Math.min((dataset.length / MAX_IMAGES) * 100, 100);
   const selectedCheckpoint = checkpoints.find((checkpoint) => checkpoint.path === baseModel);
@@ -262,6 +284,91 @@ export function LoraTraining() {
       return [...current, ...clampDataset(imageFiles.slice(0, remaining))];
     });
     setState("ready");
+  }
+
+  function openDatasetPicker() {
+    setImportError("");
+    setDatasetPickerOpen(true);
+    setSavedDatasetsLoading(true);
+    fetch("/api/lora-training/dataset", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        setSavedDatasets(Array.isArray(data.datasets) ? data.datasets : []);
+      })
+      .catch(() => setSavedDatasets([]))
+      .finally(() => setSavedDatasetsLoading(false));
+  }
+
+  async function importSavedDataset(name: string) {
+    if (importingDataset) return;
+    setImportingDataset(name);
+    setImportError("");
+    try {
+      const res = await fetch(`/api/lora-training/dataset?name=${encodeURIComponent(name)}`);
+      const data = await res.json();
+      const entries: { file: string; url: string }[] = Array.isArray(data.images)
+        ? data.images
+        : [];
+      if (entries.length === 0) throw new Error("이 데이터셋에는 이미지가 없습니다.");
+
+      // The dataset remembers which checkpoint generated it — pre-select it as
+      // the training base model when it is installed and trainable here.
+      const metaBaseModel = typeof data.baseModel === "string" ? data.baseModel : "";
+      const metaCheckpoint = checkpoints.find((c) => c.path === metaBaseModel);
+      if (metaCheckpoint && checkpointTrainingSupport(metaCheckpoint).supported) {
+        setBaseModel(metaCheckpoint.path);
+        setDatasetModel(metaCheckpoint.path);
+      } else {
+        setDatasetModel(null);
+      }
+
+      // Pull the on-disk images back as File objects so the existing upload flow
+      // (local job POST / RunPod dataset save) works unchanged.
+      const files = await Promise.all(
+        entries.map(async (entry) => {
+          const blob = await fetch(entry.url).then((r) => {
+            if (!r.ok) throw new Error(`${entry.file} 불러오기 실패`);
+            return r.blob();
+          });
+          return new File([blob], entry.file, { type: blob.type || "image/png" });
+        })
+      );
+
+      setDataset((current) => {
+        const remaining = Math.max(MAX_IMAGES - current.length, 0);
+        return [...current, ...clampDataset(files.slice(0, remaining))];
+      });
+      setState("ready");
+      setLoraName((current) => current || name);
+
+      // Prefill trigger words when empty: prefer the dataset metadata, fall back
+      // to the first caption file (NNN.txt next to each image).
+      const metaTriggerWords = typeof data.triggerWords === "string" ? data.triggerWords.trim() : "";
+      if (!triggerWords.trim() && metaTriggerWords) {
+        setTriggerWords(metaTriggerWords);
+      } else if (!triggerWords.trim()) {
+        const firstCaption = entries[0]?.file.replace(/\.[^.]+$/, ".txt");
+        if (firstCaption) {
+          try {
+            const capRes = await fetch(
+              `/api/lora-training/dataset?name=${encodeURIComponent(name)}&file=${encodeURIComponent(firstCaption)}`
+            );
+            if (capRes.ok) {
+              const text = (await capRes.text()).trim();
+              if (text) setTriggerWords(text);
+            }
+          } catch {
+            // Captions are optional — ignore.
+          }
+        }
+      }
+
+      setDatasetPickerOpen(false);
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : "데이터셋 가져오기에 실패했습니다.");
+    } finally {
+      setImportingDataset(null);
+    }
   }
 
   function removeImage(id: string) {
@@ -391,6 +498,7 @@ export function LoraTraining() {
       const form = new FormData();
       form.append("name", datasetName);
       form.append("triggerWords", triggerWords);
+      form.append("baseModel", baseModel);
       dataset.forEach((image) => form.append("images", image.file, image.name));
       const saveRes = await fetch("/api/lora-training/dataset/save", { method: "POST", body: form });
       if (!saveRes.ok) throw new Error((await saveRes.json()).error || "Dataset save failed.");
@@ -654,7 +762,7 @@ export function LoraTraining() {
                   <Upload className="h-4 w-4" />
                   이미지 업로드
                 </Button>
-                <Button variant="outline" size="lg" disabled>
+                <Button variant="outline" size="lg" onClick={openDatasetPicker}>
                   <ImagePlus className="h-4 w-4" />
                   이전 데이터셋에서 가져오기
                 </Button>
@@ -797,14 +905,26 @@ export function LoraTraining() {
                     id="base-model"
                     value={baseModel}
                     onChange={(event) => setBaseModel(event.currentTarget.value)}
-                    className="h-11 w-full appearance-none rounded-md border border-input bg-background px-3 pr-9 text-base font-medium outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/25"
+                    className={`h-11 w-full appearance-none rounded-md border bg-background px-3 pr-9 text-base font-medium outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/25 ${
+                      datasetModel && baseModel === datasetModel
+                        ? "border-primary ring-1 ring-primary/40"
+                        : "border-input"
+                    }`}
                   >
                     <option value="">기반 checkpoint를 선택하세요</option>
                     {checkpoints.map((checkpoint) => {
                       const support = checkpointTrainingSupport(checkpoint);
+                      const isDatasetModel = checkpoint.path === datasetModel;
                       return (
-                      <option key={checkpoint.path} value={checkpoint.path} disabled={!support.supported}>
+                      <option
+                        key={checkpoint.path}
+                        value={checkpoint.path}
+                        disabled={!support.supported}
+                        className={isDatasetModel ? "font-semibold text-primary" : undefined}
+                      >
+                        {isDatasetModel ? "★ " : ""}
                         {checkpoint.name || checkpoint.path}
+                        {isDatasetModel ? " — 데이터셋 생성 모델" : ""}
                         {!support.supported ? " (unsupported)" : ""}
                       </option>
                       );
@@ -815,6 +935,13 @@ export function LoraTraining() {
                 <p className="text-xs font-medium text-muted-foreground">
                   LoRA는 독립 모델이 아니라 선택한 checkpoint 위에 얹히는 가중치입니다.
                 </p>
+                {datasetModel && (
+                  <p className="text-xs font-medium text-muted-foreground">
+                    {baseModel === datasetModel
+                      ? "★ 데이터셋을 생성한 모델이 자동 선택되었습니다."
+                      : "데이터셋 생성 모델(★)과 다른 모델이 선택되어 있습니다."}
+                  </p>
+                )}
                 {selectedCheckpoint && (
                   <div className="rounded-md border border-border bg-muted/35 p-3 text-sm">
                     <div className="font-bold text-foreground">{selectedCheckpoint.name}</div>
@@ -939,6 +1066,70 @@ export function LoraTraining() {
           </div>
         )}
       </div>
+
+      <Dialog open={datasetPickerOpen} onOpenChange={setDatasetPickerOpen}>
+        <DialogContent className="max-h-[80vh] w-[92vw] max-w-2xl overflow-hidden border border-border bg-card p-0 sm:max-w-2xl">
+          <DialogTitle className="border-b border-border px-5 py-3 text-sm font-semibold">
+            저장된 데이터셋에서 가져오기
+          </DialogTitle>
+          <div className="max-h-[calc(80vh-3.25rem)] overflow-y-auto p-4">
+            {importError && (
+              <div className="mb-3 rounded-md border border-destructive/35 bg-destructive/10 p-3 text-sm font-semibold text-destructive">
+                {importError}
+              </div>
+            )}
+            {savedDatasetsLoading ? (
+              <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                데이터셋 목록을 불러오는 중...
+              </div>
+            ) : savedDatasets.length === 0 ? (
+              <p className="py-12 text-center text-sm text-muted-foreground">
+                저장된 데이터셋이 없습니다. 데이터셋 부트스트랩 화면에서 먼저 만들어 주세요.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {savedDatasets.map((entry) => (
+                  <button
+                    key={entry.name}
+                    type="button"
+                    onClick={() => void importSavedDataset(entry.name)}
+                    disabled={importingDataset !== null}
+                    className="flex items-center gap-3 rounded-md border border-border p-2.5 text-left transition-colors hover:border-primary hover:bg-muted/60 disabled:opacity-60 focus:outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
+                  >
+                    {entry.thumbnail ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={entry.thumbnail}
+                        alt=""
+                        className="size-14 shrink-0 rounded object-cover bg-muted/40"
+                      />
+                    ) : (
+                      <div className="size-14 shrink-0 rounded bg-muted/40" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold">{entry.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {entry.count}장 · {new Date(entry.updatedAt).toLocaleDateString("ko-KR")}
+                      </p>
+                      {entry.baseModel && (
+                        <p className="truncate text-xs text-muted-foreground">
+                          모델:{" "}
+                          {checkpoints.find((c) => c.path === entry.baseModel)?.name ||
+                            entry.baseModel}
+                        </p>
+                      )}
+                    </div>
+                    {importingDataset === entry.name && (
+                      <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

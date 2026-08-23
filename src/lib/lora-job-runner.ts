@@ -2,8 +2,10 @@ import { access, appendFile, mkdir, readdir, readFile, writeFile } from "fs/prom
 import { join } from "path";
 import { spawn, type ChildProcessWithoutNullStreams } from "child_process";
 import {
+  firstImageInDir,
   loraOutputDir,
   loraRunnerPython,
+  registerSelfTrainedLora,
   type LoraRunnerStatus,
   type TrainingTarget,
 } from "@/lib/lora-training";
@@ -399,6 +401,23 @@ export async function startLoraJob({
           error: "",
           completedAt: new Date().toISOString(),
         });
+        // Register the finished LoRA in the model catalog: name, base model,
+        // trigger-word tags, and a preview taken from the training dataset —
+        // marked self-trained (no Civitai/source link).
+        try {
+          const status = await readLoraJobStatus(runId);
+          await registerSelfTrainedLora({
+            outputName,
+            loraName: status?.loraName,
+            triggerWords: status?.triggerWords,
+            category: status?.category,
+            baseModelLabel: status?.baseModelLabel,
+            baseModelFile: status?.baseModel,
+            previewImagePath: await firstImageInDir(join(runDir, "images")),
+          });
+        } catch {
+          // Metadata is best-effort — the training result itself already succeeded.
+        }
       } catch {
         await patchLoraJobStatus(runDir, {
           state: "failed",

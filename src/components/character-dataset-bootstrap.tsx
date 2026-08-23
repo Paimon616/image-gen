@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 interface LocalCheckpoint {
   path: string;
   name: string;
+  version?: string;
   base_model?: string;
 }
 
@@ -21,6 +22,13 @@ interface RunpodPod {
 interface DatasetImage {
   file: string;
   url: string;
+}
+
+interface DatasetSummary {
+  name: string;
+  count: number;
+  updatedAt: number;
+  thumbnail: string | null;
 }
 
 type Phase = "idle" | "running" | "done" | "error";
@@ -40,6 +48,9 @@ export function CharacterDatasetBootstrap() {
   const [pods, setPods] = useState<RunpodPod[]>([]);
   const [sourceImage, setSourceImage] = useState<string | null>(null);
   const [baseModel, setBaseModel] = useState("");
+  // Checkpoint (asset path) the picked gallery image was generated with, when it
+  // maps to a locally installed checkpoint — drives auto-select + highlight.
+  const [sourceModel, setSourceModel] = useState<string | null>(null);
   const [target, setTarget] = useState("local"); // "local" | podId
   const [datasetName, setDatasetName] = useState("");
   const [triggerWords, setTriggerWords] = useState("");
@@ -54,7 +65,60 @@ export function CharacterDatasetBootstrap() {
   const [statusMessage, setStatusMessage] = useState("");
   const [done, setDone] = useState(0);
   const [datasetImages, setDatasetImages] = useState<DatasetImage[]>([]);
+  const [datasets, setDatasets] = useState<DatasetSummary[]>([]);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  // Index into datasetImages when the lightbox was opened from the dataset grid —
+  // enables prev/next navigation and the thumbnail strip. null when the lightbox
+  // shows a standalone image (e.g. the source image preview).
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  // Keep the index valid if the dataset shrinks (e.g. deletions) while open.
+  useEffect(() => {
+    if (lightboxIndex === null) return;
+    if (datasetImages.length === 0) setLightboxIndex(null);
+    else if (lightboxIndex >= datasetImages.length) setLightboxIndex(datasetImages.length - 1);
+  }, [lightboxIndex, datasetImages.length]);
+
+  const stepLightbox = useCallback(
+    (delta: number) => {
+      setLightboxIndex((prev) => {
+        if (prev === null || datasetImages.length === 0) return prev;
+        return (prev + delta + datasetImages.length) % datasetImages.length;
+      });
+    },
+    [datasetImages.length]
+  );
+
+  // Arrow-key navigation while browsing dataset images in the lightbox.
+  const lightboxNavActive = lightboxIndex !== null;
+  useEffect(() => {
+    if (!lightboxNavActive) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        stepLightbox(-1);
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        stepLightbox(1);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightboxNavActive, stepLightbox]);
+
+  const refreshDatasetList = useCallback(async () => {
+    try {
+      const res = await fetch("/api/lora-training/dataset");
+      const data = await res.json();
+      setDatasets(Array.isArray(data.datasets) ? data.datasets : []);
+    } catch {
+      // ignore — the list is a convenience, not critical
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshDatasetList();
+  }, [refreshDatasetList]);
 
   // Load the first gallery page so the source picker's "Gallery" modal has images
   // even when the user lands here directly (the main gallery isn't mounted here).
@@ -185,6 +249,8 @@ export function CharacterDatasetBootstrap() {
       setStatusMessage(error instanceof Error ? error.message : "Bootstrap failed.");
       setPhase("error");
       void refreshDataset(datasetName.trim());
+    } finally {
+      void refreshDatasetList();
     }
   }, [
     canRun,
@@ -199,6 +265,7 @@ export function CharacterDatasetBootstrap() {
     negativePrompt,
     target,
     refreshDataset,
+    refreshDatasetList,
   ]);
 
   const deleteImage = useCallback(
@@ -208,8 +275,9 @@ export function CharacterDatasetBootstrap() {
         { method: "DELETE" }
       );
       setDatasetImages((prev) => prev.filter((img) => img.file !== file));
+      void refreshDatasetList();
     },
-    [datasetName]
+    [datasetName, refreshDatasetList]
   );
 
   return (
@@ -226,6 +294,48 @@ export function CharacterDatasetBootstrap() {
           </p>
         </div>
 
+        {datasets.length > 0 && (
+          <div>
+            <p className="mb-2 text-xs font-medium text-muted-foreground">
+              {ko ? "생성된 데이터셋" : "Existing datasets"} ({datasets.length})
+            </p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+              {datasets.map((d) => {
+                const selected = d.name === datasetName.trim();
+                return (
+                  <button
+                    key={d.name}
+                    type="button"
+                    onClick={() => setDatasetName(d.name)}
+                    className={`flex items-center gap-2 rounded-md border p-2 text-left transition-colors hover:bg-muted/60 focus:outline-none focus-visible:ring-3 focus-visible:ring-ring/30 ${
+                      selected ? "border-primary bg-muted/40" : "border-border"
+                    }`}
+                  >
+                    {d.thumbnail ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={d.thumbnail}
+                        alt=""
+                        className="size-10 shrink-0 rounded object-cover bg-muted/40"
+                      />
+                    ) : (
+                      <div className="size-10 shrink-0 rounded bg-muted/40" />
+                    )}
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-medium">{d.name}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {d.count}
+                        {ko ? "장" : " images"} ·{" "}
+                        {new Date(d.updatedAt).toLocaleDateString(ko ? "ko-KR" : "en-US")}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <label className="text-xs font-medium">
@@ -235,7 +345,21 @@ export function CharacterDatasetBootstrap() {
               label={ko ? "소스 이미지" : "Source image"}
               description={ko ? "업로드 · 붙여넣기 · 갤러리에서 선택" : "Upload, paste, or pick from gallery"}
               value={sourceImage}
-              onChange={setSourceImage}
+              onChange={(url) => {
+                setSourceImage(url);
+                // Uploaded/pasted/removed images carry no generation metadata;
+                // a gallery pick re-sets this right after via onPickFromGallery.
+                setSourceModel(null);
+              }}
+              onPickFromGallery={(picked) => {
+                const match = images.find((img) => img.url === picked.url);
+                const modelName = match?.params?.model_name;
+                const checkpoint = modelName
+                  ? checkpoints.find((c) => c.path === modelName)
+                  : undefined;
+                setSourceModel(checkpoint?.path ?? null);
+                if (checkpoint) setBaseModel(checkpoint.path);
+              }}
               onPreview={sourceImage ? () => setLightboxUrl(sourceImage) : undefined}
               galleryImages={images}
               galleryHasMore={imagesNextCursor !== null}
@@ -253,14 +377,33 @@ export function CharacterDatasetBootstrap() {
               <select
                 value={baseModel}
                 onChange={(e) => setBaseModel(e.target.value)}
-                className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                className={`mt-1 h-9 w-full rounded-md border bg-background px-2 text-sm ${
+                  sourceModel && baseModel === sourceModel
+                    ? "border-primary ring-1 ring-primary/40"
+                    : "border-input"
+                }`}
               >
-                {checkpoints.map((c) => (
-                  <option key={c.path} value={c.path}>
-                    {c.name || c.path}
-                  </option>
-                ))}
+                {checkpoints.map((c) => {
+                  const label = c.version ? `${c.name || c.path} (${c.version})` : c.name || c.path;
+                  const isSource = c.path === sourceModel;
+                  return (
+                    <option key={c.path} value={c.path} className={isSource ? "font-semibold text-primary" : undefined}>
+                      {isSource ? `★ ${label}${ko ? " — 소스 이미지 모델" : " — source image model"}` : label}
+                    </option>
+                  );
+                })}
               </select>
+              {sourceModel && (
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {baseModel === sourceModel
+                    ? ko
+                      ? "★ 소스 이미지를 생성한 모델이 자동 선택되었습니다."
+                      : "★ Auto-selected the model that generated the source image."
+                    : ko
+                      ? "소스 이미지 모델(★)과 다른 모델이 선택되어 있습니다."
+                      : "A different model than the source image's (★) is selected."}
+                </p>
+              )}
             </div>
             <div>
               <label className="text-xs font-medium">{ko ? "생성 대상" : "Run on"}</label>
@@ -378,11 +521,11 @@ export function CharacterDatasetBootstrap() {
               {ko ? "장 (나쁜 컷은 삭제)" : " images (delete bad ones)"}
             </p>
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
-              {datasetImages.map((img) => (
+              {datasetImages.map((img, index) => (
                 <div key={img.file} className="group relative overflow-hidden rounded-md border border-border">
                   <button
                     type="button"
-                    onClick={() => setLightboxUrl(img.url)}
+                    onClick={() => setLightboxIndex(index)}
                     className="block w-full cursor-zoom-in focus:outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -402,16 +545,84 @@ export function CharacterDatasetBootstrap() {
         )}
       </div>
 
-      <Dialog open={!!lightboxUrl} onOpenChange={(open) => !open && setLightboxUrl(null)}>
+      <Dialog
+        open={!!lightboxUrl || lightboxIndex !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setLightboxUrl(null);
+            setLightboxIndex(null);
+          }
+        }}
+      >
         <DialogContent className="max-h-[92vh] w-[92vw] max-w-3xl overflow-hidden border border-border bg-card p-2 sm:max-w-3xl">
           <DialogTitle className="sr-only">{ko ? "이미지 미리보기" : "Image preview"}</DialogTitle>
-          {lightboxUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={lightboxUrl}
-              alt=""
-              className="mx-auto max-h-[86vh] w-auto max-w-full rounded object-contain"
-            />
+          {lightboxIndex !== null && datasetImages[lightboxIndex] ? (
+            <div className="flex max-h-[86vh] flex-col gap-2">
+              <div className="relative flex min-h-0 flex-1 items-center justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={datasetImages[lightboxIndex].url}
+                  alt=""
+                  className="max-h-[68vh] w-auto max-w-full rounded object-contain"
+                />
+                {datasetImages.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => stepLightbox(-1)}
+                      aria-label={ko ? "이전 이미지" : "Previous image"}
+                      className="absolute left-1 top-1/2 -translate-y-1/2 rounded-full bg-black/50 px-2.5 py-1.5 text-sm text-white transition-colors hover:bg-black/70"
+                    >
+                      ‹
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => stepLightbox(1)}
+                      aria-label={ko ? "다음 이미지" : "Next image"}
+                      className="absolute right-1 top-1/2 -translate-y-1/2 rounded-full bg-black/50 px-2.5 py-1.5 text-sm text-white transition-colors hover:bg-black/70"
+                    >
+                      ›
+                    </button>
+                  </>
+                )}
+              </div>
+              <p className="text-center text-xs text-muted-foreground">
+                {datasetImages[lightboxIndex].file} · {lightboxIndex + 1} / {datasetImages.length}
+              </p>
+              {datasetImages.length > 1 && (
+                <div className="flex gap-1.5 overflow-x-auto pb-1">
+                  {datasetImages.map((img, i) => (
+                    <button
+                      key={img.file}
+                      type="button"
+                      onClick={() => setLightboxIndex(i)}
+                      ref={(el) => {
+                        // Keep the active thumbnail visible as arrow keys move it.
+                        if (el && i === lightboxIndex)
+                          el.scrollIntoView({ block: "nearest", inline: "nearest" });
+                      }}
+                      className={`shrink-0 overflow-hidden rounded border-2 transition-colors focus:outline-none focus-visible:ring-3 focus-visible:ring-ring/30 ${
+                        i === lightboxIndex
+                          ? "border-primary"
+                          : "border-transparent opacity-60 hover:opacity-100"
+                      }`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={img.url} alt="" className="size-14 object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            lightboxUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={lightboxUrl}
+                alt=""
+                className="mx-auto max-h-[86vh] w-auto max-w-full rounded object-contain"
+              />
+            )
           )}
         </DialogContent>
       </Dialog>
