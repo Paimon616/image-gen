@@ -47,6 +47,9 @@ export interface PaimonConversationState {
     content: string
   ) => Promise<PaimonDonePayload | null>;
   send: (conversationId: string, content: string) => void;
+  // Aborts the turn that is streaming in this conversation. The partial reply
+  // stays in the transcript; the patch it would have produced is discarded.
+  cancelTurn: (conversationId: string) => void;
   reset: (conversationId: string) => void;
   setError: (conversationId: string, error: string) => void;
   pushAssistantMessage: (conversationId: string, content: string) => void;
@@ -92,6 +95,9 @@ export interface PaimonConversationConfig {
   errorLabel?: () => string;
   // How many past turns to send back as context.
   historyLimit?: number;
+  // Called when the user cancels a turn — a store can stop its own follow-up
+  // work (e.g. the character store's auto-continuing situation batch).
+  onCancel?: (conversationId: string) => void;
 }
 
 async function uploadImageFile(file: File) {
@@ -113,6 +119,10 @@ async function uploadImageFile(file: File) {
 // finished answer (and its patch) is there when they come back.
 export function createPaimonConversationStore(config: PaimonConversationConfig) {
   const historyLimit = config.historyLimit ?? 10;
+
+  // One in-flight turn per conversation; module scope like the store itself, so
+  // a turn started before the panel unmounted can still be cancelled on return.
+  const abortControllers = new Map<string, AbortController>();
 
   return create<PaimonConversationState>((set, get) => {
     const conversation = (id: string) =>
@@ -219,7 +229,14 @@ export function createPaimonConversationStore(config: PaimonConversationConfig) 
           ],
         }));
 
+        // Replaces (and implicitly ends) a stale controller for this
+        // conversation — send() blocks concurrent turns, so there is at most
+        // one live turn per id.
+        const abortController = new AbortController();
+        abortControllers.set(id, abortController);
+
         const assistantId = crypto.randomUUID();
+        let streamedText = "";
         let placeholderAdded = false;
         const ensurePlaceholder = () => {
           if (placeholderAdded) return;
@@ -260,6 +277,7 @@ export function createPaimonConversationStore(config: PaimonConversationConfig) 
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),
+            signal: abortController.signal,
           });
 
           const contentType = res.headers.get("Content-Type") ?? "";
@@ -273,7 +291,6 @@ export function createPaimonConversationStore(config: PaimonConversationConfig) 
           const reader = res.body.getReader();
           const decoder = new TextDecoder();
           let buffer = "";
-          let streamedText = "";
           let done: PaimonDonePayload | null = null;
           let streamError = "";
 
@@ -325,6 +342,24 @@ export function createPaimonConversationStore(config: PaimonConversationConfig) 
           setAssistantContent(finalContent);
           return done;
         } catch (err) {
+          // The user cancelled: keep what was streamed, mark it as cut off,
+          // and don't surface an error. The would-be patch is discarded.
+          if (abortController.signal.aborted) {
+            if (streamedText) {
+              setAssistantContent(`${streamedText}\n\n_(여기까지 쓰고 취소됐어요.)_`);
+            } else {
+              if (placeholderAdded) {
+                patchConversation(id, (state) => ({
+                  messages: state.messages.filter(
+                    (message) =>
+                      !(message.id === assistantId && message.content === "")
+                  ),
+                }));
+              }
+              get().pushAssistantMessage(id, "답변 생성을 취소했어요.");
+            }
+            return null;
+          }
           // Drop an empty placeholder so a failed turn doesn't leave a blank bubble.
           if (placeholderAdded) {
             patchConversation(id, (state) => ({
@@ -342,6 +377,9 @@ export function createPaimonConversationStore(config: PaimonConversationConfig) 
           }));
           return null;
         } finally {
+          if (abortControllers.get(id) === abortController) {
+            abortControllers.delete(id);
+          }
           patchConversation(id, () => ({ loading: false, status: "" }));
           set((state) => ({
             activeTurns: state.activeTurns.filter((entry) => entry !== id),
@@ -352,6 +390,13 @@ export function createPaimonConversationStore(config: PaimonConversationConfig) 
       send: (id, content) => {
         if (conversation(id).loading) return;
         void get().runTurn(id, content);
+      },
+
+      cancelTurn: (id) => {
+        const controller = abortControllers.get(id);
+        if (!controller) return;
+        config.onCancel?.(id);
+        controller.abort();
       },
     };
   });

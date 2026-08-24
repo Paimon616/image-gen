@@ -121,9 +121,10 @@ export function CharacterDatasetBootstrap() {
           ? (data.checkpointAssets as LocalCheckpoint[])
           : [];
         setCheckpoints(assets);
-        // Default to a Krea 2 checkpoint if present (this feature's main use case).
+        // Default to a Krea 2 checkpoint if present (this feature's main use case),
+        // but never clobber a value restored from the localStorage snapshot.
         const krea = assets.find((a) => /krea[-_ ]?2/i.test(`${a.name} ${a.path}`));
-        setBaseModel(krea?.path ?? assets[0]?.path ?? "");
+        setBaseModel((prev) => prev || (krea?.path ?? assets[0]?.path ?? ""));
       })
       .catch(() => {});
     fetch("/api/settings")
@@ -145,13 +146,56 @@ export function CharacterDatasetBootstrap() {
     setDatasetImages(Array.isArray(data.images) ? data.images : []);
   }, []);
 
-  // Restore the last dataset name when returning to this page (state is otherwise
-  // lost on unmount — the images themselves live on disk).
+  // Restore the whole form when returning to this page (state is otherwise lost
+  // on unmount — the images themselves live on disk, the source image is a
+  // server URL, so a small localStorage snapshot brings the screen back as-is).
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
     const saved = localStorage.getItem("bootstrap:datasetName");
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (saved) setDatasetName(saved);
+    try {
+      const raw = localStorage.getItem("bootstrap:form");
+      if (!raw) return;
+      const f = JSON.parse(raw) as Record<string, unknown>;
+      if (typeof f.sourceImage === "string") setSourceImage(f.sourceImage);
+      if (typeof f.sourceModel === "string") setSourceModel(f.sourceModel);
+      if (typeof f.baseModel === "string" && f.baseModel) setBaseModel(f.baseModel);
+      if (typeof f.target === "string" && f.target) setTarget(f.target);
+      if (typeof f.triggerWords === "string") setTriggerWords(f.triggerWords);
+      if (typeof f.prompt === "string") setPrompt(f.prompt);
+      if (typeof f.negativePrompt === "string") setNegativePrompt(f.negativePrompt);
+      if (typeof f.count === "number") setCount(f.count);
+      if (typeof f.denoise === "number") setDenoise(f.denoise);
+    } catch {
+      // Corrupt snapshot — start clean.
+    }
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
+
+  // Keep the snapshot current (debounced — slider drags fire per pixel).
+  useEffect(() => {
+    const t = setTimeout(() => {
+      try {
+        localStorage.setItem(
+          "bootstrap:form",
+          JSON.stringify({
+            sourceImage,
+            sourceModel,
+            baseModel,
+            target,
+            triggerWords,
+            prompt,
+            negativePrompt,
+            count,
+            denoise,
+          })
+        );
+      } catch {
+        // Quota/private mode — persistence is a convenience only.
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [sourceImage, sourceModel, baseModel, target, triggerWords, prompt, negativePrompt, count, denoise]);
 
   // Persist the name and reload that dataset's existing images from disk whenever
   // the name changes (debounced), so leaving/returning — or re-typing a name —
@@ -254,6 +298,23 @@ export function CharacterDatasetBootstrap() {
     refreshDatasetList,
   ]);
 
+  const deleteDataset = useCallback(
+    async (name: string) => {
+      const ok = window.confirm(
+        ko
+          ? `"${name}" 데이터셋을 삭제할까요? 모든 이미지와 캡션이 함께 삭제됩니다.`
+          : `Delete dataset "${name}"? All of its images and captions will be removed.`
+      );
+      if (!ok) return;
+      await fetch(`/api/lora-training/dataset?name=${encodeURIComponent(name)}`, {
+        method: "DELETE",
+      });
+      if (name === datasetName.trim()) setDatasetImages([]);
+      void refreshDatasetList();
+    },
+    [ko, datasetName, refreshDatasetList]
+  );
+
   const deleteImage = useCallback(
     async (file: string) => {
       await fetch(
@@ -289,33 +350,45 @@ export function CharacterDatasetBootstrap() {
               {datasets.map((d) => {
                 const selected = d.name === datasetName.trim();
                 return (
-                  <button
+                  <div
                     key={d.name}
-                    type="button"
-                    onClick={() => setDatasetName(d.name)}
-                    className={`flex items-center gap-2 rounded-md border p-2 text-left transition-colors hover:bg-muted/60 focus:outline-none focus-visible:ring-3 focus-visible:ring-ring/30 ${
+                    className={`group relative rounded-md border transition-colors hover:bg-muted/60 ${
                       selected ? "border-primary bg-muted/40" : "border-border"
                     }`}
                   >
-                    {d.thumbnail ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={d.thumbnail}
-                        alt=""
-                        className="size-10 shrink-0 rounded object-cover bg-muted/40"
-                      />
-                    ) : (
-                      <div className="size-10 shrink-0 rounded bg-muted/40" />
-                    )}
-                    <div className="min-w-0">
-                      <p className="truncate text-xs font-medium">{d.name}</p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {d.count}
-                        {ko ? "장" : " images"} ·{" "}
-                        {new Date(d.updatedAt).toLocaleDateString(ko ? "ko-KR" : "en-US")}
-                      </p>
-                    </div>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => setDatasetName(d.name)}
+                      className="flex w-full items-center gap-2 rounded-md p-2 text-left focus:outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
+                    >
+                      {d.thumbnail ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={d.thumbnail}
+                          alt=""
+                          className="size-10 shrink-0 rounded object-cover bg-muted/40"
+                        />
+                      ) : (
+                        <div className="size-10 shrink-0 rounded bg-muted/40" />
+                      )}
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-medium">{d.name}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {d.count}
+                          {ko ? "장" : " images"} ·{" "}
+                          {new Date(d.updatedAt).toLocaleDateString(ko ? "ko-KR" : "en-US")}
+                        </p>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void deleteDataset(d.name)}
+                      aria-label={ko ? `${d.name} 데이터셋 삭제` : `Delete dataset ${d.name}`}
+                      className="absolute right-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[11px] text-white opacity-0 transition-opacity group-hover:opacity-100"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 );
               })}
             </div>

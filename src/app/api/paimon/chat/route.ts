@@ -117,6 +117,8 @@ const PAIMON_SHARED_RULES = [
   "- Derive the composed negative_prompt from mainImage.negative_prompt, adjusting only what the new situation requires; keep its wording and ordering otherwise.",
   "- mainImage's checkpoint / LoRA / sampler / scheduler / steps / CFG / clip skip / VAE settings are ALREADY applied to currentParams before the turn. Do not patch model, model_name, backend, loras, embeddings, sampler_name, scheduler, num_inference_steps, guidance_scale, clip_skip, vae_name, width, height or seed unless the user explicitly asks for a change in this message.",
   "- If mainImage is absent, compose the prompt from the character record as usual and adapt it to the currently selected checkpoint family.",
+  "- CHARACTER LORA: a characterLibrary entry may carry `loras` — that character's own trained LoRAs. They are ALREADY merged into currentParams.loras before the turn. They are locked: never remove, replace or re-scale them, and any loras array you emit in paramsPatch MUST include them verbatim (path and scale). This holds even when changing checkpoints or picking other LoRAs.",
+  "- CHARACTER LORA TRIGGER WORDS: when a character lora entry carries `triggerWords` (comma-separated activation tags), every one of those tags MUST appear verbatim in the composed prompt — the LoRA barely activates without them. Place them right before the identity block (or keep them where the baseline prompt already has them). Never reword, translate or drop them.",
   "- PAYLOAD TRIM: a characterLibrary entry may arrive with situationPromptsOmitted:true. Only that character's situation NAMES were sent (its identity, outfits and backgrounds are complete) to keep the request small. Such an entry is NOT empty: if the user wants one of those situations, compose from the situation name plus the character's identity/outfit/background, and say that picking it from the character picker will send its exact prompt.",
   "- Only use characters present in characterLibrary. Never invent a character that is not listed.",
   "- A characterLibrary entry may also carry natural-language fields (synopsis, appearanceDescription, and per-situation description / outfitDescription / backgroundDescription). Use them for meaning and staging; use the prompt fields for the model-facing wording.",
@@ -287,6 +289,10 @@ interface PaimonCharacter {
   summary: string;
   appearancePrompt: string;
   mainImage?: PaimonCharacterBaseImage;
+  // 캐릭터 LoRA — the character's own trained LoRAs; already merged into
+  // currentParams.loras before the turn, and must survive any loras patch.
+  // triggerWords (comma-separated activation tags) must appear in the prompt.
+  loras?: { path: string; scale: number; triggerWords?: string }[];
   // Video surfaces only (see above).
   synopsis?: string;
   appearanceDescription?: string;
@@ -524,8 +530,15 @@ export async function POST(req: NextRequest) {
     // client on a blank spinner for the entire (slow) analysis with no feedback.
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
-        const send = (event: string, data: unknown) =>
-          controller.enqueue(encoder.encode(sse(event, data)));
+        // The client can abort mid-answer (the panel's cancel button); after
+        // that every enqueue throws, so sends become best-effort.
+        const send = (event: string, data: unknown) => {
+          try {
+            controller.enqueue(encoder.encode(sse(event, data)));
+          } catch {
+            // Stream already cancelled by the client.
+          }
+        };
 
         let contentBuffer = "";
         let sentLength = 0;
@@ -566,6 +579,9 @@ export async function POST(req: NextRequest) {
               conversation: messages,
             }),
             temperature: 0.2,
+            // A client-side cancel aborts the request, which stops the
+            // upstream completion instead of letting it run (and bill) to the end.
+            signal: req.signal,
             // Stream the `reply` string out of the partial JSON as it arrives.
             onDelta: (delta) => {
               contentBuffer += delta;
@@ -613,12 +629,20 @@ export async function POST(req: NextRequest) {
 
           send("done", { reply, paramsPatch, attachmentNotice, shouldGenerate });
         } catch (error) {
-          const message = error instanceof Error ? error.message : "Paimon failed.";
-          send("error", {
-            error: paimonErrorMessage(message),
-          });
+          // A cancelled request needs no error event — nobody is listening.
+          if (!req.signal.aborted) {
+            const message =
+              error instanceof Error ? error.message : "Paimon failed.";
+            send("error", {
+              error: paimonErrorMessage(message),
+            });
+          }
         } finally {
-          controller.close();
+          try {
+            controller.close();
+          } catch {
+            // Already cancelled by the client.
+          }
         }
       },
     });

@@ -82,6 +82,7 @@ interface LoraJobStatus {
   progress: number;
   message: string;
   error: string;
+  runpodPodId?: string;
   logTail?: string;
 }
 
@@ -399,6 +400,7 @@ export function LoraTraining() {
     if (job.triggerWords) setTriggerWords(job.triggerWords);
     setCategory(job.category ?? "");
     if (job.baseModel) setBaseModel(job.baseModel);
+    if (job.runpodPodId) setTarget(job.runpodPodId);
     setProgress(job.progress);
     setStatusMessage(job.message);
     setOutputFile(job.outputPath);
@@ -480,10 +482,9 @@ export function LoraTraining() {
     setProgress(1);
     setOutputFile("");
     const datasetName = loraName.trim().replace(/[^A-Za-z0-9._가-힣-]+/g, "_") || "character";
-    const baseModelFile = baseModel.split(/[/\\]/).pop() || baseModel;
     setStatusMessage("RunPod: 데이터셋 업로드 준비 중...");
     setTrainingResult({
-      runId: `runpod:${target}`,
+      runId: "",
       imageCount: dataset.length,
       outputName: datasetName,
       outputPath: "",
@@ -503,71 +504,28 @@ export function LoraTraining() {
       const saveRes = await fetch("/api/lora-training/dataset/save", { method: "POST", body: form });
       if (!saveRes.ok) throw new Error((await saveRes.json()).error || "Dataset save failed.");
 
-      // 2) stream the RunPod training run
-      const res = await fetch("/api/lora-training/runpod/stream", {
+      // 2) queue the RunPod run as a server-side background job — the existing
+      // job polling keeps tracking it even after navigating away and back.
+      const res = await fetch("/api/lora-training/runpod/jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           runpodPodId: target,
           datasetName,
-          baseModelFile,
+          baseModel,
+          loraName: loraName.trim() || datasetName,
           triggerWords,
           category,
           outputName: datasetName,
         }),
       });
-      if (!res.ok || !res.body) throw new Error((await res.json().catch(() => ({}))).error || "RunPod training failed.");
+      if (!res.ok) {
+        throw new Error((await res.json().catch(() => ({}))).error || "RunPod training failed.");
+      }
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let done = false;
-      const handle = (raw: string) => {
-        if (!raw.startsWith("data:")) return;
-        const ev = JSON.parse(raw.slice(5).trim()) as {
-          type?: string;
-          message?: string;
-          step?: number;
-          total?: number;
-          loraFile?: string;
-        };
-        if (ev.message) {
-          setStatusMessage(ev.message);
-          appendResultLine(ev.message);
-        }
-        if (ev.type === "progress" && ev.step != null && ev.total) {
-          setProgress(Math.max(1, Math.min(99, Math.round((ev.step / ev.total) * 100))));
-        }
-        if (ev.type === "complete") {
-          done = true;
-          setProgress(100);
-          setOutputFile(ev.loraFile ?? "");
-          setState("completed");
-          setTrainingResult((c) => ({
-            ...c,
-            status: "completed",
-            outputPath: ev.message?.split(": ")[1] ?? c.outputPath,
-          }));
-        }
-        if (ev.type === "error") {
-          throw new Error(ev.message || "RunPod training error.");
-        }
-      };
-      for (;;) {
-        const { value, done: rdone } = await reader.read();
-        if (rdone) break;
-        buffer += decoder.decode(value, { stream: true });
-        const parts = buffer.split("\n\n");
-        buffer = parts.pop() ?? "";
-        for (const part of parts) {
-          const line = part.split("\n").find((l) => l.startsWith("data:"));
-          if (line) handle(line);
-        }
-      }
-      if (!done) {
-        setState("ready");
-        setStatusMessage("RunPod 학습 스트림이 완료 이벤트 없이 종료되었습니다.");
-      }
+      const data = (await res.json()) as LoraJobStatus;
+      applyJobStatus(data);
+      appendResultLine(`RunPod run queued: ${data.runId}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : "RunPod training failed.";
       setState("ready");

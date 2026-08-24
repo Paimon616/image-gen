@@ -10,6 +10,8 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import {
+  Check,
+  Clapperboard,
   Clipboard,
   Cloud,
   CloudAlert,
@@ -18,21 +20,34 @@ import {
   Copy,
   GripVertical,
   Images as ImagesIcon,
+  LayoutGrid,
   Loader2,
   MoreHorizontal,
   Plus,
+  Rows3,
+  SquareCheckBig,
   Trash2,
   UserRound,
   X,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CharacterPaimonChat } from "@/components/character-paimon-chat";
+import {
+  AssetChoiceButton,
+  AssetPickerDialog,
+  type LocalModelAsset,
+} from "@/components/model-selector";
 import { RunpodShareDownloadDialog } from "@/components/runpod-share-download";
 import { ImageLibraryPicker } from "@/components/image-library-picker";
+import {
+  VideoLibraryPicker,
+  type LibraryVideo,
+} from "@/components/video-library-picker";
 import {
   getRunningCharacterId,
   registerCharacterPatchApplier,
@@ -45,9 +60,19 @@ import {
   type CharacterOutfit,
   type CharacterMainImage,
   type CharacterSituation,
+  type CharacterSituationVideo,
+  type CharacterLora,
   type GeneratedImage,
   type GenerationParams,
 } from "@/lib/types";
+
+// Last-viewed character and tab, restored when the studio remounts after
+// navigating to another screen (localStorage so it also survives a reload).
+const SELECTED_CHARACTER_KEY = "characterStudio:selectedId";
+const ACTIVE_TAB_KEY = "characterStudio:activeTab";
+// 상황 탭 보기 방식 (목록/갤러리) — 탭처럼 localStorage로 유지.
+const SITUATION_VIEW_KEY = "characterStudio:situationView";
+const TAB_VALUES = new Set(["basic", "identity", "background", "situation"]);
 
 // Native <select> styling to match the app's inputs (mirrors app-sidebar).
 const SELECT_CLASS =
@@ -75,6 +100,7 @@ function FieldPair({
   onDescriptionChange,
   onPromptChange,
   minRows = 3,
+  stacked = false,
 }: {
   descriptionLabel?: string;
   promptLabel?: string;
@@ -85,9 +111,11 @@ function FieldPair({
   onDescriptionChange: (value: string) => void;
   onPromptChange: (value: string) => void;
   minRows?: number;
+  // 한 열 세로 배치 (상황 카드처럼 옆에 이미지가 붙는 좁은 자리용)
+  stacked?: boolean;
 }) {
   return (
-    <div className="grid gap-3 md:grid-cols-2">
+    <div className={stacked ? "grid gap-3" : "grid gap-3 md:grid-cols-2"}>
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground">{descriptionLabel}</Label>
         <Textarea
@@ -262,6 +290,172 @@ function MainImageBaseline({
           </p>
         </details>
       )}
+    </div>
+  );
+}
+
+// 캐릭터 LoRA — the character's own trained LoRAs (e.g. from the LoRA training
+// screen). Whenever this character is rendered they are merged on top of the
+// main image's baseline settings, so a LoRA trained AFTER the main image was
+// made still applies. LoRAs are picked through the same AssetPickerDialog the
+// image generator uses (thumbnails + search); a path not in the local catalog
+// (e.g. RunPod-only) still shows as a fallback row.
+const MAX_CHARACTER_LORAS = 8;
+
+// Which row the LoRA picker dialog is choosing for: an existing row's index,
+// "new" for the 추가 button, or null while closed.
+type CharacterLoraPickerTarget = number | "new" | null;
+
+function CharacterLoraSection({
+  loras,
+  onChange,
+}: {
+  loras: CharacterLora[];
+  onChange: (loras: CharacterLora[]) => void;
+}) {
+  const [available, setAvailable] = useState<LocalModelAsset[]>([]);
+  const [pickerTarget, setPickerTarget] =
+    useState<CharacterLoraPickerTarget>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/models", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        const assets = Array.isArray(data.loraAssets) ? data.loraAssets : [];
+        setAvailable(
+          assets.filter(
+            (item: unknown): item is LocalModelAsset =>
+              Boolean(item) &&
+              typeof item === "object" &&
+              typeof (item as LocalModelAsset).path === "string" &&
+              (item as LocalModelAsset).path.length > 0
+          )
+        );
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const findAsset = (path: string) =>
+    available.find((asset) => asset.path === path);
+
+  const updateRow = (index: number, patch: Partial<CharacterLora>) => {
+    onChange(
+      loras.map((lora, i) => (i === index ? { ...lora, ...patch } : lora))
+    );
+  };
+
+  const handlePickerSelect = (asset: LocalModelAsset) => {
+    if (pickerTarget === "new") {
+      // The store de-dupes by path anyway; skipping here keeps the row from
+      // silently vanishing on the next reload.
+      if (!loras.some((lora) => lora.path === asset.path)) {
+        onChange([...loras, { path: asset.path, scale: 1 }]);
+      }
+    } else if (typeof pickerTarget === "number") {
+      updateRow(pickerTarget, { path: asset.path });
+    }
+    setPickerTarget(null);
+  };
+
+  return (
+    <div className="space-y-2">
+      {loras.length === 0 && (
+        <p className="text-xs text-muted-foreground">
+          아직 설정된 LoRA가 없어요. 이 캐릭터로 학습한 LoRA를 추가하면 이
+          캐릭터의 모든 이미지 생성에 항상 함께 적용돼요.
+        </p>
+      )}
+
+      {loras.map((lora, index) => (
+        <div
+          key={index}
+          className="space-y-2 rounded-md border border-border p-2.5"
+        >
+          <div className="flex items-center gap-2">
+            <AssetChoiceButton
+              asset={findAsset(lora.path)}
+              placeholder="LoRA 선택"
+              fallbackLabel={lora.path || undefined}
+              fallbackDescription="로컬 카탈로그에 없는 LoRA"
+              onClick={() => setPickerTarget(index)}
+            />
+            <div className="flex shrink-0 items-center gap-1.5">
+              <Label className="text-[11px] text-muted-foreground">
+                스케일
+              </Label>
+              <Input
+                type="number"
+                step={0.05}
+                min={-5}
+                max={5}
+                value={lora.scale}
+                onChange={(event) => {
+                  const value = Number(event.target.value);
+                  updateRow(index, {
+                    scale: Number.isFinite(value) ? value : 1,
+                  });
+                }}
+                className="h-8 w-20 text-[13px]"
+              />
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-8 shrink-0"
+              onClick={() => onChange(loras.filter((_, i) => i !== index))}
+              aria-label="LoRA 제거"
+            >
+              <X />
+            </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <Label className="shrink-0 text-[11px] text-muted-foreground">
+              트리거 워드
+            </Label>
+            <Input
+              value={lora.triggerWords ?? ""}
+              onChange={(event) =>
+                updateRow(index, { triggerWords: event.target.value })
+              }
+              placeholder="쉼표로 구분 (예: ayori) — 프롬프트에 자동 포함돼요"
+              className="h-8 flex-1 font-mono text-[13px]"
+            />
+          </div>
+        </div>
+      ))}
+
+      {loras.length < MAX_CHARACTER_LORAS && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setPickerTarget("new")}
+        >
+          <Plus /> LoRA 추가
+        </Button>
+      )}
+
+      <AssetPickerDialog
+        title="캐릭터 LoRA 선택"
+        description="이 캐릭터 전용으로 학습한 LoRA를 선택하세요."
+        assets={available}
+        selectedPath={
+          typeof pickerTarget === "number"
+            ? loras[pickerTarget]?.path ?? ""
+            : ""
+        }
+        open={pickerTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setPickerTarget(null);
+        }}
+        onSelect={handlePickerSelect}
+      />
     </div>
   );
 }
@@ -547,8 +741,16 @@ export function CharacterStudio() {
           list.some((character) => character.id === runningChatCharacterId)
             ? runningChatCharacterId
             : null;
+        // Character viewed on the last visit, if it still exists.
+        const savedId = window.localStorage.getItem(SELECTED_CHARACTER_KEY);
+        const saved =
+          savedId && list.some((character) => character.id === savedId)
+            ? savedId
+            : null;
         setCharacters(list);
-        setSelectedId((current) => current ?? running ?? list[0]?.id ?? null);
+        setSelectedId(
+          (current) => current ?? running ?? saved ?? list[0]?.id ?? null
+        );
       } catch {
         // Leave the list empty on failure; the empty state guides the user.
       } finally {
@@ -568,12 +770,27 @@ export function CharacterStudio() {
     };
   }, []);
 
+  // Restore the last-viewed tab once on mount. Done in an effect (not the state
+  // initializer) so the client's first render matches the server's. The tab is
+  // saved in the change handler — never in an effect keyed on activeTab, which
+  // would race this restore on remount and clobber the saved value with "basic".
+  useEffect(() => {
+    const saved = window.localStorage.getItem(ACTIVE_TAB_KEY);
+    if (saved && TAB_VALUES.has(saved)) setActiveTab(saved);
+  }, []);
+
+  // Remember the current character so a return to this screen restores it.
+  useEffect(() => {
+    if (selectedId) window.localStorage.setItem(SELECTED_CHARACTER_KEY, selectedId);
+  }, [selectedId]);
+
   const selected = useMemo(
     () => characters.find((character) => character.id === selectedId) ?? null,
     [characters, selectedId]
   );
 
   const setSelectedImage = useStore((state) => state.setSelectedImage);
+  const removeImage = useStore((state) => state.removeImage);
   // Watch the shared detail viewer's selection so we can refresh thumbnails when
   // it closes — an image deleted inside the viewer must drop out of its situation.
   const viewerImageId = useStore((state) => state.selectedImage?.id ?? null);
@@ -588,6 +805,56 @@ export function CharacterStudio() {
   const [attachingSituationId, setAttachingSituationId] = useState<string | null>(
     null
   );
+  // Generated video clips for the selected character, grouped by situation id —
+  // the video counterpart of situationImages (both video surfaces combined).
+  const [situationVideos, setSituationVideos] = useState<
+    Record<string, CharacterSituationVideo[]>
+  >({});
+  // Situation whose video picker is open / waiting on a video link request.
+  const [situationVideoPickerId, setSituationVideoPickerId] = useState<
+    string | null
+  >(null);
+  const [attachingVideoSituationId, setAttachingVideoSituationId] = useState<
+    string | null
+  >(null);
+  // 상황 탭 보기 방식: 목록(기존 카드) / 갤러리(이미지 + 이름 오버레이).
+  const [situationView, setSituationView] = useState<"list" | "gallery">("list");
+  // 선택 모드: 여러 상황을 체크해서 일괄 삭제(이미지만/상황만/둘 다)한다.
+  const [situationSelectMode, setSituationSelectMode] = useState(false);
+  const [checkedSituationIds, setCheckedSituationIds] = useState<Set<string>>(
+    () => new Set()
+  );
+
+  // Restore the saved view once on mount (effect, not initializer — same
+  // hydration-safety reasoning as the ACTIVE_TAB_KEY restore above).
+  useEffect(() => {
+    const saved = window.localStorage.getItem(SITUATION_VIEW_KEY);
+    if (saved === "list" || saved === "gallery") setSituationView(saved);
+  }, []);
+
+  const changeSituationView = useCallback((view: "list" | "gallery") => {
+    setSituationView(view);
+    window.localStorage.setItem(SITUATION_VIEW_KEY, view);
+  }, []);
+
+  // Selections are per-character; switching characters exits select mode.
+  // Render-time adjustment (not an effect) per the "adjusting state when props
+  // change" pattern, so the old selection never paints against the new character.
+  const [selectModeCharacterId, setSelectModeCharacterId] = useState(selectedId);
+  if (selectModeCharacterId !== selectedId) {
+    setSelectModeCharacterId(selectedId);
+    setSituationSelectMode(false);
+    setCheckedSituationIds(new Set());
+  }
+
+  const toggleSituationChecked = useCallback((situationId: string) => {
+    setCheckedSituationIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(situationId)) next.delete(situationId);
+      else next.add(situationId);
+      return next;
+    });
+  }, []);
 
   const reloadSituationImages = useCallback(async () => {
     // No character selected: nothing renders the situation strips, so leaving the
@@ -633,6 +900,32 @@ export function CharacterStudio() {
       await reloadSituationImages();
     })();
   }, [reloadSituationImages]);
+
+  const reloadSituationVideos = useCallback(async () => {
+    if (!selectedId) return;
+    try {
+      const res = await fetch(`/api/characters/${selectedId}/videos`, {
+        cache: "no-store",
+      });
+      const data = (await res.json()) as {
+        videos?: CharacterSituationVideo[];
+      };
+      const grouped: Record<string, CharacterSituationVideo[]> = {};
+      for (const video of data.videos ?? []) {
+        if (!video.situationId) continue;
+        (grouped[video.situationId] ??= []).push(video);
+      }
+      setSituationVideos(grouped);
+    } catch {
+      setSituationVideos({});
+    }
+  }, [selectedId]);
+
+  useEffect(() => {
+    void (async () => {
+      await reloadSituationVideos();
+    })();
+  }, [reloadSituationVideos]);
 
   // When the detail viewer closes (id goes from set → null), a delete may have
   // happened inside it — refresh so the removed image leaves its situation strip.
@@ -693,6 +986,83 @@ export function CharacterStudio() {
       }
     },
     [reloadSituationImages, selectedId]
+  );
+
+  // Remove-from-situation: clears the character/situation link on the clip's
+  // metadata so it leaves this situation. The clip itself stays in its video
+  // gallery.
+  const removeSituationVideo = useCallback(
+    async (situationId: string, video: CharacterSituationVideo) => {
+      if (!selectedId) return;
+      setSituationVideos((prev) => {
+        const next = { ...prev };
+        const remaining = (next[situationId] ?? []).filter(
+          (item) => !(item.media === video.media && item.id === video.id)
+        );
+        if (remaining.length > 0) next[situationId] = remaining;
+        else delete next[situationId];
+        return next;
+      });
+      await fetch(
+        `/api/characters/${selectedId}/videos?media=${video.media}&filename=${encodeURIComponent(
+          video.filename
+        )}`,
+        { method: "DELETE" }
+      ).catch(() => {});
+    },
+    [selectedId]
+  );
+
+  // Full delete: removes the clip file from its gallery (the sidecar link goes
+  // with it), then drops it from this strip.
+  const deleteSituationVideo = useCallback(
+    async (situationId: string, video: CharacterSituationVideo) => {
+      if (!selectedId) return;
+      const endpoint =
+        video.media === "seedance"
+          ? `/api/seedance/videos/${video.filename}`
+          : `/api/videos/${video.filename}`;
+      await fetch(endpoint, { method: "DELETE" }).catch(() => {});
+      setSituationVideos((prev) => {
+        const next = { ...prev };
+        const remaining = (next[situationId] ?? []).filter(
+          (item) => !(item.media === video.media && item.id === video.id)
+        );
+        if (remaining.length > 0) next[situationId] = remaining;
+        else delete next[situationId];
+        return next;
+      });
+    },
+    [selectedId]
+  );
+
+  // Attach existing gallery clips to a situation: tags each clip's metadata with
+  // this character/situation so it shows up in the situation strip just like a
+  // Paimon-generated one. A clip already linked elsewhere moves to this situation.
+  const attachSituationVideos = useCallback(
+    async (situationId: string, videos: LibraryVideo[]) => {
+      if (!selectedId || videos.length === 0) return;
+      setAttachingVideoSituationId(situationId);
+      try {
+        await fetch(`/api/characters/${selectedId}/videos`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            situationId,
+            videos: videos.map((video) => ({
+              media: video.media,
+              filename: video.filename,
+            })),
+          }),
+        });
+      } catch {
+        // Silent: the reload below shows whatever actually got linked.
+      } finally {
+        setAttachingVideoSituationId(null);
+        await reloadSituationVideos();
+      }
+    },
+    [reloadSituationVideos, selectedId]
   );
 
   const scheduleSave = useCallback((id: string) => {
@@ -1138,6 +1508,65 @@ export function CharacterStudio() {
     [patchSelected, selected]
   );
 
+  // Delete an image file for good (unlike removeSituationImage, which only
+  // unlinks): removes it from disk, the shared gallery store, and this strip.
+  const deleteSituationImage = useCallback(
+    async (situationId: string, image: GeneratedImage) => {
+      if (
+        !window.confirm(
+          "이미지를 완전히 삭제할까요? 갤러리에서도 사라지고 되돌릴 수 없어요."
+        )
+      )
+        return;
+      setSituationImages((prev) => {
+        const next = { ...prev };
+        const remaining = (next[situationId] ?? []).filter(
+          (item) => item.id !== image.id
+        );
+        if (remaining.length > 0) next[situationId] = remaining;
+        else delete next[situationId];
+        return next;
+      });
+      await fetch(`/api/images/${image.filename}`, { method: "DELETE" }).catch(
+        () => {}
+      );
+      removeImage(image.id);
+    },
+    [removeImage]
+  );
+
+  // 통합 삭제: removes the situation AND deletes its generated images from disk
+  // (the plain delete button above keeps the images in the gallery).
+  const removeSituationWithImages = useCallback(
+    async (situationId: string) => {
+      if (!selected) return;
+      const images = situationImages[situationId] ?? [];
+      if (
+        !window.confirm(
+          images.length > 0
+            ? `상황과 포함된 이미지 ${images.length}개를 함께 삭제할까요? 이미지는 갤러리에서도 사라지고 되돌릴 수 없어요.`
+            : "이 상황을 삭제할까요? (포함된 이미지 없음)"
+        )
+      )
+        return;
+      removeSituation(situationId);
+      setSituationImages((prev) => {
+        const next = { ...prev };
+        delete next[situationId];
+        return next;
+      });
+      await Promise.all(
+        images.map(async (image) => {
+          await fetch(`/api/images/${image.filename}`, {
+            method: "DELETE",
+          }).catch(() => {});
+          removeImage(image.id);
+        })
+      );
+    },
+    [removeImage, removeSituation, selected, situationImages]
+  );
+
   // Wipe every situation for the selected character at once — used by the "모두
   // 제거" button when a batch-generated set needs to be cleared and regenerated.
   const clearSituations = useCallback(() => {
@@ -1181,6 +1610,102 @@ export function CharacterStudio() {
     () => Object.values(situationImages).reduce((n, arr) => n + arr.length, 0),
     [situationImages]
   );
+
+  // ---- Situation bulk delete (선택 모드) ----
+
+  const checkedSituationImageCount = useMemo(
+    () =>
+      [...checkedSituationIds].reduce(
+        (n, id) => n + (situationImages[id]?.length ?? 0),
+        0
+      ),
+    [checkedSituationIds, situationImages]
+  );
+
+  // 이미지만 삭제: 선택한 상황들의 이미지를 디스크·갤러리에서 지우고 상황은
+  // 남긴다 (deleteSituationImage의 일괄판).
+  const bulkDeleteSituationImages = useCallback(async () => {
+    if (checkedSituationIds.size === 0) return;
+    const ids = [...checkedSituationIds];
+    const images = ids.flatMap((id) => situationImages[id] ?? []);
+    if (images.length === 0) {
+      window.alert("선택한 상황에 삭제할 이미지가 없어요.");
+      return;
+    }
+    if (
+      !window.confirm(
+        `선택한 상황 ${ids.length}개의 이미지 ${images.length}개를 삭제할까요? 상황은 유지되지만 이미지는 갤러리에서도 사라지고 되돌릴 수 없어요.`
+      )
+    )
+      return;
+    setSituationImages((prev) => {
+      const next = { ...prev };
+      for (const id of ids) delete next[id];
+      return next;
+    });
+    setCheckedSituationIds(new Set());
+    await Promise.all(
+      images.map(async (image) => {
+        await fetch(`/api/images/${image.filename}`, {
+          method: "DELETE",
+        }).catch(() => {});
+        removeImage(image.id);
+      })
+    );
+  }, [checkedSituationIds, removeImage, situationImages]);
+
+  // 상황만 삭제: 상황을 지우고 이미지는 갤러리에 남긴다 (removeSituation의
+  // 일괄판).
+  const bulkDeleteSituationsOnly = useCallback(() => {
+    if (!selected || checkedSituationIds.size === 0) return;
+    if (
+      !window.confirm(
+        `선택한 상황 ${checkedSituationIds.size}개를 삭제할까요? 포함된 이미지는 갤러리에 남아요.`
+      )
+    )
+      return;
+    patchSelected({
+      situations: selected.situations.filter(
+        (situation) => !checkedSituationIds.has(situation.id)
+      ),
+    });
+    setCheckedSituationIds(new Set());
+  }, [checkedSituationIds, patchSelected, selected]);
+
+  // 둘 다 삭제: 상황과 포함된 이미지를 함께 지운다
+  // (removeSituationWithImages의 일괄판).
+  const bulkDeleteSituationsWithImages = useCallback(async () => {
+    if (!selected || checkedSituationIds.size === 0) return;
+    const ids = [...checkedSituationIds];
+    const images = ids.flatMap((id) => situationImages[id] ?? []);
+    if (
+      !window.confirm(
+        images.length > 0
+          ? `선택한 상황 ${ids.length}개와 포함된 이미지 ${images.length}개를 함께 삭제할까요? 이미지는 갤러리에서도 사라지고 되돌릴 수 없어요.`
+          : `선택한 상황 ${ids.length}개를 삭제할까요? (포함된 이미지 없음)`
+      )
+    )
+      return;
+    patchSelected({
+      situations: selected.situations.filter(
+        (situation) => !checkedSituationIds.has(situation.id)
+      ),
+    });
+    setSituationImages((prev) => {
+      const next = { ...prev };
+      for (const id of ids) delete next[id];
+      return next;
+    });
+    setCheckedSituationIds(new Set());
+    await Promise.all(
+      images.map(async (image) => {
+        await fetch(`/api/images/${image.filename}`, {
+          method: "DELETE",
+        }).catch(() => {});
+        removeImage(image.id);
+      })
+    );
+  }, [checkedSituationIds, patchSelected, removeImage, selected, situationImages]);
 
   const combinedPrompt = useMemo(
     () => (selected ? composeCharacterPrompt(selected) : ""),
@@ -1288,7 +1813,10 @@ export function CharacterStudio() {
 
             <Tabs
               value={activeTab}
-              onValueChange={(value) => setActiveTab(value as string)}
+              onValueChange={(value) => {
+                setActiveTab(value);
+                window.localStorage.setItem(ACTIVE_TAB_KEY, value);
+              }}
               className="flex min-h-0 flex-1 flex-col gap-0"
             >
               <div className="flex items-center justify-between gap-3 border-b border-border px-6 py-3">
@@ -1327,15 +1855,54 @@ export function CharacterStudio() {
                   />
                 )}
                 {activeTab === "situation" && (
-                  <TabActions
-                    addLabel="상황 추가"
-                    onAdd={addSituation}
-                    count={selected.situations.length}
-                    onClear={clearSituations}
-                    secondaryClearLabel="이미지만 모두 삭제"
-                    secondaryClearCount={situationImageCount}
-                    onSecondaryClear={clearAllSituationImages}
-                  />
+                  <div className="flex shrink-0 items-center gap-2">
+                    <div className="flex items-center gap-0.5 rounded-md border border-border p-0.5">
+                      <Button
+                        type="button"
+                        variant={situationView === "list" ? "secondary" : "ghost"}
+                        size="icon-sm"
+                        onClick={() => changeSituationView("list")}
+                        aria-label="목록으로 보기"
+                        title="목록으로 보기"
+                      >
+                        <Rows3 />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={
+                          situationView === "gallery" ? "secondary" : "ghost"
+                        }
+                        size="icon-sm"
+                        onClick={() => changeSituationView("gallery")}
+                        aria-label="갤러리로 보기"
+                        title="갤러리로 보기 (이미지 + 상황 이름)"
+                      >
+                        <LayoutGrid />
+                      </Button>
+                    </div>
+                    <Button
+                      type="button"
+                      variant={situationSelectMode ? "secondary" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        setSituationSelectMode((prev) => !prev);
+                        setCheckedSituationIds(new Set());
+                      }}
+                      title="여러 상황을 선택해 일괄 삭제해요."
+                    >
+                      <SquareCheckBig />
+                      {situationSelectMode ? "선택 종료" : "선택"}
+                    </Button>
+                    <TabActions
+                      addLabel="상황 추가"
+                      onAdd={addSituation}
+                      count={selected.situations.length}
+                      onClear={clearSituations}
+                      secondaryClearLabel="이미지만 모두 삭제"
+                      secondaryClearCount={situationImageCount}
+                      onSecondaryClear={clearAllSituationImages}
+                    />
+                  </div>
                 )}
               </div>
 
@@ -1389,6 +1956,16 @@ export function CharacterStudio() {
                         <MainImageBaseline mainImage={selected.mainImage} />
                       </div>
                     </div>
+                  </SectionCard>
+
+                  <SectionCard
+                    title="캐릭터 LoRA"
+                    description="이 캐릭터 전용으로 학습한 LoRA예요. 이 캐릭터의 이미지를 생성할 때 메인 이미지의 기준 설정 위에 항상 함께 적용되고, 트리거 워드도 프롬프트에 자동으로 포함돼요 — 메인 이미지가 LoRA 학습 전에 만들어졌어도 적용돼요. 같은 LoRA가 기준 설정에 이미 있으면 여기의 스케일이 우선해요."
+                  >
+                    <CharacterLoraSection
+                      loras={selected.loras ?? []}
+                      onChange={(loras) => patchSelected({ loras })}
+                    />
                   </SectionCard>
 
                   <SectionCard title="이름 · 간단 정보">
@@ -1577,6 +2154,70 @@ export function CharacterStudio() {
 
                 {/* 상황 */}
                 <TabsContent value="situation" className="space-y-4">
+                  {situationSelectMode && (
+                    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setCheckedSituationIds(
+                            checkedSituationIds.size ===
+                              selected.situations.length
+                              ? new Set()
+                              : new Set(
+                                  selected.situations.map(
+                                    (situation) => situation.id
+                                  )
+                                )
+                          )
+                        }
+                        disabled={selected.situations.length === 0}
+                      >
+                        {checkedSituationIds.size > 0 &&
+                        checkedSituationIds.size === selected.situations.length
+                          ? "전체 해제"
+                          : "전체 선택"}
+                      </Button>
+                      <span className="text-xs text-muted-foreground">
+                        상황 {checkedSituationIds.size}개 · 이미지{" "}
+                        {checkedSituationImageCount}개 선택됨
+                      </span>
+                      <div className="ml-auto flex flex-wrap items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={checkedSituationIds.size === 0}
+                          onClick={() => void bulkDeleteSituationImages()}
+                          title="선택한 상황의 이미지를 삭제해요. 상황은 유지되고, 이미지는 갤러리에서도 사라져요."
+                        >
+                          <Trash2 /> 이미지만 삭제
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={checkedSituationIds.size === 0}
+                          onClick={bulkDeleteSituationsOnly}
+                          title="선택한 상황만 삭제해요. 이미지는 갤러리에 남아요."
+                        >
+                          <Trash2 /> 상황만 삭제
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          disabled={checkedSituationIds.size === 0}
+                          onClick={() => void bulkDeleteSituationsWithImages()}
+                          title="선택한 상황과 포함된 이미지를 함께 삭제해요. 이미지는 갤러리에서도 사라져요."
+                        >
+                          <Trash2 /> 둘 다 삭제
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                   <SectionCard
                     title="상황"
                     description="캐릭터가 처한 장면/행동을 등록하세요. 예: 바닷물에 떠서 평화롭게 수영한다."
@@ -1587,12 +2228,104 @@ export function CharacterStudio() {
                           등록된 상황이 없어요.
                         </p>
                       )}
-                      {selected.situations.map((situation) => (
+                      {situationView === "gallery" ? (
+                        /* 갤러리 보기 — 이미지만 크게, 이름은 오버레이. 선택
+                           모드에서는 카드 클릭이 곧 선택 토글. */
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                          {selected.situations.map((situation) => {
+                            const images = situationImages[situation.id] ?? [];
+                            const cover = images[0];
+                            const checked = checkedSituationIds.has(
+                              situation.id
+                            );
+                            return (
+                              <button
+                                key={situation.id}
+                                type="button"
+                                onClick={() => {
+                                  if (situationSelectMode)
+                                    toggleSituationChecked(situation.id);
+                                  else if (cover) setSelectedImage(cover);
+                                }}
+                                className={cn(
+                                  "group relative aspect-[3/4] overflow-hidden rounded-md border border-border bg-muted text-left",
+                                  situationSelectMode
+                                    ? checked
+                                      ? "border-primary ring-2 ring-primary/50"
+                                      : "hover:border-primary/50"
+                                    : cover
+                                      ? "transition-opacity hover:opacity-90"
+                                      : "cursor-default"
+                                )}
+                                title={
+                                  situationSelectMode
+                                    ? checked
+                                      ? "선택 해제"
+                                      : "선택"
+                                    : cover
+                                      ? "이미지 상세 보기"
+                                      : "아직 이미지가 없어요"
+                                }
+                              >
+                                {cover ? (
+                                  <img
+                                    src={cover.thumbnailUrl || cover.url}
+                                    alt={situation.name || "이름 없는 상황"}
+                                    className="absolute inset-0 size-full object-cover"
+                                  />
+                                ) : (
+                                  <span className="absolute inset-0 flex items-center justify-center">
+                                    <ImagesIcon className="size-8 text-muted-foreground/40" />
+                                  </span>
+                                )}
+                                <span className="absolute inset-x-0 bottom-0 line-clamp-2 bg-gradient-to-t from-black/75 to-transparent px-2 pb-1.5 pt-8 text-xs font-medium text-white">
+                                  {situation.name || "이름 없는 상황"}
+                                </span>
+                                {images.length > 1 && (
+                                  <span className="absolute right-1.5 top-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                                    {images.length}
+                                  </span>
+                                )}
+                                {situationSelectMode && (
+                                  <span
+                                    className={cn(
+                                      "absolute left-1.5 top-1.5 flex size-5 items-center justify-center rounded-full border shadow",
+                                      checked
+                                        ? "border-primary bg-primary text-primary-foreground"
+                                        : "border-border bg-background/90 text-transparent"
+                                    )}
+                                  >
+                                    <Check className="size-3.5" />
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        selected.situations.map((situation) => (
                         <div
                           key={situation.id}
-                          className="space-y-3 rounded-md border border-border bg-background p-3"
+                          className={cn(
+                            "space-y-3 rounded-md border border-border bg-background p-3",
+                            situationSelectMode &&
+                              checkedSituationIds.has(situation.id) &&
+                              "border-primary ring-1 ring-primary/40"
+                          )}
                         >
+                          {/* 제목 줄 — 카드 맨 위 전체 폭 */}
                           <div className="flex items-center gap-2">
+                            {situationSelectMode && (
+                              <input
+                                type="checkbox"
+                                checked={checkedSituationIds.has(situation.id)}
+                                onChange={() =>
+                                  toggleSituationChecked(situation.id)
+                                }
+                                className="size-4 shrink-0 accent-primary"
+                                aria-label="상황 선택"
+                              />
+                            )}
                             <Input
                               value={situation.name}
                               onChange={(event) =>
@@ -1609,137 +2342,254 @@ export function CharacterStudio() {
                               size="icon-sm"
                               onClick={() => removeSituation(situation.id)}
                               aria-label="상황 삭제"
+                              title="상황만 삭제해요. 이미지는 갤러리에 남아요."
                             >
                               <Trash2 />
                             </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              onClick={() =>
+                                void removeSituationWithImages(situation.id)
+                              }
+                              title="상황과 포함된 이미지를 함께 삭제해요. 이미지는 갤러리에서도 사라져요."
+                            >
+                              <Trash2 />
+                              통합 삭제
+                            </Button>
                           </div>
-                          <div className="grid gap-3 md:grid-cols-2">
-                            <div className="space-y-1.5">
-                              <Label className="text-xs text-muted-foreground">
-                                의상
-                              </Label>
-                              <select
-                                className={SELECT_CLASS}
-                                value={situation.outfitId ?? ""}
-                                onChange={(event) =>
-                                  updateSituation(situation.id, {
-                                    outfitId: event.target.value || null,
-                                  })
-                                }
-                              >
-                                <option value="">자동 (첫 의상)</option>
-                                {selected.outfits.map((outfit) => (
-                                  <option key={outfit.id} value={outfit.id}>
-                                    {outfit.name || "이름 없는 의상"}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            <div className="space-y-1.5">
-                              <Label className="text-xs text-muted-foreground">
-                                배경
-                              </Label>
-                              <select
-                                className={SELECT_CLASS}
-                                value={situation.backgroundId ?? ""}
-                                onChange={(event) =>
-                                  updateSituation(situation.id, {
-                                    backgroundId: event.target.value || null,
-                                  })
-                                }
-                              >
-                                <option value="">자동 (첫 배경)</option>
-                                {selected.backgrounds.map((background) => (
-                                  <option
-                                    key={background.id}
-                                    value={background.id}
-                                  >
-                                    {background.name || "이름 없는 배경"}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          </div>
-                          <FieldPair
-                            description={situation.description}
-                            prompt={situation.prompt}
-                            descriptionPlaceholder="예: 바닷물에 등을 대고 떠서 평화롭게 수영한다…"
-                            promptPlaceholder="floating on back in the sea, peaceful, swimming…"
-                            onDescriptionChange={(value) =>
-                              updateSituation(situation.id, {
-                                description: value,
-                              })
-                            }
-                            onPromptChange={(value) =>
-                              updateSituation(situation.id, { prompt: value })
-                            }
-                          />
-                          <div className="space-y-1.5">
-                            <div className="flex items-center justify-between gap-2">
-                              <Label className="text-xs text-muted-foreground">
-                                생성된 이미지
-                                {(situationImages[situation.id]?.length ?? 0) > 0
-                                  ? ` (${situationImages[situation.id].length})`
-                                  : ""}
-                              </Label>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setSituationPickerId(situation.id)}
-                                disabled={attachingSituationId === situation.id}
-                                title="갤러리의 이미지를 이 상황에 등록해요."
-                              >
-                                {attachingSituationId === situation.id ? (
-                                  <Loader2 className="animate-spin" />
-                                ) : (
-                                  <ImagesIcon />
-                                )}
-                                갤러리에서 가져오기
-                              </Button>
-                            </div>
-                            {(situationImages[situation.id]?.length ?? 0) === 0 ? (
-                              <p className="text-xs text-muted-foreground">
-                                아직 이미지가 없어요. 생성하거나 갤러리에서 가져올
-                                수 있어요.
-                              </p>
-                            ) : (
-                              <div className="flex flex-wrap gap-2">
-                                {situationImages[situation.id].map((image) => (
-                                  <div
-                                    key={image.id}
-                                    className="group relative size-32"
-                                  >
-                                    <button
-                                      type="button"
-                                      className="size-32 overflow-hidden rounded-md border border-border bg-muted transition-opacity hover:opacity-80"
-                                      onClick={() => setSelectedImage(image)}
-                                      title="이미지 상세 보기"
-                                    >
-                                      <img
-                                        src={image.thumbnailUrl || image.url}
-                                        alt={`${situation.name} 결과`}
-                                        className="h-full w-full object-cover"
-                                      />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="absolute -right-1.5 -top-1.5 rounded-full bg-background/90 p-0.5 text-muted-foreground opacity-0 shadow ring-1 ring-border transition-opacity hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
-                                      onClick={() =>
-                                        removeSituationImage(situation.id, image)
-                                      }
-                                      aria-label="이 상황에서 이미지 제거"
-                                      title="이 상황에서 제거"
-                                    >
-                                      <X className="size-3" />
-                                    </button>
-                                  </div>
-                                ))}
+                          {/* 본문 — 왼쪽: 입력 필드 1열 세로, 오른쪽: 이미지 크게 */}
+                          <div className="flex flex-col gap-4 md:flex-row">
+                            <div className="min-w-0 flex-1 space-y-3">
+                              <div className="space-y-1.5">
+                                <Label className="text-xs text-muted-foreground">
+                                  의상
+                                </Label>
+                                <select
+                                  className={SELECT_CLASS}
+                                  value={situation.outfitId ?? ""}
+                                  onChange={(event) =>
+                                    updateSituation(situation.id, {
+                                      outfitId: event.target.value || null,
+                                    })
+                                  }
+                                >
+                                  <option value="">자동 (첫 의상)</option>
+                                  {selected.outfits.map((outfit) => (
+                                    <option key={outfit.id} value={outfit.id}>
+                                      {outfit.name || "이름 없는 의상"}
+                                    </option>
+                                  ))}
+                                </select>
                               </div>
-                            )}
+                              <div className="space-y-1.5">
+                                <Label className="text-xs text-muted-foreground">
+                                  배경
+                                </Label>
+                                <select
+                                  className={SELECT_CLASS}
+                                  value={situation.backgroundId ?? ""}
+                                  onChange={(event) =>
+                                    updateSituation(situation.id, {
+                                      backgroundId: event.target.value || null,
+                                    })
+                                  }
+                                >
+                                  <option value="">자동 (첫 배경)</option>
+                                  {selected.backgrounds.map((background) => (
+                                    <option
+                                      key={background.id}
+                                      value={background.id}
+                                    >
+                                      {background.name || "이름 없는 배경"}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                              <FieldPair
+                                stacked
+                                description={situation.description}
+                                prompt={situation.prompt}
+                                descriptionPlaceholder="예: 바닷물에 등을 대고 떠서 평화롭게 수영한다…"
+                                promptPlaceholder="floating on back in the sea, peaceful, swimming…"
+                                onDescriptionChange={(value) =>
+                                  updateSituation(situation.id, {
+                                    description: value,
+                                  })
+                                }
+                                onPromptChange={(value) =>
+                                  updateSituation(situation.id, { prompt: value })
+                                }
+                              />
+                            </div>
+                            <div className="space-y-1.5 md:w-[45%] md:max-w-[26rem] md:shrink-0">
+                              <div className="flex items-center justify-between gap-2">
+                                <Label className="text-xs text-muted-foreground">
+                                  생성된 이미지
+                                  {(situationImages[situation.id]?.length ?? 0) > 0
+                                    ? ` (${situationImages[situation.id].length})`
+                                    : ""}
+                                </Label>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setSituationPickerId(situation.id)}
+                                  disabled={attachingSituationId === situation.id}
+                                  title="갤러리의 이미지를 이 상황에 등록해요."
+                                >
+                                  {attachingSituationId === situation.id ? (
+                                    <Loader2 className="animate-spin" />
+                                  ) : (
+                                    <ImagesIcon />
+                                  )}
+                                  갤러리에서 가져오기
+                                </Button>
+                              </div>
+                              {(situationImages[situation.id]?.length ?? 0) === 0 ? (
+                                <p className="text-xs text-muted-foreground">
+                                  아직 이미지가 없어요. 생성하거나 갤러리에서 가져올
+                                  수 있어요.
+                                </p>
+                              ) : (
+                                <div className="flex flex-wrap gap-2">
+                                  {situationImages[situation.id].map((image) => (
+                                    <div
+                                      key={image.id}
+                                      className="group relative"
+                                    >
+                                      <button
+                                        type="button"
+                                        className="block h-64 max-w-full overflow-hidden rounded-md border border-border bg-muted transition-opacity hover:opacity-80"
+                                        onClick={() => setSelectedImage(image)}
+                                        title="이미지 상세 보기"
+                                      >
+                                        <img
+                                          src={image.thumbnailUrl || image.url}
+                                          alt={`${situation.name} 결과`}
+                                          className="h-full w-auto max-w-full object-contain"
+                                        />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="absolute -right-1.5 -top-1.5 rounded-full bg-background/90 p-0.5 text-muted-foreground opacity-0 shadow ring-1 ring-border transition-opacity hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+                                        onClick={() =>
+                                          removeSituationImage(situation.id, image)
+                                        }
+                                        aria-label="이 상황에서 이미지 제거"
+                                        title="이 상황에서 제거 (이미지는 갤러리에 남아요)"
+                                      >
+                                        <X className="size-3" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="absolute -right-1.5 top-5 rounded-full bg-background/90 p-0.5 text-muted-foreground opacity-0 shadow ring-1 ring-border transition-opacity hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+                                        onClick={() =>
+                                          void deleteSituationImage(
+                                            situation.id,
+                                            image
+                                          )
+                                        }
+                                        aria-label="이미지 완전 삭제"
+                                        title="이미지 삭제 (갤러리에서도 사라져요)"
+                                      >
+                                        <Trash2 className="size-3" />
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              <div className="flex items-center justify-between gap-2 pt-2">
+                                <Label className="text-xs text-muted-foreground">
+                                  생성된 영상
+                                  {(situationVideos[situation.id]?.length ?? 0) > 0
+                                    ? ` (${situationVideos[situation.id].length})`
+                                    : ""}
+                                </Label>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    setSituationVideoPickerId(situation.id)
+                                  }
+                                  disabled={
+                                    attachingVideoSituationId === situation.id
+                                  }
+                                  title="영상/시댄스 갤러리의 영상을 이 상황에 등록해요."
+                                >
+                                  {attachingVideoSituationId === situation.id ? (
+                                    <Loader2 className="animate-spin" />
+                                  ) : (
+                                    <Clapperboard />
+                                  )}
+                                  갤러리에서 가져오기
+                                </Button>
+                              </div>
+                              {(situationVideos[situation.id]?.length ?? 0) === 0 ? (
+                                <p className="text-xs text-muted-foreground">
+                                  아직 영상이 없어요. 영상/시댄스 파이몬으로
+                                  생성하거나 갤러리에서 가져올 수 있어요.
+                                </p>
+                              ) : (
+                                <div className="flex flex-wrap gap-2">
+                                  {situationVideos[situation.id].map((video) => (
+                                    <div
+                                      key={`${video.media}:${video.id}`}
+                                      className="group relative"
+                                    >
+                                      <video
+                                        src={video.url}
+                                        controls
+                                        preload="metadata"
+                                        playsInline
+                                        className="h-48 max-w-full rounded-md border border-border bg-black"
+                                        title={video.filename}
+                                      />
+                                      <span className="pointer-events-none absolute left-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                                        {video.media === "seedance"
+                                          ? "시댄스"
+                                          : "영상"}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        className="absolute -right-1.5 -top-1.5 rounded-full bg-background/90 p-0.5 text-muted-foreground opacity-0 shadow ring-1 ring-border transition-opacity hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+                                        onClick={() =>
+                                          void removeSituationVideo(
+                                            situation.id,
+                                            video
+                                          )
+                                        }
+                                        aria-label="이 상황에서 영상 제거"
+                                        title="이 상황에서 제거 (영상은 갤러리에 남아요)"
+                                      >
+                                        <X className="size-3" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="absolute -right-1.5 top-5 rounded-full bg-background/90 p-0.5 text-muted-foreground opacity-0 shadow ring-1 ring-border transition-opacity hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+                                        onClick={() =>
+                                          void deleteSituationVideo(
+                                            situation.id,
+                                            video
+                                          )
+                                        }
+                                        aria-label="영상 완전 삭제"
+                                        title="영상 삭제 (갤러리에서도 사라져요)"
+                                      >
+                                        <Trash2 className="size-3" />
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      ))}
+                        ))
+                      )}
                     </div>
                   </SectionCard>
 
@@ -1801,6 +2651,19 @@ export function CharacterStudio() {
             const situationId = situationPickerId;
             setSituationPickerId(null);
             void attachSituationImages(situationId, images);
+          }}
+        />
+      )}
+
+      {situationVideoPickerId && (
+        <VideoLibraryPicker
+          title="갤러리에서 이 상황에 등록할 영상 선택"
+          confirmLabel="상황에 등록"
+          onClose={() => setSituationVideoPickerId(null)}
+          onPickMany={(videos) => {
+            const situationId = situationVideoPickerId;
+            setSituationVideoPickerId(null);
+            void attachSituationVideos(situationId, videos);
           }}
         />
       )}

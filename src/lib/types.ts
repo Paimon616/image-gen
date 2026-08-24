@@ -206,6 +206,14 @@ export interface CharacterSituation {
 // format and the model settings a new situation render should keep. Only a
 // generated image can be set here — an upload or a clipboard paste has no
 // generation metadata, so it could never act as that baseline.
+// A character's own LoRA: a params LoraConfig plus the trigger words the LoRA
+// was trained with. The trigger words are guaranteed into the prompt of every
+// render of this character (the LoRA itself rides in params.loras).
+export interface CharacterLora extends LoraConfig {
+  // Comma-separated activation tags, e.g. "ayori, 1girl". Empty = none.
+  triggerWords?: string;
+}
+
 export interface CharacterMainImage {
   // App-served image URL, e.g. "/api/images/<file>".
   url: string;
@@ -230,6 +238,12 @@ export interface Character {
   // 아이덴티티 — detailed appearance.
   appearanceDescription: string;
   appearancePrompt: string;
+  // 캐릭터 LoRA — LoRAs this character was trained on (e.g. a per-character
+  // LoRA from the LoRA training screen). Applied ON TOP of the main image's
+  // baseline settings whenever this character is rendered, so a LoRA trained
+  // after the main image was made still takes effect. Same-path entries
+  // override the baseline's scale.
+  loras: CharacterLora[];
   // 아이덴티티 — one or more wardrobes.
   outfits: CharacterOutfit[];
   // 배경 — one or more environments/settings.
@@ -259,6 +273,7 @@ export function createEmptyCharacter(name: string): Omit<
     mainImage: null,
     appearanceDescription: "",
     appearancePrompt: "",
+    loras: [],
     outfits: [],
     backgrounds: [],
     situations: [],
@@ -408,6 +423,19 @@ export interface GeneratedVideo {
   // Present while a video is queued/generating (client-only pending card) and
   // set to a terminal state on error/cancel. Reuses the image status shape.
   generation?: ImageGenerationStatus;
+}
+
+// A clip linked to a character/situation, as served by
+// /api/characters/[id]/videos. `media` names which video surface's gallery the
+// clip lives in (the ComfyUI video screen vs SeeDance) — the link APIs need it
+// because each surface keeps its own output folder.
+export interface CharacterSituationVideo {
+  id: string;
+  media: "videos" | "seedance";
+  filename: string;
+  url: string;
+  situationId: string | null;
+  timestamp: number;
 }
 
 export interface GenerationStatus {

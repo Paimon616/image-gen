@@ -9,7 +9,16 @@ import {
   type ReactNode,
 } from "react";
 import { useStore as useZustandStore } from "zustand";
-import { Bot, ImagePlus, Loader2, MessageCircle, RotateCcw, Send, X } from "lucide-react";
+import {
+  Bot,
+  ImagePlus,
+  Loader2,
+  MessageCircle,
+  RotateCcw,
+  Send,
+  Square,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ChatMarkdown } from "@/components/chat-markdown";
@@ -293,14 +302,27 @@ export function PaimonPanel({
                   }
                 }}
               />
-              <Button
-                type="submit"
-                size="icon-lg"
-                disabled={!input.trim() || loading}
-                aria-label="Send to Paimon"
-              >
-                {loading ? <Loader2 className="animate-spin" /> : <Send />}
-              </Button>
+              {loading ? (
+                <Button
+                  type="button"
+                  size="icon-lg"
+                  variant="outline"
+                  onClick={() => store.getState().cancelTurn(conversationId)}
+                  aria-label="답변 생성 취소"
+                  title="답변 생성 취소"
+                >
+                  <Square className="fill-current" />
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  size="icon-lg"
+                  disabled={!input.trim()}
+                  aria-label="Send to Paimon"
+                >
+                  <Send />
+                </Button>
+              )}
             </div>
           </form>
       </section>

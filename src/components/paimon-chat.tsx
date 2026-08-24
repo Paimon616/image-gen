@@ -693,6 +693,17 @@ export function PaimonChat({
                                       : "없음 · 현재 설정 사용"}
                                 </span>
                               </div>
+                              {/* 캐릭터 LoRA is merged on top of whichever
+                                  기준 이미지 is picked, so it reads as a
+                                  standing fact rather than a per-image one. */}
+                              {(active.loras?.length ?? 0) > 0 && (
+                                <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
+                                  캐릭터 LoRA 항상 적용:{" "}
+                                  {active.loras
+                                    ?.map((lora) => `${lora.path}(${lora.scale})`)
+                                    .join(", ")}
+                                </p>
+                              )}
                               <div className="mt-1 flex gap-1 overflow-x-auto pb-0.5">
                                 <button
                                   type="button"

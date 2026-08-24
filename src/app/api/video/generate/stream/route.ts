@@ -32,6 +32,7 @@ import {
 } from "@/lib/video-pipelines";
 import { toggleFileWorkspace, workspaceExists } from "@/lib/workspaces";
 import { notifyWorkspaceChanged } from "@/lib/runpod-share";
+import { isValidCharacterId } from "@/lib/characters";
 
 const VIDEO_OUTPUT_DIR = join(process.cwd(), "output", "videos");
 const AUDIO_OUTPUT_DIR = join(process.cwd(), "output", "audios");
@@ -325,10 +326,17 @@ async function saveBufferedVideos({
   videos,
   params,
   audios = [],
+  characterId = "",
+  situationId = "",
 }: {
   videos: ComfyGeneratedMedia[];
   params: VideoGenerationParams;
   audios?: SavedAudio[];
+  // A Paimon situation run tags the clip with the character/situation it was
+  // composed from, so the finished video registers itself into that situation's
+  // strip in the character studio (same auto-link the image generator does).
+  characterId?: string;
+  situationId?: string;
 }) {
   await ensureVideoOutputDir();
 
@@ -352,6 +360,11 @@ async function saveBufferedVideos({
             contentType: video.contentType,
             index,
             audios,
+            // Character/situation link fields, snake_case like image sidecars.
+            ...(characterId ? { character_id: characterId } : {}),
+            ...(characterId && situationId
+              ? { situation_id: situationId }
+              : {}),
           },
           null,
           2
@@ -426,6 +439,8 @@ export async function POST(req: NextRequest) {
     generationTarget?: "local" | "runpod";
     runpodPodId?: string;
     workspaceId?: string;
+    characterId?: string;
+    situationId?: string;
   };
   const body = normalizeVideoParams(rawBody);
   const generationTarget = rawBody.generationTarget === "runpod" ? "runpod" : "local";
@@ -436,6 +451,13 @@ export async function POST(req: NextRequest) {
     rawWorkspaceId && (await workspaceExists(rawWorkspaceId))
       ? rawWorkspaceId
       : "";
+  // Character/situation the clip was composed from (Paimon situation runs).
+  const characterId = isValidCharacterId(rawBody.characterId)
+    ? rawBody.characterId
+    : "";
+  const situationId = isValidCharacterId(rawBody.situationId)
+    ? rawBody.situationId
+    : "";
   let comfyBaseUrl = COMFYUI_BASE_URL;
 
   if (!body.prompt) {
@@ -653,6 +675,8 @@ export async function POST(req: NextRequest) {
           videos,
           params: body,
           audios: savedAudios,
+          characterId,
+          situationId,
         });
 
         // File the fresh clip under the workspace the gallery is filtered to, so

@@ -64,6 +64,7 @@ export async function PUT(req: Request) {
     anthropicApiKey: keepKey(body.anthropicApiKey, current.anthropicApiKey),
     openaiApiKey: keepKey(body.openaiApiKey, current.openaiApiKey),
     googleApiKey: keepKey(body.googleApiKey, current.googleApiKey),
+    deepseekApiKey: keepKey(body.deepseekApiKey, current.deepseekApiKey),
     paimonChatProvider: body.paimonChatProvider ?? current.paimonChatProvider,
     paimonChatModel: body.paimonChatModel ?? current.paimonChatModel,
     paimonChatReasoning:

@@ -39,6 +39,9 @@ export interface RunpodMissingFile {
   // Server-computed: whether the pod can fetch this file automatically. Mirrors
   // getRunpodDownloadPlan's eligibility so the client never re-derives it.
   downloadable?: boolean;
+  // Server-computed: the file exists in this machine's ComfyUI models tree, so
+  // it can be uploaded to the pod (self-trained LoRAs have no download source).
+  uploadable?: boolean;
 }
 
 // Links a composed prompt to the character/situation it came from so a manual

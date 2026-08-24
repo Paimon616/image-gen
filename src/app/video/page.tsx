@@ -32,6 +32,10 @@ import {
 import { useStore } from "@/lib/store";
 import { useVideoStore } from "@/lib/video-store";
 import {
+  useVideoGenerationQueueStore,
+  type VideoGenerationDetail,
+} from "@/lib/video-generation-queue-store";
+import {
   fileMatchesWorkspace,
   useMediaWorkspaceStore,
 } from "@/lib/media-workspace-store";
@@ -48,16 +52,14 @@ import {
   useRunpodDownloadStore,
   type RunpodDownloadItem,
 } from "@/lib/runpod-download-store";
-import { takeVideoReference, toAbsoluteImageUrl } from "@/lib/video-reference";
+import { takeVideoReference } from "@/lib/video-reference";
 import { censorSetupReady, type CensorSetupStatus } from "@/lib/censor-assets";
 import {
   DEFAULT_CENSOR_SETTINGS,
   DEFAULT_VIDEO_PARAMS,
-  UNGROUPED_WORKSPACE_ID,
   type CensorMethod,
   type CivitaiImportResult,
   type GeneratedVideo,
-  type GenerationStatus,
   type GenerationParams,
   type VideoGenerationParams,
 } from "@/lib/types";
@@ -228,28 +230,8 @@ interface VideoPipelineControlOption {
   }>;
 }
 
-interface VideoQueueItem {
-  id: string;
-  params: VideoGenerationParams;
-  generationTarget: "local" | "runpod";
-  runpodPodId?: string;
-  /** Workspace the gallery was filtered to when the job was queued; the finished
-   *  clip is filed under it, mirroring the image generator. */
-  workspaceId?: string;
-}
+type GenerationDetail = VideoGenerationDetail;
 
-interface GenerationDetail {
-  id: string;
-  stage: string;
-  message: string;
-  node_id?: string;
-  node_type?: string;
-  step?: number;
-  total_steps?: number;
-  elapsed_ms?: number;
-}
-
-const VIDEO_GENERATION_STATE_KEY = "image-gen-video-generation-state";
 const VIDEO_GENERATION_TARGET_KEY = "image-gen-video:generation-target";
 const VIDEO_SELECTED_RUNPOD_POD_KEY = "image-gen-video:selected-runpod-pod-id";
 
@@ -261,32 +243,6 @@ function rememberVideoRunpodPod(podId: string) {
       window.localStorage.removeItem(VIDEO_SELECTED_RUNPOD_POD_KEY);
     }
   } catch {}
-}
-
-interface StoredVideoGenerationState {
-  status: GenerationStatus;
-  buttonProgress: number;
-  activePromptId: string;
-  details: GenerationDetail[];
-}
-
-function parseSseEvent(rawEvent: string) {
-  const event =
-    rawEvent
-      .split("\n")
-      .find((line) => line.startsWith("event: "))
-      ?.slice("event: ".length)
-      .trim() ?? "message";
-  const data = rawEvent
-    .split("\n")
-    .filter((line) => line.startsWith("data: "))
-    .map((line) => line.slice("data: ".length))
-    .join("\n");
-
-  return {
-    event,
-    data: data ? JSON.parse(data) : null,
-  };
 }
 
 function numericValue(value: string, fallback: number) {
@@ -316,48 +272,6 @@ function formatElapsed(ms: number | undefined) {
   const seconds = totalSeconds % 60;
 
   return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
-}
-
-function detailKey(detail: Omit<GenerationDetail, "id">) {
-  return [
-    detail.stage,
-    detail.node_id ?? "",
-    detail.node_type ?? "",
-    detail.step ?? "",
-    detail.total_steps ?? "",
-    detail.message,
-  ].join(":");
-}
-
-function readStoredGenerationState(): StoredVideoGenerationState | null {
-  if (typeof window === "undefined") return null;
-
-  try {
-    const raw = window.sessionStorage.getItem(VIDEO_GENERATION_STATE_KEY);
-    if (!raw) return null;
-
-    const parsed = JSON.parse(raw) as Partial<StoredVideoGenerationState>;
-    if (!parsed.status || !Array.isArray(parsed.details)) return null;
-
-    return {
-      status: parsed.status,
-      buttonProgress: Number(parsed.buttonProgress ?? parsed.status.progress ?? 0),
-      activePromptId: String(parsed.activePromptId ?? ""),
-      details: parsed.details,
-    };
-  } catch {
-    return null;
-  }
-}
-
-function writeStoredGenerationState(state: StoredVideoGenerationState) {
-  if (typeof window === "undefined") return;
-  window.sessionStorage.setItem(VIDEO_GENERATION_STATE_KEY, JSON.stringify(state));
-}
-
-function clearStoredGenerationState() {
-  if (typeof window === "undefined") return;
-  window.sessionStorage.removeItem(VIDEO_GENERATION_STATE_KEY);
 }
 
 function isGif(video: GeneratedVideo) {
@@ -1407,13 +1321,16 @@ export default function VideoPage() {
   // is unmounted still applies to the params the user returns to.
   const params = useVideoStore((state) => state.params);
   const setParams = useVideoStore((state) => state.setParams);
-  const [status, setStatus] = useState<GenerationStatus>({
-    state: "idle",
-    progress: 0,
-    message: "",
-  });
-  const [buttonProgress, setButtonProgress] = useState(0);
-  const [generationDetails, setGenerationDetails] = useState<GenerationDetail[]>([]);
+  // The generation queue, running job, status, progress and details all live in
+  // the module-level queue store (not component state) so navigating away and
+  // back keeps queued Paimon batch jobs draining and the progress UI accurate —
+  // exactly like the image generator's queue store.
+  const status = useVideoGenerationQueueStore((state) => state.status);
+  const generationDetails = useVideoGenerationQueueStore(
+    (state) => state.details
+  );
+  const generationQueue = useVideoGenerationQueueStore((state) => state.queue);
+  const activeGeneration = useVideoGenerationQueueStore((state) => state.active);
   // Both the finished `videos` and the in-flight `pendingVideos` live in a
   // module-level store (not component state) so navigating away and back keeps
   // the in-flight cards alive — and lets the detached SSE stream keep updating
@@ -1421,13 +1338,9 @@ export default function VideoPage() {
   const videos = useVideoStore((state) => state.videos);
   const setVideos = useVideoStore((state) => state.setVideos);
   const pendingVideos = useVideoStore((state) => state.pendingVideos);
-  const addPendingVideo = useVideoStore((state) => state.addPendingVideo);
-  const updatePendingVideo = useVideoStore((state) => state.updatePendingVideo);
   const removePendingVideoById = useVideoStore(
     (state) => state.removePendingVideo
   );
-  const [generationQueue, setGenerationQueue] = useState<VideoQueueItem[]>([]);
-  const [activeGeneration, setActiveGeneration] = useState<VideoQueueItem | null>(null);
   const [thumbnailWidth, setThumbnailWidth] = useState(320);
   const [editorWidth, setEditorWidth] = useState(576);
   const [editorOpen, setEditorOpen] = useState(true);
@@ -1492,14 +1405,11 @@ export default function VideoPage() {
     height: number;
   } | null>(null);
   const [startImagePreviewOpen, setStartImagePreviewOpen] = useState(false);
-  const activePromptIdRef = useRef("");
   const autoRunpodCheckKeyRef = useRef("");
   // True once the running-pod auto-select has run for the current stint in
   // RunPod mode, so it does not fight a manual pick from the dropdown.
   const autoPodSelectRef = useRef(false);
   const runpodConnectionRef = useRef<RunpodConnectionStatus | null>(null);
-  const generationAbortControllerRef = useRef<AbortController | null>(null);
-  const activeGenerationRef = useRef<VideoQueueItem | null>(null);
   // Cache the last-known RunPod connection status in a module-level store so
   // navigating away and back does not flash the status badges to "unchecked"
   // while the poller re-runs.
@@ -2291,28 +2201,6 @@ export default function VideoPage() {
     }
   }, [language, nodeInstallBusy, params.video_model, params.video_pipeline, selectedRunpodPodId]);
 
-  const appendGenerationDetail = useCallback(
-    (detail: Omit<GenerationDetail, "id">) => {
-      const key = detailKey(detail);
-
-      setGenerationDetails((current) => {
-        if (current[0]?.id === key) {
-          return [
-            {
-              ...current[0],
-              ...detail,
-              id: key,
-            },
-            ...current.slice(1),
-          ];
-        }
-
-        return [{ ...detail, id: key }, ...current].slice(0, 8);
-      });
-    },
-    []
-  );
-
   const removePendingVideo = useCallback(
     (video: GeneratedVideo) => removePendingVideoById(video.id),
     [removePendingVideoById]
@@ -2489,43 +2377,16 @@ export default function VideoPage() {
       .catch(() => {});
   }, [setParams]);
 
+  // One-time restore of the sessionStorage progress snapshot after a full
+  // reload (a no-op while the queue store is already live). The store snapshots
+  // itself on every change, so no matching write effect is needed here.
   useEffect(() => {
     const timeout = window.setTimeout(() => {
-      const stored = readStoredGenerationState();
-      if (!stored) return;
-
-      setStatus(stored.status);
-      setButtonProgress(stored.buttonProgress);
-      setGenerationDetails(stored.details);
-      activePromptIdRef.current = stored.activePromptId;
-
-      if (stored.status.state === "generating") {
-        appendGenerationDetail({
-          stage: "restored",
-          message: "Restored local progress after returning to this page.",
-        });
-      }
+      useVideoGenerationQueueStore.getState().restoreStoredState();
     }, 0);
 
     return () => window.clearTimeout(timeout);
-  }, [appendGenerationDetail]);
-
-  useEffect(() => {
-    if (
-      status.state !== "generating" &&
-      status.state !== "canceled" &&
-      status.state !== "error"
-    ) {
-      return;
-    }
-
-    writeStoredGenerationState({
-      status,
-      buttonProgress,
-      activePromptId: activePromptIdRef.current,
-      details: generationDetails,
-    });
-  }, [buttonProgress, generationDetails, status]);
+  }, []);
 
   useEffect(() => {
     fetch("/api/video/config")
@@ -2628,329 +2489,28 @@ export default function VideoPage() {
     };
   }, [selectedVideoPipeline, referenceSize, params.video_pipeline_settings]);
 
-  const runGenerationJob = useCallback(
-    async (job: VideoQueueItem) => {
-      const {
-        id,
-        params: jobParams,
-        generationTarget: jobTarget,
-        runpodPodId,
-        workspaceId,
-      } = job;
-
-      const abortController = new AbortController();
-      activePromptIdRef.current = "";
-      generationAbortControllerRef.current = abortController;
-      setGenerationDetails([]);
-      setButtonProgress(1);
-      setStatus({ state: "generating", progress: 1, message: "Queued..." });
-      updatePendingVideo(id, {
-        generation: { state: "waiting", progress: 1, message: "Queued..." },
-      });
-      appendGenerationDetail({
-        stage: "queued",
-        message: "Queued request in Image Gen.",
-        elapsed_ms: 0,
-      });
-
-      let generated = false;
-
-      try {
-        const res = await fetch("/api/video/generate/stream", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...jobParams,
-            generationTarget: jobTarget,
-            runpodPodId: jobTarget === "runpod" ? runpodPodId : undefined,
-            workspaceId,
-          }),
-          signal: abortController.signal,
-        });
-
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || "Video generation failed");
-        }
-
-        if (!res.body) {
-          throw new Error("Video generation stream did not start");
-        }
-
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-        let completed = false;
-
-        while (!completed) {
-          const { value, done } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const events = buffer.split("\n\n");
-          buffer = events.pop() ?? "";
-
-          for (const rawEvent of events) {
-            if (!rawEvent.trim()) continue;
-            const { event, data } = parseSseEvent(rawEvent);
-
-            if (event === "queued") {
-              activePromptIdRef.current = String(data?.prompt_id ?? "");
-              updatePendingVideo(id, {
-                generation: {
-                  state: "waiting",
-                  progress: 1,
-                  message: "Waiting for ComfyUI...",
-                },
-              });
-            }
-
-            if (event === "progress") {
-              const progress = Number(data?.progress ?? 0);
-              const message = String(data?.message ?? "Generating video...");
-              const isStepProgress =
-                data?.step != null && data?.total_steps != null;
-              setButtonProgress(progress);
-              setStatus({ state: "generating", progress, message });
-              updatePendingVideo(id, {
-                generation: {
-                  state: isStepProgress ? "generating" : "waiting",
-                  progress,
-                  message,
-                },
-              });
-              appendGenerationDetail({
-                stage: String(data?.stage ?? "progress"),
-                message,
-                node_id: data?.node_id ? String(data.node_id) : undefined,
-                node_type: data?.node_type ? String(data.node_type) : undefined,
-                step:
-                  typeof data?.step === "number" ? Number(data.step) : undefined,
-                total_steps:
-                  typeof data?.total_steps === "number"
-                    ? Number(data.total_steps)
-                    : undefined,
-                elapsed_ms:
-                  typeof data?.elapsed_ms === "number"
-                    ? Number(data.elapsed_ms)
-                    : undefined,
-              });
-            }
-
-            if (event === "detail") {
-              const message = String(data?.message ?? "Working...");
-              setStatus((current) => ({
-                ...current,
-                message,
-              }));
-              // Keep the card's progress/state, just refresh the message.
-              const detailCard = useVideoStore
-                .getState()
-                .pendingVideos.find((video) => video.id === id);
-              if (detailCard?.generation) {
-                updatePendingVideo(id, {
-                  generation: { ...detailCard.generation, message },
-                });
-              }
-              appendGenerationDetail({
-                stage: String(data?.stage ?? "detail"),
-                message,
-                node_id: data?.node_id ? String(data.node_id) : undefined,
-                node_type: data?.node_type ? String(data.node_type) : undefined,
-                elapsed_ms:
-                  typeof data?.elapsed_ms === "number"
-                    ? Number(data.elapsed_ms)
-                    : undefined,
-              });
-            }
-
-            if (event === "complete") {
-              const generatedVideos = (data?.videos ?? []) as GeneratedVideo[];
-              if (generatedVideos.length > 0) {
-                setVideos((current) => [...generatedVideos, ...current]);
-                // Refresh the chip counts after the auto-registration above.
-                if (workspaceId) {
-                  void useMediaWorkspaceStore
-                    .getState()
-                    .fetchWorkspaces("videos");
-                }
-              }
-              // The finished video moves into the server-backed list, so drop
-              // the pending card.
-              removePendingVideoById(id);
-              generated = true;
-              completed = true;
-            }
-
-            if (event === "error") {
-              throw new Error(data?.error || "Video generation failed");
-            }
-          }
-        }
-
-        if (!generated) {
-          throw new Error("Video generation stream ended without a result.");
-        }
-
-        setButtonProgress(100);
-        setStatus({ state: "completed", progress: 100, message: "Done!" });
-        appendGenerationDetail({
-          stage: "complete",
-          message: jobParams.enable_sound
-            ? "Video and sound saved locally."
-            : "Video saved locally.",
-        });
-        setTimeout(() => {
-          setButtonProgress(0);
-          setStatus({ state: "idle", progress: 0, message: "" });
-          clearStoredGenerationState();
-        }, 2000);
-      } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") {
-          setButtonProgress(0);
-          setStatus({ state: "canceled", progress: 0, message: "Canceled." });
-          updatePendingVideo(id, {
-            generation: { state: "canceled", progress: 0, message: "Canceled." },
-          });
-          clearStoredGenerationState();
-          return;
-        }
-
-        const message =
-          error instanceof Error ? error.message : "Video generation failed";
-        setButtonProgress(0);
-        setStatus({ state: "error", progress: 0, message });
-        updatePendingVideo(id, {
-          generation: { state: "error", progress: 0, message },
-        });
-      } finally {
-        generationAbortControllerRef.current = null;
-        activePromptIdRef.current = "";
-        activeGenerationRef.current = null;
-        setActiveGeneration(null);
-      }
-    },
-    [
-      appendGenerationDetail,
-      removePendingVideoById,
-      setVideos,
-      updatePendingVideo,
-    ]
-  );
-
-  // Process the queue one job at a time (video generation is GPU-heavy, so
-  // running several at once would just thrash VRAM).
+  // The queue itself, its pump, and the SSE runner live in the module-level
+  // queue store so a Paimon situation batch keeps generating after this page
+  // unmounts. The page publishes its target/validation context so a background
+  // enqueue still knows where to generate and what to pre-check.
   useEffect(() => {
-    if (
-      activeGenerationRef.current ||
-      activeGeneration ||
-      generationQueue.length === 0
-    ) {
-      return;
-    }
-
-    const [nextJob] = generationQueue;
-    activeGenerationRef.current = nextJob;
-    setGenerationQueue((queue) =>
-      queue[0]?.id === nextJob.id ? queue.slice(1) : queue
-    );
-    setActiveGeneration(nextJob);
-    void runGenerationJob(nextJob);
-  }, [activeGeneration, generationQueue, runGenerationJob]);
-
-  // `override` lets a caller queue params it just wrote to the store without
-  // waiting for this component to re-render with them (the Paimon situation
-  // runner composes a prompt and queues it in the same tick).
-  const generate = useCallback((override?: VideoGenerationParams) => {
-    const source = override ?? params;
-    if (!source.prompt.trim()) return;
-    if (videoRequiresSourceImage && !source.source_image) {
-      setStatus({
-        state: "error",
-        progress: 0,
-        message: "Add a start image before generating video.",
-      });
-      return;
-    }
-    if (!videoWorkflowReadyForTarget) {
-      setStatus({
-        state: "error",
-        progress: 0,
-        message: videoConfig.message || "Video workflow is not configured.",
-      });
-      return;
-    }
-    if (generationTarget === "runpod" && !selectedRunpodPod?.comfyUrl) {
-      setStatus({
-        state: "error",
-        progress: 0,
-        message: "Select a RunPod pod with a ComfyUI URL before generating video.",
-      });
-      return;
-    }
-    if (soundPassActive && !soundWorkflowReady) {
-      setStatus({
-        state: "error",
-        progress: 0,
-        message: videoConfig.audio.message || "Sound workflow is not configured.",
-      });
-      return;
-    }
-
-    const jobParams: VideoGenerationParams = {
-      ...source,
-      // Generation only uploads the start image into ComfyUI when it looks
-      // remote, so a relative `/api/images/...` would reach LoadImage verbatim
-      // and fail validation. Absolutize here — the last gate every entry point
-      // (gallery import, handoff, Paimon, the situation picker) passes through.
-      source_image: source.source_image
-        ? toAbsoluteImageUrl(source.source_image)
-        : source.source_image,
-      // A pipeline that renders its own audio never needs the separate pass; drop
-      // any stale toggle so the backend doesn't queue a redundant audio workflow.
-      enable_sound: source.enable_sound && !videoIncludesAudio,
-      video_pipeline_settings: { ...source.video_pipeline_settings },
-    };
-    const id = crypto.randomUUID();
-
-    addPendingVideo({
-      id,
-      url: "",
-      filename: "",
-      contentType: "",
-      params: jobParams,
-      timestamp: Date.now(),
-      generation: {
-        state: "queued",
-        progress: 0,
-        message: language === "ko" ? "대기열에 추가됨" : "Queued",
-      },
+    useVideoGenerationQueueStore.getState().setConfig({
+      generationTarget,
+      runpodPodId: selectedRunpodPodId,
+      runpodReady: Boolean(selectedRunpodPod?.comfyUrl),
+      requiresSourceImage: videoRequiresSourceImage,
+      workflowReady: videoWorkflowReadyForTarget,
+      workflowMessage: videoConfig.message,
+      soundWorkflowReady,
+      soundMessage: videoConfig.audio.message,
+      includesAudio: videoIncludesAudio,
+      ko: language === "ko",
     });
-    setGenerationQueue((queue) => [
-      ...queue,
-      {
-        id,
-        params: jobParams,
-        generationTarget,
-        runpodPodId: generationTarget === "runpod" ? selectedRunpodPodId : undefined,
-        // The sentinel "ungrouped" filter is not a real workspace, so it queues
-        // as no target at all.
-        workspaceId:
-          activeWorkspaceId && activeWorkspaceId !== UNGROUPED_WORKSPACE_ID
-            ? activeWorkspaceId
-            : undefined,
-      },
-    ]);
-    setStatus({ state: "idle", progress: 0, message: "" });
   }, [
-    activeWorkspaceId,
-    addPendingVideo,
     generationTarget,
     language,
-    params,
     selectedRunpodPod?.comfyUrl,
     selectedRunpodPodId,
-    soundPassActive,
     soundWorkflowReady,
     videoConfig.audio.message,
     videoConfig.message,
@@ -2959,56 +2519,22 @@ export default function VideoPage() {
     videoWorkflowReadyForTarget,
   ]);
 
-  const cancelGeneration = useCallback(
-    (videoId?: string) => {
-      const targetId = videoId ?? activeGenerationRef.current?.id ?? activeGeneration?.id;
-      if (!targetId) return;
+  // `override` lets a caller queue params it just wrote to the store without
+  // waiting for this component to re-render with them (the Paimon situation
+  // runner composes a prompt and queues it in the same tick).
+  const generate = useCallback((override?: VideoGenerationParams) => {
+    useVideoGenerationQueueStore.getState().enqueue(override);
+  }, []);
 
-      // A job that is still waiting in the queue can be dropped without touching
-      // the running stream.
-      const queuedJob = generationQueue.find((job) => job.id === targetId);
-      if (queuedJob) {
-        setGenerationQueue((queue) => queue.filter((job) => job.id !== targetId));
-        updatePendingVideo(targetId, {
-          generation: { state: "canceled", progress: 0, message: "Canceled." },
-        });
-        return;
-      }
-
-      const runningJob = activeGenerationRef.current ?? activeGeneration;
-      if (runningJob?.id !== targetId) return;
-
-      const promptId = activePromptIdRef.current;
-      generationAbortControllerRef.current?.abort();
-
-      if (promptId) {
-        void fetch("/api/generate/cancel", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt_id: promptId }),
-        }).catch(() => {});
-      }
-
-      setButtonProgress(0);
-      setStatus({ state: "canceled", progress: 0, message: "Canceled." });
-      updatePendingVideo(targetId, {
-        generation: { state: "canceled", progress: 0, message: "Canceled." },
-      });
-      appendGenerationDetail({
-        stage: "canceled",
-        message: "Cancel requested.",
-      });
-      clearStoredGenerationState();
-    },
-    [activeGeneration, appendGenerationDetail, generationQueue, updatePendingVideo]
-  );
+  const cancelGeneration = useCallback((videoId?: string) => {
+    useVideoGenerationQueueStore.getState().cancel(videoId);
+  }, []);
 
   // --- Paimon character-situation runs -------------------------------------
   // A saved situation becomes a clip: its image is installed as the start frame,
   // Paimon writes the motion/expression/camera prompt for the requested length,
-  // and (with 자동 생성 on) the clip is queued. The runner is registered from here
-  // rather than living in the store because the generation queue is this page's
-  // state, so it only exists while this page is mounted.
+  // and (with 자동 생성 on) the clip is queued through the module-scope queue
+  // store, so the batch keeps generating after this page unmounts.
   const situationBatch = useVideoSituationStore((state) => state.batch);
   // A turn in flight disables the picker, so a pick can't interleave with it.
   const paimonLoading = useVideoPaimonStore(
@@ -3017,16 +2543,6 @@ export default function VideoPage() {
   const cancelSituationBatch = useVideoSituationStore(
     (state) => state.cancelBatch
   );
-
-  useEffect(() => {
-    useVideoSituationStore.getState().setRunner({
-      // Read the params back from the store: the composing turn writes the new
-      // prompt and start frame there ahead of this component's next render.
-      enqueue: () => generate(useVideoStore.getState().params),
-      requiresStartFrame: videoRequiresSourceImage,
-    });
-    return () => useVideoSituationStore.getState().setRunner(null);
-  }, [generate, videoRequiresSourceImage]);
 
   // The clip length the current settings produce — the picker's seconds field
   // starts here, whichever pair of fields this pipeline takes its length from.

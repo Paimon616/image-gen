@@ -65,6 +65,18 @@ async function listModels(
       );
   }
 
+  if (provider === "deepseek") {
+    // OpenAI-compatible list endpoint; every listed model is a chat model.
+    const data = await fetchJson("https://api.deepseek.com/models", {
+      Authorization: `Bearer ${apiKey}`,
+    });
+    return (Array.isArray(data?.data) ? data.data : [])
+      .map((model: { id?: string }) => String(model.id ?? ""))
+      .filter((id: string) => id)
+      .sort((a: string, b: string) => a.localeCompare(b))
+      .map((id: string) => ({ id, label: id }));
+  }
+
   if (provider === "openai") {
     const data = await fetchJson("https://api.openai.com/v1/models", {
       Authorization: `Bearer ${apiKey}`,

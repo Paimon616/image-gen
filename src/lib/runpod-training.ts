@@ -1,6 +1,11 @@
 import { readdir, readFile, mkdir, open, stat } from "fs/promises";
 import { join } from "path";
-import { runPythonOnPod, execOnPodViaJupyter, downloadPodFileViaContents } from "@/lib/runpod";
+import {
+  runPythonOnPod,
+  execOnPodViaJupyter,
+  downloadPodFileViaContents,
+  getRunpodComfyModelsDir,
+} from "@/lib/runpod";
 import { trainingDatasetPath, buildSdxlTrainingConfig, loraOutputDir } from "@/lib/lora-training";
 import { getRunpodPod, type RunpodPodSettings } from "@/lib/settings";
 
@@ -29,6 +34,7 @@ export interface RunpodTrainingOptions {
   learningRate?: number;
   maxTrainSteps?: number; // when set, caps steps (handy for a quick smoke run)
   maxTrainEpochs?: number;
+  batchSize?: number; // pod GPUs (H100) default to 4; local runner stays at 1
 }
 
 function pyStr(value: string) {
@@ -44,10 +50,12 @@ async function pushDatasetToPod(
   onEvent: (e: RunpodTrainingEvent) => void
 ) {
   const localDir = trainingDatasetPath(datasetName);
+  const isImage = (name: string) => /\.(png|jpe?g|webp)$/i.test(name);
   const entries = (await readdir(localDir)).filter((f) =>
     /\.(png|jpe?g|webp|txt)$/i.test(f)
   );
-  if (entries.length === 0) throw new Error("Dataset is empty.");
+  const imageTotal = entries.filter(isImage).length;
+  if (imageTotal === 0) throw new Error("Dataset is empty.");
 
   await runPythonOnPod(
     pod,
@@ -57,7 +65,7 @@ async function pushDatasetToPod(
   const MAX_BATCH_BYTES = 6 * 1024 * 1024; // ~6MB raw per kernel message
   let batch: { name: string; b64: string }[] = [];
   let batchBytes = 0;
-  let pushed = 0;
+  let pushedImages = 0;
 
   const flush = async () => {
     if (batch.length === 0) return;
@@ -75,8 +83,11 @@ async function pushDatasetToPod(
       `print('wrote', len(__files))`,
     ].join("\n");
     await runPythonOnPod(pod, code, 120_000);
-    pushed += batch.length;
-    onEvent({ type: "status", message: `데이터셋 업로드 중... ${pushed}/${entries.length}` });
+    pushedImages += batch.filter((f) => isImage(f.name)).length;
+    onEvent({
+      type: "status",
+      message: `데이터셋 업로드 중... 이미지 ${pushedImages}/${imageTotal}장 (+캡션)`,
+    });
     batch = [];
     batchBytes = 0;
   };
@@ -89,14 +100,21 @@ async function pushDatasetToPod(
   }
   await flush();
 
-  const count = await runPythonOnPod(
+  const countOut = await runPythonOnPod(
     pod,
     [
       "import os",
       `print(len([f for f in os.listdir(${pyStr(remoteDir)}) if f.lower().endswith(('.png','.jpg','.jpeg','.webp'))]))`,
     ].join("\n")
   );
-  return Number(count.trim()) || 0;
+  const count = Number(countOut.trim()) || 0;
+  // Hard guarantee: never train on a dataset that differs from what was sent.
+  if (count !== imageTotal) {
+    throw new Error(
+      `팟 데이터셋 이미지 수가 일치하지 않습니다 (업로드 ${imageTotal}장, 팟 ${count}장).`
+    );
+  }
+  return count;
 }
 
 // Locate the checkpoint file inside the pod's ComfyUI models tree.
@@ -127,9 +145,16 @@ export async function streamRunpodLoraTraining(
   const configPath = `${runDir}/dataset.toml`;
 
   onEvent({ type: "status", message: "실행 디렉토리 준비 중..." });
+  // The run dir is keyed by output name and reused across runs — wipe it first
+  // so stale images/outputs from a previous run never leak into this one.
   await runPythonOnPod(
     pod,
-    ["import os", `[os.makedirs(p, exist_ok=True) for p in [${[datasetDir, outputDir].map(pyStr).join(", ")}]]`, "print('ok')"].join("\n")
+    [
+      "import os, shutil",
+      `shutil.rmtree(${pyStr(runDir)}, ignore_errors=True)`,
+      `[os.makedirs(p, exist_ok=True) for p in [${[datasetDir, outputDir].map(pyStr).join(", ")}]]`,
+      "print('ok')",
+    ].join("\n")
   );
 
   // 1) dataset → pod
@@ -147,6 +172,7 @@ export async function streamRunpodLoraTraining(
     imageDir: datasetDir,
     outputName: opts.outputName,
     resolution: opts.resolution ?? 1024,
+    batchSize: opts.batchSize ?? 4,
   });
   await runPythonOnPod(
     pod,
@@ -179,7 +205,9 @@ export async function streamRunpodLoraTraining(
     "--optimizer_type AdamW8bit",
     "--lr_scheduler cosine --lr_warmup_steps 0",
     "--mixed_precision bf16 --save_precision bf16",
-    "--cache_latents --gradient_checkpointing --sdpa",
+    // No gradient checkpointing: it trades ~30-40% speed for VRAM the H100
+    // does not need at this batch size.
+    "--cache_latents --sdpa",
     "--seed 42",
     stepArg,
   ].join(" ");
@@ -268,6 +296,27 @@ export async function streamRunpodLoraTraining(
   );
   const size = Number(sizeOut.trim());
   if (!(size > 0)) throw new Error("Trained LoRA file was not found on the pod.");
+
+  // Make the LoRA usable on this pod right away: copy it into the pod's REAL
+  // ComfyUI loras dir (resolved via the helper — not always /workspace/ComfyUI)
+  // so RunPod generation can load it without a local→pod re-upload.
+  // Best-effort — the local copy below is the source of truth, so a failed pod
+  // install must not fail the run.
+  try {
+    onEvent({ type: "status", message: "팟 ComfyUI에 LoRA 설치 중..." });
+    const podLorasDir = `${await getRunpodComfyModelsDir(pod)}/loras`;
+    const podComfyLora = `${podLorasDir}/${opts.outputName}.safetensors`;
+    await execOnPodViaJupyter(
+      pod,
+      `mkdir -p ${JSON.stringify(podLorasDir)} && cp -f ${JSON.stringify(remoteLora)} ${JSON.stringify(podComfyLora)} && echo installed`
+    );
+    onEvent({ type: "status", message: `팟 ComfyUI에 LoRA 설치 완료: ${podComfyLora}` });
+  } catch {
+    onEvent({
+      type: "log",
+      message: "팟 ComfyUI 설치 실패 — 생성 시 로컬에서 자동 업로드할 수 있습니다.",
+    });
+  }
 
   const partsDir = `${runDir}/parts`;
   await execOnPodViaJupyter(

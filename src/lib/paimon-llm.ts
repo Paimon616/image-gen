@@ -29,14 +29,20 @@ export interface PaimonLlm {
   reasoning: boolean;
 }
 
-// OpenRouter's switch for hybrid thinking models. On deepseek-v4 style models
-// the whole reasoning pass lands BEFORE the first answer token, so leaving it on
-// delays every params patch (and therefore every queued render) by however long
-// the model wants to think. Only OpenRouter takes this field; the other
-// providers ignore reasoning knobs here and keep their own defaults.
+// Switch for hybrid thinking models. On deepseek-v4 style models the whole
+// reasoning pass lands BEFORE the first answer token, so leaving it on delays
+// every params patch (and therefore every queued render) by however long the
+// model wants to think. Each vendor spells the knob differently: OpenRouter
+// takes `reasoning`, DeepSeek's own API takes `thinking` (and enables it by
+// default on deepseek-v4-flash, at "high" effort — so NOT sending it means
+// every turn thinks silently for a long time, since our SSE parser only
+// forwards `delta.content`, not `delta.reasoning_content`). OpenAI/Google
+// ignore reasoning knobs here and keep their own defaults.
 function reasoningPayload(llm: PaimonLlm) {
-  if (llm.provider !== "openrouter" || llm.reasoning) return {};
-  return { reasoning: { enabled: false } };
+  if (llm.reasoning) return {};
+  if (llm.provider === "openrouter") return { reasoning: { enabled: false } };
+  if (llm.provider === "deepseek") return { thinking: { type: "disabled" } };
+  return {};
 }
 
 /** A problem the user can fix in Settings (missing key, rejected request). */
@@ -49,6 +55,7 @@ const OPENAI_COMPATIBLE_ENDPOINTS: Record<
   openrouter: "https://openrouter.ai/api/v1/chat/completions",
   openai: "https://api.openai.com/v1/chat/completions",
   google: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+  deepseek: "https://api.deepseek.com/chat/completions",
 };
 
 // Anthropic has no `response_format`, so the JSON contract is stated in the
@@ -107,6 +114,11 @@ function relaxPayload(payload: ChatPayload, message: string): ChatPayload | null
   if (/reasoning/i.test(message) && "reasoning" in payload) {
     const { reasoning, ...rest } = payload;
     void reasoning;
+    return rest;
+  }
+  if (/thinking/i.test(message) && "thinking" in payload) {
+    const { thinking, ...rest } = payload;
+    void thinking;
     return rest;
   }
   if (/response_format|json_object|json_schema/i.test(message) && "response_format" in payload) {
@@ -248,6 +260,8 @@ export interface StreamJsonOptions {
   maxTokens?: number;
   /** Called with each text delta as it arrives. */
   onDelta: (delta: string) => void;
+  /** Aborts the upstream request (the client cancelled the answer). */
+  signal?: AbortSignal;
 }
 
 /**
@@ -261,16 +275,20 @@ export async function streamJsonCompletion({
   temperature,
   maxTokens = 32_000,
   onDelta,
+  signal,
 }: StreamJsonOptions): Promise<string> {
   if (llm.provider === "anthropic") {
     // No temperature: it is rejected on current Claude models. Thinking and
     // effort are left at each model's default so any listed model works.
-    const stream = anthropicClient(llm.apiKey).messages.stream({
-      model: llm.model,
-      max_tokens: maxTokens,
-      system: `${system}\n\n${ANTHROPIC_JSON_INSTRUCTION}`,
-      messages: [{ role: "user", content: user }],
-    });
+    const stream = anthropicClient(llm.apiKey).messages.stream(
+      {
+        model: llm.model,
+        max_tokens: maxTokens,
+        system: `${system}\n\n${ANTHROPIC_JSON_INSTRUCTION}`,
+        messages: [{ role: "user", content: user }],
+      },
+      { signal }
+    );
 
     for await (const event of stream) {
       if (
@@ -285,17 +303,22 @@ export async function streamJsonCompletion({
     return anthropicText(await stream.finalMessage());
   }
 
-  const response = await postOpenAiCompatible(llm.provider, llm.apiKey, {
-    model: llm.model,
-    temperature,
-    stream: true,
-    response_format: { type: "json_object" },
-    ...reasoningPayload(llm),
-    messages: [
-      { role: "system", content: system },
-      { role: "user", content: user },
-    ],
-  });
+  const response = await postOpenAiCompatible(
+    llm.provider,
+    llm.apiKey,
+    {
+      model: llm.model,
+      temperature,
+      stream: true,
+      response_format: { type: "json_object" },
+      ...reasoningPayload(llm),
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+    },
+    signal
+  );
 
   if (!response.body) {
     throw new PaimonLlmError(

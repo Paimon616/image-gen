@@ -73,7 +73,10 @@ import {
   type SeedanceResolution,
   type SeedanceVideo,
 } from "@/lib/seedance";
-import { UNGROUPED_WORKSPACE_ID } from "@/lib/types";
+import {
+  cancelSeedanceGeneration,
+  startSeedanceGeneration,
+} from "@/lib/seedance-generation";
 
 const MAX_IMAGE_DIM = 1536;
 
@@ -188,13 +191,6 @@ const T = {
 function tr(key: keyof typeof T, lang: Lang): string {
   return T[key][lang];
 }
-
-const STATUS_LABEL: Record<string, { ko: string; en: string }> = {
-  queued: { ko: "대기 중", en: "Queued" },
-  running: { ko: "생성 중", en: "Generating" },
-  processing: { ko: "생성 중", en: "Generating" },
-  downloading: { ko: "다운로드 중", en: "Downloading" },
-};
 
 /** Load a File or URL into an <img>, downscale to MAX_IMAGE_DIM, return a JPEG data URL. */
 async function toDataUrl(src: File | string): Promise<string> {
@@ -338,8 +334,6 @@ export default function SeedancePage() {
   const videos = useSeedanceStore((s) => s.videos);
   const pending = useSeedanceStore((s) => s.pending);
   const setVideos = useSeedanceStore((s) => s.setVideos);
-  const addPending = useSeedanceStore((s) => s.addPending);
-  const updatePending = useSeedanceStore((s) => s.updatePending);
   const removePending = useSeedanceStore((s) => s.removePending);
 
   // Params live in the module-level store so they survive navigating away and
@@ -355,7 +349,6 @@ export default function SeedancePage() {
   const [thumbnailWidth, setThumbnailWidth] = useState(320);
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
-  const abortControllers = useRef<Record<string, AbortController>>({});
 
   // One-time restore of the remembered settings (the store writes them back on
   // every change, including edits Paimon makes while this page is unmounted).
@@ -414,175 +407,18 @@ export default function SeedancePage() {
     (s) => s.byMedia.seedance.activeWorkspaceId
   );
 
-  const startGeneration = useCallback(
-    async (source: SeedanceParams) => {
-      setError(null);
-      if (source.mode === "i2v" && !source.firstFrame) {
-        setError(tr("needImage", language));
-        return;
-      }
-      if (!source.prompt.trim() && source.mode === "t2v") {
-        setError(tr("needPrompt", language));
-        return;
-      }
+  // The generation itself lives in a module-scope runner (seedance-generation),
+  // so a run — and a Paimon situation batch — keeps streaming after this page
+  // unmounts. This wrapper only surfaces validation errors next to the button.
+  const startGeneration = useCallback(async (source: SeedanceParams) => {
+    setError(null);
+    const validationError = await startSeedanceGeneration(source);
+    if (validationError) setError(validationError);
+  }, []);
 
-      const clientId =
-        (typeof crypto !== "undefined" && "randomUUID" in crypto
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.round(Math.random() * 1e6)}`);
-      const controller = new AbortController();
-      abortControllers.current[clientId] = controller;
-
-      const pendingCard: SeedanceVideo = {
-        id: clientId,
-        url: "",
-        filename: "",
-        timestamp: Date.now(),
-        contentType: "video/mp4",
-        prompt: source.prompt,
-        params: {
-          mode: source.mode,
-          prompt: source.prompt,
-          resolution: source.resolution,
-          ratio: source.ratio,
-          duration: source.duration,
-          cameraFixed: source.cameraFixed,
-          watermark: source.watermark,
-          cleanFrame: source.cleanFrame,
-          seed: source.seed,
-          hasFirstFrame: Boolean(source.firstFrame),
-          hasLastFrame: Boolean(source.lastFrame),
-          referenceCount: source.references.length,
-        },
-        thumbnail: source.firstFrame ?? null,
-        status: { state: "queued", progress: 0.04, message: STATUS_LABEL.queued[language] },
-      };
-      addPending(pendingCard);
-
-      try {
-        const res = await fetch("/api/seedance/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          // The clip is filed under the workspace this screen is filtered to, so
-          // it appears there right away. The "ungrouped" sentinel isn't a real
-          // workspace, so it queues as no target at all.
-          body: JSON.stringify({
-            ...source,
-            clientId,
-            workspaceId:
-              activeWorkspaceId && activeWorkspaceId !== UNGROUPED_WORKSPACE_ID
-                ? activeWorkspaceId
-                : undefined,
-          }),
-          signal: controller.signal,
-        });
-        if (!res.body) throw new Error("No response stream");
-
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-        let pollCount = 0;
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const blocks = buffer.split("\n\n");
-          buffer = blocks.pop() ?? "";
-
-          for (const block of blocks) {
-            const eventLine = block.split("\n").find((l) => l.startsWith("event: "));
-            const dataLine = block.split("\n").find((l) => l.startsWith("data: "));
-            if (!eventLine || !dataLine) continue;
-            const event = eventLine.slice("event: ".length).trim();
-            let data: Record<string, unknown> = {};
-            try {
-              data = JSON.parse(dataLine.slice("data: ".length));
-            } catch {
-              continue;
-            }
-
-            if (event === "task") {
-              updatePending(clientId, {
-                status: { state: "generating", progress: 0.12, message: STATUS_LABEL.running[language] },
-              });
-            } else if (event === "poll") {
-              const status = String(data.status ?? "");
-              if (status === "downloading") {
-                updatePending(clientId, {
-                  status: {
-                    state: "generating",
-                    progress: 0.95,
-                    message: STATUS_LABEL.downloading[language],
-                  },
-                });
-              } else {
-                pollCount += 1;
-                const progress = Math.min(0.9, 0.15 + pollCount * 0.03);
-                updatePending(clientId, {
-                  status: {
-                    state: "generating",
-                    progress,
-                    message: STATUS_LABEL.running[language],
-                  },
-                });
-              }
-            } else if (event === "complete") {
-              const video = data.video as SeedanceVideo | undefined;
-              if (video) setVideos((prev) => [video, ...prev]);
-              // Refresh the chip counts after the auto-registration above.
-              if (activeWorkspaceId) {
-                void useMediaWorkspaceStore
-                  .getState()
-                  .fetchWorkspaces("seedance");
-              }
-              removePending(clientId);
-            } else if (event === "error") {
-              updatePending(clientId, {
-                status: {
-                  state: "error",
-                  progress: 0,
-                  message: String(data.message ?? "생성 실패"),
-                },
-              });
-            } else if (event === "canceled") {
-              removePending(clientId);
-            }
-          }
-        }
-      } catch (err) {
-        if (controller.signal.aborted) {
-          removePending(clientId);
-        } else {
-          updatePending(clientId, {
-            status: {
-              state: "error",
-              progress: 0,
-              message: err instanceof Error ? err.message : "네트워크 오류",
-            },
-          });
-        }
-      } finally {
-        delete abortControllers.current[clientId];
-      }
-    },
-    [
-      activeWorkspaceId,
-      addPending,
-      updatePending,
-      removePending,
-      setVideos,
-      language,
-    ]
-  );
-
-  const cancelGeneration = useCallback(
-    (id: string) => {
-      abortControllers.current[id]?.abort();
-      removePending(id);
-    },
-    [removePending]
-  );
+  const cancelGeneration = useCallback((id: string) => {
+    cancelSeedanceGeneration(id);
+  }, []);
 
   const deleteVideo = useCallback(
     async (video: SeedanceVideo) => {
@@ -627,25 +463,14 @@ export default function SeedancePage() {
   // --- Paimon character-situation runs -------------------------------------
   // A saved situation becomes a clip: its image is inlined as the start frame,
   // Paimon writes the motion/expression/camera prompt for the requested length,
-  // and (with 자동 생성 on) the clip is submitted. The runner is registered from
-  // here because startGeneration is this page's, so it only exists while the
-  // page is mounted.
+  // and (with 자동 생성 on) the clip is submitted through the module-scope
+  // runner, so the batch keeps going after this page unmounts.
   const situationBatch = useSeedanceSituationStore((s) => s.batch);
   const cancelSituationBatch = useSeedanceSituationStore((s) => s.cancelBatch);
   // A turn in flight disables the picker, so a pick can't interleave with it.
   const paimonLoading = useSeedancePaimonStore(
     (s) => s.conversations[DEFAULT_CONVERSATION]?.loading ?? false
   );
-
-  useEffect(() => {
-    useSeedanceSituationStore.getState().setRunner({
-      // Read the params back from the store: the composing turn writes the new
-      // prompt and start frame there ahead of this component's next render.
-      enqueue: () => void startGeneration(useSeedanceStore.getState().params),
-      requiresStartFrame: params.mode === "i2v",
-    });
-    return () => useSeedanceSituationStore.getState().setRunner(null);
-  }, [params.mode, startGeneration]);
 
   const runSituation = useCallback((request: SituationRunRequest) => {
     const store = useSeedanceSituationStore.getState();

@@ -2,7 +2,12 @@
 // Paimon can talk to any of these providers; the user picks the provider + model
 // on the settings screen and the key is stored server-side (see lib/settings.ts).
 
-export type ChatProviderId = "openrouter" | "anthropic" | "openai" | "google";
+export type ChatProviderId =
+  | "openrouter"
+  | "anthropic"
+  | "openai"
+  | "google"
+  | "deepseek";
 
 export interface ChatModelOption {
   id: string;
@@ -107,6 +112,24 @@ export const CHAT_PROVIDERS: ChatProviderMeta[] = [
       { id: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite" },
     ],
     visionModels: ["gemini-2.5-flash", "gemini-2.5-pro"],
+  },
+  {
+    id: "deepseek",
+    label: "DeepSeek",
+    keyLabel: "DeepSeek API Key",
+    keyPlaceholder: "sk-...",
+    keyHintKo:
+      "DeepSeek Chat Completions API를 직접 호출합니다. DeepSeek 모델은 이미지 입력(비전)을 지원하지 않습니다. 키가 없으면 DEEPSEEK_API_KEY 환경변수를 사용합니다.",
+    keyHintEn:
+      "Calls the DeepSeek Chat Completions API directly. DeepSeek models do not support image (vision) input. Falls back to the DEEPSEEK_API_KEY environment variable.",
+    keyUrl: "https://platform.deepseek.com/api_keys",
+    fallbackModels: [
+      { id: "deepseek-chat", label: "DeepSeek Chat" },
+      { id: "deepseek-reasoner", label: "DeepSeek Reasoner" },
+    ],
+    // DeepSeek's own API has no vision-capable models; attachment analysis
+    // will report the limitation instead of silently switching vendors.
+    visionModels: [],
   },
 ];
 

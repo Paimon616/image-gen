@@ -8,6 +8,7 @@ import {
   Cpu,
   Download,
   Film,
+  Fish,
   Gem,
   Image as ImageIcon,
   KeyRound,
@@ -61,6 +62,7 @@ const PROVIDER_ICONS: Record<ChatProviderId, React.ReactNode> = {
   anthropic: <Sparkles className="h-4 w-4" />,
   openai: <Bot className="h-4 w-4" />,
   google: <Gem className="h-4 w-4" />,
+  deepseek: <Fish className="h-4 w-4" />,
 };
 
 const POD_EXPORT_FILENAME = "runpod-pods.json";
@@ -391,6 +393,7 @@ export default function SettingsPage() {
           anthropicApiKey: chatKeys.anthropic,
           openaiApiKey: chatKeys.openai,
           googleApiKey: chatKeys.google,
+          deepseekApiKey: chatKeys.deepseek,
           paimonChatProvider: paimonProvider,
           paimonChatModel: paimonModel,
         }),

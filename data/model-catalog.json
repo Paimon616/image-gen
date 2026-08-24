@@ -1691,7 +1691,8 @@
         "Image",
         "RentCivit"
       ]
-    }
+    },
+    "source_url": "https://civitai.com/models/2544636/wai-anima?modelVersionId=2983680"
   },
   "checkpoints/waiIllustriousSDXL_v140.safetensors": {
     "name": "WAI-illustrious-SDXL",
@@ -4081,7 +4082,8 @@
         "RentCivit",
         "Rent"
       ]
-    }
+    },
+    "source_url": "https://civitai.com/models/2032463/elle-based-on-rick-and-morty-anime-illustrious?modelVersionId=2300249"
   },
   "loras/ep5.safetensors": {
     "name": "Exotic Dildos!",
@@ -5820,11 +5822,11 @@
     }
   },
   "loras/Pb0y.safetensors": {
-    "name": "BL-Manhwa Styles",
-    "version": "Pb0y",
+    "name": "Pb0y",
+    "version": "P_B0y",
     "base_model": "Pony",
     "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/b807179a-83d6-4f48-b45b-fbfb8e6f2fda/original=true/51202927.jpeg",
-    "civitai_url": "https://civitai.red/models/764992/bl-manhwa-styles",
+    "civitai_url": "https://civitai.red/models/1133313/pb0y?modelVersionId=1274115",
     "tags": [
       "style",
       "msngluv",
@@ -5843,7 +5845,8 @@
       "allowCommercialUse": [
         "RentCivit"
       ]
-    }
+    },
+    "source_url": "https://civitai.red/models/1133313/pb0y?modelVersionId=1274115"
   },
   "loras/People'sWorks_v10_Illusv1.0.safetensors": {
     "name": "People's Works: SDXL",
@@ -8783,5 +8786,73 @@
     "civitai_url": "https://huggingface.co/Phips/4xNomosWebPhoto_RealPLKSR/resolve/49d5da19489e645e870eb076ea84815471f27ef4/4xNomosWebPhoto_RealPLKSR.safetensors",
     "source_url": "https://huggingface.co/Phips/4xNomosWebPhoto_RealPLKSR/resolve/49d5da19489e645e870eb076ea84815471f27ef4/4xNomosWebPhoto_RealPLKSR.safetensors",
     "tags": []
+  },
+  "checkpoints/gloamingMonolith_obsidianCore.safetensors": {
+    "name": "Gloaming Monolith",
+    "version": "Obsidian Core",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/2386011/gloaming-monolith?modelVersionId=2683000",
+    "source_url": "https://civitai.red/models/2386011/gloaming-monolith?modelVersionId=2683000",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/240305a0-c9af-4fbe-b938-67981b2b5d53/original=true/120830085.jpeg",
+    "tags": []
+  },
+  "loras/moyong-ran.safetensors": {
+    "name": "moyong-ran",
+    "version": "자체 학습 · 2026-08-23",
+    "base_model": "Illustrious",
+    "thumbnail_url": "/api/models/thumbnail?folder=loras&file=moyong-ran.preview.png",
+    "civitai_url": null,
+    "source_url": null,
+    "tags": [
+      "self-trained",
+      "자체 학습",
+      "character",
+      "moyong-ran"
+    ]
+  },
+  "loras/[Yue]Nijistyle①.safetensors": {
+    "name": "Niji-male-style①",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/1028032/niji-male-style?modelVersionId=1152969",
+    "source_url": "https://civitai.red/models/1028032/niji-male-style?modelVersionId=1152969",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/2e834f10-0522-4512-b09b-198f14c263c2/original=true/44947989.jpeg"
+  },
+  "loras/u3nomigi.safetensors": {
+    "name": "Uenomigi | Style LoRa",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/1173637/uenomigi-style-lora?modelVersionId=1320597",
+    "source_url": "https://civitai.red/models/1173637/uenomigi-style-lora?modelVersionId=1320597",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/a747958b-f515-4407-abe8-e63e05c3ebd7/original=true/53442140.jpeg",
+    "tags": [
+      "u3nomigi_illu",
+      "abstract,abstract shapes,halftone"
+    ]
+  },
+  "loras/Flat_colors_-_NikaStyle.safetensors": {
+    "name": "Flat colors, soft shading, chibi art– NikaStyle",
+    "version": "ILL",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/1940918/flat-colors-soft-shading-chibi-art-nikastyle?modelVersionId=2196722",
+    "source_url": "https://civitai.red/models/1940918/flat-colors-soft-shading-chibi-art-nikastyle?modelVersionId=2196722",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/52c6792f-a50e-4ff8-8d47-8406a5509e7a/original=true/99316911.jpeg",
+    "tags": [
+      "FlatNika,"
+    ]
+  },
+  "loras/coworker-girl.safetensors": {
+    "name": "coworker-girl",
+    "version": "자체 학습 · 2026-08-24",
+    "base_model": "Illustrious",
+    "thumbnail_url": "/api/models/thumbnail?folder=loras&file=coworker-girl.preview.png",
+    "civitai_url": null,
+    "source_url": null,
+    "tags": [
+      "self-trained",
+      "자체 학습",
+      "character",
+      "coworker-girl"
+    ]
   }
 }

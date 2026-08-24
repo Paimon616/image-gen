@@ -49,7 +49,10 @@ const PAIMON_SYSTEM_PROMPT = [
   "- outfits:array — each item { id?:string, name:string, description:string, prompt:string }. One entry per wardrobe. description is natural language, prompt is generation-ready. Do NOT put appearance/identity into outfits; only clothing and accessories. Every garment must specify: exact color (a concrete named hue), material/fabric, pattern (or 'solid'), and cut/fit/length. Include footwear and notable accessories with the same specificity. A bare 'pajamas'/'dress'/'lingerie' with no color/material/pattern is not acceptable — it renders a different outfit every time.",
   "- backgrounds:array — each item { id?:string, name:string, description:string, prompt:string }. One entry per environment/setting. prompt is generation-ready (location, time of day, atmosphere). No subject/person tags. Nail down the concrete, recurring details so the place is recognizable across renders: specific location type, key furniture/objects and their colors/materials, wall/floor finish, dominant color palette, light source and time of day. A bare 'a room'/'a forest' is not acceptable.",
   "- situations:array — each item { id?:string, name:string, description:string, prompt:string, outfitName?:string, backgroundName?:string }. Each is a scene/action the character can be in (e.g. floating peacefully in the sea). description is natural language, prompt is generation-ready. No permanent-identity/outfit/background tags — those come from the linked outfit/background.",
-  "- A situation prompt MUST concretely nail the shot, not just a mood. Always specify: (1) the specific action/verb with what the hands and limbs are doing, (2) whole-body orientation and pose (standing/sitting/kneeling/lying/leaning/walking, torso and hip direction), (3) camera framing (cowboy shot, knee up, upper body, close-up — 'full body' and 'wide shot' are off-limits by default, see the FRAMING BUDGET rule), (4) camera angle and height (e.g. from below, eye level, from side, from behind, dutch angle), (5) gaze direction and expression. A vague situation like 'smiling shyly' with no pose/camera collapses into the same generic bust portrait every time — pin these down so each situation renders a visibly different composition.",
+  "- SITUATION DESCRIPTION DEPTH (mandatory): a situation's description is a 2-4 sentence Korean mini-scene, not a one-line action caption. It must make the moment visible: what the character is DOING (the concrete action and what each hand is doing), her EMOTION at this moment and how it shows on her face (eyes, brows, mouth — e.g. '입꼬리만 살짝 올라간 옅은 미소', '눈썹이 좁혀지고 시선이 아래로 떨어진다'), her body language (posture, shoulder/torso tension, lean, weight), where her gaze goes, and how the shot is seen (framing and camera angle in plain Korean, e.g. '측면에서 허리 위로'). A description like '유리잔을 닦으며 입구를 확인한다' is NOT acceptable — it has an action but no emotion, no facial expression, and no camera.",
+  "- A situation prompt MUST concretely nail the shot, not just a mood. Always specify: (1) the specific action/verb with what the hands and limbs are doing, (2) whole-body orientation and pose (standing/sitting/kneeling/lying/leaning/walking, torso and hip direction), (3) camera framing (cowboy shot, knee up, upper body, close-up — 'full body' and 'wide shot' are off-limits by default, see the FRAMING BUDGET rule), (4) camera angle and height (e.g. from below, eye level, from side, from behind, dutch angle), (5) gaze direction, and (6) a SPECIFIC facial expression built from concrete facial features. A vague situation like 'smiling shyly' with no pose/camera collapses into the same generic bust portrait every time — pin these down so each situation renders a visibly different composition.",
+  "- EXPRESSION SPECIFICITY (mandatory): 'smile' or 'neutral expression' alone is a bare category word and forbidden as the whole expression. Name the emotion through its visible facial mechanics — eyes (half-closed, widened, narrowed, glistening, looking away), brows (raised, furrowed, relaxed), mouth (parted lips, pressed lips, faint smile, open laugh, bitten lip), plus cheeks/breath where it helps (flushed cheeks, exhaling) — and let the body echo it (slumped shoulders, straightened back, hand clutching fabric). Use expression tags the model family actually knows (e.g. gentle smile, smirk, pout, worried, surprised, light blush, tearful eyes, determined expression) combined with the concrete feature tags above.",
+  "- DESCRIPTION↔PROMPT FIDELITY (mandatory): the prompt is the model-ready translation of that situation's description, and every visual fact in the description must survive the translation — the action and hand positions, the pose, the emotion and each named facial feature, the gaze, the framing, and the camera angle. Do not write a rich description and then collapse the prompt to action+framing only; if the description says '눈썹이 좁혀지고 입술을 깨문다', the prompt must carry 'furrowed brows, biting lip' (or the family-appropriate equivalent). Conversely never put a visual element in the prompt that contradicts the description.",
   "- Every situation prompt must carry EXACTLY ONE framing tag, chosen from: close-up, upper body, cowboy shot, knee up. Never omit it and never combine two of them — an unframed situation renders as the same generic bust portrait as every other one.",
   "- FRAMING BUDGET (hard rule): whole-figure framing is FORBIDDEN unless the user explicitly asked for it in this conversation. Never write 'full body', 'wide shot', 'head to toe', 'whole body', 'full figure', 'feet visible' or 전신 into a situation prompt on your own initiative — these checkpoints squash the figure (short stubby legs, oversized head, compressed torso) whenever the whole body has to fit the frame, so a self-chosen full-body situation is a defect, not variety. Stay inside 'cowboy shot' (hip up), 'knee up', 'upper body' and 'close-up' for EVERY situation you invent.",
   "- Actions that seem to demand the whole figure (lying or sprawled, dancing, jumping, running, walking away, kneeling on the floor, showing the shoes or the complete outfit) are NOT an exception. Frame them tight instead and let the action read from the visible part: 'knee up' or 'cowboy shot' plus a concrete body/limb description of the same movement. Do not smuggle the whole body back in with 'from a distance', 'small in frame', 'entire silhouette' or a shoe/footwear focus.",
@@ -70,7 +73,7 @@ const PAIMON_SYSTEM_PROMPT = [
   "- Emit EXACTLY the count you put in plan. Count as you write and stop there — never overshoot it.",
   "- Every situation name must be unique across the character (the names you were given included), and consecutive situations must differ in BOTH action and framing. If you run out of genuinely different ideas, stop early and say so in reply instead of re-skinning a scene you already wrote.",
   "- Batch situation generation: when the user asks for N situations (e.g. '시놉시스를 참고해서 상황 80개 만들어줘'), read the synopsis and produce up to 40 varied, non-duplicated situations grounded in the story per answer (see BATCH SIZE). For EACH situation pick the most fitting outfit and background from the existing lists via outfitName/backgroundName. If a needed outfit or background does not exist yet, first add it to outfits/backgrounds (with description+prompt) and then reference it by name. Return the full situations array (plus any new outfits/backgrounds) in one characterPatch. Keep the reply short — do not enumerate all items.",
-  "- Composition variety across a batch is mandatory. Do NOT let situations converge on the same pose and framing (the classic failure is dozens of near-identical upper-body front-facing portraits). Deliberately spread them across the axes above: mix cowboy, knee-up, upper-body and close-up shots — never reach for 'full body' or 'wide shot' as a variety filler (the FRAMING BUDGET rule forbids them unless the user asked); get the variety from pose, camera angle and distance-within-the-frame instead; mix standing, sitting, kneeling, lying, walking, and dynamic action poses; mix camera angles (front, side, from behind, from above, from below); vary what the hands are doing and where the gaze goes. Each situation's action should demand a different body pose and camera than its neighbors so the rendered set looks genuinely different, not recolored copies of one shot.",
+  "- Composition variety across a batch is mandatory. Do NOT let situations converge on the same pose and framing (the classic failure is dozens of near-identical upper-body front-facing portraits). Deliberately spread them across the axes above: mix cowboy, knee-up, upper-body and close-up shots — never reach for 'full body' or 'wide shot' as a variety filler (the FRAMING BUDGET rule forbids them unless the user asked); get the variety from pose, camera angle and distance-within-the-frame instead; mix standing, sitting, kneeling, lying, walking, and dynamic action poses; mix camera angles (front, side, from behind, from above, from below); vary what the hands are doing and where the gaze goes; and spread the EMOTIONAL RANGE deliberately — do not let a batch settle into one default mood (the classic failure is 40 variations of a calm faint smile). Draw different emotions from the synopsis (joy, focus, fatigue, longing, irritation, surprise, mischief, melancholy, pride, tenderness, tension) and give each its concrete facial mechanics per the EXPRESSION SPECIFICITY rule. Each situation's action should demand a different body pose, camera AND emotional register than its neighbors so the rendered set looks genuinely different, not recolored copies of one shot.",
   "- Write generation prompts as concise, high-signal tags/phrases. Avoid contradictions and keyword spam. Prefer booru/anime tags for anime characters and natural descriptive phrases for realistic ones, following the user's stated style. Concise means dropping filler — never drop the concrete color/material/pattern/cut that keeps the character consistent (see the CONSISTENCY MANDATE). A short prompt that leaves a garment's color unspecified is wrong, not concise.",
   "- If attachment analysis is present, use it to ground appearance/outfit descriptions. If visual pixels are unavailable, proceed from the user's text and metadata.",
   "- In reply, briefly tell the user in Korean which fields you filled or changed. Do not claim to have set fields that are absent from characterPatch.",
@@ -374,8 +377,15 @@ export async function POST(req: NextRequest) {
 
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
-        const send = (event: string, data: unknown) =>
-          controller.enqueue(encoder.encode(sse(event, data)));
+        // The client can abort mid-answer (the panel's cancel button); after
+        // that every enqueue throws, so sends become best-effort.
+        const send = (event: string, data: unknown) => {
+          try {
+            controller.enqueue(encoder.encode(sse(event, data)));
+          } catch {
+            // Stream already cancelled by the client.
+          }
+        };
 
         let contentBuffer = "";
         let sentLength = 0;
@@ -407,6 +417,9 @@ export async function POST(req: NextRequest) {
             temperature: 0.3,
             // Batch situation generation can run long, so keep plenty of room.
             maxTokens: 64_000,
+            // A client-side cancel aborts the request, which stops the
+            // upstream completion instead of letting it run (and bill) to the end.
+            signal: req.signal,
             // Stream the `reply` string out of the partial JSON as it arrives.
             onDelta: (delta) => {
               contentBuffer += delta;
@@ -469,10 +482,18 @@ export async function POST(req: NextRequest) {
 
           send("done", { reply, characterPatch, attachmentNotice });
         } catch (error) {
-          const message = error instanceof Error ? error.message : "Paimon failed.";
-          send("error", { error: paimonErrorMessage(message) });
+          // A cancelled request needs no error event — nobody is listening.
+          if (!req.signal.aborted) {
+            const message =
+              error instanceof Error ? error.message : "Paimon failed.";
+            send("error", { error: paimonErrorMessage(message) });
+          }
         } finally {
-          controller.close();
+          try {
+            controller.close();
+          } catch {
+            // Already cancelled by the client.
+          }
         }
       },
     });

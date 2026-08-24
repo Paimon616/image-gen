@@ -14,6 +14,7 @@ import {
   type CharacterMainImage,
   type CharacterOutfit,
   type CharacterSituation,
+  type CharacterLora,
   type GenerationParams,
 } from "@/lib/types";
 
@@ -115,6 +116,44 @@ function normalizeMainImage(
   };
 }
 
+// 캐릭터 LoRA — the character's own trained LoRAs, applied on top of the main
+// image baseline at render time. Paths are free-form (a LoRA filename or a
+// relative path inside the LoRA folder), so only shape and size are policed.
+const MAX_CHARACTER_LORAS = 8;
+const MAX_LORA_PATH_LENGTH = 300;
+const MAX_TRIGGER_WORDS_LENGTH = 300;
+
+function normalizeCharacterLoras(value: unknown): CharacterLora[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  const loras: CharacterLora[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+    const record = item as Record<string, unknown>;
+    const path =
+      typeof record.path === "string"
+        ? record.path.trim().slice(0, MAX_LORA_PATH_LENGTH)
+        : "";
+    if (!path) continue;
+    const key = path.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const scale =
+      typeof record.scale === "number" && Number.isFinite(record.scale)
+        ? Math.max(-5, Math.min(5, record.scale))
+        : 1;
+    const triggerWords =
+      typeof record.triggerWords === "string"
+        ? record.triggerWords.trim().slice(0, MAX_TRIGGER_WORDS_LENGTH)
+        : "";
+    loras.push(
+      triggerWords ? { path, scale, triggerWords } : { path, scale }
+    );
+    if (loras.length >= MAX_CHARACTER_LORAS) break;
+  }
+  return loras;
+}
+
 function normalizeOutfits(value: unknown): CharacterOutfit[] {
   if (!Array.isArray(value)) return [];
   return value
@@ -191,6 +230,7 @@ function normalizeCharacter(raw: unknown): Character | null {
     mainImage: normalizeMainImage(record.mainImage, record.thumbnail),
     appearanceDescription: str(record.appearanceDescription, MAX_TEXT_LENGTH),
     appearancePrompt: str(record.appearancePrompt, MAX_TEXT_LENGTH),
+    loras: normalizeCharacterLoras(record.loras),
     outfits: normalizeOutfits(record.outfits),
     backgrounds: normalizeBackgrounds(
       Array.isArray(record.backgrounds)
@@ -402,6 +442,10 @@ export function updateCharacter(
         "appearancePrompt" in record
           ? str(record.appearancePrompt, MAX_TEXT_LENGTH)
           : existing.appearancePrompt,
+      loras:
+        "loras" in record
+          ? normalizeCharacterLoras(record.loras)
+          : existing.loras,
       outfits:
         "outfits" in record
           ? normalizeOutfits(record.outfits)

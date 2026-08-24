@@ -2,9 +2,9 @@ import "server-only";
 
 import { execFile, spawn } from "child_process";
 import { randomUUID } from "crypto";
-import { mkdir, readFile, writeFile } from "fs/promises";
+import { mkdir, open, readFile, stat, writeFile } from "fs/promises";
 import { homedir } from "os";
-import { basename, dirname } from "path";
+import { basename, dirname, join, normalize } from "path";
 import { promisify } from "util";
 import type { GenerationParams, ImportedCivitaiResource } from "@/lib/types";
 import { getRunpodPod, readSettings, type RunpodPodSettings } from "@/lib/settings";
@@ -25,6 +25,7 @@ import {
 import {
   ANIMA_CLIP_NAME,
   ANIMA_VAE_NAME,
+  COMFYUI_MODELS_DIR,
   KREA2_CLIP_NAME,
   KREA2_VAE_NAME,
   PORNMASTER_CLIP_NAME,
@@ -2651,10 +2652,15 @@ export async function checkRunpodGenerationFiles(
     })
   );
 
-  return enriched.map((item) => ({
-    ...item,
-    downloadable: canDownloadRunpodResource(item.resource, item.path),
-  }));
+  return await Promise.all(
+    enriched.map(async (item) => ({
+      ...item,
+      downloadable: canDownloadRunpodResource(item.resource, item.path),
+      // No external source needed if this machine has the file (e.g. a
+      // self-trained LoRA): it can be pushed to the pod directly.
+      uploadable: await canUploadRunpodResource(item.path),
+    }))
+  );
 }
 
 function sleep(ms: number) {
@@ -3114,6 +3120,134 @@ export async function downloadRunpodResource(
   });
   await recordRunpodDownloadInCatalog(pod, targetFile, resource);
   return String(data.path || targetFile);
+}
+
+// --- Local → pod model upload ---------------------------------------------------
+// Self-trained models (e.g. LoRAs from the training screen) have no external
+// source (civitai_url: null), so a pod that lacks one can only be filled from
+// this machine. Files travel over the same Jupyter kernel channel the LoRA
+// trainer uses for datasets — base64 chunks kept under Jupyter's ~10MiB
+// websocket message cap, so it works through the RunPod proxy without scp.
+
+// Resolves "loras/x.safetensors" inside the local ComfyUI models tree, guarded
+// against path traversal.
+function localModelFilePath(podRelativePath: string) {
+  const root = normalize(COMFYUI_MODELS_DIR);
+  const full = normalize(join(root, podRelativePath));
+  if (full !== root && !full.startsWith(`${root}/`) && !full.startsWith(`${root}\\`)) {
+    throw new Error("Invalid model path");
+  }
+  return full;
+}
+
+// Whether `folder/name` physically exists locally, i.e. the pod could be filled
+// from this machine when no download source exists.
+export async function canUploadRunpodResource(podRelativePath: string) {
+  try {
+    return (await stat(localModelFilePath(podRelativePath))).isFile();
+  } catch {
+    return false;
+  }
+}
+
+// The pod's REAL ComfyUI models dir. The helper detects the running ComfyUI
+// (its models tree is not always /workspace/ComfyUI/models) and remaps paths
+// for its own download/files routes — writes made over Jupyter bypass that
+// remap, so they must resolve the same dir first.
+export async function getRunpodComfyModelsDir(pod: RunpodPodSettings) {
+  try {
+    const data = await fetchRunpodHelper(pod, "/api/runpod/helper/status");
+    const dir = typeof data.comfyModelsDir === "string" ? data.comfyModelsDir.trim() : "";
+    if (dir.startsWith("/")) return dir.replace(/\/+$/, "");
+  } catch {
+    // Helper down — fall through to the default install location.
+  }
+  return "/workspace/ComfyUI/models";
+}
+
+export async function streamRunpodModelUpload(
+  podId: string,
+  podRelativePath: string, // e.g. "loras/moyong-ran.safetensors"
+  onEvent: (event: {
+    type: "progress" | "status" | "complete";
+    path?: string;
+    uploaded?: number;
+    total?: number;
+    percent?: number;
+    message?: string;
+  }) => void
+) {
+  const pod = await getRunpodPod(podId);
+  if (!pod) throw new Error("RunPod target was not found.");
+
+  const localPath = localModelFilePath(podRelativePath);
+  const total = (await stat(localPath)).size;
+  if (!(total > 0)) throw new Error(`Local model file is empty: ${podRelativePath}`);
+
+  const modelsDir = await getRunpodComfyModelsDir(pod);
+  const targetFile = `${modelsDir}/${podRelativePath.replace(/\\/g, "/")}`;
+  const targetDir = targetFile.slice(0, targetFile.lastIndexOf("/"));
+  // Assembled under a temp name so a half-written file never shadows the real one.
+  const tmpFile = `${targetFile}.uploading`;
+
+  onEvent({ type: "status", message: `Uploading ${basename(localPath)} to the pod...` });
+  await runPythonOnPod(
+    pod,
+    [
+      "import os",
+      `os.makedirs(${JSON.stringify(targetDir)}, exist_ok=True)`,
+      `open(${JSON.stringify(tmpFile)}, "wb").close()`,
+      "print('init ok')",
+    ].join("\n")
+  );
+
+  // 6MB raw → ~8MB base64 per kernel message, safely under the websocket cap.
+  const CHUNK_BYTES = 6 * 1024 * 1024;
+  const handle = await open(localPath, "r");
+  try {
+    const buf = Buffer.alloc(CHUNK_BYTES);
+    let uploaded = 0;
+    while (uploaded < total) {
+      const { bytesRead } = await handle.read(buf, 0, CHUNK_BYTES, uploaded);
+      if (bytesRead <= 0) break;
+      const b64 = buf.subarray(0, bytesRead).toString("base64");
+      await runPythonOnPod(
+        pod,
+        [
+          "import base64",
+          `open(${JSON.stringify(tmpFile)}, "ab").write(base64.b64decode(${JSON.stringify(b64)}))`,
+          "print('chunk ok')",
+        ].join("\n"),
+        180_000
+      );
+      uploaded += bytesRead;
+      onEvent({
+        type: "progress",
+        uploaded,
+        total,
+        percent: Math.round((uploaded / total) * 100),
+      });
+    }
+  } finally {
+    await handle.close();
+  }
+
+  const sizeOut = await runPythonOnPod(
+    pod,
+    ["import os", `print(os.path.getsize(${JSON.stringify(tmpFile)}))`].join("\n")
+  );
+  const remoteSize = Number(sizeOut.trim());
+  if (remoteSize !== total) {
+    await execOnPodViaJupyter(pod, `rm -f ${JSON.stringify(tmpFile)}`).catch(() => {});
+    throw new Error(`Upload size mismatch: pod ${remoteSize} vs local ${total} bytes.`);
+  }
+  await runPythonOnPod(
+    pod,
+    ["import os", `os.replace(${JSON.stringify(tmpFile)}, ${JSON.stringify(targetFile)})`, "print('done')"].join("\n")
+  );
+
+  onEvent({ type: "complete", path: targetFile, percent: 100 });
+  return targetFile;
 }
 
 export async function streamRunpodResourceDownload(

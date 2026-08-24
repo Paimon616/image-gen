@@ -16,6 +16,7 @@ import {
 } from "@/lib/seedance";
 import { toggleFileWorkspace, workspaceExists } from "@/lib/workspaces";
 import { notifyWorkspaceChanged } from "@/lib/runpod-share";
+import { isValidCharacterId } from "@/lib/characters";
 
 export const runtime = "nodejs";
 // Generation polls ModelArk for up to ~10 minutes; keep the function alive.
@@ -120,6 +121,15 @@ export async function POST(req: NextRequest) {
     rawWorkspaceId && (await workspaceExists(rawWorkspaceId))
       ? rawWorkspaceId
       : "";
+  // A Paimon situation run tags the clip with the character/situation it was
+  // composed from, so the finished video registers itself into that situation's
+  // strip in the character studio (same auto-link the image generator does).
+  const characterId = isValidCharacterId(rawBody.characterId)
+    ? rawBody.characterId
+    : "";
+  const situationId = isValidCharacterId(rawBody.situationId)
+    ? rawBody.situationId
+    : "";
 
   const encoder = new TextEncoder();
   const abortSignal = req.signal;
@@ -328,7 +338,18 @@ export async function POST(req: NextRequest) {
 
         await writeFile(
           join(SEEDANCE_OUTPUT_DIR, `${fileId}.json`),
-          JSON.stringify(video, null, 2),
+          JSON.stringify(
+            {
+              ...video,
+              // Character/situation link fields, snake_case like image sidecars.
+              ...(characterId ? { character_id: characterId } : {}),
+              ...(characterId && situationId
+                ? { situation_id: situationId }
+                : {}),
+            },
+            null,
+            2
+          ),
           "utf-8"
         );
 

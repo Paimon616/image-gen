@@ -33,6 +33,7 @@ export interface AppSettings {
   anthropicApiKey: string;
   openaiApiKey: string;
   googleApiKey: string;
+  deepseekApiKey: string;
   paimonChatProvider: ChatProviderId;
   paimonChatModel: string;
   // Let a thinking-capable chat model reason before it answers. Off by default:
@@ -48,6 +49,7 @@ export const CHAT_PROVIDER_KEY_FIELDS = {
   anthropic: "anthropicApiKey",
   openai: "openaiApiKey",
   google: "googleApiKey",
+  deepseek: "deepseekApiKey",
 } as const satisfies Record<ChatProviderId, keyof AppSettings>;
 
 const SETTINGS_PATH = join(process.cwd(), ".local", "settings.json");
@@ -64,6 +66,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   anthropicApiKey: "",
   openaiApiKey: "",
   googleApiKey: "",
+  deepseekApiKey: "",
   paimonChatProvider: DEFAULT_PAIMON_CHAT_PROVIDER,
   paimonChatModel: DEFAULT_PAIMON_CHAT_MODEL,
   paimonChatReasoning: false,
@@ -90,6 +93,7 @@ function cleanSettings(value: Partial<AppSettings>): AppSettings {
     anthropicApiKey: String(value.anthropicApiKey ?? "").trim(),
     openaiApiKey: String(value.openaiApiKey ?? "").trim(),
     googleApiKey: String(value.googleApiKey ?? "").trim(),
+    deepseekApiKey: String(value.deepseekApiKey ?? "").trim(),
     paimonChatProvider: isChatProviderId(value.paimonChatProvider)
       ? value.paimonChatProvider
       : DEFAULT_PAIMON_CHAT_PROVIDER,
@@ -169,6 +173,8 @@ export async function getChatProviderApiKey(provider: ChatProviderId) {
         process.env.GEMINI_API_KEY?.trim() ||
         ""
       );
+    case "deepseek":
+      return process.env.DEEPSEEK_API_KEY?.trim() ?? "";
   }
 }
 

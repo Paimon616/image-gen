@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "fs/promises";
+import { mkdir, readdir, unlink, writeFile } from "fs/promises";
 import { join } from "path";
 import { NextRequest } from "next/server";
 import {
@@ -32,6 +32,13 @@ export async function POST(req: NextRequest) {
   }
 
   await mkdir(dir, { recursive: true });
+
+  // Replace semantics: the client always sends the complete dataset, so
+  // images/captions left over from a previous, larger save must not survive
+  // (they would silently train alongside the new set). _meta.json is kept.
+  const stale = (await readdir(dir)).filter((f) => /\.(png|jpe?g|webp|txt)$/i.test(f));
+  await Promise.all(stale.map((f) => unlink(join(dir, f)).catch(() => {})));
+
   const caption = triggerWords || name;
   await writeTrainingDatasetMeta(name, {
     ...(baseModel ? { baseModel } : {}),

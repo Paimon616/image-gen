@@ -326,6 +326,11 @@ export const useCharacterPaimonStore = createPaimonConversationStore({
   endpoint: "/api/paimon/character",
   historyLimit: 10,
   appliedReply: () => "요청을 반영해서 캐릭터 설정을 수정했어요.",
+  // Cancelling a round of a counted batch ("상황 N개") must also end the
+  // auto-continuation, or the next completed turn would resume it.
+  onCancel: (conversationId) => {
+    delete batchRuns[conversationId];
+  },
   buildBody: ({ conversationId, messages, attachments }) => ({
     character: characterSnapshots[conversationId]
       ? characterPayload(

@@ -16,16 +16,6 @@ import {
 // Several situations can be run one after another (the same "여러 장" flow the
 // image generator has).
 
-export interface SituationVideoRunner {
-  // Queues one generation from whatever is in the params store right now.
-  // Registered by the page that owns the generation queue, so it goes away when
-  // that page unmounts (video generation can't be queued with no page mounted).
-  enqueue: () => void;
-  // The surface refuses to generate without a start frame (i2v pipeline / i2v
-  // mode), so a situation with no saved image is composed but not generated.
-  requiresStartFrame: boolean;
-}
-
 export interface SituationBatchProgress {
   done: number;
   total: number;
@@ -40,6 +30,14 @@ export interface SituationRunOptions {
   imageBySituation?: Record<string, string>;
 }
 
+// Which character/situation a queued clip was composed from. Rides along with
+// the generation request so the server tags the finished clip's sidecar and the
+// video registers itself into that situation in the character studio.
+export interface SituationVideoLink {
+  characterId: string;
+  situationId?: string;
+}
+
 export interface SituationVideoConfig {
   // The surface's Paimon chat; the composing turn runs through it, so the
   // instruction and answer show up in the transcript the user is looking at.
@@ -51,15 +49,22 @@ export interface SituationVideoConfig {
   // could not be prepared (e.g. the data-URI conversion SeeDance needs failed).
   applyStartFrame: (imageUrl: string) => Promise<boolean>;
   applyDuration: (seconds: number) => void | Promise<void>;
+  // Queues one generation from whatever is in the params store right now.
+  // Module-scope (backed by a global queue/stream, not the page), so an
+  // auto-generate batch keeps going after the user navigates away. The link
+  // names the character/situation this clip is being generated for, so the
+  // finished video is registered to that situation.
+  enqueue: (link: SituationVideoLink) => void;
+  // The surface refuses to generate without a start frame (i2v pipeline / i2v
+  // mode), so a situation with no saved image is composed but not generated.
+  requiresStartFrame: () => boolean;
 }
 
 interface SituationVideoState {
   // Non-null while a multi-situation run is composing/queueing. Lives in the
   // store (not the panel) so the run survives the panel closing.
   batch: SituationBatchProgress | null;
-  runner: SituationVideoRunner | null;
 
-  setRunner: (runner: SituationVideoRunner | null) => void;
   compose: (
     character: SituationLibraryCharacter,
     situation: SituationLibraryEntry | null,
@@ -79,9 +84,6 @@ export function createSituationVideoStore(config: SituationVideoConfig) {
 
   return create<SituationVideoState>((set, get) => ({
     batch: null,
-    runner: null,
-
-    setRunner: (runner) => set({ runner }),
 
     compose: async (character, situation, options) => {
       const paimon = config.paimon.getState();
@@ -125,17 +127,7 @@ export function createSituationVideoStore(config: SituationVideoConfig) {
 
       if (!options.autoGenerate) return true;
 
-      const runner = get().runner;
-      if (!runner) {
-        config.paimon
-          .getState()
-          .pushAssistantMessage(
-            DEFAULT_CONVERSATION,
-            "생성 화면이 닫혀 있어서 자동 생성은 건너뛰었어요. 화면으로 돌아가 생성 버튼을 눌러주세요."
-          );
-        return true;
-      }
-      if (runner.requiresStartFrame && !config.hasStartFrame()) {
+      if (config.requiresStartFrame() && !config.hasStartFrame()) {
         config.paimon
           .getState()
           .pushAssistantMessage(
@@ -145,7 +137,10 @@ export function createSituationVideoStore(config: SituationVideoConfig) {
         return true;
       }
 
-      runner.enqueue();
+      config.enqueue({
+        characterId: character.id,
+        situationId: situation?.id,
+      });
       return true;
     },
 

@@ -1,4 +1,5 @@
 import { createSituationVideoStore } from "./situation-video-store";
+import { useVideoGenerationQueueStore } from "./video-generation-queue-store";
 import { useVideoPaimonStore } from "./video-paimon-store";
 import { useVideoStore } from "./video-store";
 import { videoDurationPatch, type DurationPipeline } from "./video-duration";
@@ -52,4 +53,14 @@ export const useVideoSituationStore = createSituationVideoStore({
     const patch = videoDurationPatch(pipeline, params, seconds);
     setParams((current) => ({ ...current, ...patch }));
   },
+
+  // The global queue reads the params back from the store itself: the composing
+  // turn wrote the new prompt and start frame there already, and the queue's
+  // pump keeps draining with the video page unmounted. The character/situation
+  // link rides along so the finished clip registers into that situation.
+  enqueue: (link) =>
+    useVideoGenerationQueueStore.getState().enqueue(undefined, link),
+
+  requiresStartFrame: () =>
+    useVideoGenerationQueueStore.getState().config.requiresSourceImage,
 });

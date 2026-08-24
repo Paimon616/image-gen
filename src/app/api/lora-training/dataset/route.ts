@@ -1,4 +1,4 @@
-import { readdir, readFile, unlink, stat } from "fs/promises";
+import { readdir, readFile, rm, unlink, stat } from "fs/promises";
 import { NextRequest } from "next/server";
 import {
   trainingDatasetsDir,
@@ -106,11 +106,21 @@ export async function GET(req: NextRequest) {
   }
 }
 
+// DELETE ?name=X              -> remove the whole dataset (images, captions, meta)
 // DELETE ?name=X&file=001.png -> drop an image and its caption during curation.
 export async function DELETE(req: NextRequest) {
   const name = req.nextUrl.searchParams.get("name")?.trim();
   const file = req.nextUrl.searchParams.get("file")?.trim();
-  if (!name || !file) return Response.json({ error: "name and file are required" }, { status: 400 });
+  if (!name) return Response.json({ error: "name is required" }, { status: 400 });
+
+  if (!file) {
+    try {
+      await rm(trainingDatasetPath(name), { recursive: true, force: true });
+      return Response.json({ ok: true });
+    } catch {
+      return Response.json({ error: "Invalid dataset" }, { status: 400 });
+    }
+  }
 
   try {
     const imagePath = trainingDatasetFilePath(name, file);

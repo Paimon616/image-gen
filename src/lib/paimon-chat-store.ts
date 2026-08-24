@@ -3,6 +3,7 @@ import { useStore } from "./store";
 import { useGenerationQueueStore } from "./generation-queue-store";
 import type {
   Character,
+  CharacterLora,
   EmbeddingConfig,
   GeneratedImage,
   GenerationParams,
@@ -82,6 +83,11 @@ export interface PaimonCharacter {
   // Absent when the character has no main image, or its image predates the
   // metadata sidecar.
   mainImage?: PaimonCharacterBaseImage;
+  // 캐릭터 LoRA — the character's own trained LoRAs. Merged ON TOP of the
+  // baseline's lora list on every render of this character (same path wins by
+  // the character's scale), so a LoRA trained after the main image was made
+  // still applies. Each entry's triggerWords are guaranteed into the prompt.
+  loras?: CharacterLora[];
 }
 
 // Which of the three swappable segments a compose turn may rewrite. Unchecked
@@ -275,6 +281,65 @@ function normalizeLoraList(value: unknown): LoraConfig[] {
       return path ? { path, scale: loraScale(record) } : null;
     })
     .filter((item): item is LoraConfig => Boolean(item));
+}
+
+// Character LoRAs ride on top of whatever lora list a baseline (or the LLM's
+// patch) produced: an entry with the same path replaces the base one so the
+// character's scale wins; anything else is appended.
+export function mergeCharacterLoras(
+  base: LoraConfig[] | undefined,
+  characterLoras: LoraConfig[]
+): LoraConfig[] {
+  if (characterLoras.length === 0) return base ?? [];
+  const overrides = new Map(
+    characterLoras.map((lora) => [lora.path.toLowerCase(), lora])
+  );
+  const merged = (base ?? []).map(
+    (lora) => overrides.get(lora.path.toLowerCase()) ?? lora
+  );
+  const present = new Set(merged.map((lora) => lora.path.toLowerCase()));
+  for (const lora of characterLoras) {
+    if (!present.has(lora.path.toLowerCase())) merged.push(lora);
+  }
+  return merged;
+}
+
+// The activation tags of a character's LoRAs, as individual tokens. These must
+// appear in the prompt of every render of that character — a trained LoRA
+// without its trigger words barely activates.
+export function characterTriggerTokens(
+  loras: CharacterLora[] | undefined
+): string[] {
+  if (!loras?.length) return [];
+  const seen = new Set<string>();
+  const tokens: string[] = [];
+  for (const lora of loras) {
+    for (const raw of (lora.triggerWords ?? "").split(",")) {
+      const token = raw.trim();
+      if (!token) continue;
+      const key = token.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      tokens.push(token);
+    }
+  }
+  return tokens;
+}
+
+// Guarantees every trigger token appears in the prompt: tokens the model (or a
+// baseline) already placed are left where they are, missing ones are appended.
+export function ensureTriggerWords(
+  prompt: string,
+  tokens: string[]
+): string {
+  if (tokens.length === 0) return prompt;
+  const haystack = prompt.toLowerCase();
+  const missing = tokens.filter(
+    (token) => !haystack.includes(token.toLowerCase())
+  );
+  if (missing.length === 0) return prompt;
+  const trimmed = prompt.replace(/[\s,]+$/, "");
+  return trimmed ? `${trimmed}, ${missing.join(", ")}` : missing.join(", ");
 }
 
 function normalizeEmbeddingList(value: unknown): EmbeddingConfig[] {
@@ -479,6 +544,9 @@ export async function loadCharacterLibrary(): Promise<PaimonCharacter[]> {
           summary: character.summary,
           appearancePrompt: character.appearancePrompt,
           mainImage: baseImageFromCharacter(character),
+          // Already normalized by the characters store; passed through as-is
+          // (normalizeLoraList would strip each entry's triggerWords).
+          loras: character.loras?.length ? character.loras : undefined,
           outfits: character.outfits
             .filter((outfit) => outfit.prompt.trim())
             .map((outfit) => ({ name: outfit.name, prompt: outfit.prompt })),
@@ -687,6 +755,27 @@ const IDENTITY_LOCK = [
   "- 교체 블록을 써넣을 때, 기준 프롬프트에 이미 있는 인물 수·상호작용 태그(1girl, 1boy, 1male, solo, interaction 등)를 다시 넣지 마. 중복되면 인물 수가 흔들려. 인물 구성이 바뀌어야 할 때는 기존 태그를 고쳐.",
 ];
 
+// The character's own trained LoRA must survive the turn. It is already merged
+// into the generator's lora list before the turn runs (and re-merged into the
+// queued job), so this lock's job is to stop the model from patching it away
+// or re-scaling it.
+function characterLoraLock(character: PaimonCharacter): string[] {
+  if (!character.loras?.length) return [];
+  const list = character.loras
+    .map((lora) => `${lora.path}(${lora.scale})`)
+    .join(", ");
+  const lines = [
+    `- [고정] 캐릭터 LoRA: ${list} — 이 캐릭터 전용 학습 LoRA야. 이미 현재 생성 정보의 loras에 적용해 뒀어. paramsPatch에 loras를 넣게 되더라도 이 항목은 경로·스케일 그대로 반드시 포함하고, 빼거나 다른 LoRA로 대체하지 마.`,
+  ];
+  const triggers = characterTriggerTokens(character.loras);
+  if (triggers.length > 0) {
+    lines.push(
+      `- [고정] 캐릭터 LoRA 트리거 워드: ${triggers.join(", ")} — 이 태그가 있어야 LoRA가 발동해. 프롬프트에 글자 그대로 반드시 포함하고(외형 [고정] 블록 바로 앞이 좋아), 바꿔 쓰거나 빼지 마.`
+    );
+  }
+  return lines;
+}
+
 function buildInstruction(
   character: PaimonCharacter,
   situation: PaimonCharacter["situations"][number] | null,
@@ -722,6 +811,7 @@ function buildInstruction(
       "요구사항:",
       ...scopeRequirements(scope),
       ...IDENTITY_LOCK,
+      ...characterLoraLock(character),
       ...framing,
     ]
       .filter(Boolean)
@@ -760,6 +850,7 @@ function buildInstruction(
     "- 기준 프롬프트의 양식을 최대한 그대로 유지해: 품질·스코어·레이팅 태그 블록과 그 위치, 태그 나열이냐 문장이냐, 태그 순서 관례, 가중치 표기 방식, 마지막 스타일·화질 태그까지 그대로 둬. 네 방식의 다른 템플릿으로 다시 쓰지 마.",
     "- 외형 블록의 위치도 기준 프롬프트에서 그 내용이 있던 자리 그대로 유지해. 자리만 유지하고 내용은 위 [고정] 문자열로 교체해.",
     ...IDENTITY_LOCK,
+    ...characterLoraLock(character),
     scope.situation || scope.outfit || scope.background
       ? `- 기준 프롬프트에 남아 있는 이전 ${scopeLabel(scope)} 태그 중 이번에 교체하는 내용과 충돌하는 건 지워. 단 외형 태그와 [고정] 항목은 이 삭제 대상이 아니야 — 충돌해 보여도 남겨.`
       : "",
@@ -1050,8 +1141,24 @@ export const usePaimonChatStore = create<PaimonChatState>((set, get) => ({
     // so the turn edits the reference's own prompt on the reference's own
     // checkpoint (and modelContext lists that checkpoint's LoRAs).
     const base = options?.baseImage ?? character.mainImage;
+    // 캐릭터 LoRA rides on top of whatever the baseline (or the current params)
+    // carry: the main image usually predates a character's trained LoRA, so the
+    // baseline's own lora list alone would never apply it.
+    const characterLoras = normalizeLoraList(character.loras);
+    const triggerTokens = characterTriggerTokens(character.loras);
     if (base) {
-      useStore.getState().setParams(baseImageSettingsPatch(base));
+      const basePatch = baseImageSettingsPatch(base);
+      if (characterLoras.length > 0) {
+        basePatch.loras = mergeCharacterLoras(basePatch.loras, characterLoras);
+      }
+      useStore.getState().setParams(basePatch);
+    } else if (characterLoras.length > 0) {
+      useStore.getState().setParams({
+        loras: mergeCharacterLoras(
+          useStore.getState().params.loras,
+          characterLoras
+        ),
+      });
     }
 
     let queued = false;
@@ -1060,6 +1167,22 @@ export const usePaimonChatStore = create<PaimonChatState>((set, get) => ({
     // completed turn, so whichever arrives first starts the render exactly once.
     const linkAndQueue = async (patch: Partial<GenerationParams>) => {
       const merged = { ...useStore.getState().params, ...patch };
+      // Re-assert the character LoRA over the turn's patch: even if the model
+      // ignored the lock and rewrote `loras`, the queued job keeps it.
+      if (characterLoras.length > 0) {
+        merged.loras = mergeCharacterLoras(merged.loras, characterLoras);
+        useStore.getState().setParams({ loras: merged.loras });
+      }
+      // Same guarantee for the LoRA's trigger words: the lock asks the model to
+      // place them, and any it dropped are appended here so the queued prompt
+      // always activates the LoRA.
+      if (triggerTokens.length > 0 && merged.prompt.trim()) {
+        const ensured = ensureTriggerWords(merged.prompt, triggerTokens);
+        if (ensured !== merged.prompt) {
+          merged.prompt = ensured;
+          useStore.getState().setParams({ prompt: ensured });
+        }
+      }
       const queue = useGenerationQueueStore.getState();
       queue.setCharacterContext({
         characterId: character.id,

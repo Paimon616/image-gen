@@ -4,6 +4,7 @@ import {
   SEEDANCE_DURATION_MIN,
 } from "./seedance";
 import { createSituationVideoStore } from "./situation-video-store";
+import { startSeedanceGeneration } from "./seedance-generation";
 import { useSeedancePaimonStore } from "./seedance-paimon-store";
 import { useSeedanceStore } from "./seedance-store";
 
@@ -40,4 +41,15 @@ export const useSeedanceSituationStore = createSituationVideoStore({
       .getState()
       .setParams((current) => ({ ...current, duration }));
   },
+
+  // Submit through the module-scope runner (not the page) so an auto-generate
+  // batch keeps streaming clips after the user navigates away. It reads the
+  // params back from the store: the composing turn wrote the new prompt and
+  // start frame there already. The character/situation link rides along so the
+  // finished clip registers into that situation.
+  enqueue: (link) => {
+    void startSeedanceGeneration(useSeedanceStore.getState().params, link);
+  },
+
+  requiresStartFrame: () => useSeedanceStore.getState().params.mode === "i2v",
 });

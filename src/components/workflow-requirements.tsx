@@ -47,9 +47,11 @@ function requirementsFromRunpodMissing(
     filename: item.path.replace(/^.*\//, ""),
     label: item.path,
     exists: false,
-    // Eligibility is decided server-side (canDownloadRunpodResource in runpod.ts);
-    // this only carries that verdict into the shared shape.
-    url: item.downloadable === true ? "runpod" : "",
+    // Eligibility is decided server-side (canDownloadRunpodResource /
+    // canUploadRunpodResource in runpod.ts); this only carries that verdict
+    // into the shared shape. Uploadable = the file exists locally (e.g. a
+    // self-trained LoRA) and gets pushed to the pod instead of downloaded.
+    url: item.downloadable === true || item.uploadable === true ? "runpod" : "",
     kind: item.resource?.type === "checkpoint" ? "checkpoint" : "support",
   }));
 }
@@ -133,7 +135,7 @@ export function WorkflowRequirements() {
       return {
         ...item,
         exists: !miss,
-        url: miss?.downloadable === true ? "runpod" : "",
+        url: miss?.downloadable === true || miss?.uploadable === true ? "runpod" : "",
       };
     });
     // Anything else the pod lacks (LoRAs, embeddings, the ADetailer detector) still
@@ -224,28 +226,93 @@ export function WorkflowRequirements() {
     [ko]
   );
 
+  // Pushes local-only files (self-trained LoRAs — nothing to download them from)
+  // to the pod one at a time, surfacing the SSE progress as the status message.
+  const uploadToRunpod = useCallback(
+    async (podId: string, items: RunpodMissingFile[]) => {
+      let done = 0;
+      for (const item of items) {
+        const name = item.path.replace(/^.*\//, "");
+        done += 1;
+        setMessage(
+          ko
+            ? `${name} 업로드 중 (${done}/${items.length})`
+            : `Uploading ${name} (${done}/${items.length})`
+        );
+        const response = await fetch(
+          `/api/runpod/pods/${encodeURIComponent(podId)}/upload/stream`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ path: item.path }),
+          }
+        );
+        if (!response.ok || !response.body) {
+          throw new Error(`${name}: HTTP ${response.status}`);
+        }
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let failure = "";
+        for (;;) {
+          const { value, done: streamDone } = await reader.read();
+          if (streamDone) break;
+          buffer += decoder.decode(value, { stream: true });
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop() ?? "";
+          for (const part of parts) {
+            const line = part.split("\n").find((l) => l.startsWith("data:"));
+            if (!line) continue;
+            const event = JSON.parse(line.slice(5).trim()) as {
+              type?: string;
+              percent?: number;
+              message?: string;
+            };
+            if (event.type === "error") failure = event.message || "upload failed";
+            if (event.type === "progress" && typeof event.percent === "number") {
+              setMessage(`${name} ${event.percent}% (${done}/${items.length})`);
+            }
+          }
+        }
+        if (failure) throw new Error(`${name}: ${failure}`);
+      }
+    },
+    [ko]
+  );
+
   const installOnRunpod = useCallback(async () => {
     if (!runpodPodId) return;
     // Re-check first: the banner may be stale, and startDownload needs the resource
     // metadata the check returns.
-    const podMissing = (await fetchRunpodMissing(runpodPodId, paramsRef.current)).filter(
-      (item) => item.downloadable === true
+    const podMissing = await fetchRunpodMissing(runpodPodId, paramsRef.current);
+    const downloads = podMissing.filter((item) => item.downloadable === true);
+    // Download beats upload when both are possible (the pod pulls faster than
+    // this machine pushes); upload covers the rest that exists locally.
+    const uploads = podMissing.filter(
+      (item) => item.downloadable !== true && item.uploadable === true
     );
-    if (podMissing.length === 0) {
+    if (downloads.length === 0 && uploads.length === 0) {
       setMessage(ko ? "이미 모두 준비돼 있습니다." : "Everything is already there.");
       return;
     }
-    setMessage(
-      ko
-        ? `RunPod에 ${podMissing.length}개 파일을 받는 중입니다.`
-        : `Downloading ${podMissing.length} file(s) to RunPod.`
-    );
-    await startRunpodDownload(
-      runpodPodId,
-      podMissing.map((item) => ({ path: item.path, resource: item.resource })),
-      { ko }
-    );
-  }, [ko, runpodPodId, startRunpodDownload]);
+    if (uploads.length > 0) {
+      await uploadToRunpod(runpodPodId, uploads);
+    }
+    if (downloads.length > 0) {
+      setMessage(
+        ko
+          ? `RunPod에 ${downloads.length}개 파일을 받는 중입니다.`
+          : `Downloading ${downloads.length} file(s) to RunPod.`
+      );
+      await startRunpodDownload(
+        runpodPodId,
+        downloads.map((item) => ({ path: item.path, resource: item.resource })),
+        { ko }
+      );
+    } else {
+      setMessage(ko ? "업로드 완료." : "Upload complete.");
+    }
+  }, [ko, runpodPodId, startRunpodDownload, uploadToRunpod]);
 
   const install = useCallback(async () => {
     setInstalling(true);

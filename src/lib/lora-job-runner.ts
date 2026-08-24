@@ -30,6 +30,8 @@ export interface LoraJobStatus {
   startedAt: string;
   updatedAt: string;
   processId?: number;
+  // Set when this job trains on a RunPod pod instead of the local runner.
+  runpodPodId?: string;
   completedAt?: string;
   logTail?: string;
 }
@@ -48,6 +50,7 @@ interface StartLoraJobInput {
 type LoraJobRegistry = typeof globalThis & {
   __imageGenLoraJobs?: Map<string, ChildProcessWithoutNullStreams>;
   __imageGenLoraStatusWrites?: Map<string, Promise<void>>;
+  __imageGenRunpodLoraAborts?: Map<string, AbortController>;
 };
 
 function registry() {
@@ -56,6 +59,22 @@ function registry() {
     globalRef.__imageGenLoraJobs = new Map();
   }
   return globalRef.__imageGenLoraJobs;
+}
+
+function runpodAbortRegistry() {
+  const globalRef = globalThis as LoraJobRegistry;
+  if (!globalRef.__imageGenRunpodLoraAborts) {
+    globalRef.__imageGenRunpodLoraAborts = new Map();
+  }
+  return globalRef.__imageGenRunpodLoraAborts;
+}
+
+export function registerRunpodLoraAbort(runId: string, controller: AbortController) {
+  runpodAbortRegistry().set(runId, controller);
+}
+
+export function unregisterRunpodLoraAbort(runId: string) {
+  runpodAbortRegistry().delete(runId);
 }
 
 function statusWriteRegistry() {
@@ -125,7 +144,7 @@ async function writeLoraJobStatus(runDir: string, nextStatus: LoraJobStatus) {
   await writeFile(statusPath(runDir), `${JSON.stringify(nextStatus, null, 2)}\n`);
 }
 
-async function patchLoraJobStatus(
+export async function patchLoraJobStatus(
   runDir: string,
   patch: Partial<Omit<LoraJobStatus, "runId" | "outputName" | "outputPath" | "logPath" | "startedAt">>
 ) {
@@ -280,6 +299,7 @@ export async function createInitialLoraJobStatus({
   imageCount,
   outputName,
   logPath,
+  runpodPodId,
 }: {
   runDir: string;
   runId: string;
@@ -291,6 +311,7 @@ export async function createInitialLoraJobStatus({
   imageCount: number;
   outputName: string;
   logPath: string;
+  runpodPodId?: string;
 }) {
   const now = new Date().toISOString();
   const outputPath = join(loraOutputDir(), `${outputName}.safetensors`);
@@ -311,6 +332,7 @@ export async function createInitialLoraJobStatus({
     error: "",
     startedAt: now,
     updatedAt: now,
+    ...(runpodPodId ? { runpodPodId } : {}),
   };
   await writeLoraJobStatus(runDir, status);
   return status;
@@ -450,6 +472,14 @@ export async function cancelLoraJob(runId: string) {
   await killProcessTree(child?.pid);
   await killProcessTree(current.processId);
   registry().delete(runId);
+
+  // RunPod jobs run through an in-process poller — aborting it also pkills the
+  // training process on the pod.
+  const runpodAbort = runpodAbortRegistry().get(runId);
+  if (runpodAbort) {
+    runpodAbort.abort();
+    runpodAbortRegistry().delete(runId);
+  }
 
   await patchLoraJobStatus(runDir, {
     state: "cancelled",
