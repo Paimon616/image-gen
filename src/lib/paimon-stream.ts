@@ -222,6 +222,81 @@ export function completeArrayItems(buffer: string, key: string): string[] {
   return items;
 }
 
+/**
+ * The complete TOP-LEVEL string fields of `"objectKey": { ... }` in a possibly
+ * truncated buffer. Depth-aware, unlike extractCompleteString's first-match
+ * scan: a nested item's "name" (every situation/outfit item has one) must never
+ * masquerade as the object's own "name" — the naive salvage did exactly that
+ * and renamed the character to a situation's name.
+ */
+export function topLevelCompleteStrings(
+  buffer: string,
+  objectKey: string
+): Record<string, string> {
+  const result: Record<string, string> = {};
+  const keyMatch = buffer.match(new RegExp(`"${objectKey}"\\s*:\\s*\\{`));
+  if (!keyMatch || keyMatch.index === undefined) return result;
+
+  // Reads the string starting at the opening quote; null when it never closes
+  // (the truncation point).
+  const readString = (
+    start: number
+  ): { value: string; end: number } | null => {
+    let escaped = false;
+    for (let j = start + 1; j < buffer.length; j += 1) {
+      const ch = buffer[j];
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') {
+        try {
+          return {
+            value: JSON.parse(buffer.slice(start, j + 1)) as string,
+            end: j,
+          };
+        } catch {
+          return { value: buffer.slice(start + 1, j), end: j };
+        }
+      }
+    }
+    return null;
+  };
+
+  let depth = 1;
+  let i = keyMatch.index + keyMatch[0].length;
+  // A key string read at depth 1, waiting for its value.
+  let pendingKey: string | null = null;
+
+  while (i < buffer.length && depth > 0) {
+    const ch = buffer[i];
+    if (ch === '"') {
+      const str = readString(i);
+      if (!str) break;
+      if (depth === 1) {
+        if (pendingKey === null) {
+          pendingKey = str.value;
+        } else {
+          result[pendingKey] = str.value;
+          pendingKey = null;
+        }
+      }
+      i = str.end + 1;
+      continue;
+    }
+    if (ch === "{" || ch === "[") {
+      depth += 1;
+      pendingKey = null;
+    } else if (ch === "}" || ch === "]") {
+      depth -= 1;
+      pendingKey = null;
+    } else if (ch !== ":" && ch !== "," && !/\s/.test(ch)) {
+      // A number/boolean/null value — not a string field, drop the key.
+      if (depth === 1) pendingKey = null;
+    }
+    i += 1;
+  }
+  return result;
+}
+
 /** The value of a string field, but only once its closing quote has arrived. */
 export function extractCompleteString(
   buffer: string,

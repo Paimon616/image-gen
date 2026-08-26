@@ -10,12 +10,12 @@ import {
 import {
   completeArrayItems,
   extractCompleteObject,
-  extractCompleteString,
   extractPartialString,
   isSensitiveInputError,
   patchFieldProgress,
   parseJsonObject,
   sse,
+  topLevelCompleteStrings,
 } from "@/lib/paimon-stream";
 
 export const dynamic = "force-dynamic";
@@ -61,6 +61,7 @@ const PAIMON_SYSTEM_PROMPT = [
   "- To link a situation to a wardrobe or setting, set outfitName and backgroundName to the EXACT name of an existing outfit/background. The client resolves names to ids. Do not invent ids.",
   "",
   "Editing rules:",
+  "- The top-level `name` field is the CHARACTER's name, and top-level `summary` describes the character. NEVER write either of them when adding or editing situations/outfits/backgrounds — an item's name belongs ONLY inside that item's object. Patch the top-level name/summary exclusively when the user explicitly asks to rename or re-describe the character itself.",
   "- When the user narrates the character, split the content into the correct fields. Appearance/identity goes to appearanceDescription+appearancePrompt; clothing to a new or existing outfit; place to a new or existing background; action/scene to a new situation.",
   "- Always fill BOTH the description and the prompt for any field you touch. The description mirrors the natural-language intent; the prompt is the model-ready version.",
   "- Keep identity, outfit, background, and situation cleanly separated so they can be recombined later. Never duplicate appearance/outfit/background tags into a situation prompt.",
@@ -332,8 +333,11 @@ function salvageCharacterPatch(buffer: string) {
     }
   }
 
+  // Top-level fields only: a naive first-match scan here used to pick up the
+  // first situation item's "name" and rename the whole character with it.
+  const topLevel = topLevelCompleteStrings(buffer, "characterPatch");
   for (const key of SALVAGE_STRINGS) {
-    const value = extractCompleteString(region, key);
+    const value = topLevel[key];
     if (value && value.trim()) {
       patch[key] = value;
       salvaged += 1;

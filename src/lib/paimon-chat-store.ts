@@ -342,6 +342,585 @@ export function ensureTriggerWords(
   return trimmed ? `${trimmed}, ${missing.join(", ")}` : missing.join(", ");
 }
 
+// Whole-figure cues in a saved situation (or in the baseline prompt). These
+// checkpoints squash the figure whenever the whole body has to fit the frame —
+// short legs, oversized head — so such a turn gets an explicit instruction to
+// TIGHTEN the framing (rather than relying on the system prompt alone, which
+// loses against "keep the situation prompt as is"). Older characters still hold
+// full-body situations written before the generator stopped emitting them.
+const FULL_BODY_PATTERN =
+  /full[\s-]?body|full figure|head[\s-]to[\s-]toe|whole body|wide shot|feet visible|전신/i;
+
+// ---------------------------------------------------------------------------
+// Deterministic compose guards. The instruction asks the model to paste the
+// replacement blocks and to sweep negatives that conflict with them, but a turn
+// that ignored either used to reach the queue unchanged — which is exactly how
+// a situation kept rendering as the baseline image in the default outfit (the
+// baseline negative bans `lingerie`/`bra`/`side view`, so a surviving ban wins
+// over the composed prompt). These guards re-assert both invariants on the
+// merged params, the same way the character LoRA and its trigger words are
+// re-asserted after the turn.
+
+// Strips weight syntax and unifies separators so tag comparison sees words,
+// not notation: "(dark-navy bralette:1.2)" → "dark navy bralette".
+function normalizeForMatch(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[()[\]{}<>]/g, " ")
+    .replace(/:\d+(?:\.\d+)?/g, " ")
+    .replace(/[-_]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function splitTags(text: string): string[] {
+  return text
+    .split(/[,\n]/)
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Whole-word phrase match on normalized text, so "bra" never matches
+// "bralette" and "text" never matches "texture".
+function phrasePresent(haystack: string, phrase: string): boolean {
+  if (!phrase) return true;
+  return new RegExp(`(^|[^a-z0-9])${escapeRegExp(phrase)}([^a-z0-9]|$)`).test(
+    haystack
+  );
+}
+
+// A negative tag conflicts with the composed prompt when the prompt asks for
+// the very thing the tag bans. Verbatim overlap is caught generically in
+// sweepConflictingNegatives; these classes catch the cross-synonym cases that
+// actually recur — an underwear outfit against a lingerie ban, and a requested
+// camera direction against a view ban — both inherited from a baseline whose
+// negatives were written for a front-facing, fully-dressed portrait.
+const NEGATIVE_CONFLICT_CLASSES: { bans: string[]; asked: string[] }[] = [
+  {
+    bans: [
+      "lingerie",
+      "bra",
+      "bralette",
+      "panties",
+      "underwear",
+      "nightgown",
+      "negligee",
+      "babydoll",
+      "garter belt",
+      "swimsuit",
+      "bikini",
+    ],
+    asked: [
+      "lingerie",
+      "bra",
+      "bralette",
+      "panties",
+      "underwear",
+      "nightgown",
+      "negligee",
+      "babydoll",
+      "garter",
+      "swimsuit",
+      "bikini",
+    ],
+  },
+  {
+    bans: ["side view", "profile"],
+    asked: ["side view", "profile", "from the side"],
+  },
+  {
+    bans: ["rear view", "back view", "from behind", "turned away"],
+    asked: [
+      "from behind",
+      "rear view",
+      "back view",
+      "turned away",
+      "turning back",
+      "looking back",
+    ],
+  },
+  {
+    bans: [
+      "over the shoulder view",
+      "over the shoulder",
+      "looking over shoulder",
+    ],
+    asked: [
+      "over the shoulder",
+      "over shoulder",
+      "looking back",
+      "gaze over shoulder",
+      "turned back over shoulder",
+    ],
+  },
+  {
+    bans: ["three quarter view"],
+    asked: ["three quarter"],
+  },
+  {
+    bans: ["from above", "high angle", "overhead"],
+    asked: ["from above", "high angle", "overhead"],
+  },
+  {
+    bans: ["from below", "low angle"],
+    asked: ["from below", "low angle"],
+  },
+  // Exposure bans (written for a fully-dressed baseline) against a nude
+  // outfit/situation.
+  {
+    bans: [
+      "exposed breasts",
+      "bare breasts",
+      "nipples",
+      "areolae",
+      "topless",
+      "bottomless",
+      "nude",
+      "naked",
+    ],
+    asked: [
+      "nude",
+      "naked",
+      "topless",
+      "bottomless",
+      "completely nude",
+      "bare skin",
+    ],
+  },
+];
+
+// An in-prompt negation clause: "no lace", "no shiny metallic fabric". These
+// never count as the prompt ASKING for the banned thing.
+const NEGATION_TAG = /^no\s+(.+)$/i;
+
+// What the prompt actually asks for: its tags minus the "no X" negation
+// clauses, so a negative tag like `sheer fabric` is never swept away just
+// because the positive prompt says "no sheer fabric".
+function askedText(prompt: string): string {
+  return normalizeForMatch(
+    splitTags(prompt)
+      .filter((tag) => !NEGATION_TAG.test(tag))
+      .join(", ")
+  );
+}
+
+// Removes negative tags the composed prompt itself contradicts: any tag whose
+// exact phrase appears in the prompt, plus the known synonym classes above.
+// Quality/anatomy negatives never match a prompt, so they always survive.
+export function sweepConflictingNegatives(
+  prompt: string,
+  negative: string
+): string {
+  const asked = askedText(prompt);
+  if (!asked) return negative;
+  const tags = splitTags(negative);
+  const kept = tags.filter((tag) => {
+    const norm = normalizeForMatch(tag);
+    if (!norm) return false;
+    if (phrasePresent(asked, norm)) return false;
+    return !NEGATIVE_CONFLICT_CLASSES.some(
+      (cls) =>
+        cls.bans.some((ban) => phrasePresent(norm, ban)) &&
+        cls.asked.some((phrase) => phrasePresent(asked, phrase))
+    );
+  });
+  return kept.length === tags.length ? negative : kept.join(", ");
+}
+
+// Tag-family checkpoints ignore in-prompt negation: "no glitter, no shiny
+// metallic fabric" reads as the banned words themselves and can even ADD the
+// shine it tries to forbid. So every "no X" clause in a replaced block also
+// lands in the negative prompt, and a matte / natural-fiber outfit gets
+// positive texture anchors plus shine negatives — "silk-satin" alone renders
+// as glossy satin on these models unless matte is explicitly anchored (the
+// anchor set below is the one that fixed exactly that render in practice).
+const MATTE_FINISH_PATTERN = /\b(matte|cotton|linen|wool|brushed|dull)\b/i;
+
+const MATTE_ANCHOR_TAGS = [
+  "matte fabric texture",
+  "dull fabric",
+  "natural cloth texture",
+  "realistic fabric",
+];
+
+const SHINE_NEGATIVE_TAGS = [
+  "shiny clothes",
+  "glossy fabric",
+  "shiny fabric",
+  "satin sheen",
+  "latex",
+  "pvc",
+  "wet look",
+  "metallic fabric",
+];
+
+function negationConcepts(text: string): string[] {
+  return splitTags(text)
+    .map((tag) => tag.match(NEGATION_TAG)?.[1].trim() ?? "")
+    .filter(Boolean);
+}
+
+// Removes the replaced blocks' own "no X" clauses from the composed prompt:
+// in positive tag-space they read as X (a "no shiny metallic fabric" clause
+// rendered a metallic bra) — the ban lives in the negative prompt instead.
+// Only tags that literally come from a replaced block are dropped, so the
+// identity block's frozen "no bangs" / "no tattoos" wording stays untouched.
+function stripBlockNegations(prompt: string, blocks: string[]): string {
+  const blockNegations = new Set(
+    blocks.flatMap((block) =>
+      splitTags(block)
+        .filter((tag) => NEGATION_TAG.test(tag))
+        .map(normalizeForMatch)
+    )
+  );
+  if (blockNegations.size === 0) return prompt;
+  const tags = splitTags(prompt);
+  const kept = tags.filter((tag) => !blockNegations.has(normalizeForMatch(tag)));
+  return kept.length === tags.length ? prompt : kept.join(", ");
+}
+
+// Garment color anchoring. SDXL-family checkpoints bleed nearby color words
+// into clothing — a "light grey sofa" or "silver paper organizer" repaints the
+// underwear — and a long composed prompt dilutes the outfit's own color to one
+// mention among dozens, so each render picks a different color. A compact
+// weighted (color garment:1.2) anchor at the front of the prompt locks each
+// main garment to its stated color. Multi-word colors precede their sub-words
+// so "dark navy" wins over "navy".
+const GARMENT_COLOR_WORDS = [
+  "dark navy",
+  "navy blue",
+  "midnight blue",
+  "light blue",
+  "sky blue",
+  "baby blue",
+  "pastel blue",
+  "dark green",
+  "light green",
+  "dark grey",
+  "light grey",
+  "dark gray",
+  "light gray",
+  "off white",
+  "dark brown",
+  "light brown",
+  "hot pink",
+  "light pink",
+  "pastel pink",
+  "wine red",
+  "dark red",
+  "navy",
+  "black",
+  "white",
+  "ivory",
+  "cream",
+  "beige",
+  "tan",
+  "brown",
+  "red",
+  "crimson",
+  "burgundy",
+  "scarlet",
+  "maroon",
+  "pink",
+  "rose",
+  "magenta",
+  "purple",
+  "lavender",
+  "violet",
+  "lilac",
+  "blue",
+  "teal",
+  "turquoise",
+  "cyan",
+  "aqua",
+  "mint",
+  "green",
+  "emerald",
+  "olive",
+  "khaki",
+  "yellow",
+  "mustard",
+  "gold",
+  "golden",
+  "silver",
+  "orange",
+  "coral",
+  "peach",
+  "salmon",
+  "charcoal",
+  "grey",
+  "gray",
+];
+
+// Wearable garments only — accessories (necklace, wristwatch, ring) are
+// deliberately absent so their metal colors never become an anchor. Compound
+// nouns precede the generic "top".
+const GARMENT_NOUNS = [
+  "bralette",
+  "bra",
+  "panties",
+  "underwear",
+  "lingerie",
+  "camisole",
+  "chemise",
+  "negligee",
+  "babydoll",
+  "nightgown",
+  "nightie",
+  "pajamas",
+  "bikini",
+  "swimsuit",
+  "leotard",
+  "bodysuit",
+  "corset",
+  "bustier",
+  "garter belt",
+  "dress",
+  "gown",
+  "sundress",
+  "blouse",
+  "shirt",
+  "t shirt",
+  "tee",
+  "tank top",
+  "crop top",
+  "sweater",
+  "cardigan",
+  "hoodie",
+  "jacket",
+  "blazer",
+  "coat",
+  "vest",
+  "skirt",
+  "miniskirt",
+  "pants",
+  "trousers",
+  "jeans",
+  "shorts",
+  "leggings",
+  "stockings",
+  "thighhighs",
+  "pantyhose",
+  "tights",
+  "socks",
+  "suit",
+  "uniform",
+  "apron",
+  "robe",
+  "bathrobe",
+  "kimono",
+  "hanbok",
+  "top",
+];
+
+const GARMENT_ANCHOR_WEIGHT = "1.2";
+const MAX_GARMENT_ANCHORS = 3;
+
+// A nude outfit ("알몸" presets). Fabric handling inverts completely: texture
+// anchors must never fire (the model materializes them as a towel or draped
+// cloth covering the body), and the negative prompt has to block cover-ups.
+const NUDE_PATTERN =
+  /\b(nude|naked|topless|bottomless|no cloth(?:es|ing)|알몸|나체)\b/i;
+
+const NUDE_COVER_NEGATIVES = [
+  "clothes",
+  "clothing",
+  "underwear",
+  "bra",
+  "panties",
+  "towel",
+  "blanket",
+  "draped cloth",
+  "convenient censoring",
+];
+
+// The matte-finish trigger word must sit in a tag that is actually about a
+// garment or a textile — "matte silver metal stud earrings" is a metal finish,
+// not a fabric, and firing on it dressed a nude render in cloth-texture tags.
+const FABRIC_CONTEXT_PATTERN =
+  /\b(fabric|silk|satin|cotton|linen|wool|cloth|velvet|chiffon|lace|knit|denim|suede)\b/;
+
+function hasMatteFabricGarment(outfitText: string): boolean {
+  return splitTags(outfitText).some((tag) => {
+    if (NEGATION_TAG.test(tag)) return false;
+    const norm = normalizeForMatch(tag);
+    if (!MATTE_FINISH_PATTERN.test(norm)) return false;
+    return (
+      FABRIC_CONTEXT_PATTERN.test(norm) ||
+      GARMENT_NOUNS.some((noun) => phrasePresent(norm, noun))
+    );
+  });
+}
+
+// A standalone material/texture tag ("matte fabric texture", "dull fabric",
+// "cotton fabric texture", "matte silk") — matched whole, so a background tag
+// like "light grey fabric two-seat sofa" is never touched.
+const FABRIC_TEXTURE_TAG =
+  /^(?:(?:soft|natural|realistic|matte|dull|smooth|fine)\s+)*(?:(?:fabric|cloth|silk|cotton|satin|linen|textile)\s+)*(?:fabric|cloth|silk|cotton|satin|linen|textile|texture)(?:\s+texture)?$/;
+
+function stripFabricTextureTags(prompt: string): string {
+  const tags = splitTags(prompt);
+  const kept = tags.filter(
+    (tag) => !FABRIC_TEXTURE_TAG.test(normalizeForMatch(tag))
+  );
+  return kept.length === tags.length ? prompt : kept.join(", ");
+}
+
+function garmentColorAnchors(outfitText: string): string[] {
+  const anchors: string[] = [];
+  const seen = new Set<string>();
+  for (const tag of splitTags(outfitText)) {
+    if (NEGATION_TAG.test(tag)) continue;
+    const norm = normalizeForMatch(tag);
+    const noun = GARMENT_NOUNS.find((word) => phrasePresent(norm, word));
+    if (!noun) continue;
+    const color = GARMENT_COLOR_WORDS.find((word) => phrasePresent(norm, word));
+    if (!color) continue;
+    const key = `${color} ${noun}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    anchors.push(`(${key}:${GARMENT_ANCHOR_WEIGHT})`);
+    if (anchors.length >= MAX_GARMENT_ANCHORS) break;
+  }
+  return anchors;
+}
+
+// Score/rating/quality tags that may legitimately lead a prompt (Pony and
+// friends) — color anchors slot in right after them, otherwise at the front.
+const LEADING_QUALITY_TAG =
+  /^(score_\d|rating_|source_|masterpiece|best quality|amazing quality|very aesthetic|absurdres|highres|newest|high quality|ultra detailed)/i;
+
+function insertAfterLeadingQuality(prompt: string, insertion: string): string {
+  const tags = splitTags(prompt);
+  let index = 0;
+  while (index < tags.length && LEADING_QUALITY_TAG.test(tags[index])) {
+    index += 1;
+  }
+  tags.splice(index, 0, insertion);
+  return tags.join(", ");
+}
+
+// Appends the tags not already present (whole-word) to a comma-separated list.
+function appendMissingTags(list: string, tags: string[]): string {
+  const haystack = normalizeForMatch(list);
+  const missing = tags.filter(
+    (tag) => !phrasePresent(haystack, normalizeForMatch(tag))
+  );
+  if (missing.length === 0) return list;
+  const trimmed = list.replace(/[\s,]+$/, "");
+  return trimmed ? `${trimmed}, ${missing.join(", ")}` : missing.join(", ");
+}
+
+export function applyFabricFinish(
+  prompt: string,
+  negative: string,
+  replacedBlocks: string[],
+  outfitText?: string
+): { prompt: string; negative: string } {
+  let nextPrompt = stripBlockNegations(prompt, replacedBlocks);
+  let nextNegative = negative;
+  const concepts = replacedBlocks.flatMap(negationConcepts);
+  if (concepts.length > 0) {
+    nextNegative = appendMissingTags(nextNegative, concepts);
+  }
+  if (outfitText) {
+    if (NUDE_PATTERN.test(outfitText)) {
+      // Nude outfit: fabric/texture tags materialize as a covering towel, so
+      // strip any that slipped in and block cover-ups in the negative.
+      nextPrompt = stripFabricTextureTags(nextPrompt);
+      nextNegative = appendMissingTags(nextNegative, NUDE_COVER_NEGATIVES);
+    } else {
+      // Dedupe on the WEIGHTED form only — the plain phrase being in the
+      // prompt (it always is, inside the outfit block) is not the anchor; the
+      // weight is what locks the color against bleed.
+      const lower = nextPrompt.toLowerCase();
+      const anchors = garmentColorAnchors(outfitText).filter(
+        (anchor) =>
+          !lower.includes(
+            anchor.slice(0, anchor.lastIndexOf(":") + 1).toLowerCase()
+          )
+      );
+      if (anchors.length > 0) {
+        nextPrompt = insertAfterLeadingQuality(nextPrompt, anchors.join(", "));
+      }
+      if (hasMatteFabricGarment(outfitText)) {
+        nextPrompt = appendMissingTags(nextPrompt, MATTE_ANCHOR_TAGS);
+        nextNegative = appendMissingTags(nextNegative, SHINE_NEGATIVE_TAGS);
+      }
+    }
+  }
+  return { prompt: nextPrompt, negative: nextNegative };
+}
+
+export interface PromptSegmentSpec {
+  label: string;
+  text: string;
+}
+
+// A segment counts as composed when at least half of its tags are recognizably
+// in the prompt — below that the model ignored the block (the turn's classic
+// "same default illustration again" failure) and its missing tags are injected
+// verbatim, right after the identity block so they outweigh whatever stale
+// baseline tags survived. Full-body tags are never re-injected: the turn may
+// have deliberately downgraded them to a tighter framing.
+const SEGMENT_COVERAGE_MIN = 0.5;
+
+export function ensureSegmentCoverage(
+  prompt: string,
+  identity: string,
+  segments: PromptSegmentSpec[]
+): { prompt: string; injected: string[] } {
+  const haystack = normalizeForMatch(prompt);
+  const additions: string[] = [];
+  const added = new Set<string>();
+  const injected: string[] = [];
+  for (const segment of segments) {
+    // Full-body tags are never re-injected (the turn may have deliberately
+    // downgraded them), and "no X" negation clauses are neither counted nor
+    // injected — they belong in the negative prompt, not the positive one.
+    const tags = splitTags(segment.text).filter(
+      (tag) => !FULL_BODY_PATTERN.test(tag) && !NEGATION_TAG.test(tag)
+    );
+    if (tags.length === 0) continue;
+    const missing = tags.filter(
+      (tag) => !phrasePresent(haystack, normalizeForMatch(tag))
+    );
+    if ((tags.length - missing.length) / tags.length >= SEGMENT_COVERAGE_MIN) {
+      continue;
+    }
+    const fresh = missing.filter((tag) => {
+      const norm = normalizeForMatch(tag);
+      if (added.has(norm)) return false;
+      added.add(norm);
+      return true;
+    });
+    if (fresh.length === 0) continue;
+    additions.push(fresh.join(", "));
+    injected.push(segment.label);
+  }
+  if (additions.length === 0) return { prompt, injected: [] };
+  const insertion = additions.join(", ");
+  const trimmedIdentity = identity.trim();
+  const at = trimmedIdentity ? prompt.indexOf(trimmedIdentity) : -1;
+  if (at >= 0) {
+    const end = at + trimmedIdentity.length;
+    return {
+      prompt: `${prompt.slice(0, end)}, ${insertion}${prompt.slice(end)}`,
+      injected,
+    };
+  }
+  // No identity anchor (the model dropped it too): front-load the blocks so
+  // they still outweigh the stale baseline tags.
+  return {
+    prompt: prompt.trim() ? `${insertion}, ${prompt}` : insertion,
+    injected,
+  };
+}
+
 function normalizeEmbeddingList(value: unknown): EmbeddingConfig[] {
   if (!Array.isArray(value)) return [];
 
@@ -582,15 +1161,6 @@ export async function loadCharacterLibrary(): Promise<PaimonCharacter[]> {
   }
 }
 
-// Whole-figure cues in a saved situation (or in the baseline prompt). These
-// checkpoints squash the figure whenever the whole body has to fit the frame —
-// short legs, oversized head — so such a turn gets an explicit instruction to
-// TIGHTEN the framing (rather than relying on the system prompt alone, which
-// loses against "keep the situation prompt as is"). Older characters still hold
-// full-body situations written before the generator stopped emitting them.
-const FULL_BODY_PATTERN =
-  /full[\s-]?body|full figure|head[\s-]to[\s-]toe|whole body|wide shot|feet visible|전신/i;
-
 function fullBodyRequirements(...prompts: (string | undefined)[]) {
   if (!prompts.some((prompt) => prompt && FULL_BODY_PATTERN.test(prompt))) {
     return [];
@@ -745,6 +1315,53 @@ function scopeRequirements(scope: PaimonComposeScope): string[] {
   ];
 }
 
+// Why a composed render kept coming out as the baseline image: leftover
+// baseline outfit/pose/location tags fight the replacement blocks, and the
+// baseline negative (written for the main image's fully-dressed front-facing
+// portrait) can outright ban what the new blocks ask for. The single generic
+// "delete conflicts / adjust the negative" line was routinely ignored, so each
+// replaced segment gets its own explicit deletion-and-priority rule plus a
+// mandatory negative sweep.
+function replacementPriorityRequirements(
+  scope: PaimonComposeScope,
+  situation: PaimonCharacter["situations"][number] | null
+): string[] {
+  const lines: string[] = [];
+  const outfitText = situation?.outfitPrompt?.trim();
+  if (scope.outfit && outfitText) {
+    lines.push(
+      "- [교체] 의상이 최우선이야: 의상 블록을 [고정] 외형 블록 바로 뒤에 통째로 붙이고, 기준 프롬프트에 있던 이전 의상 태그(상의·하의·치마·바지·신발·양말·스타킹·속옷·잠옷·겉옷·소매·칼라·핏·옷차림 상태)는 하나도 남기지 말고 전부 지워. 이전 의상 태그가 한 벌이라도 살아남으면 모델이 기존 옷으로 되돌아가. 이전 의상을 대표하는 핵심 단어 1~2개(예: white shirt)는 네거티브에 추가해서 되돌아갈 길을 막아."
+    );
+    if (NUDE_PATTERN.test(outfitText)) {
+      lines.push(
+        "- 이번 의상은 알몸 설정이야: 프롬프트에 원단·직물·재질 태그(fabric, cloth, silk, satin, cotton, texture 계열)를 하나도 넣지 마 — 넣으면 모델이 수건이나 천으로 몸을 가려버려. 기준 프롬프트에 남은 의상·원단 태그도 전부 지우고, 의상 블록에 적힌 액세서리(안경·목걸이·시계 등)만 그대로 유지해. 네거티브에 clothes, clothing, underwear, bra, panties, towel, blanket, draped cloth, convenient censoring을 추가하고, 노출을 금지하는 네거티브(exposed breasts 등)는 지워."
+      );
+    } else {
+      lines.push(
+        "- 재질 표현 규칙: 태그 기반 모델은 프롬프트 안의 'no X' 부정 표현(no glitter, no shiny metallic fabric 등)을 이해하지 못하고 오히려 X를 그려버려. [교체] 블록의 'no X' 항목은 긍정 프롬프트에 넣지 말고 빼고, 각 X(lace, sequins, glitter, shiny metallic fabric 등)를 네거티브에 추가해. ([고정] 외형 블록 안의 no 표현만 예외 — 그 블록은 글자 그대로 복사해.) 의상 원단이 matte·cotton·linen 같은 무광 재질을 명시하면 matte fabric texture, dull fabric, natural cloth texture, realistic fabric 같은 재질 강조 태그를 넣고, 네거티브에 shiny clothes, glossy fabric, satin sheen, latex, wet look을 추가해 — 이 모델들은 silk·satin이 들어간 옷을 무광 앵커 없이는 번들거리는 새틴 광택으로 그려. 단 이 규칙은 옷 원단에만 적용해: 귀걸이·안경 같은 금속 액세서리의 matte는 원단이 아니야.",
+        "- 색 번짐 방지: 배경·소품·액세서리의 색 단어(light grey sofa, silver metal, white countertop 등)가 의상 색으로 새서 그림마다 속옷 색이 달라져. 의상의 핵심 아이템별로 (색 아이템:1.2) 형태의 짧은 가중치 앵커 — 예: (dark navy bralette:1.2), (dark navy panties:1.2) — 를 프롬프트 맨 앞(품질·스코어 블록이 있으면 그 바로 뒤)에 추가해서 의상 색을 고정해. 배경이나 소품의 색 단어에는 가중치를 주지 마."
+      );
+    }
+  }
+  if (scope.background && situation?.backgroundPrompt?.trim()) {
+    lines.push(
+      "- [교체] 배경으로 갈아끼울 때 기준 프롬프트의 이전 장소·가구·소품·창밖 풍경·시간대·조명·분위기 태그는 전부 지워. 두 장소의 태그가 섞이면 배경이 기준 이미지의 장소로 되돌아가."
+    );
+  }
+  if (scope.situation && situation?.prompt.trim()) {
+    lines.push(
+      "- [교체] 상황 블록의 프레이밍·카메라 각도·몸 방향·포즈·손발 동작·시선·표정이 이번 구도의 기준이야. 기준 프롬프트의 이전 구도·포즈·시선 태그(front-facing, straight-on view, seated at desk, upper-body shot, direct eye contact 같은 종류)는 전부 지우고, 상황 블록의 동작·구도 태그는 외형 블록 다음의 프롬프트 앞쪽에 배치해서 스타일·품질 태그에 파묻히지 않게 해."
+    );
+  }
+  if (lines.length > 0) {
+    lines.push(
+      "- 네거티브 충돌 정리는 필수야: 기준 네거티브의 태그를 하나씩 위 [교체] 블록들과 대조해서, 이번에 요청한 내용을 금지하는 태그는 반드시 지워. 예를 들어 새 의상이 속옷·란제리·수영복 계열이면 lingerie·bra·underwear 같은 금지 태그를 지우고, 상황이 side view·from behind·looking over shoulder·profile 시점을 요구하면 그 시점을 금지하는 태그(side view, rear view, over-the-shoulder view, looking over shoulder, turned away, profile 등)를 지워. 충돌 네거티브가 살아남으면 프롬프트보다 네거티브가 이겨서 의상·포즈가 무시되고 기준 이미지와 똑같은 그림이 나와.",
+      "- 내보내기 전에 마지막으로 자문해: 이 프롬프트·네거티브로 그리면 기준 이미지와 다른 그림(새 의상·새 배경·새 포즈)이 나오나? 기준 이미지가 그대로 나올 것 같으면 이전 의상·구도 태그 삭제와 네거티브 정리를 다시 해."
+    );
+  }
+  return lines;
+}
+
 // Ordered so the identity lock reads before the "adapt to this model" habits the
 // system prompt otherwise licenses.
 const IDENTITY_LOCK = [
@@ -812,6 +1429,7 @@ function buildInstruction(
       ...scopeRequirements(scope),
       ...IDENTITY_LOCK,
       ...characterLoraLock(character),
+      ...replacementPriorityRequirements(scope, situation),
       ...framing,
     ]
       .filter(Boolean)
@@ -854,7 +1472,8 @@ function buildInstruction(
     scope.situation || scope.outfit || scope.background
       ? `- 기준 프롬프트에 남아 있는 이전 ${scopeLabel(scope)} 태그 중 이번에 교체하는 내용과 충돌하는 건 지워. 단 외형 태그와 [고정] 항목은 이 삭제 대상이 아니야 — 충돌해 보여도 남겨.`
       : "",
-    "- 네거티브는 기준 네거티브를 출발점으로 이번 상황에 필요한 만큼만 조정해.",
+    ...replacementPriorityRequirements(scope, situation),
+    "- 네거티브는 기준 네거티브를 출발점으로 조정해: 품질·해부학·아티팩트 네거티브는 유지하고, 위에서 지운 것 외에는 이번 상황에 필요한 실패 방지 태그만 추가해.",
     // Framing/proportion overrides come last so they win over "keep the
     // situation prompt as written" above.
     ...framing,
@@ -1181,6 +1800,60 @@ export const usePaimonChatStore = create<PaimonChatState>((set, get) => ({
         if (ensured !== merged.prompt) {
           merged.prompt = ensured;
           useStore.getState().setParams({ prompt: ensured });
+        }
+      }
+      // Same guarantee for the replacement blocks and the negative sweep: a
+      // turn that ignored either would otherwise queue a render that comes out
+      // as the baseline image in the default outfit.
+      if (situation && merged.prompt.trim()) {
+        const segments: PromptSegmentSpec[] = [];
+        if (scope.outfit && situation.outfitPrompt?.trim()) {
+          segments.push({ label: "의상", text: situation.outfitPrompt });
+        }
+        if (scope.background && situation.backgroundPrompt?.trim()) {
+          segments.push({ label: "배경", text: situation.backgroundPrompt });
+        }
+        if (scope.situation && situation.prompt.trim()) {
+          segments.push({ label: "상황", text: situation.prompt });
+        }
+        const ensured = ensureSegmentCoverage(
+          merged.prompt,
+          character.appearancePrompt,
+          segments
+        );
+        if (ensured.prompt !== merged.prompt) {
+          merged.prompt = ensured.prompt;
+          useStore.getState().setParams({ prompt: merged.prompt });
+        }
+        // Fabric fidelity: "no X" clauses in the replaced blocks become real
+        // negatives, and a matte-finish outfit gets its texture anchored —
+        // otherwise these checkpoints render any satin/silk wardrobe glossy.
+        const finish = applyFabricFinish(
+          merged.prompt,
+          merged.negative_prompt ?? "",
+          segments.map((segment) => segment.text),
+          scope.outfit ? situation.outfitPrompt : undefined
+        );
+        if (finish.prompt !== merged.prompt) {
+          merged.prompt = finish.prompt;
+          useStore.getState().setParams({ prompt: merged.prompt });
+        }
+        if (finish.negative !== (merged.negative_prompt ?? "")) {
+          merged.negative_prompt = finish.negative;
+          useStore.getState().setParams({ negative_prompt: finish.negative });
+        }
+      }
+      if (
+        typeof merged.negative_prompt === "string" &&
+        merged.prompt.trim()
+      ) {
+        const swept = sweepConflictingNegatives(
+          merged.prompt,
+          merged.negative_prompt
+        );
+        if (swept !== merged.negative_prompt) {
+          merged.negative_prompt = swept;
+          useStore.getState().setParams({ negative_prompt: swept });
         }
       }
       const queue = useGenerationQueueStore.getState();

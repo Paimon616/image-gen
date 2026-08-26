@@ -191,6 +191,39 @@ function sanitizePatch(value: unknown, character: Character): Partial<Character>
       (patch as Record<string, unknown>)[key] = record[key];
     }
   }
+
+  // A situation-authoring answer sometimes leaks an item's own name into the
+  // top-level `name`, silently renaming the character to a situation. When the
+  // proposed name matches any item name in this same patch (and is not simply
+  // the current character name), it is that leak — drop it.
+  if (typeof patch.name === "string") {
+    const proposed = patch.name.trim().toLowerCase();
+    const itemNames = [
+      "situations",
+      "situationsAppend",
+      "outfits",
+      "outfitsAppend",
+      "backgrounds",
+      "backgroundsAppend",
+    ].flatMap((key) => {
+      const list = record[key];
+      return Array.isArray(list)
+        ? list
+            .map((item) =>
+              item && typeof item === "object" && !Array.isArray(item)
+                ? (item as Record<string, unknown>).name
+                : null
+            )
+            .filter((name): name is string => typeof name === "string")
+        : [];
+    });
+    const isLeak =
+      Boolean(proposed) &&
+      proposed !== character.name.trim().toLowerCase() &&
+      itemNames.some((name) => name.trim().toLowerCase() === proposed);
+    if (isLeak || !proposed) delete patch.name;
+  }
+
   const outfits = mergeList(
     character.outfits,
     record,
