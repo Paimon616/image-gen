@@ -2814,6 +2814,38 @@ function applyVideoParamsToWorkflow(
       continue;
     }
 
+    // MiniMax H3 (DaSiWa Director) workflows carry the prompt and the reference
+    // image inside the Director node instead of PrimitiveStringMultiline/LoadImage:
+    // the prompt is a direct `prompt` input, and the image is the first item of the
+    // `timeline_data` JSON string (an input-dir filename, same format LoadImage
+    // uses). Patch both so the generic prompt box and image picker drive it.
+    if (classType === "MiniMaxH3Director") {
+      if (typeof inputs.prompt === "string" && !patchedPositiveText) {
+        inputs.prompt = params.prompt;
+        patchedPositiveText = true;
+      }
+      if (sourceImage && typeof inputs.timeline_data === "string") {
+        try {
+          const timeline = JSON.parse(inputs.timeline_data) as {
+            items?: Array<Record<string, unknown>>;
+          };
+          const first = timeline.items?.find((item) => item?.type === "image");
+          if (first) {
+            first.value = sourceImage;
+            // Stale UI-only fields from the captured graph; the Director reads
+            // the actual file, so drop them rather than lie about the new image.
+            delete first.thumbnail;
+            delete first.source_width;
+            delete first.source_height;
+            inputs.timeline_data = JSON.stringify(timeline);
+          }
+        } catch {
+          // Malformed timeline_data — leave the baked reference image in place.
+        }
+      }
+      continue;
+    }
+
     if (classType === "LTXVScheduler" && typeof inputs.steps === "number") {
       inputs.steps = params.num_inference_steps;
     }
@@ -2926,7 +2958,12 @@ function injectCensorNodes(
   for (const node of Object.values(workflow)) {
     if (!node || typeof node !== "object" || Array.isArray(node)) continue;
     const classType = (node as { class_type?: string }).class_type;
-    if (classType !== "CreateVideo" && classType !== "VHS_VideoCombine") continue;
+    if (
+      classType !== "CreateVideo" &&
+      classType !== "VHS_VideoCombine" &&
+      classType !== "DaSiWa_EnhancedVideoCombine"
+    )
+      continue;
     const inputs = (node as { inputs?: Record<string, unknown> }).inputs;
     const images = inputs?.images;
     if (

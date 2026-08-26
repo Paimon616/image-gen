@@ -153,6 +153,31 @@ function collectRequiredFiles(workflow: unknown): Array<{ folder: string; filena
         if (name) add("loras", `${name}.safetensors`);
       }
     }
+    // DaSiWa Advanced LoRA Loader: `stack_data` is a JSON array of slots; only
+    // enabled slots (`on: true`) actually load, so only those are required.
+    if (
+      classType === "DaSiWa_LTX2LoraLoader" &&
+      typeof inputs.stack_data === "string"
+    ) {
+      try {
+        const stack = JSON.parse(inputs.stack_data) as Array<{
+          on?: boolean;
+          lora?: string;
+        }>;
+        for (const slot of Array.isArray(stack) ? stack : []) {
+          if (slot?.on && typeof slot.lora === "string") add("loras", slot.lora);
+        }
+      } catch {
+        // Malformed stack_data — nothing to require.
+      }
+    }
+    // KJNodes preview override: its tiny VAE lives under models/vae_approx.
+    if (
+      classType === "ModelPreviewOverrideKJ" &&
+      typeof inputs.tiny_vae === "string"
+    ) {
+      add("vae_approx", inputs.tiny_vae);
+    }
   }
 
   return [...out.values()];
@@ -270,6 +295,15 @@ const NODE_PACKS: Array<{ name: string; url: string; test: (ct: string) => boole
     test: (ct) => ct.endsWith("KJv2") || ct.endsWith("KJ") || ct === "GetImageSize",
   },
   {
+    name: "ComfyUI-DaSiWa-Nodes",
+    url: "https://github.com/darksidewalker/ComfyUI-DaSiWa-Nodes",
+    // The DaSiWa pack also ships the MiniMax H3 Director/Guide/Cache/SigmaShift
+    // family used by the MiniMax H3 pipeline (on pods where they are core nodes
+    // they are never "missing", so this rule only fires when they truly need the
+    // pack installed).
+    test: (ct) => ct.startsWith("DaSiWa_") || ct.startsWith("MiniMaxH3"),
+  },
+  {
     name: "ComfyMath",
     url: "https://github.com/evanspearman/ComfyMath",
     test: (ct) => ct.startsWith("CM_") || ct === "ComfyMathExpression",
@@ -327,6 +361,13 @@ const BUILTIN_NODE_TYPES = new Set<string>([
   "PrimitiveStringMultiline",
   "PrimitiveBoolean",
   "ManualSigmas",
+  // ComfyUI core used by the MiniMax H3 (DaSiWa) workflow.
+  "BasicScheduler",
+  "BasicGuider",
+  "VAEDecodeAudio",
+  "ModelAttentionBackend",
+  "ModelPatchTorchSettings",
+  "ComfySwitchNode",
 ]);
 
 // Resolve which custom-node git repos a pipeline needs. When `installedTypes`

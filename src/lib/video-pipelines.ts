@@ -687,7 +687,147 @@ const ltx25T2vControls: VideoPipelineControl[] = [
   },
 ];
 
+// DaSiWa MiniMax H3 I2VA (image→video+audio), captured verbatim from a source
+// video's embedded ComfyUI prompt (DaSiWa "MythicAlchemy" workflow). The graph is
+// the exact executed flat API prompt, so defaults reproduce the source video when
+// given the same image/prompt/seed. Prompt and reference image live on the
+// MiniMaxH3Director node and are injected by applyVideoParamsToWorkflow (the
+// Director has no negative-prompt input — the guider is CFG-less BasicGuider).
+// The DaSiWa LoRA stack (node 2678) stays baked as captured: only
+// MysticXXX_MMH3-V3 @ 0.9 is enabled. Requires ComfyUI >= 0.30.0 (native MiniMax
+// H3) plus the ComfyUI-DaSiWa-Nodes and ComfyUI-KJNodes packs on the pod.
+const dasiwaMinimaxH3I2vaControls: VideoPipelineControl[] = [
+  {
+    key: "seed",
+    label: "Seed",
+    type: "number",
+    defaultValue: 815967602714924,
+    min: 0,
+    step: 1,
+    group: "core",
+    help: "RandomNoise seed(node 1512:2600)입니다. 캡처된 원본 seed가 기본값이라 같은 이미지·프롬프트면 원본 영상과 동일하게 재생성되고, 값을 바꾸면 다른 변주가 나옵니다.",
+    patches: [{ nodeId: "1512:2600", input: "noise_seed" }],
+  },
+  {
+    key: "duration_seconds",
+    label: "Duration (sec)",
+    type: "number",
+    defaultValue: 10,
+    min: 1,
+    max: 15,
+    step: 1,
+    group: "core",
+    help: "생성할 영상 길이(초)입니다(node 2730 duration). MiniMax H3의 안정 범위는 5~10초이며 원본 영상은 10초입니다. 길수록 VRAM과 시간이 크게 증가합니다.",
+    patches: [{ nodeId: "2730", input: "duration" }],
+  },
+  {
+    key: "frame_rate",
+    label: "FPS",
+    type: "number",
+    defaultValue: 24,
+    min: 8,
+    max: 30,
+    step: 1,
+    group: "core",
+    help: "재생 프레임레이트(node 2730 frame_rate)입니다. Enhanced Video Combine의 FPS는 Director 출력에서 이어받으므로 이 값 하나로 함께 바뀝니다.",
+    patches: [{ nodeId: "2730", input: "frame_rate" }],
+  },
+  {
+    key: "width",
+    label: "Width",
+    type: "number",
+    defaultValue: 736,
+    min: 256,
+    max: 1920,
+    step: 16,
+    group: "resize",
+    help: "출력 가로(node 2730 width)입니다. MiniMax H3는 16px 그리드를 사용하므로 16의 배수여야 합니다. 원본 영상은 736×1280(9:16 세로)입니다.",
+    patches: [{ nodeId: "2730", input: "width" }],
+  },
+  {
+    key: "height",
+    label: "Height",
+    type: "number",
+    defaultValue: 1280,
+    min: 256,
+    max: 1920,
+    step: 16,
+    group: "resize",
+    help: "출력 세로(node 2730 height)입니다. 16의 배수여야 합니다.",
+    patches: [{ nodeId: "2730", input: "height" }],
+  },
+  {
+    key: "steps",
+    label: "Steps",
+    type: "number",
+    defaultValue: 20,
+    min: 4,
+    max: 40,
+    step: 1,
+    group: "sampling",
+    help: "BasicScheduler steps(node 1512:2590/2679)입니다. 원본은 20 step이며, MiniMaxH3Cache가 중간 구간을 재사용해 체감 속도를 높입니다.",
+    patches: [
+      { nodeId: "1512:2590", input: "steps" },
+      { nodeId: "1512:2679", input: "steps" },
+    ],
+  },
+  {
+    key: "sampler",
+    label: "Sampler",
+    type: "select",
+    defaultValue: "dpmpp_2m",
+    options: ["dpmpp_2m", "euler", "euler_ancestral", "uni_pc"],
+    group: "sampling",
+    help: "KSamplerSelect(node 1512:2598)의 sampler입니다. 원본 영상은 dpmpp_2m을 사용했습니다.",
+    patches: [{ nodeId: "1512:2598", input: "sampler_name" }],
+  },
+  {
+    key: "shift_video",
+    label: "Video Sigma Shift",
+    type: "number",
+    defaultValue: 12,
+    min: 1,
+    max: 20,
+    step: 0.5,
+    group: "advanced",
+    help: "ModelSamplingMiniMaxH3의 video shift(node 1512:2691/2692)입니다. 원본 기본값 12. 낮추면 motion이 안정적이지만 밋밋해질 수 있습니다.",
+    patches: [
+      { nodeId: "1512:2691", input: "shift_video" },
+      { nodeId: "1512:2692", input: "shift_video" },
+    ],
+  },
+  {
+    key: "shift_audio",
+    label: "Audio Sigma Shift",
+    type: "number",
+    defaultValue: 3,
+    min: 1,
+    max: 10,
+    step: 0.5,
+    group: "advanced",
+    help: "ModelSamplingMiniMaxH3의 audio shift(node 1512:2691/2692)입니다. 원본 기본값 3.",
+    patches: [
+      { nodeId: "1512:2691", input: "shift_audio" },
+      { nodeId: "1512:2692", input: "shift_audio" },
+    ],
+  },
+];
+
 const BUILTIN_VIDEO_PIPELINES: VideoPipelineDefinition[] = [
+  {
+    id: "dasiwa-minimax-h3-i2va",
+    label: "MiniMax H3 (DaSiWa) - I2V + audio",
+    description:
+      "DaSiWa MythicAlchemy MiniMax H3 이미지→비디오+오디오 워크플로우(원본 영상에서 캡처한 실행 그래프 그대로). REF2VA Hybrid 체크포인트 + Qwen3-VL 32B(nvfp4) 인코더 + MysticXXX v3 LoRA(0.9, baked). ComfyUI 0.30.0+ 와 ComfyUI-DaSiWa-Nodes / ComfyUI-KJNodes가 설치된 pod가 필요합니다(onechat_ltx25_h100_002 세팅 완료). 프롬프트는 MiniMax Director 형식(integrated_multimodal_description …)을 쓰면 원본과 같은 스타일로 동작하며, negative prompt는 지원하지 않습니다.",
+    workflowPath: "workflows/dasiwa-minimax-h3-i2va.json",
+    mode: "i2v",
+    // DaSiWa_EnhancedVideoCombine muxes the audio-VAE output into the file, so
+    // every clip carries generated sound; the separate sound toggle is moot.
+    embedsAudio: true,
+    canvas: NO_CANVAS_SUPPORT,
+    defaults: defaultsFromControls(dasiwaMinimaxH3I2vaControls),
+    controls: dasiwaMinimaxH3I2vaControls,
+  },
   {
     id: "ltx25-i2v-two-stage",
     label: "LTX-2.5 - I2V (two-stage, high quality)",

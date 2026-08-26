@@ -1,4 +1,40 @@
 {
+  "upscale_models/remacri_original.safetensors": {
+    "name": "Remacri",
+    "version": "Original",
+    "base_model": "Upscaler",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/b6b3d1d9-6467-4719-9136-877732b4c3aa/original=true/2566828.jpeg",
+    "civitai_url": "https://civitai.red/models/147759/remacri?modelVersionId=164821",
+    "tags": [
+      "base model"
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent",
+        "Image",
+        "Sell"
+      ]
+    },
+    "source_url": "https://civitai.red/models/147759/remacri?modelVersionId=164821"
+  },
+  "upscale_models/4x-UltraSharp.pth": {
+    "name": "4x-Ultrasharp",
+    "version": "4x-UltraSharp v1.0",
+    "base_model": "Upscaler",
+    "civitai_url": "https://civitai.red/models/116225/4x-ultrasharp?modelVersionId=125843",
+    "source_url": "https://civitai.red/models/116225/4x-ultrasharp?modelVersionId=125843",
+    "thumbnail_url": null,
+    "tags": []
+  },
   "checkpoints/aMixIllustrious_aMix.safetensors": {
     "name": "A-mix [Illustrious]",
     "version": "A - mix",
@@ -7115,33 +7151,6 @@
       ]
     }
   },
-  "upscale_models/remacri_original.safetensors": {
-    "name": "Remacri",
-    "version": "Original",
-    "base_model": "Upscaler",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/b6b3d1d9-6467-4719-9136-877732b4c3aa/original=true/2566828.jpeg",
-    "civitai_url": "https://civitai.red/models/147759/remacri?modelVersionId=164821",
-    "tags": [
-      "base model"
-    ],
-    "risk": {
-      "level": "OK",
-      "reason": "Rent 허용 + 특이사항 없음",
-      "allow_commercial_use": "Y"
-    },
-    "license": {
-      "allowNoCredit": true,
-      "allowDerivatives": true,
-      "allowDifferentLicense": true,
-      "allowCommercialUse": [
-        "RentCivit",
-        "Rent",
-        "Image",
-        "Sell"
-      ]
-    },
-    "source_url": "https://civitai.red/models/147759/remacri?modelVersionId=164821"
-  },
   "vae/sdxlVAE_sdxlVAE.safetensors": {
     "name": "SDXL VAE",
     "version": "SDXL-VAE",
@@ -7719,15 +7728,6 @@
     "civitai_url": "https://civitai.red/models/507472/uncanny-valley?modelVersionId=1880913",
     "source_url": "https://civitai.red/models/507472/uncanny-valley?modelVersionId=1880913",
     "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/f9019fba-9b84-499a-ac7e-e4b1f3c60d47/original=true/81101435.jpeg"
-  },
-  "upscale_models/4x-UltraSharp.pth": {
-    "name": "4x-Ultrasharp",
-    "version": "4x-UltraSharp v1.0",
-    "base_model": "Upscaler",
-    "civitai_url": "https://civitai.red/models/116225/4x-ultrasharp?modelVersionId=125843",
-    "source_url": "https://civitai.red/models/116225/4x-ultrasharp?modelVersionId=125843",
-    "thumbnail_url": null,
-    "tags": []
   },
   "diffusion_models/pornmasterKrea2_v25Turbo.safetensors": {
     "name": "PornMaster 色情大師-Krea2",
@@ -8855,18 +8855,90 @@
       "coworker-girl"
     ]
   },
-  "loras/nalari-jina.safetensors": {
-    "name": "nalari-jina",
-    "version": "자체 학습 · 2026-08-25",
-    "base_model": "Illustrious",
-    "thumbnail_url": "/api/models/thumbnail?folder=loras&file=nalari-jina.preview.png",
+  "diffusion_models/DasiwaMinimaxH3_dasiwaREF2VAHybridV1.safetensors": {
+    "name": "DaSiWa MiniMax H3 REF2VA Hybrid",
+    "version": "v1.0 int8",
+    "base_model": "MiniMax H3",
+    "thumbnail_url": null,
     "civitai_url": null,
-    "source_url": null,
+    "source_url": "https://huggingface.co/yamanakaaa2015/mymodel/resolve/main/MiniMax/DasiwaMinimaxH3_dasiwaREF2VAHybridV1.safetensors",
     "tags": [
-      "self-trained",
-      "자체 학습",
-      "character",
-      "nalari-jina"
-    ]
+      "minimax-h3",
+      "diffusion",
+      "video",
+      "hybrid"
+    ],
+    "note": "확인됨: fl2va+ref2va 병합 하이브리드(int8, 19.53GiB). 원본 civitai 모델(2877206)은 삭제되어 HF 미러 사용. SHA256 71c61492…b7121c (CivArchive 원본 해시와 일치 검증됨)."
+  },
+  "text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors": {
+    "name": "Qwen3-VL 32B MiniMax H3 text encoder (nvfp4 awq)",
+    "version": "nvfp4 awq",
+    "base_model": "MiniMax H3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+    "tags": [
+      "minimax-h3",
+      "text-encoder",
+      "video"
+    ],
+    "note": "확인됨: Comfy-Org/MiniMax-H3 공식. 15.69GB. NVFP4는 Hopper(H100)에서 소프트웨어 디퀀트로 동작(로드 에러 시 같은 저장소의 int8_convrot 27GB로 교체)."
+  },
+  "vae/MiniMaxH3/minimax_h3_video_vae_fp16.safetensors": {
+    "name": "MiniMax H3 video VAE (fp16)",
+    "version": "fp16",
+    "base_model": "MiniMax H3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/vae/minimax_h3_video_vae_fp16.safetensors",
+    "tags": [
+      "minimax-h3",
+      "vae",
+      "video"
+    ],
+    "note": "확인됨: Comfy-Org/MiniMax-H3 공식. 5.21GB. 워크플로우는 vae/MiniMaxH3/ 하위 경로로 로드하므로 targetPath 그대로 받을 것."
+  },
+  "vae/MiniMaxH3/minimax_h3_audio_vae_fp32.safetensors": {
+    "name": "MiniMax H3 audio VAE (fp32)",
+    "version": "fp32",
+    "base_model": "MiniMax H3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/vae/minimax_h3_audio_vae_fp32.safetensors",
+    "tags": [
+      "minimax-h3",
+      "vae",
+      "audio"
+    ],
+    "note": "확인됨: Comfy-Org/MiniMax-H3 공식. 0.61GB. I2VA 오디오 생성 경로에 필요."
+  },
+  "vae_approx/taeh3.safetensors": {
+    "name": "MiniMax H3 tiny VAE (taeh3)",
+    "version": "Kijai",
+    "base_model": "MiniMax H3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Kijai/MiniMax-H3-TAE/resolve/main/vae_approx/taeh3.safetensors",
+    "tags": [
+      "minimax-h3",
+      "vae-approx",
+      "preview"
+    ],
+    "note": "확인됨: Kijai/MiniMax-H3-TAE. 10MB. ModelPreviewOverrideKJ 실시간 프리뷰 전용(최종 품질과 무관)."
+  },
+  "loras/MysticXXX_MMH3-V3.safetensors": {
+    "name": "[MMH3] Mystic XXX",
+    "version": "v3.0",
+    "base_model": "MiniMax H3",
+    "thumbnail_url": null,
+    "civitai_url": "https://civitai.red/models/2856467?modelVersionId=3260276",
+    "source_url": "https://huggingface.co/Kutches/minmax/resolve/main/MysticXXX_MMH3-V3.safetensors",
+    "tags": [
+      "minimax-h3",
+      "lora",
+      "nsfw",
+      "video"
+    ],
+    "note": "확인됨: civitai 2856467 v3.0 (0.28GB). DaSiWa MiniMax H3 파이프라인의 유일한 활성 LoRA(strength 0.9, workflow에 baked)."
   }
 }
