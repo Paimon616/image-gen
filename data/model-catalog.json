@@ -8854,5 +8854,19 @@
       "character",
       "coworker-girl"
     ]
+  },
+  "loras/nalari-jina.safetensors": {
+    "name": "nalari-jina",
+    "version": "자체 학습 · 2026-08-25",
+    "base_model": "Illustrious",
+    "thumbnail_url": "/api/models/thumbnail?folder=loras&file=nalari-jina.preview.png",
+    "civitai_url": null,
+    "source_url": null,
+    "tags": [
+      "self-trained",
+      "자체 학습",
+      "character",
+      "nalari-jina"
+    ]
   }
 }

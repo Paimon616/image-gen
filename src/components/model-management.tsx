@@ -8,15 +8,19 @@ import {
   ExternalLink,
   FileDown,
   FileUp,
+  Grid3X3,
   Heart,
   Info,
   Loader2,
   RefreshCw,
   Sparkles,
+  Star,
+  Tag,
   Tags,
   Trash2,
   X,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -223,33 +227,206 @@ function ModelThumb({
   );
 }
 
-function TagPill({
-  active = false,
-  children,
-  onClick,
+type TagSortMode = "abc" | "count";
+
+interface ModelTagFilter {
+  label: string;
+  count: number;
+}
+
+const MODEL_FAVORITE_TAGS_KEY = "model-favorite-tags";
+
+function loadFavoriteTags() {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const saved = window.localStorage.getItem(MODEL_FAVORITE_TAGS_KEY);
+    const parsed = saved ? JSON.parse(saved) : [];
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.filter((item): item is string => typeof item === "string");
+  } catch {
+    return [];
+  }
+}
+
+function TagFilterButton({
+  tag,
+  selected,
+  favorite,
+  onToggle,
+  onToggleFavorite,
 }: {
-  active?: boolean;
-  children: ReactNode;
-  onClick?: () => void;
+  tag: ModelTagFilter;
+  selected: boolean;
+  favorite: boolean;
+  onToggle: (tag: ModelTagFilter) => void;
+  onToggleFavorite: (tag: ModelTagFilter) => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`h-7 rounded-md px-2.5 text-xs font-semibold transition-colors ${
-        active
-          ? "bg-primary text-primary-foreground shadow-sm"
-          : "bg-card text-muted-foreground ring-1 ring-border hover:bg-secondary hover:text-secondary-foreground"
-      }`}
+    <div
+      className={cn(
+        "group inline-flex max-w-full items-center gap-1 rounded-md border px-1.5 py-1 text-xs transition-colors",
+        favorite
+          ? "border-primary/35 bg-primary/10 shadow-sm"
+          : "border-border bg-background/70",
+        selected && "border-primary bg-primary text-primary-foreground"
+      )}
     >
-      {children}
-    </button>
+      <button
+        type="button"
+        className="flex min-w-0 items-center gap-1.5 text-left"
+        onClick={() => onToggle(tag)}
+        aria-pressed={selected}
+      >
+        <span className="min-w-0 truncate font-medium">{tag.label}</span>
+        <span
+          className={cn(
+            "shrink-0 text-[10px]",
+            selected ? "text-primary-foreground/75" : "text-muted-foreground"
+          )}
+        >
+          {tag.count}
+        </span>
+      </button>
+      <button
+        type="button"
+        className={cn(
+          "shrink-0 rounded-sm p-0.5 transition-colors",
+          selected
+            ? "text-primary-foreground/80 hover:bg-primary-foreground/15 hover:text-primary-foreground"
+            : favorite
+              ? "text-primary hover:bg-primary/10"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+        )}
+        onClick={() => onToggleFavorite(tag)}
+        aria-label={`${favorite ? "Unfavorite" : "Favorite"} ${tag.label}`}
+        title={`${favorite ? "Unfavorite" : "Favorite"} ${tag.label}`}
+      >
+        <Star className={cn("h-3.5 w-3.5", favorite && "fill-current")} />
+      </button>
+    </div>
+  );
+}
+
+function ModelTagSidebar({
+  tags,
+  selectedTags,
+  favoriteTags,
+  totalModels,
+  filteredModels,
+  onReset,
+  onToggleTag,
+  onToggleFavorite,
+}: {
+  tags: ModelTagFilter[];
+  selectedTags: string[];
+  favoriteTags: string[];
+  totalModels: number;
+  filteredModels: number;
+  onReset: () => void;
+  onToggleTag: (tag: ModelTagFilter) => void;
+  onToggleFavorite: (tag: ModelTagFilter) => void;
+}) {
+  const [sortMode, setSortMode] = useState<TagSortMode>("abc");
+
+  const sortedTags = useMemo(() => {
+    const compareTags = (a: ModelTagFilter, b: ModelTagFilter) => {
+      if (sortMode === "count" && a.count !== b.count) {
+        return b.count - a.count;
+      }
+
+      return a.label.localeCompare(b.label);
+    };
+
+    return tags
+      .map((tag) => ({
+        ...tag,
+        favorite: favoriteTags.includes(tag.label),
+      }))
+      .sort((a, b) => {
+        if (a.favorite !== b.favorite) return a.favorite ? -1 : 1;
+        return compareTags(a, b);
+      });
+  }, [favoriteTags, sortMode, tags]);
+
+  return (
+    <aside className="sticky top-4 max-h-[calc(100vh-7rem)] min-h-0 self-start overflow-hidden rounded-md border border-border bg-card shadow-sm">
+      <div className="border-b border-border bg-secondary/40 p-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-sm font-semibold">Tags</div>
+          <div className="flex items-center gap-1.5">
+            <Button
+              type="button"
+              size="xs"
+              variant={sortMode === "abc" ? "default" : "outline"}
+              onClick={() => setSortMode("abc")}
+              aria-pressed={sortMode === "abc"}
+            >
+              abc
+            </Button>
+            <Button
+              type="button"
+              size="xs"
+              variant={sortMode === "count" ? "default" : "outline"}
+              onClick={() => setSortMode("count")}
+              aria-pressed={sortMode === "count"}
+            >
+              123
+            </Button>
+            <Button
+              type="button"
+              size="xs"
+              variant={selectedTags.length === 0 ? "default" : "outline"}
+              onClick={onReset}
+            >
+              All
+            </Button>
+          </div>
+        </div>
+        <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Grid3X3 className="h-3.5 w-3.5" />
+          {filteredModels} / {totalModels}
+          {selectedTags.length > 0 && (
+            <span>with {selectedTags.length} tag filters</span>
+          )}
+        </div>
+      </div>
+      <div className="max-h-[calc(100vh-13rem)] space-y-2 overflow-y-auto p-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+            <Tag className="h-3 w-3" />
+            <span className="truncate">Model Tags</span>
+          </div>
+          <span className="text-[10px] text-muted-foreground">{tags.length}</span>
+        </div>
+        {sortedTags.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {sortedTags.map((tag) => (
+              <TagFilterButton
+                key={tag.label}
+                tag={tag}
+                selected={selectedTags.includes(tag.label)}
+                favorite={tag.favorite}
+                onToggle={onToggleTag}
+                onToggleFavorite={onToggleFavorite}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-md border border-dashed border-border px-2 py-3 text-xs text-muted-foreground">
+            No model tags.
+          </div>
+        )}
+      </div>
+    </aside>
   );
 }
 
 function ModelCard({
   asset,
   onView,
+  onDelete,
   selecting = false,
   selected = false,
   onToggleSelect,
@@ -257,6 +434,7 @@ function ModelCard({
 }: {
   asset: ModelAsset;
   onView: () => void;
+  onDelete: () => void;
   selecting?: boolean;
   selected?: boolean;
   onToggleSelect?: () => void;
@@ -529,6 +707,22 @@ function ModelCard({
                 />
               </>
             )}
+            {!selecting && (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                className="ml-auto h-7 w-7 shrink-0 text-muted-foreground hover:border-destructive/40 hover:text-destructive"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDelete();
+                }}
+                aria-label={`Delete ${asset.name}`}
+                title="모델 삭제"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -722,6 +916,315 @@ function CatalogImportDialog({
   );
 }
 
+interface DeleteTargetPod {
+  id: string;
+  label: string;
+  kind: string;
+  running: boolean;
+}
+
+interface DeleteOutcome {
+  target: string;
+  ok: boolean;
+  message: string;
+}
+
+function DeleteModelDialog({
+  asset,
+  folder,
+  open,
+  onOpenChange,
+  onDeleted,
+}: {
+  asset: ModelAsset;
+  folder: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onDeleted: () => void;
+}) {
+  const hasLocalFile = asset.exists !== false;
+  const [pods, setPods] = useState<DeleteTargetPod[] | null>(null);
+  const [podsError, setPodsError] = useState("");
+  const [deleteLocal, setDeleteLocal] = useState(hasLocalFile);
+  const [selectedPodIds, setSelectedPodIds] = useState<Set<string>>(
+    () => new Set()
+  );
+  const [deleting, setDeleting] = useState(false);
+  const [results, setResults] = useState<DeleteOutcome[]>([]);
+
+  // The dialog is mounted fresh per delete target (keyed/conditional render),
+  // so initial state covers the reset and this effect only loads pod targets.
+  useEffect(() => {
+    if (!open) return;
+
+    let cancelled = false;
+
+    Promise.all([
+      fetchWithTimeout("/api/settings", { cache: "no-store" }).then(
+        (res) => res.json() as Promise<{ runpodPods?: unknown }>
+      ),
+      fetchWithTimeout("/api/runpod/pods/running", { cache: "no-store" })
+        .then(
+          (res) =>
+            res.json() as Promise<{ pods?: { id: string; running: boolean }[] }>
+        )
+        .catch(() => ({ pods: [] as { id: string; running: boolean }[] })),
+    ])
+      .then(([settings, running]) => {
+        if (cancelled) return;
+
+        const runningMap = new Map(
+          (running.pods ?? []).map((pod) => [pod.id, Boolean(pod.running)])
+        );
+        const podList = Array.isArray(settings.runpodPods)
+          ? (settings.runpodPods as {
+              id?: string;
+              label?: string;
+              kind?: string;
+            }[])
+              .filter((pod) => typeof pod.id === "string" && pod.id)
+              .map((pod) => ({
+                id: pod.id as string,
+                label: pod.label || (pod.id as string),
+                kind: pod.kind === "video" ? "video" : "image",
+                running: runningMap.get(pod.id as string) ?? false,
+              }))
+          : [];
+
+        setPods(podList);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setPods([]);
+        setPodsError(
+          error instanceof Error ? error.message : "RunPod 목록을 불러오지 못했습니다."
+        );
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, hasLocalFile]);
+
+  const togglePod = (id: string) => {
+    setSelectedPodIds((current) => {
+      const next = new Set(current);
+
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+
+      return next;
+    });
+  };
+
+  const selectedTargetCount = (deleteLocal ? 1 : 0) + selectedPodIds.size;
+  const finished = results.length > 0;
+
+  const runDelete = async () => {
+    setDeleting(true);
+    const outcomes: DeleteOutcome[] = [];
+
+    if (deleteLocal) {
+      try {
+        const res = await fetchWithTimeout("/api/models", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ folder, path: asset.path }),
+        });
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+
+        if (!res.ok) {
+          throw new Error(data.error || "로컬 파일을 삭제하지 못했습니다.");
+        }
+
+        outcomes.push({ target: "로컬", ok: true, message: "삭제 완료" });
+      } catch (error) {
+        outcomes.push({
+          target: "로컬",
+          ok: false,
+          message:
+            error instanceof Error ? error.message : "로컬 파일을 삭제하지 못했습니다.",
+        });
+      }
+    }
+
+    for (const pod of pods ?? []) {
+      if (!selectedPodIds.has(pod.id)) continue;
+
+      try {
+        const res = await fetchWithTimeout(
+          `/api/runpod/pods/${encodeURIComponent(pod.id)}/models`,
+          {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ folder, path: asset.path }),
+          },
+          90_000
+        );
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+
+        if (!res.ok) {
+          throw new Error(data.error || "RunPod에서 삭제하지 못했습니다.");
+        }
+
+        outcomes.push({ target: pod.label, ok: true, message: "삭제 완료" });
+      } catch (error) {
+        outcomes.push({
+          target: pod.label,
+          ok: false,
+          message:
+            error instanceof Error
+              ? error.message
+              : "RunPod에서 삭제하지 못했습니다.",
+        });
+      }
+    }
+
+    setResults(outcomes);
+    setDeleting(false);
+
+    if (outcomes.some((outcome) => outcome.ok)) {
+      onDeleted();
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => !deleting && onOpenChange(next)}>
+      <DialogContent className="border border-border bg-card sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>모델 삭제</DialogTitle>
+          <DialogDescription className="break-all">
+            {folder}/{asset.path} 파일을 삭제할 위치를 선택하세요. 삭제된 파일은 복구할 수
+            없습니다.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid max-h-[55vh] gap-2 overflow-y-auto pr-1">
+          <label
+            className={cn(
+              "flex items-center justify-between gap-3 rounded-md border border-border bg-background/70 px-3 py-2",
+              hasLocalFile ? "cursor-pointer" : "opacity-60"
+            )}
+          >
+            <div className="flex items-center gap-2.5">
+              <input
+                type="checkbox"
+                checked={deleteLocal}
+                disabled={!hasLocalFile || deleting || finished}
+                onChange={(event) => setDeleteLocal(event.target.checked)}
+                className="h-4 w-4 accent-primary"
+              />
+              <div>
+                <div className="text-sm font-semibold">로컬 파일</div>
+                <div className="text-xs text-muted-foreground">
+                  {hasLocalFile
+                    ? "ComfyUI models 폴더에서 파일과 카탈로그 메타데이터를 삭제합니다."
+                    : "로컬에 파일이 없습니다."}
+                </div>
+              </div>
+            </div>
+          </label>
+
+          {pods === null ? (
+            <div className="flex items-center gap-2 rounded-md border border-border bg-background/70 px-3 py-2 text-xs text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              RunPod 목록을 불러오는 중...
+            </div>
+          ) : pods.length === 0 ? (
+            <div className="rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
+              {podsError || "등록된 RunPod이 없습니다."}
+            </div>
+          ) : (
+            pods.map((pod) => (
+              <label
+                key={pod.id}
+                className={cn(
+                  "flex items-center justify-between gap-3 rounded-md border border-border bg-background/70 px-3 py-2",
+                  pod.running ? "cursor-pointer" : "opacity-60"
+                )}
+              >
+                <div className="flex items-center gap-2.5">
+                  <input
+                    type="checkbox"
+                    checked={selectedPodIds.has(pod.id)}
+                    disabled={!pod.running || deleting || finished}
+                    onChange={() => togglePod(pod.id)}
+                    className="h-4 w-4 accent-primary"
+                  />
+                  <div>
+                    <div className="text-sm font-semibold">{pod.label}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {pod.running
+                        ? "실행 중인 pod의 models 폴더에서 파일을 삭제합니다."
+                        : "pod이 실행 중이 아니어서 삭제할 수 없습니다."}
+                    </div>
+                  </div>
+                </div>
+                <Badge
+                  variant={pod.running ? "secondary" : "outline"}
+                  className="shrink-0 rounded-md"
+                >
+                  {pod.running ? "Running" : "Stopped"}
+                </Badge>
+              </label>
+            ))
+          )}
+
+          {results.length > 0 && (
+            <div className="grid gap-1.5 rounded-md border border-border bg-background/70 p-3">
+              {results.map((result) => (
+                <div
+                  key={result.target}
+                  className={cn(
+                    "flex items-center justify-between gap-3 text-xs",
+                    result.ok ? "text-foreground" : "text-destructive"
+                  )}
+                >
+                  <span className="font-semibold">{result.target}</span>
+                  <span className="min-w-0 truncate" title={result.message}>
+                    {result.message}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={deleting}
+          >
+            {finished ? "닫기" : "취소"}
+          </Button>
+          {!finished && (
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={runDelete}
+              disabled={deleting || selectedTargetCount === 0}
+            >
+              {deleting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+              {selectedTargetCount > 1
+                ? `${selectedTargetCount}곳에서 삭제`
+                : "삭제"}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function ModelDetailsDialog({
   asset,
   folder,
@@ -744,8 +1247,7 @@ function ModelDetailsDialog({
   const [sourceUrl, setSourceUrl] = useState(getSourceUrl(asset));
   const [tags, setTags] = useState(asset.tags.join(", "));
   const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [loadingSource, setLoadingSource] = useState(false);
   const provider = sourceProvider(sourceUrl);
   const [sourceInfo, setSourceInfo] = useState<SourceInfo | null>(null);
@@ -789,34 +1291,6 @@ function ModelDetailsDialog({
       setEditMessage(error instanceof Error ? error.message : "Failed to save.");
     } finally {
       setSaving(false);
-    }
-  };
-
-  const deleteModel = async () => {
-    setDeleting(true);
-    setEditMessage("");
-    try {
-      const res = await fetchWithTimeout("/api/models", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          folder,
-          path: asset.path,
-        }),
-      });
-      const data = (await res.json()) as { error?: string };
-
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to delete model");
-      }
-
-      setConfirmDeleteOpen(false);
-      onDeleted();
-      onOpenChange(false);
-    } catch (error) {
-      setEditMessage(error instanceof Error ? error.message : "Failed to delete model.");
-    } finally {
-      setDeleting(false);
     }
   };
 
@@ -1194,8 +1668,8 @@ function ModelDetailsDialog({
           <Button
             type="button"
             variant="destructive"
-            onClick={() => setConfirmDeleteOpen(true)}
-            disabled={saving || loadingSource || deleting}
+            onClick={() => setDeleteOpen(true)}
+            disabled={saving || loadingSource}
           >
             <Trash2 className="h-4 w-4" />
             Delete
@@ -1205,14 +1679,14 @@ function ModelDetailsDialog({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={saving || loadingSource || deleting}
+              disabled={saving || loadingSource}
             >
               Close
             </Button>
             <Button
               type="button"
               onClick={save}
-              disabled={saving || loadingSource || deleting || !name.trim()}
+              disabled={saving || loadingSource || !name.trim()}
             >
               {saving ? "Saving" : "Save"}
             </Button>
@@ -1220,34 +1694,19 @@ function ModelDetailsDialog({
         </DialogFooter>
       </DialogContent>
 
-      <Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
-        <DialogContent className="border border-border bg-card sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Delete model file?</DialogTitle>
-            <DialogDescription>
-              This will permanently remove {asset.path} from ComfyUI models and remove its local catalog metadata.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setConfirmDeleteOpen(false)}
-              disabled={deleting}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={deleteModel}
-              disabled={deleting}
-            >
-              {deleting ? "Deleting" : "Delete file"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {deleteOpen && (
+        <DeleteModelDialog
+          asset={asset}
+          folder={folder}
+          open
+          onOpenChange={setDeleteOpen}
+          onDeleted={() => {
+            setDeleteOpen(false);
+            onDeleted();
+            onOpenChange(false);
+          }}
+        />
+      )}
     </Dialog>
   );
 }
@@ -1262,11 +1721,23 @@ export function ModelManagement() {
   const [selectedCatalogKeys, setSelectedCatalogKeys] = useState<Set<string>>(
     () => new Set()
   );
-  const [selectedTag, setSelectedTag] = useState("all");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [favoriteTags, setFavoriteTags] = useState<string[]>(loadFavoriteTags);
   const [viewing, setViewing] = useState<{
     asset: ModelAsset;
     folder: string;
   } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    asset: ModelAsset;
+    folder: string;
+  } | null>(null);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      MODEL_FAVORITE_TAGS_KEY,
+      JSON.stringify(favoriteTags)
+    );
+  }, [favoriteTags]);
 
   const refreshModels = useCallback(() => {
     fetch("/api/models", { cache: "no-store" })
@@ -1378,24 +1849,64 @@ export function ModelManagement() {
     [models]
   );
 
-  const allTags = useMemo(() => {
-    const tags = GROUPS.flatMap((group) =>
-      (models?.[group.key] ?? []).flatMap((asset) => asset.tags)
-    );
+  // Unique file count across groups, mirroring the ALL tab's dedupe, so the
+  // sidebar's filtered/total ratio stays consistent.
+  const totalModelCount = useMemo(() => {
+    const seen = new Set<string>();
 
-    return Array.from(new Set(tags)).sort((a, b) => a.localeCompare(b));
+    GROUPS.forEach((group) => {
+      (models?.[group.key] ?? []).forEach((asset) => {
+        seen.add(`${asset.folder ?? group.folder}/${asset.path}`);
+      });
+    });
+
+    return seen.size;
+  }, [models]);
+
+  const allTags = useMemo(() => {
+    const tagCountMap = new Map<string, number>();
+
+    GROUPS.forEach((group) => {
+      (models?.[group.key] ?? []).forEach((asset) => {
+        asset.tags.forEach((tag) => {
+          tagCountMap.set(tag, (tagCountMap.get(tag) ?? 0) + 1);
+        });
+      });
+    });
+
+    return Array.from(tagCountMap.entries())
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => a.label.localeCompare(b.label));
   }, [models]);
 
   const assetGroups = useMemo(
     () =>
       GROUPS.map((group) => ({
         ...group,
-        assets: (models?.[group.key] ?? []).filter((asset) =>
-          selectedTag === "all" ? true : asset.tags.includes(selectedTag)
+        assets: (models?.[group.key] ?? []).filter(
+          (asset) =>
+            selectedTags.length === 0 ||
+            selectedTags.some((tag) => asset.tags.includes(tag))
         ),
       })),
-    [models, selectedTag]
+    [models, selectedTags]
   );
+
+  const toggleTagFilter = (tag: ModelTagFilter) => {
+    setSelectedTags((current) =>
+      current.includes(tag.label)
+        ? current.filter((item) => item !== tag.label)
+        : [...current, tag.label]
+    );
+  };
+
+  const toggleFavoriteTag = (tag: ModelTagFilter) => {
+    setFavoriteTags((current) =>
+      current.includes(tag.label)
+        ? current.filter((item) => item !== tag.label)
+        : [...current, tag.label]
+    );
+  };
 
   const catalogAssets = GROUPS.flatMap((group) =>
     (models?.[group.key] ?? []).map((asset) => ({
@@ -1404,16 +1915,26 @@ export function ModelManagement() {
     }))
   );
 
-  const allAssets = useMemo(
-    () =>
-      assetGroups.flatMap((group) =>
+  const allAssets = useMemo(() => {
+    // A checkpoint can be listed by both the checkpoints and video_models
+    // groups; the ALL tab must render each file once.
+    const seen = new Set<string>();
+
+    return assetGroups
+      .flatMap((group) =>
         group.assets.map((asset) => ({
           asset,
           folder: asset.folder ?? group.folder,
         }))
-      ),
-    [assetGroups]
-  );
+      )
+      .filter(({ asset, folder }) => {
+        const key = `${folder}/${asset.path}`;
+
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }, [assetGroups]);
   const selectedCatalogCount = selectedCatalogKeys.size;
 
   return (
@@ -1504,90 +2025,92 @@ export function ModelManagement() {
           </div>
         )}
 
-        <Tabs defaultValue="all">
-          <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
-            <TabsList>
-              <TabsTrigger value="all">ALL {counts.all}</TabsTrigger>
-              {GROUPS.map((group) => (
-                <TabsTrigger key={group.id} value={group.id}>
-                  {group.label} {counts[group.id]}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-
-            {allTags.length > 0 && (
-              <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-border pt-3">
-                <span className="mr-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                  Tags
-                </span>
-                <TagPill active={selectedTag === "all"} onClick={() => setSelectedTag("all")}>
-                  ALL
-                </TagPill>
-                {allTags.map((tag) => (
-                  <TagPill
-                    key={tag}
-                    active={selectedTag === tag}
-                    onClick={() => setSelectedTag(tag)}
-                  >
-                    {tag}
-                  </TagPill>
-                ))}
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] xl:grid-cols-[minmax(0,1fr)_22rem]">
+          <div className="min-w-0">
+            <Tabs defaultValue="all">
+              <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
+                <TabsList>
+                  <TabsTrigger value="all">ALL {counts.all}</TabsTrigger>
+                  {GROUPS.map((group) => (
+                    <TabsTrigger key={group.id} value={group.id}>
+                      {group.label} {counts[group.id]}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
               </div>
-            )}
+
+              <TabsContent value="all" className="mt-4">
+                {allAssets.length === 0 ? (
+                  <EmptyState label="model" />
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+                    {allAssets.map(({ asset, folder }) => (
+                      <ModelCard
+                        key={`${folder}:${assetKey(asset)}`}
+                        asset={asset}
+                        selecting={exportSelectionMode}
+                        selected={selectedCatalogKeys.has(catalogKey(folder, asset))}
+                        onToggleSelect={() =>
+                          toggleCatalogSelection(catalogKey(folder, asset))
+                        }
+                        onView={() => setViewing({ asset, folder })}
+                        onDelete={() => setDeleteTarget({ asset, folder })}
+                        onDownloaded={refreshModels}
+                      />
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+
+              {assetGroups.map((group) => (
+                <TabsContent key={group.id} value={group.id} className="mt-4">
+                  {group.assets.length === 0 ? (
+                    <EmptyState label={group.label} />
+                  ) : (
+                    <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+                      {group.assets.map((asset) => (
+                        <ModelCard
+                          key={assetKey(asset)}
+                          asset={asset}
+                          selecting={exportSelectionMode}
+                          selected={selectedCatalogKeys.has(
+                            catalogKey(asset.folder ?? group.folder, asset)
+                          )}
+                          onToggleSelect={() =>
+                            toggleCatalogSelection(
+                              catalogKey(asset.folder ?? group.folder, asset)
+                            )
+                          }
+                          onView={() =>
+                            setViewing({ asset, folder: asset.folder ?? group.folder })
+                          }
+                          onDelete={() =>
+                            setDeleteTarget({
+                              asset,
+                              folder: asset.folder ?? group.folder,
+                            })
+                          }
+                          onDownloaded={refreshModels}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+              ))}
+            </Tabs>
           </div>
 
-          <TabsContent value="all" className="mt-4">
-            {allAssets.length === 0 ? (
-              <EmptyState label="model" />
-            ) : (
-              <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-                {allAssets.map(({ asset, folder }) => (
-                  <ModelCard
-                    key={`${folder}:${assetKey(asset)}`}
-                    asset={asset}
-                    selecting={exportSelectionMode}
-                    selected={selectedCatalogKeys.has(catalogKey(folder, asset))}
-                    onToggleSelect={() =>
-                      toggleCatalogSelection(catalogKey(folder, asset))
-                    }
-                    onView={() => setViewing({ asset, folder })}
-                    onDownloaded={refreshModels}
-                  />
-                ))}
-              </div>
-            )}
-          </TabsContent>
-
-          {assetGroups.map((group) => (
-            <TabsContent key={group.id} value={group.id} className="mt-4">
-              {group.assets.length === 0 ? (
-                <EmptyState label={group.label} />
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-                  {group.assets.map((asset) => (
-                    <ModelCard
-                      key={assetKey(asset)}
-                      asset={asset}
-                      selecting={exportSelectionMode}
-                      selected={selectedCatalogKeys.has(
-                        catalogKey(asset.folder ?? group.folder, asset)
-                      )}
-                      onToggleSelect={() =>
-                        toggleCatalogSelection(
-                          catalogKey(asset.folder ?? group.folder, asset)
-                        )
-                      }
-                      onView={() =>
-                        setViewing({ asset, folder: asset.folder ?? group.folder })
-                      }
-                      onDownloaded={refreshModels}
-                    />
-                  ))}
-                </div>
-              )}
-            </TabsContent>
-          ))}
-        </Tabs>
+          <ModelTagSidebar
+            tags={allTags}
+            selectedTags={selectedTags}
+            favoriteTags={favoriteTags}
+            totalModels={totalModelCount}
+            filteredModels={allAssets.length}
+            onReset={() => setSelectedTags([])}
+            onToggleTag={toggleTagFilter}
+            onToggleFavorite={toggleFavoriteTag}
+          />
+        </div>
       </main>
 
       {viewing && (
@@ -1606,6 +2129,18 @@ export function ModelManagement() {
             setViewing(null);
             setRefreshKey((key) => key + 1);
           }}
+        />
+      )}
+      {deleteTarget && (
+        <DeleteModelDialog
+          key={`delete:${deleteTarget.folder}:${assetKey(deleteTarget.asset)}`}
+          asset={deleteTarget.asset}
+          folder={deleteTarget.folder}
+          open
+          onOpenChange={(open) => {
+            if (!open) setDeleteTarget(null);
+          }}
+          onDeleted={() => setRefreshKey((key) => key + 1)}
         />
       )}
       <CatalogImportDialog
