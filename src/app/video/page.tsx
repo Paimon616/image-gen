@@ -1622,6 +1622,26 @@ export default function VideoPage() {
       return;
     }
 
+    // Keep the current/remembered pod whenever it is still running — pods differ
+    // in installed custom nodes and models, so hopping to another running pod
+    // silently breaks pipelines (e.g. DaSiWa nodes only exist on the ltx25 pod).
+    // Auto-select exists only to move the selection off a stopped pod.
+    const savedPodId = (() => {
+      try {
+        return window.localStorage.getItem(VIDEO_SELECTED_RUNPOD_POD_KEY) ?? "";
+      } catch {
+        return "";
+      }
+    })();
+    const preferred =
+      runningPods.find((pod) => pod.id === selectedRunpodPodId) ??
+      runningPods.find((pod) => pod.id === savedPodId);
+    if (preferred) {
+      setSelectedRunpodPodId(preferred.id);
+      rememberVideoRunpodPod(preferred.id);
+      return;
+    }
+
     const [first] = runningPods;
     setSelectedRunpodPodId(first.id);
     rememberVideoRunpodPod(first.id);
@@ -1634,7 +1654,7 @@ export default function VideoPage() {
           ? `Selected the first of ${runningPods.length} running pods (${first.label || first.podId || first.id}).`
           : `Selected the running pod (${first.label || first.podId || first.id}).`
     );
-  }, [language, refreshRunpodRunning, runpodPods]);
+  }, [language, refreshRunpodRunning, runpodPods, selectedRunpodPodId]);
 
   const selectGenerationTarget = useCallback(
     (target: "local" | "runpod") => {

@@ -495,6 +495,30 @@ export default function Home() {
       return;
     }
 
+    // Keep the current/remembered pod whenever it is still running — pods differ
+    // in installed custom nodes and models, so hopping to another running pod
+    // silently breaks pipelines. Auto-select exists only to move the selection
+    // off a stopped pod.
+    const savedPodId = (() => {
+      try {
+        return (
+          window.localStorage.getItem(SELECTED_RUNPOD_POD_STORAGE_KEY) ?? ""
+        );
+      } catch {
+        return "";
+      }
+    })();
+    const preferred =
+      runningPods.find((pod) => pod.id === selectedRunpodPodId) ??
+      runningPods.find((pod) => pod.id === savedPodId);
+    if (preferred) {
+      setSelectedRunpodPodId(preferred.id);
+      try {
+        window.localStorage.setItem(SELECTED_RUNPOD_POD_STORAGE_KEY, preferred.id);
+      } catch {}
+      return;
+    }
+
     const [first] = runningPods;
     setSelectedRunpodPodId(first.id);
     try {
@@ -509,7 +533,7 @@ export default function Home() {
           ? `Selected the first of ${runningPods.length} running pods (${first.label || first.podId || first.id}).`
           : `Selected the running pod (${first.label || first.podId || first.id}).`
     );
-  }, [ko, refreshRunpodRunning, runpodPods]);
+  }, [ko, refreshRunpodRunning, runpodPods, selectedRunpodPodId]);
 
   const selectGenerationTarget = useCallback(
     (target: "local" | "runpod") => {
