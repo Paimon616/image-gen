@@ -1064,6 +1064,962 @@
       "thumbnail": "/api/images/cb04f6ae-e02b-4634-8116-3e236636f8b2.png"
     },
     {
+      "id": "168375da-f8cb-40f0-a092-d6c0e4cf92ef",
+      "name": "임진아",
+      "summary": "과거 일진이었던, 지금은 자금난에 허덕이는 광고회사 대표. 문신과 날나리 티가 남아 있는 성인 여성.",
+      "synopsis": "임진아는 고등학교 시절 교내에서 악명 높은 일진이었다. 특히 조용하고 반항하지 못했던 주인공을 만만한 상대로 여기며 지속적으로 괴롭혔다. 하지만 졸업 후 두 사람의 인생은 완전히 달라졌다.\n\n주인공은 성공한 플랫폼 기업의 사업개발팀장 또는 대표가 되었고, 신규 프로젝트의 협력사를 선정하고 계약 연장 여부를 결정할 권한을 쥐고 있다.\n\n반면 임진아는 아버지가 운영하던 소규모 광고·콘텐츠 제작사를 이어받았다. 회사는 이미 자금난에 빠져 있으며, 직원들의 급여와 대출 상환까지 밀리기 직전이다. 그런 상황에서 주인공 회사가 추진하는 대규모 프로젝트의 협력사로 선정된다면 단숨에 위기를 넘길 수 있다.\n\n임진아는 계약을 따내기 위해 직접 최종 미팅에 참석하고, 그 자리에서 발주 담당자가 과거 자신이 괴롭혔던 주인공이라는 사실을 알게 된다.\n\n주인공은 임진아의 회사가 제출한 기획안을 검토하고, 수정 요청을 내리고, 계약 조건을 협상하며, 최종적으로 업체를 탈락시킬 수도 있다. 임진아는 주인공의 요구가 까다롭고 자존심을 건드리더라도 쉽게 거절할 수 없다. 계약이 무산되면 자신뿐 아니라 오래 함께한 직원들까지 일자리를 잃기 때문이다.\n\n임진아는 여전히 날나리 티를 벗지 못했다. 어깨부터 팔뚝까지 이어지는 화려한 문신, 짙은 아이라인, 시크한 표정. 하지만 그 이면에는 회사를 지키려는 책임감과, 과거의 자신을 부끄러워하는 마음이 공존한다. 그녀는 매일 아침 회사에 가장 먼저 도착해 직원들의 급여 명세서를 확인하고, 밤늦게까지 기획안을 다듬는다. 사무실 한편에는 아버지가 쓰던 낡은 계산기와 담배 재떨이가 그대로 남아 있다.\n\n그녀가 가장 피하고 싶은 것은 주인공과의 재회이지만, 동시에 계약을 따내야만 하는 상황. 자존심과 생존 사이에서 갈등하며, 결국 그녀는 낡은 오토바이를 타고 미팅 장소로 향한다. 그녀의 곁에는 오래 함께한 직원들, 그리고 아버지의 유산인 회사를 지키려는 결의가 있다.",
+      "mainImage": null,
+      "appearanceDescription": "임진아는 20대 후반의 성인 여성으로, 과거의 날나리 기질이 그대로 남아 있다. 긴 흑발을 어깨 아래로 자연스럽게 늘어뜨렸고, 앞머리는 시원하게 넘겨 이마를 드러낸다. 눈매는 가늘고 날카로우며, 짙은 스모키 아이라인으로 또렷하게 강조되어 있다. 피부는 건강한 밀크톤이고, 콧등에는 작은 점이 하나 있다. 체격은 슬림하지만 어깨가 넓고 팔다리가 길다. 왼쪽 어깨부터 팔뚝까지 이어지는 검은색 문신이 있으며, 시간이 지나며 색이 약간 흐려진 상태다. 귀에는 작은 실버 링 피어싱이 여러 개 있고, 손톱은 짧게 깎여 있다. 평소 표정은 시크하고 도도하지만, 긴장하면 입술을 깨물거나 눈썹을 찌푸리는 버릇이 있다.",
+      "appearancePrompt": "adult woman, late 20s, long straight black hair reaching below shoulders, swept-back bangs exposing forehead, sharp narrow eyes, thick black eyeliner, neutral beige eyeshadow, light skin tone, small mole on nose bridge, slim build with broad shoulders and long limbs, faded black tattoo covering left shoulder down to forearm, slightly blurred faded ink, multiple small silver ring piercings on ears, short trimmed nails, confident cool expression",
+      "loras": [],
+      "outfits": [
+        {
+          "id": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "name": "일상복",
+          "description": "임진아의 평소 일상복. 검은색 가죽 재킷을 입고, 안에는 회색 무지 티셔츠를 입는다. 하의는 낡은 청바지로, 무릎 부분이 닳아 있다. 발에는 검은색 워커를 신는다. 손목에는 가죽 밴드와 실버 체인 팔찌를 착용한다.",
+          "prompt": "black leather biker jacket, solid black, matte leather, fitted, hip-length, zipped halfway; heather grey cotton crew-neck t-shirt, solid, slim fit; faded blue denim jeans, straight-leg, worn knees, mid-rise; black leather combat boots, lace-up; black leather wristband and silver chain bracelet on wrist"
+        },
+        {
+          "id": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "name": "속옷",
+          "description": "임진아의 속옷. 검은색 레이스 브라와 팬티 세트로, 브라 컵에는 레이스 패턴이 있고 팬티는 하이웨스트 스타일이다. 어깨끈은 얇고, 전체적으로 시크한 느낌을 준다.",
+          "prompt": "black lace bra, solid black, delicate floral lace pattern, underwire, thin straps; black lace high-waist panties, solid black, matching lace pattern, high-waist"
+        },
+        {
+          "id": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "name": "알몸",
+          "description": "임진아의 알몸 상태. 옷을 입지 않은 모습으로, 왼쪽 어깨부터 팔뚝까지 이어지는 검은색 문신이 그대로 드러난다. 문신은 시간이 지나며 색이 약간 흐려진 상태다. 귀에는 실버 링 피어싱이 여러 개 있다.",
+          "prompt": "nude, no clothes, bare skin, light skin tone, slim build, broad shoulders, long limbs, faded black tattoo covering left shoulder down to forearm, slightly blurred faded ink, multiple small silver ring piercings on ears, short trimmed nails"
+        }
+      ],
+      "backgrounds": [
+        {
+          "id": "bf3e0573-13b4-4259-8aba-d403143f3c6d",
+          "name": "광고회사 사무실",
+          "description": "임진아가 운영하는 소규모 광고·콘텐츠 제작사의 사무실. 낡은 나무 책상과 의자가 놓여 있고, 벽에는 광고 포트폴리오가 붙어 있다. 창문으로 오후 햇살이 들어온다.",
+          "prompt": "small advertising agency office, worn wooden desks and chairs, beige walls with framed ad posters, cluttered shelves with papers and folders, old calculator and ashtray on desk, large window with afternoon sunlight, warm yellowish lighting, cozy but worn atmosphere"
+        },
+        {
+          "id": "84a52108-6a3f-4f83-ae53-a3e1cb965434",
+          "name": "회의실",
+          "description": "광고회사의 회의실. 중앙에 긴 테이블이 있고, 벽에는 화이트보드가 있다. 형광등 불빛이 밝게 비추고, 분위기는 다소 긴장된 느낌이다.",
+          "prompt": "corporate meeting room, long white table with black chairs, whiteboard on wall with marker notes, fluorescent ceiling lights, bright cool lighting, neutral gray walls, formal tense atmosphere"
+        },
+        {
+          "id": "1d2e8d69-a1d8-4645-a020-8a4d6569314c",
+          "name": "주인공 회사 로비",
+          "description": "주인공이 다니는 대기업의 로비. 높은 천장과 대리석 바닥, 모던한 인테리어가 특징이다. 유리 벽으로 햇빛이 들어오고, 사람들이 오간다.",
+          "prompt": "modern corporate lobby, high ceiling, marble floor, glass walls with sunlight, sleek reception desk, minimalist furniture, bright airy atmosphere, people walking in background"
+        },
+        {
+          "id": "c3ce4198-c530-433a-a298-22aab259a052",
+          "name": "오토바이 주차장",
+          "description": "임진아가 오토바이를 타고 오는 장소. 아스팔트 바닥에 오토바이가 주차되어 있고, 뒤로 도시 건물이 보인다. 저녁 노을이 지고 있다.",
+          "prompt": "outdoor parking lot, asphalt ground, parked motorcycle, city buildings in background, evening sunset sky, orange and purple hues, warm dramatic lighting, urban atmosphere"
+        },
+        {
+          "id": "4b8e1552-79cb-4a9b-850d-719480b51027",
+          "name": "옥상",
+          "description": "광고회사 건물의 옥상. 낡은 철제 난간과 콘크리트 바닥, 전선이 지나간다. 밤에는 도시 불빛이 보이고, 담배를 피우며 쉬기 좋은 장소다.",
+          "prompt": "building rooftop, old metal railing, concrete floor, utility wires overhead, city lights visible at night, dark blue night sky, cool moonlight, melancholic atmosphere"
+        }
+      ],
+      "situations": [
+        {
+          "id": "ee063198-da6c-413d-bff6-5c17401434db",
+          "name": "아침 출근, 사무실 문을 연다",
+          "description": "임진아가 아침 일찍 사무실에 도착해 문을 열고 들어선다. 손에는 열쇠를 쥐고 있고, 어깨에는 가죽 재킷을 걸쳤다. 눈은 아직 덜 뜨인 듯 약간 가늘게 뜨고, 입은 굳게 다물려 있다. 몸은 문 쪽으로 향하고, 시선은 사무실 안쪽을 훑는다. 카메라는 옆에서 허리 위로 잡아, 그녀의 뒷모습과 문 너머의 사무실 풍경을 함께 담는다.",
+          "prompt": "cowboy shot, side view, woman opening office door, holding keys in one hand, leather jacket draped over shoulder, slightly narrowed sleepy eyes, pressed lips, body facing doorway, gaze scanning inside, morning light from window, worn office interior visible",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
+        },
+        {
+          "id": "c2add57e-93f6-4850-ac17-415dd7ebc29d",
+          "name": "급여 명세서를 확인한다",
+          "description": "임진아가 책상에 앉아 급여 명세서를 들여다본다. 두 손으로 서류를 잡고, 눈썹이 좁혀지며 시선이 숫자에 고정된다. 입술을 살짝 깨물고, 어깨에 힘이 들어가 있다. 카메라는 정면에서 상반신을 잡아, 그녀의 긴장된 표정과 책상 위 서류 더미를 함께 보여준다.",
+          "prompt": "upper body, front view, woman sitting at desk, holding payroll documents with both hands, furrowed brows, gaze fixed on numbers, biting lip, tense shoulders, desk cluttered with papers, office background",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
+        },
+        {
+          "id": "e91c10d6-2f44-4c3c-93be-889363ecefc1",
+          "name": "직원에게 지시를 내린다",
+          "description": "임진아가 서서 직원에게 지시를 내린다. 한 손은 허리에 얹고, 다른 손은 앞으로 뻗어 설명한다. 눈은 또렷하게 뜨고, 입은 다소 강한 어조로 움직인다. 몸은 정면을 향하고, 시선은 상대를 똑바로 본다. 카메라는 약간 아래에서 무릎 위로 잡아, 그녀의 당당한 자세를 강조한다.",
+          "prompt": "knee up, slight low angle, woman standing, giving instructions, one hand on hip, other hand extended pointing, clear wide eyes, firm mouth, facing forward, gaze at subordinate, office interior",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
+        },
+        {
+          "id": "961f094e-6b82-4504-98f0-3a746f52e81b",
+          "name": "커피를 마시며 창밖을 본다",
+          "description": "임진아가 부엌 창가에 서서 머그컵을 두 손으로 감싼다. 속옷 차림으로, 어깨와 팔뚝의 문신이 드러난다. 시선은 창밖으로 향하고, 눈은 약간 가늘게 뜨며 무심한 표정을 짓는다. 입술은 커피를 마시기 직전에 살짝 벌어져 있다. 카메라는 앞에서 상체를 잡는다.",
+          "prompt": "standing by kitchen window, upper body, front view, eye level, holding mug with both hands, looking outside, slightly narrowed eyes, relaxed neutral expression, slightly parted lips, black lace bra and panties, faded tattoo on left shoulder, morning sunlight, cozy kitchen",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "018b7f25-f801-49ed-9b01-ceeb0ddcdf58",
+          "name": "기획안을 밤새 다듬는다",
+          "description": "임진아가 밤늦게 사무실에서 기획안을 다듬는다. 책상에 팔꿈치를 대고, 한 손으로 펜을 돌리며, 다른 손은 키보드 위에 있다. 눈은 화면을 응시하고, 눈 밑에 다크서클이 보인다. 입은 지친 듯 살짝 벌어져 있고, 어깨는 축 처져 있다. 카메라는 옆에서 상반신을 잡아, 그녀의 피로한 모습과 화면의 불빛을 함께 담는다.",
+          "prompt": "upper body, side view, woman at desk late at night, elbow on desk, twirling pen, other hand on keyboard, staring at screen, dark circles under eyes, slightly parted tired mouth, slumped shoulders, screen glow on face, office dark",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
+        },
+        {
+          "id": "dc0c4f4b-27fc-4dea-931c-dec639f18fd4",
+          "name": "아버지의 계산기를 만지작거린다",
+          "description": "임진아가 책상 위에 놓인 낡은 계산기를 만지작거린다. 손끝으로 버튼을 누르며, 눈은 계산기를 내려다본다. 눈썹이 약간 올라가고, 입술은 굳게 다물려 있다. 몸은 앞으로 숙여져 있고, 시선은 계산기에 고정된다. 카메라는 위에서 상반신을 잡아, 그녀의 조용한 모습과 계산기의 낡은 질감을 강조한다.",
+          "prompt": "upper body, high angle, woman leaning over desk, touching old calculator, pressing buttons with fingertips, slightly raised brows, pressed lips, body leaning forward, gaze down at calculator, worn office desk",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
+        },
+        {
+          "id": "09b7cfbc-633a-43d6-a471-1b0463c9f44c",
+          "name": "담배를 피우며 옥상에 서 있다",
+          "description": "임진아가 옥상 난간에 기대어 담배를 피운다. 한 손으로 담배를 입에 물고, 다른 손은 난간을 잡는다. 눈은 도시 불빛을 바라보며 가늘게 뜨고, 표정은 무심하다. 몸은 난간 쪽으로 향하고, 시선은 아래 도시를 본다. 카메라는 뒤에서 상반신을 잡아, 그녀의 뒷모습과 도시 야경을 함께 담는다.",
+          "prompt": "upper body, from behind, woman leaning on rooftop railing, holding cigarette to mouth, other hand gripping railing, narrowed eyes looking at city lights, indifferent expression, body facing railing, night city view, cool moonlight",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "4b8e1552-79cb-4a9b-850d-719480b51027"
+        },
+        {
+          "id": "e30a91f7-2eb1-4cd7-bb36-853e1541ec07",
+          "name": "오토바이를 타고 출발한다",
+          "description": "새벽녘, 임진아는 낡은 오토바이에 올라탄다. 한 손으로 헬멧을 쓰고, 다른 손으로 시동을 건다. 눈매는 날카롭게 가라앉아 있고, 입술은 굳게 다물려 있다. 어깨에 힘이 들어가 있고, 상체가 앞으로 약간 숙여진 자세다. 시선은 앞을 뚫어지게 응시한다. 측면에서 상반신을 잡은 구도로, 카메라는 눈높이에서 비스듬히 바라본다.",
+          "prompt": "knee up, side view, eye level, slight low angle, sitting on motorcycle, one hand putting on helmet, other hand on ignition, leaning forward, tense shoulders, sharp narrowed eyes, pressed lips, determined expression, gaze forward, black leather jacket, heather grey t-shirt, faded blue jeans, black combat boots, outdoor parking lot, dawn light",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "c3ce4198-c530-433a-a298-22aab259a052"
+        },
+        {
+          "id": "5cfcf1b3-175a-4028-bf87-4cada191ddad",
+          "name": "미팅 전 거울을 본다",
+          "description": "임진아가 회의실 앞 거울 앞에 서서 옷매무새를 점검한다. 한 손으로 재킷 깃을 정리하고, 다른 손은 허리에 얹는다. 눈은 거울 속 자신을 똑바로 보고, 입술을 한 번 깨문다. 몸은 정면을 향하고, 시선은 거울을 본다. 카메라는 정면에서 상반신을 잡아, 그녀의 긴장된 표정을 담는다.",
+          "prompt": "upper body, front view, woman standing before mirror, adjusting jacket collar with one hand, other hand on hip, looking at own reflection, biting lip once, body facing mirror, tense expression, meeting room corridor background",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "84a52108-6a3f-4f83-ae53-a3e1cb965434"
+        },
+        {
+          "id": "c7432698-274f-4fc2-88d3-cc539db04527",
+          "name": "회의실 문 앞에서 숨을 고른다",
+          "description": "임진아가 회의실 문 앞에 서서 숨을 고른다. 두 손을 앞으로 모아 쥐고, 눈을 감았다가 뜬다. 눈썹이 약간 찌푸려지고, 입은 굳게 다물려 있다. 몸은 문을 향하고, 시선은 문 손잡이를 본다. 카메라는 옆에서 무릎 위로 잡아, 그녀의 결의와 긴장을 함께 담는다.",
+          "prompt": "knee up, side view, woman standing before meeting room door, hands clasped in front, eyes closed then open, slightly furrowed brows, pressed lips, body facing door, gaze at door handle, corridor lighting",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "84a52108-6a3f-4f83-ae53-a3e1cb965434"
+        },
+        {
+          "id": "35e8bc77-82c6-4316-84c6-d760981c2579",
+          "name": "주인공을 마주한다",
+          "description": "임진아가 회의실에서 주인공을 마주한다. 두 손은 무릎 위에 올리고, 눈은 크게 뜨며 약간 흔들린다. 입술이 살짝 벌어지고, 어깨에 힘이 들어간다. 몸은 정면을 향하고, 시선은 상대를 똑바로 본다. 카메라는 정면에서 상반신을 잡아, 그녀의 당황한 표정을 담는다.",
+          "prompt": "upper body, front view, woman sitting at meeting table, hands on knees, wide slightly shaken eyes, slightly parted lips, tense shoulders, body facing forward, gaze at counterpart, meeting room background",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "84a52108-6a3f-4f83-ae53-a3e1cb965434"
+        },
+        {
+          "id": "86808a9c-1e46-4d49-8b50-96d60044f831",
+          "name": "기획안을 발표한다",
+          "description": "임진아가 회의실에서 기획안을 발표한다. 한 손으로 리모컨을 들고, 다른 손은 화면을 가리킨다. 눈은 또렷하게 뜨고, 목소리에 힘이 실린 듯 입이 또렷하게 움직인다. 몸은 화면 쪽으로 향하고, 시선은 청중을 본다. 카메라는 옆에서 무릎 위로 잡아, 그녀의 발표하는 자세를 강조한다.",
+          "prompt": "knee up, side view, woman presenting in meeting room, holding remote in one hand, other hand pointing at screen, clear wide eyes, firm mouth, body facing screen, gaze at audience, presentation screen visible",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "84a52108-6a3f-4f83-ae53-a3e1cb965434"
+        },
+        {
+          "id": "e8860051-a65a-4acc-82f8-de04cd89c4c0",
+          "name": "주인공의 지적에 맞선다",
+          "description": "임진아가 주인공의 지적에 맞서 설명한다. 두 손을 테이블에 짚고, 눈썹을 치켜올리며 눈을 가늘게 뜬다. 입술을 꾹 다물었다가 다시 연다. 몸은 앞으로 약간 숙여지고, 시선은 상대를 똑바로 본다. 카메라는 약간 아래에서 상반신을 잡아, 그녀의 강한 기세를 담는다.",
+          "prompt": "upper body, slight low angle, woman leaning forward over table, hands on table, raised brows, narrowed eyes, pressed lips then opening, body leaning forward, gaze at counterpart, tense meeting room",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "84a52108-6a3f-4f83-ae53-a3e1cb965434"
+        },
+        {
+          "id": "2ce2b1de-5b30-4306-b6ee-0561e6aaf598",
+          "name": "계약 조건을 협상한다",
+          "description": "임진아가 계약 조건을 협상하며 서류를 넘긴다. 한 손으로 서류를 상대에게 밀고, 다른 손은 볼펜을 쥔다. 눈은 차분하지만 날카롭고, 입은 단호하게 다물려 있다. 몸은 정면을 향하고, 시선은 상대의 눈을 본다. 카메라는 정면에서 상반신을 잡아, 그녀의 냉정한 협상 태도를 담는다.",
+          "prompt": "upper body, front view, woman at meeting table, sliding documents with one hand, holding pen in other hand, calm but sharp eyes, firm closed mouth, body facing forward, gaze at counterpart, meeting room",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "84a52108-6a3f-4f83-ae53-a3e1cb965434"
+        },
+        {
+          "id": "3b80de48-22dd-4836-859d-b72f434ce14c",
+          "name": "휴게실에서 혼자 숨을 돌린다",
+          "description": "임진아가 휴게실 소파에 앉아 혼자 숨을 돌린다. 두 손을 무릎에 올리고, 눈은 아래로 떨군다. 눈썹이 약간 처지고, 입술은 지친 듯 살짝 벌어진다. 몸은 소파에 깊숙이 기대고, 시선은 바닥을 본다. 카메라는 옆에서 상반신을 잡아, 그녀의 지친 모습을 담는다.",
+          "prompt": "upper body, side view, woman sitting on sofa in break room, hands on knees, eyes cast down, slightly drooping brows, tired slightly parted lips, body leaning back into sofa, gaze at floor, break room background",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
+        },
+        {
+          "id": "61047505-c9a3-4e1c-8514-2d3fc66b6462",
+          "name": "직원들의 급여를 확인하며 안도한다",
+          "description": "임진아가 책상에서 급여 명세서를 확인하고 안도한다. 한 손으로 서류를 잡고, 다른 손은 가슴에 얹는다. 눈은 부드럽게 뜨고, 입꼬리가 살짝 올라간다. 몸은 의자에 기대고, 시선은 서류를 본다. 카메라는 정면에서 상반신을 잡아, 그녀의 안도한 표정을 담는다.",
+          "prompt": "upper body, front view, woman sitting at desk, holding payroll documents, other hand on chest, softly opened eyes, slight upward mouth, body leaning back in chair, gaze at documents, office background",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
+        },
+        {
+          "id": "a1f6ec73-cf39-4ba1-8eb7-490cbf1c9a33",
+          "name": "밤거리를 걷는다",
+          "description": "임진아가 밤거리를 걷는다. 한 손은 재킷 주머니에 넣고, 다른 손은 휴대폰을 든다. 눈은 앞을 바라보며 약간 가늘게 뜨고, 표정은 무심하다. 몸은 앞으로 향하고, 시선은 도로를 본다. 카메라는 뒤에서 무릎 위로 잡아, 그녀의 뒷모습과 도시의 불빛을 함께 담는다.",
+          "prompt": "knee up, from behind, woman walking on night street, one hand in jacket pocket, other hand holding phone, slightly narrowed eyes looking ahead, indifferent expression, body facing forward, city lights, night atmosphere",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "c3ce4198-c530-433a-a298-22aab259a052"
+        },
+        {
+          "id": "324f357d-76bc-444b-a599-5d3dc17873cc",
+          "name": "옥상에서 담배를 끄고 결심한다",
+          "description": "임진아가 옥상에서 담배를 끄고 결심한다. 한 손으로 담배를 바닥에 비벼 끄고, 다른 손은 난간을 잡는다. 눈은 도시를 바라보며 단단해지고, 입술을 꾹 다문다. 몸은 곧게 펴지고, 시선은 먼 곳을 본다. 카메라는 옆에서 상반신을 잡아, 그녀의 결의에 찬 표정을 담는다.",
+          "prompt": "upper body, side view, woman on rooftop, stubbing out cigarette with one hand, other hand gripping railing, determined eyes looking at city, pressed lips, straightened posture, night city view",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "4b8e1552-79cb-4a9b-850d-719480b51027"
+        },
+        {
+          "id": "57d3a7a2-d8f4-4437-9fcf-70d029041eab",
+          "name": "사무실에서 커피를 타고 있다",
+          "description": "임진아가 사무실 한쪽에서 커피를 탄다. 한 손으로 주전자를 들고, 다른 손은 컵을 잡는다. 눈은 커피를 따라가는 흐름을 보고, 입은 무표정하게 다물려 있다. 몸은 약간 앞으로 숙여지고, 시선은 컵을 본다. 카메라는 옆에서 상반신을 잡아, 그녀의 일상적인 모습을 담는다.",
+          "prompt": "upper body, side view, woman making coffee in office, holding kettle in one hand, cup in other hand, eyes following coffee stream, neutral closed mouth, body leaning slightly forward, gaze at cup, office kitchenette",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
+        },
+        {
+          "id": "66720040-2530-4dc2-bd27-f6c34aa1cb48",
+          "name": "직원과 짧은 대화를 나눈다",
+          "description": "임진아가 직원과 짧은 대화를 나눈다. 두 손을 주머니에 넣고, 눈은 상대를 보며 약간 부드럽게 뜬다. 입꼬리가 살짝 올라가고, 몸은 상대 쪽으로 향한다. 시선은 상대의 얼굴을 본다. 카메라는 정면에서 상반신을 잡아, 그녀의 드문 미소를 담는다.",
+          "prompt": "upper body, front view, woman talking with employee, hands in pockets, softly opened eyes, slight upward mouth, body facing counterpart, gaze at counterpart's face, office background",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
+        },
+        {
+          "id": "67088854-6a44-45f9-a90e-cdc3ebdc7aba",
+          "name": "주인공에게 전화를 걸려다 멈춘다",
+          "description": "임진아가 휴대폰을 들고 주인공에게 전화를 걸려다 멈춘다. 한 손으로 휴대폰을 쥐고, 다른 손은 이마를 짚는다. 눈은 휴대폰 화면을 보며 망설이고, 입술을 깨문다. 몸은 책상에 기대고, 시선은 화면을 본다. 카메라는 위에서 상반신을 잡아, 그녀의 망설이는 모습을 담는다.",
+          "prompt": "upper body, high angle, woman holding phone, hesitating to call, one hand on forehead, eyes on phone screen, biting lip, body leaning on desk, gaze at screen, office background",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
+        },
+        {
+          "id": "77a04fcf-4ef0-43d5-9f32-390c6c688e9f",
+          "name": "계약서를 다시 읽는다",
+          "description": "임진아가 계약서를 다시 읽는다. 두 손으로 서류를 들고, 눈은 글자를 따라 움직인다. 눈썹이 약간 좁혀지고, 입술은 굳게 다물려 있다. 몸은 앞으로 숙여지고, 시선은 서류에 고정된다. 카메라는 옆에서 상반신을 잡아, 그녀의 집중한 모습을 담는다.",
+          "prompt": "upper body, side view, woman reading contract, holding documents with both hands, eyes moving along text, slightly furrowed brows, pressed lips, body leaning forward, gaze fixed on documents, office background",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
+        },
+        {
+          "id": "63c86a92-3b8f-4141-95ba-0ec63329f60a",
+          "name": "옥상에서 도시를 바라본다",
+          "description": "임진아가 옥상 난간에 서서 도시를 바라본다. 두 손은 난간을 잡고, 눈은 먼 곳을 보며 약간 가늘게 뜬다. 표정은 무심하지만 눈빛에 복잡한 감정이 담겨 있다. 몸은 정면을 향하고, 시선은 도시를 본다. 카메라는 뒤에서 상반신을 잡아, 그녀의 뒷모습과 도시 풍경을 함께 담는다.",
+          "prompt": "upper body, from behind, woman standing at rooftop railing, hands on railing, slightly narrowed distant gaze, indifferent but complex eyes, body facing city, looking at city, daytime sky",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "4b8e1552-79cb-4a9b-850d-719480b51027"
+        },
+        {
+          "id": "9ca96d67-2ea3-4085-aead-ea44e120ba3c",
+          "name": "오토바이를 세우고 헬멧을 벗는다",
+          "description": "임진아가 오토바이를 세우고 헬멧을 벗는다. 한 손으로 헬멧을 들고, 다른 손은 머리카락을 정리한다. 눈은 앞을 보며 약간 가늘게 뜨고, 입은 다문 채 숨을 고른다. 몸은 오토바이에 걸쳐 앉아 있고, 시선은 건물을 본다. 카메라는 옆에서 무릎 위로 잡아, 그녀의 도착한 모습을 담는다.",
+          "prompt": "knee up, side view, woman sitting on motorcycle, removing helmet, holding helmet in one hand, other hand fixing hair, slightly narrowed eyes looking ahead, closed mouth catching breath, body seated on bike, gaze at building, parking lot",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "c3ce4198-c530-433a-a298-22aab259a052"
+        },
+        {
+          "id": "bd5ad7cf-534a-4ad8-b542-c75c8a293ad4",
+          "name": "로비에서 주인공을 기다린다",
+          "description": "임진아가 로비 소파에 앉아 주인공을 기다린다. 한 손은 무릎 위에, 다른 손은 휴대폰을 만지작거린다. 눈은 엘리베이터 쪽을 보며 약간 초조하게 뜨고, 입술을 한 번 깨문다. 몸은 앞으로 약간 숙여지고, 시선은 엘리베이터를 본다. 카메라는 옆에서 상반신을 잡아, 그녀의 초조한 모습을 담는다.",
+          "prompt": "upper body, side view, woman sitting on lobby sofa, one hand on knee, other hand fidgeting with phone, slightly anxious eyes looking at elevator, biting lip once, body leaning forward slightly, gaze at elevator, modern lobby",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "1d2e8d69-a1d8-4645-a020-8a4d6569314c"
+        },
+        {
+          "id": "de473b45-5ca3-4920-9535-fce2de896d68",
+          "name": "엘리베이터에서 숨을 고른다",
+          "description": "임진아가 엘리베이터 안에서 숨을 고른다. 두 손을 앞으로 모아 쥐고, 눈을 감았다가 뜬다. 눈썹이 약간 찌푸려지고, 입은 굳게 다물려 있다. 몸은 벽에 기대고, 시선은 바닥을 본다. 카메라는 위에서 상반신을 잡아, 그녀의 긴장된 모습을 담는다.",
+          "prompt": "upper body, high angle, woman in elevator, hands clasped in front, eyes closed then open, slightly furrowed brows, pressed lips, body leaning against wall, gaze at floor, elevator interior",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "1d2e8d69-a1d8-4645-a020-8a4d6569314c"
+        },
+        {
+          "id": "60c67da9-88cc-4d19-8b8f-61520e975ff3",
+          "name": "회의 후 복도를 걷는다",
+          "description": "임진아가 회의 후 복도를 걷는다. 한 손은 서류를 들고, 다른 손은 이마를 짚는다. 눈은 아래로 떨구고, 입술은 지친 듯 살짝 벌어진다. 몸은 약간 구부정하고, 시선은 바닥을 본다. 카메라는 뒤에서 무릎 위로 잡아, 그녀의 지친 뒷모습을 담는다.",
+          "prompt": "knee up, from behind, woman walking down corridor, holding documents in one hand, other hand on forehead, eyes cast down, tired slightly parted lips, slightly hunched posture, gaze at floor, corridor lighting",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "84a52108-6a3f-4f83-ae53-a3e1cb965434"
+        },
+        {
+          "id": "92bcd582-c3e8-4f3b-9208-1b2706514f2e",
+          "name": "사무실에서 낮잠을 청한다",
+          "description": "임진아가 사무실 소파에 앉아 잠시 눈을 붙인다. 두 손은 무릎 위에 올리고, 눈은 감고, 입은 약간 벌어져 있다. 몸은 소파에 기대고, 숨소리가 고르다. 카메라는 옆에서 상반신을 잡아, 그녀의 지친 모습을 담는다.",
+          "prompt": "upper body, side view, woman dozing on office sofa, hands on knees, eyes closed, slightly parted mouth, body leaning back on sofa, even breathing, office background",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
+        },
+        {
+          "id": "cf4f0d74-6b9d-4d68-91f5-ada1593d043b",
+          "name": "주인공에게 커피를 건넨다",
+          "description": "임진아가 주인공에게 커피를 건넨다. 한 손으로 컵을 들고 상대에게 내밀고, 다른 손은 자신의 컵을 잡는다. 눈은 상대를 보며 약간 부드럽게 뜨고, 입꼬리가 살짝 올라간다. 몸은 상대 쪽으로 향하고, 시선은 상대의 얼굴을 본다. 카메라는 정면에서 상반신을 잡아, 그녀의 어색한 미소를 담는다.",
+          "prompt": "upper body, front view, woman offering coffee to counterpart, holding cup in one hand extending, other hand holding own cup, softly opened eyes, slight upward mouth, body facing counterpart, gaze at counterpart's face, meeting room",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "84a52108-6a3f-4f83-ae53-a3e1cb965434"
+        },
+        {
+          "id": "7cbc93c0-fc7b-42fe-82a9-32923e7b5e61",
+          "name": "옥상에서 비를 맞는다",
+          "description": "임진아가 옥상에서 비를 맞으며 서 있다. 두 손은 주머니에 넣고, 눈은 감고, 빗방울이 얼굴에 떨어진다. 입술은 굳게 다물려 있고, 몸은 곧게 서 있다. 카메라는 위에서 상반신을 잡아, 그녀의 고요한 모습과 빗줄기를 담는다.",
+          "prompt": "upper body, high angle, woman standing on rooftop in rain, hands in pockets, eyes closed, raindrops on face, pressed lips, straight posture, rain streaks, grey sky",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "4b8e1552-79cb-4a9b-850d-719480b51027"
+        },
+        {
+          "id": "1ae58755-7c7c-49a2-a55b-1f1851605ee4",
+          "name": "사무실 불을 끄고 퇴근한다",
+          "description": "임진아가 사무실 불을 끄고 퇴근한다. 한 손은 스위치에, 다른 손은 가방을 든다. 눈은 어두워진 사무실을 한 번 돌아보고, 입은 무표정하게 다물려 있다. 몸은 출구 쪽으로 향하고, 시선은 사무실을 본다. 카메라는 옆에서 무릎 위로 잡아, 그녀의 퇴근하는 모습을 담는다.",
+          "prompt": "knee up, side view, woman turning off office light, one hand on switch, other hand holding bag, eyes glancing back at dark office, neutral closed mouth, body facing exit, gaze at office, dim office",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
+        },
+        {
+          "id": "00be1e2c-2391-4b28-9ce5-3426badcc20e",
+          "name": "오토바이를 타고 밤길을 달린다",
+          "description": "밤거리를 오토바이로 달리는 임진아. 몸을 낮게 숙이고 핸들을 꽉 쥐고 있다. 바람에 머리카락이 흩날리고, 눈은 가늘게 뜨고 있다. 입가에는 옅은 미소가 떠올라 있다. 도시의 네온 불빛이 그녀의 옆모습을 비춘다. 뒤에서 상반신을 잡은 구도로, 카메라는 약간 낮은 각도에서 따라붙는다.",
+          "prompt": "upper body, from behind, low angle, riding motorcycle at night, leaning forward, gripping handlebars, hair blowing in wind, narrowed eyes, faint smile, city neon lights reflecting, motion blur background, black leather jacket, heather grey t-shirt, faded blue jeans, black combat boots, night city street",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "c3ce4198-c530-433a-a298-22aab259a052"
+        },
+        {
+          "id": "2918430b-3a17-4a31-9a9f-64f59ad53290",
+          "name": "주인공과 마주 앉아 침묵한다",
+          "description": "임진아가 주인공과 마주 앉아 침묵한다. 두 손은 무릎 위에 올리고, 눈은 아래로 떨군다. 눈썹이 약간 처지고, 입술은 굳게 다물려 있다. 몸은 의자에 깊숙이 기대고, 시선은 테이블을 본다. 카메라는 옆에서 상반신을 잡아, 그녀의 무거운 침묵을 담는다.",
+          "prompt": "upper body, side view, woman sitting across from counterpart in silence, hands on knees, eyes cast down, slightly drooping brows, pressed lips, body leaning back in chair, gaze at table, meeting room",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "84a52108-6a3f-4f83-ae53-a3e1cb965434"
+        },
+        {
+          "id": "ec0ee5b3-f291-40be-811f-d93c372cc8b8",
+          "name": "직원의 격려에 고개를 끄덕인다",
+          "description": "임진아가 직원의 격려에 고개를 끄덕인다. 두 손은 주머니에 넣고, 눈은 부드럽게 뜨며 약간 촉촉하다. 입꼬리가 살짝 올라가고, 몸은 상대 쪽으로 향한다. 시선은 상대의 얼굴을 본다. 카메라는 정면에서 상반신을 잡아, 그녀의 감동한 표정을 담는다.",
+          "prompt": "upper body, front view, woman nodding to employee's encouragement, hands in pockets, softly opened slightly glistening eyes, slight upward mouth, body facing counterpart, gaze at counterpart's face, office background",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
+        },
+        {
+          "id": "6e89df6f-2ba0-4763-8517-f18389abcdc9",
+          "name": "계약 성공 후 사무실에서 미소 짓는다",
+          "description": "임진아가 계약 성공 후 사무실에서 혼자 미소 짓는다. 한 손은 서류를 들고, 다른 손은 볼을 만진다. 눈은 부드럽게 뜨고, 입꼬리가 크게 올라간다. 몸은 책상에 기대고, 시선은 서류를 본다. 카메라는 정면에서 상반신을 잡아, 그녀의 드문 환한 미소를 담는다.",
+          "prompt": "upper body, front view, woman smiling alone in office after contract success, holding documents in one hand, other hand touching cheek, softly opened eyes, big upward mouth, body leaning on desk, gaze at documents, office background",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
+        },
+        {
+          "id": "d07c9e80-d7ae-4ba1-a0ee-01a70f74933b",
+          "name": "옥상에서 맥주를 마신다",
+          "description": "임진아가 옥상에서 맥주 캔을 마신다. 한 손으로 캔을 들고, 다른 손은 난간을 잡는다. 눈은 도시를 보며 약간 가늘게 뜨고, 표정은 편안하다. 몸은 난간에 기대고, 시선은 도시를 본다. 카메라는 옆에서 상반신을 잡아, 그녀의 여유로운 모습을 담는다.",
+          "prompt": "upper body, side view, woman drinking beer on rooftop, holding can in one hand, other hand on railing, slightly narrowed relaxed eyes, comfortable expression, body leaning on railing, looking at city, night view",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "4b8e1552-79cb-4a9b-850d-719480b51027"
+        },
+        {
+          "id": "c9f4d851-1f50-43eb-beee-71c69aec78c2",
+          "name": "주인공에게 사과한다",
+          "description": "임진아가 주인공에게 사과한다. 두 손을 앞으로 모아 쥐고, 눈은 아래로 떨군다. 눈썹이 좁혀지고, 입술을 깨문다. 몸은 앞으로 숙여지고, 시선은 바닥을 본다. 카메라는 옆에서 상반신을 잡아, 그녀의 진심 어린 사과를 담는다.",
+          "prompt": "upper body, side view, woman apologizing to counterpart, hands clasped in front, eyes cast down, furrowed brows, biting lip, body bowing forward, gaze at floor, meeting room",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "84a52108-6a3f-4f83-ae53-a3e1cb965434"
+        },
+        {
+          "id": "29212c4b-dfed-4fa6-ae73-010a395d91c3",
+          "name": "직원들과 함께 웃는다",
+          "description": "임진아가 직원들과 함께 웃는다. 한 손은 직원의 어깨에, 다른 손은 허리에 얹는다. 눈은 활짝 뜨고, 입을 크게 벌려 웃는다. 몸은 직원 쪽으로 향하고, 시선은 직원을 본다. 카메라는 정면에서 상반신을 잡아, 그녀의 밝은 웃음을 담는다.",
+          "prompt": "upper body, front view, woman laughing with employees, one hand on employee's shoulder, other hand on hip, wide open eyes, big open-mouth laugh, body facing employees, gaze at employees, office background",
+          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
+          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
+        },
+        {
+          "id": "ba983079-38e8-480f-9420-edaa755a3cea",
+          "name": "아침, 침대에서 일어난다",
+          "description": "임진아가 침대에 엎드린 채 천천히 눈을 뜬다. 이불을 가슴까지 끌어올려 속옷 차림의 상체를 살짝 가린다. 어깨와 팔뚝의 문신이 드러나고, 눈은 아직 잠에 취해 반쯤 감겨 있다. 입술은 약간 벌어져 있고, 손가락으로 이불 가장자리를 움켜쥔다. 카메라는 옆에서 상체를 잡는다.",
+          "prompt": "lying on stomach in bed, upper body, side view, eye level, pulling blanket up to chest, half-closed sleepy eyes, slightly parted lips, hand gripping blanket edge, black lace bra straps visible, faded tattoo on left shoulder, morning light, cozy bedroom",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "ca25935d-502c-47c3-a982-37b186f9110f",
+          "name": "거울 앞에서 속옷을 고른다",
+          "description": "임진아가 전신 거울 앞에 서서 검은 레이스 브라의 어깨끈을 손으로 만지작거린다. 고개를 약간 기울여 자신의 모습을 살피고, 눈썹을 살짝 찌푸리며 고민하는 표정을 짓는다. 입술은 한쪽만 살짝 깨물고 있다. 카메라는 뒤에서 어깨 위로 잡는다.",
+          "prompt": "standing in front of full-length mirror, upper body, from behind, shoulder-level camera, adjusting black lace bra strap with one hand, head tilted, furrowed brows, biting lower lip, black lace high-waist panties, faded tattoo on left shoulder, bright bathroom lighting",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "7e8b9aed-656a-435e-892f-5b8e32a2c0c9",
+          "name": "화장실에서 세수한다",
+          "description": "임진아가 세면대 앞에 서서 물로 얼굴을 적신다. 두 손으로 물을 떠 얼굴에 끼얹고, 눈을 감은 채 물방울이 흘러내린다. 속옷 차림이라 어깨와 팔뚝의 문신이 그대로 드러난다. 표정은 무표정하지만 눈썹이 약간 찌푸려져 있다. 카메라는 앞에서 상체를 잡는다.",
+          "prompt": "standing at sink, upper body, front view, eye level, splashing water on face with both hands, eyes closed, water droplets on skin, black lace bra and panties, faded tattoo on left shoulder, neutral expression with slightly furrowed brows, bright bathroom light",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "395c2dd1-1f1a-4930-a883-2f0e5f3bb1f1",
+          "name": "옷장 앞에서 고민한다",
+          "description": "임진아가 열린 옷장 앞에 서서 팔짱을 끼고 옷을 고른다. 고개를 약간 숙여 옷장 안을 응시하고, 입술을 삐죽 내밀며 고민하는 표정을 짓는다. 속옷 차림이라 옆구리와 어깨의 문신이 드러난다. 카메라는 옆에서 상체를 잡는다.",
+          "prompt": "standing in front of open closet, upper body, side view, eye level, arms crossed, looking at clothes, pouting lips, furrowed brows, black lace bra and panties, faded tattoo on left shoulder, warm bedroom light, closet with hanging clothes",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "6d88481f-44a6-4935-b1d5-53a5c8e7187b",
+          "name": "소파에 앉아 휴대폰을 본다",
+          "description": "임진아가 소파에 앉아 한 손으로 휴대폰을 들고, 다른 손은 무릎 위에 올린다. 속옷 차림으로 다리를 꼬고 앉아 있다. 눈은 휴대폰 화면에 고정되어 있고, 눈썹이 약간 찌푸려져 있다. 입술은 약간 다물고 있다. 카메라는 옆에서 상체를 잡는다.",
+          "prompt": "sitting on sofa, upper body, side view, eye level, holding smartphone with one hand, other hand on knee, legs crossed, looking at screen, furrowed brows, pressed lips, black lace bra and panties, faded tattoo on left shoulder, warm living room light",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "1c72c08b-7c4a-4fae-abd8-469f489b239c",
+          "name": "바닥에 앉아 스트레칭한다",
+          "description": "임진아가 거실 바닥에 앉아 두 팔을 머리 위로 뻗어 스트레칭한다. 속옷 차림으로, 팔을 올리면 옆구리와 어깨의 문신이 더 드러난다. 눈은 감고 있고, 입술은 약간 벌어져 있다. 카메라는 앞에서 상체를 잡는다.",
+          "prompt": "sitting on floor, upper body, front view, eye level, stretching arms overhead, eyes closed, slightly parted lips, black lace bra and panties, faded tattoo on left shoulder and side, bright living room, morning light",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "bd040de7-41b1-4dce-8aec-c302ee84c5b7",
+          "name": "책상에 앉아 서류를 본다",
+          "description": "임진아가 책상에 앉아 서류를 읽는다. 속옷 차림으로, 한 손으로 서류를 들고 다른 손은 턱을 괴고 있다. 눈은 서류에 고정되어 있고, 눈썹이 약간 찌푸려져 있다. 입술은 약간 다물고 있다. 카메라는 옆에서 상체를 잡는다.",
+          "prompt": "sitting at desk, upper body, side view, eye level, reading documents with one hand, other hand on chin, furrowed brows, pressed lips, black lace bra and panties, faded tattoo on left shoulder, desk lamp light, office at night",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
+        },
+        {
+          "id": "31dced82-6080-4979-a7cb-23c7e80118be",
+          "name": "침대에 누워 천장을 본다",
+          "description": "임진아가 침대에 등을 대고 누워 천장을 바라본다. 속옷 차림으로, 한 손은 배 위에 올리고 다른 손은 이불 위에 놓는다. 눈은 크게 뜨고, 입술은 약간 벌어져 있다. 표정은 무심하지만 눈빛에 고민이 담겨 있다. 카메라는 위에서 상체를 잡는다.",
+          "prompt": "lying on back in bed, upper body, from above, looking at ceiling, one hand on stomach, other hand on blanket, wide eyes, slightly parted lips, thoughtful expression, black lace bra and panties, faded tattoo on left shoulder, dim bedroom light",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "1a7e77be-8010-47e7-b1ed-be8087fe5ebc",
+          "name": "거울 앞에서 머리를 묶는다",
+          "description": "임진아가 거울 앞에 서서 두 손으로 머리를 뒤로 묶는다. 속옷 차림으로, 팔을 올리면 옆구리와 어깨의 문신이 드러난다. 눈은 거울 속 자신을 바라보고, 입술은 약간 다물고 있다. 카메라는 뒤에서 상체를 잡는다.",
+          "prompt": "standing in front of mirror, upper body, from behind, tying hair back with both hands, arms raised, looking at own reflection, pressed lips, black lace bra and panties, faded tattoo on left shoulder, bright bathroom light",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "50fe1ea1-308c-4207-88be-edf6914b546b",
+          "name": "소파에 엎드려 낮잠을 잔다",
+          "description": "임진아가 소파에 엎드려 팔을 베고 낮잠을 잔다. 속옷 차림으로, 등과 어깨의 문신이 드러난다. 눈은 감고 있고, 입술은 약간 벌어져 있다. 카메라는 옆에서 상체를 잡는다.",
+          "prompt": "lying face down on sofa, upper body, side view, eye level, sleeping with arms as pillow, eyes closed, slightly parted lips, black lace bra and panties, faded tattoo on left shoulder and back, warm afternoon light, cozy living room",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "e23dd337-e8a5-4853-b757-b6cee7be0fd7",
+          "name": "부엌에서 물을 마신다",
+          "description": "임진아가 부엌에서 유리잔에 물을 따라 마신다. 속옷 차림으로, 한 손으로 잔을 들고 다른 손은 허리에 올린다. 고개를 약간 뒤로 젓히고, 눈은 감고 있다. 입술은 잔에 닿아 있다. 카메라는 앞에서 상체를 잡는다.",
+          "prompt": "standing in kitchen, upper body, front view, eye level, drinking water from glass, one hand holding glass, other hand on hip, head tilted back, eyes closed, lips on glass, black lace bra and panties, faded tattoo on left shoulder, bright kitchen light",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "d5237dd2-029e-4a38-9a8a-add7c80ae1c1",
+          "name": "옥상에서 바람을 쐰다",
+          "description": "임진아가 옥상 난간에 기대어 서 있다. 속옷 차림으로, 두 손은 난간을 잡고 있다. 바람에 머리카락이 흩날리고, 눈은 멀리 도시를 바라본다. 입술은 약간 다물고, 표정은 무심하다. 카메라는 뒤에서 상체를 잡는다.",
+          "prompt": "standing at rooftop railing, upper body, from behind, leaning on railing with both hands, wind blowing hair, looking at city, neutral expression, black lace bra and panties, faded tattoo on left shoulder, evening sky, city lights",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": "4b8e1552-79cb-4a9b-850d-719480b51027"
+        },
+        {
+          "id": "dcbef29f-6a7c-49fc-ae76-7693ff7de4aa",
+          "name": "침대에 앉아 다리를 만진다",
+          "description": "임진아가 침대 가장자리에 앉아 한쪽 다리를 들어 올려 손으로 만진다. 속옷 차림으로, 다리와 허벅지가 드러난다. 고개를 숙여 다리를 보고, 눈썹이 약간 찌푸려져 있다. 입술은 약간 다물고 있다. 카메라는 옆에서 상체를 잡는다.",
+          "prompt": "sitting on edge of bed, upper body, side view, eye level, lifting one leg with hand, looking at leg, furrowed brows, pressed lips, black lace bra and panties, faded tattoo on left shoulder, dim bedroom light",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "396a02f4-d5cd-4df5-95ce-9e9e151a1bea",
+          "name": "거울 앞에서 옆모습을 본다",
+          "description": "임진아가 거울 앞에 서서 옆모습을 살핀다. 속옷 차림으로, 한 손은 허리에 올리고 다른 손은 머리를 만진다. 고개를 약간 돌려 거울 속 자신을 보고, 입술은 약간 다물고 있다. 카메라는 앞에서 상체를 잡는다.",
+          "prompt": "standing in front of mirror, upper body, front view, eye level, looking at side profile, one hand on hip, other hand touching hair, head turned, pressed lips, black lace bra and panties, faded tattoo on left shoulder, bright bathroom light",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "a514be51-f2ec-49f0-95bd-5ec5f18f9e2b",
+          "name": "소파에 앉아 담배를 끄다",
+          "description": "임진아가 소파에 앉아 재떨이에 담배를 끈다. 속옷 차림으로, 한 손으로 담배를 비비고 다른 손은 무릎에 올린다. 눈은 담배를 보고, 입술은 약간 다물고 있다. 표정은 무심하다. 카메라는 옆에서 상체를 잡는다.",
+          "prompt": "sitting on sofa, upper body, side view, eye level, stubbing out cigarette in ashtray, one hand on knee, looking at cigarette, neutral expression, black lace bra and panties, faded tattoo on left shoulder, dim living room light",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "a1b3cd04-fe8b-4adb-9737-c086d30553c6",
+          "name": "책상에 앉아 이마를 짚는다",
+          "description": "임진아가 책상에 앉아 한 손으로 이마를 짚는다. 속옷 차림으로, 다른 손은 책상 위에 놓는다. 눈은 감고 있고, 입술은 약간 다물고 있다. 표정은 지친 기색이 보인다. 카메라는 앞에서 상체를 잡는다.",
+          "prompt": "sitting at desk, upper body, front view, eye level, one hand on forehead, eyes closed, pressed lips, tired expression, black lace bra and panties, faded tattoo on left shoulder, desk lamp light, office at night",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
+        },
+        {
+          "id": "e197f07a-1dee-4580-ab69-3a3cdf75482e",
+          "name": "침대에 누워 휴대폰을 본다",
+          "description": "임진아가 침대에 옆으로 누워 휴대폰을 본다. 속옷 차림으로, 한 손으로 휴대폰을 들고 다른 손은 베개를 감싼다. 눈은 화면에 고정되어 있고, 입술은 약간 벌어져 있다. 카메라는 옆에서 상체를 잡는다.",
+          "prompt": "lying on side in bed, upper body, side view, eye level, looking at smartphone, one hand holding phone, other hand on pillow, eyes on screen, slightly parted lips, black lace bra and panties, faded tattoo on left shoulder, dim bedroom light",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "6a88a3d0-b2bf-44a1-ae4c-602ef9ebefa5",
+          "name": "거울 앞에서 어깨를 돌린다",
+          "description": "임진아가 거울 앞에 서서 어깨를 돌리며 몸을 풀다. 속옷 차림으로, 팔을 돌리면 어깨와 팔뚝의 문신이 움직인다. 눈은 거울 속 자신을 보고, 입술은 약간 다물고 있다. 카메라는 앞에서 상체를 잡는다.",
+          "prompt": "standing in front of mirror, upper body, front view, eye level, rolling shoulders, arms moving, looking at own reflection, pressed lips, black lace bra and panties, faded tattoo on left shoulder, bright bathroom light",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "6ed00ab8-f88b-4753-bb38-829a5867a42b",
+          "name": "부엌에서 아침을 먹는다",
+          "description": "임진아가 부엌 테이블에 앉아 토스트를 먹는다. 속옷 차림으로, 한 손으로 토스트를 들고 다른 손은 커피잔을 잡는다. 눈은 앞을 보고, 입술은 약간 벌어져 있다. 카메라는 옆에서 상체를 잡는다.",
+          "prompt": "sitting at kitchen table, upper body, side view, eye level, eating toast with one hand, other hand on coffee cup, looking ahead, slightly parted lips, black lace bra and panties, faded tattoo on left shoulder, morning light, cozy kitchen",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "0c072724-d857-4468-bc3a-2091d8827add",
+          "name": "소파에 앉아 TV를 본다",
+          "description": "임진아가 소파에 앉아 TV를 본다. 속옷 차림으로, 한 손은 리모컨을 들고 다른 손은 무릎에 올린다. 눈은 화면에 고정되어 있고, 입술은 약간 다물고 있다. 카메라는 앞에서 상체를 잡는다.",
+          "prompt": "sitting on sofa, upper body, front view, eye level, watching TV, holding remote with one hand, other hand on knee, eyes on screen, pressed lips, black lace bra and panties, faded tattoo on left shoulder, dim living room light, TV glow",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "d040f195-8a93-46b4-ac4c-f67e548a0d72",
+          "name": "침대에 앉아 머리를 말린다",
+          "description": "임진아가 침대에 앉아 수건으로 머리를 말린다. 속옷 차림으로, 두 손으로 수건을 잡고 머리를 문지른다. 눈은 감고 있고, 입술은 약간 벌어져 있다. 카메라는 옆에서 상체를 잡는다.",
+          "prompt": "sitting on bed, upper body, side view, eye level, drying hair with towel, both hands on towel, eyes closed, slightly parted lips, black lace bra and panties, faded tattoo on left shoulder, warm bedroom light",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "6f8e89ef-ebdc-4ecd-ae4c-152123a202cc",
+          "name": "거울 앞에서 화장을 지운다",
+          "description": "임진아가 거울 앞에 서서 화장솜으로 눈가를 닦는다. 속옷 차림으로, 한 손으로 화장솜을 들고 다른 손은 거울을 잡는다. 눈은 약간 감고 있고, 입술은 약간 다물고 있다. 카메라는 앞에서 상체를 잡는다.",
+          "prompt": "standing in front of mirror, upper body, front view, eye level, removing makeup with cotton pad, one hand holding cotton, other hand on mirror, eyes half-closed, pressed lips, black lace bra and panties, faded tattoo on left shoulder, bright bathroom light",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "4925e372-99be-4936-8802-e78a89d06b45",
+          "name": "소파에 앉아 다리를 꼰다",
+          "description": "임진아가 소파에 앉아 다리를 꼬고 팔짱을 낀다. 속옷 차림으로, 어깨와 팔뚝의 문신이 드러난다. 눈은 앞을 보고, 입술은 약간 다물고 있다. 표정은 시크하다. 카메라는 앞에서 상체를 잡는다.",
+          "prompt": "sitting on sofa, upper body, front view, eye level, legs crossed, arms crossed, looking ahead, cool expression, black lace bra and panties, faded tattoo on left shoulder, warm living room light",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "8d68027e-9329-4667-b3de-d043d1522160",
+          "name": "책상에 앉아 펜을 돌린다",
+          "description": "임진아가 책상에 앉아 한 손으로 펜을 돌린다. 속옷 차림으로, 다른 손은 턱을 괴고 있다. 눈은 펜을 따라가고, 입술은 약간 다물고 있다. 카메라는 옆에서 상체를 잡는다.",
+          "prompt": "sitting at desk, upper body, side view, eye level, spinning pen with one hand, other hand on chin, looking at pen, pressed lips, black lace bra and panties, faded tattoo on left shoulder, desk lamp light, office at night",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
+        },
+        {
+          "id": "4755720f-ace6-431b-85d8-6fcc1f2fb40c",
+          "name": "침대에 누워 이불을 끌어안는다",
+          "description": "임진아가 침대에 옆으로 누워 이불을 끌어안는다. 속옷 차림으로, 두 팔로 이불을 감싼다. 눈은 감고 있고, 입술은 약간 벌어져 있다. 표정은 편안하다. 카메라는 옆에서 상체를 잡는다.",
+          "prompt": "lying on side in bed, upper body, side view, eye level, hugging blanket with both arms, eyes closed, slightly parted lips, relaxed expression, black lace bra and panties, faded tattoo on left shoulder, dim bedroom light",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "69e737f1-a9ac-4474-9804-037fd5ebfe84",
+          "name": "거울 앞에서 피어싱을 만진다",
+          "description": "임진아가 거울 앞에 서서 귀의 피어싱을 만진다. 속옷 차림으로, 한 손으로 귀를 만지고 다른 손은 거울을 잡는다. 눈은 거울 속 자신을 보고, 입술은 약간 다물고 있다. 카메라는 앞에서 상체를 잡는다.",
+          "prompt": "standing in front of mirror, upper body, front view, eye level, touching ear piercing with one hand, other hand on mirror, looking at own reflection, pressed lips, black lace bra and panties, faded tattoo on left shoulder, bright bathroom light",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "7a244088-0f4c-4bd3-9cfa-a6bbf53a6595",
+          "name": "부엌에서 간식을 먹는다",
+          "description": "임진아가 부엌에 서서 과자를 먹는다. 속옷 차림으로, 한 손으로 과자를 들고 다른 손은 허리에 올린다. 눈은 앞을 보고, 입술은 약간 벌어져 있다. 카메라는 앞에서 상체를 잡는다.",
+          "prompt": "standing in kitchen, upper body, front view, eye level, eating snack with one hand, other hand on hip, looking ahead, slightly parted lips, black lace bra and panties, faded tattoo on left shoulder, bright kitchen light",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "742644f2-62dd-4165-8665-63bc551c23e8",
+          "name": "소파에 앉아 눈을 비빈다",
+          "description": "임진아가 소파에 앉아 한 손으로 눈을 비빈다. 속옷 차림으로, 다른 손은 무릎에 올린다. 눈은 약간 감고 있고, 입술은 약간 다물고 있다. 표정은 피곤하다. 카메라는 앞에서 상체를 잡는다.",
+          "prompt": "sitting on sofa, upper body, front view, eye level, rubbing eyes with one hand, other hand on knee, eyes half-closed, pressed lips, tired expression, black lace bra and panties, faded tattoo on left shoulder, dim living room light",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "d53240b1-3aac-4918-abd1-6f8295ce89d8",
+          "name": "책상에 앉아 서류를 덮는다",
+          "description": "임진아가 책상에 앉아 서류를 덮고 한숨을 쉰다. 속옷 차림으로, 두 손을 서류 위에 올린다. 눈은 서류를 보고, 입술은 약간 다물고 있다. 표정은 지친 기색이 보인다. 카메라는 옆에서 상체를 잡는다.",
+          "prompt": "sitting at desk, upper body, side view, eye level, closing documents with both hands, looking at papers, pressed lips, tired expression, black lace bra and panties, faded tattoo on left shoulder, desk lamp light, office at night",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
+        },
+        {
+          "id": "415a965b-bf7c-4af5-9773-e5a89cb8b83e",
+          "name": "침대에 앉아 발을 만진다",
+          "description": "임진아가 침대에 앉아 한쪽 발을 들어 올려 손으로 만진다. 속옷 차림으로, 다리와 허벅지가 드러난다. 고개를 숙여 발을 보고, 눈썹이 약간 찌푸려져 있다. 입술은 약간 다물고 있다. 카메라는 옆에서 상체를 잡는다.",
+          "prompt": "sitting on bed, upper body, side view, eye level, lifting one foot with hand, looking at foot, furrowed brows, pressed lips, black lace bra and panties, faded tattoo on left shoulder, dim bedroom light",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "1dfd73e4-4e4c-4047-ad05-d07a7ec3fb62",
+          "name": "거울 앞에서 머리를 흔든다",
+          "description": "임진아가 거울 앞에 서서 머리를 흔들어 정리한다. 속옷 차림으로, 두 손으로 머리를 쓸어 넘긴다. 눈은 거울 속 자신을 보고, 입술은 약간 다물고 있다. 카메라는 앞에서 상체를 잡는다.",
+          "prompt": "standing in front of mirror, upper body, front view, eye level, shaking head to fix hair, both hands running through hair, looking at own reflection, pressed lips, black lace bra and panties, faded tattoo on left shoulder, bright bathroom light",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "be2e5831-b972-4ace-b4e6-77100952177d",
+          "name": "부엌에서 설거지를 한다",
+          "description": "임진아가 부엌에서 설거지를 한다. 속옷 차림으로, 두 손으로 그릇을 닦는다. 눈은 그릇을 보고, 입술은 약간 다물고 있다. 표정은 무심하다. 카메라는 옆에서 상체를 잡는다.",
+          "prompt": "standing at kitchen sink, upper body, side view, eye level, washing dishes with both hands, looking at dishes, neutral expression, black lace bra and panties, faded tattoo on left shoulder, bright kitchen light",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "238288c1-ce10-4961-b6b9-8586aeb630ac",
+          "name": "소파에 앉아 다리를 뻗는다",
+          "description": "임진아가 소파에 앉아 다리를 앞으로 뻗는다. 속옷 차림으로, 두 손은 무릎 위에 올린다. 눈은 앞을 보고, 입술은 약간 다물고 있다. 표정은 편안하다. 카메라는 앞에서 상체를 잡는다.",
+          "prompt": "sitting on sofa, upper body, front view, eye level, stretching legs forward, hands on knees, looking ahead, relaxed expression, black lace bra and panties, faded tattoo on left shoulder, warm living room light",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "20a045f7-5365-4791-9244-44cd684a5cd2",
+          "name": "책상에 앉아 볼펜을 깨문다",
+          "description": "임진아가 책상에 앉아 볼펜을 입에 물고 생각한다. 속옷 차림으로, 한 손은 책상 위에 놓고 다른 손은 볼펜을 잡는다. 눈은 위를 보고, 입술은 볼펜을 물고 있다. 카메라는 앞에서 상체를 잡는다.",
+          "prompt": "sitting at desk, upper body, front view, eye level, biting pen with mouth, one hand on desk, other hand holding pen, looking up, lips on pen, black lace bra and panties, faded tattoo on left shoulder, desk lamp light, office at night",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
+        },
+        {
+          "id": "1b09c351-200a-41c0-8bc6-229ccc59ccbf",
+          "name": "침대에 엎드려 다리를 흔든다",
+          "description": "임진아가 침대에 엎드려 다리를 위로 올려 흔든다. 속옷 차림으로, 두 팔은 베개를 감싼다. 눈은 앞을 보고, 입술은 약간 벌어져 있다. 표정은 장난스럽다. 카메라는 옆에서 상체를 잡는다.",
+          "prompt": "lying face down on bed, upper body, side view, eye level, kicking legs up, arms hugging pillow, looking ahead, slightly parted lips, playful expression, black lace bra and panties, faded tattoo on left shoulder, bright bedroom light",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "24804b7d-19b0-48c6-a8ce-d05d453ea23c",
+          "name": "거울 앞에서 어깨를 으쓱인다",
+          "description": "임진아가 거울 앞에 서서 어깨를 으쓱인다. 속옷 차림으로, 두 손은 허리에 올린다. 눈은 거울 속 자신을 보고, 입술은 약간 다물고 있다. 표정은 시크하다. 카메라는 앞에서 상체를 잡는다.",
+          "prompt": "standing in front of mirror, upper body, front view, eye level, shrugging shoulders, hands on hips, looking at own reflection, cool expression, black lace bra and panties, faded tattoo on left shoulder, bright bathroom light",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "77bd494f-da8e-40bb-8219-08244a4b3d28",
+          "name": "부엌에서 냉장고를 연다",
+          "description": "임진아가 부엌에서 냉장고를 열고 내용물을 본다. 속옷 차림으로, 한 손은 냉장고 문을 잡고 다른 손은 턱을 괸다. 눈은 냉장고 안을 보고, 입술은 약간 다물고 있다. 카메라는 옆에서 상체를 잡는다.",
+          "prompt": "standing at refrigerator, upper body, side view, eye level, opening fridge with one hand, other hand on chin, looking inside, pressed lips, black lace bra and panties, faded tattoo on left shoulder, bright kitchen light, fridge interior visible",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "b382d048-e38b-4b98-80fd-a8b33af7780a",
+          "name": "소파에 앉아 이어폰을 낀다",
+          "description": "임진아가 소파에 앉아 이어폰을 귀에 꽂는다. 속옷 차림으로, 한 손으로 이어폰을 잡고 다른 손은 휴대폰을 든다. 눈은 휴대폰을 보고, 입술은 약간 다물고 있다. 카메라는 앞에서 상체를 잡는다.",
+          "prompt": "sitting on sofa, upper body, front view, eye level, putting in earbuds with one hand, other hand holding smartphone, looking at phone, pressed lips, black lace bra and panties, faded tattoo on left shoulder, warm living room light",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": null
+        },
+        {
+          "id": "09deb53c-6c74-45cd-8f90-51c9ef191a1e",
+          "name": "책상에 앉아 커피를 마신다",
+          "description": "임진아가 책상에 앉아 커피를 마신다. 속옷 차림으로, 한 손으로 머그컵을 들고 다른 손은 책상 위에 놓는다. 눈은 앞을 보고, 입술은 잔에 닿아 있다. 카메라는 옆에서 상체를 잡는다.",
+          "prompt": "sitting at desk, upper body, side view, eye level, drinking coffee from mug, one hand holding mug, other hand on desk, looking ahead, lips on mug, black lace bra and panties, faded tattoo on left shoulder, desk lamp light, office at night",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
+        },
+        {
+          "id": "db1aa769-b0e4-4351-b94e-560f85cd6a96",
+          "name": "거울 앞에서 속옷을 벗는다",
+          "description": "임진아가 거울 앞에 서서 검은 레이스 속옷을 벗으려 한다. 양손이 등 뒤로 가 브라 후크를 풀고 있고, 어깨가 살짝 앞으로 구부정해진다. 시선은 거울 속 자신의 문신이 드러난 어깨로 향한다. 입술을 살짝 깨물며 과거의 자신을 떠올리는 듯한 복잡한 표정이다. 카메라는 측면에서 허리 위로 잡아 문신과 손동작이 함께 보이게 한다.",
+          "prompt": "adult woman, late 20s, long straight black hair, swept-back bangs, sharp eyes, thick black eyeliner, light skin tone, small mole on nose bridge, slim build, broad shoulders, faded black tattoo on left shoulder to forearm, multiple small silver ring piercings on ears, wearing black lace bra and high-waist panties, standing in front of mirror, both hands reaching behind back to unclasp bra, shoulders slightly hunched forward, biting lip, complex expression, gaze at own tattooed shoulder in mirror, cowboy shot, side angle, eye level, mirror reflection visible",
+          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
+          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
+        },
+        {
+          "id": "7b9980bf-1b5a-4c1c-89f3-1407321c19f5",
+          "name": "알몸으로 침대에 누워 천장을 본다",
+          "description": "임진아가 알몸으로 침대에 등을 대고 누워 있다. 두 팔을 머리 위로 뻗어 베개를 감싸고, 다리는 자연스럽게 벌려져 있다. 눈은 천장을 바라보며 생각에 잠겨 있고, 입술은 살짝 벌어져 있다. 침실의 은은한 조명이 그녀의 몸을 비춘다. 카메라는 침대 옆에서 상체를 중심으로 잡는다.",
+          "prompt": "nude woman lying on back on bed, arms stretched above head gripping pillow, legs slightly apart, gazing at ceiling, lips slightly parted, thoughtful expression, soft bedroom lighting, upper body shot, side angle, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": null
+        },
+        {
+          "id": "4ea20b4a-d45c-4078-a6e6-ee0808561045",
+          "name": "알몸으로 거울 앞에 서서 옆모습을 본다",
+          "description": "임진아가 알몸으로 거울 앞에 서서 옆모습을 살펴본다. 한 손은 허리에 얹고, 다른 손은 머리카락을 만지며 자세를 고른다. 눈은 거울 속 자신을 응시하고, 입술은 약간 비죽 올라간 시크한 표정이다. 거울 속 모습이 그대로 비친다. 카메라는 뒤쪽에서 그녀의 옆모습과 거울 속 얼굴을 함께 잡는다.",
+          "prompt": "nude woman standing in front of mirror, side profile, one hand on hip, other hand touching hair, looking at own reflection, slight smirk, confident expression, mirror reflection visible, cowboy shot, from behind, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": null
+        },
+        {
+          "id": "f5c56155-3842-4599-9658-6c98163f4fc1",
+          "name": "알몸으로 소파에 앉아 다리를 꼰다",
+          "description": "임진아가 알몸으로 소파에 앉아 다리를 꼬고 있다. 한 손은 소파 팔걸이에 기대고, 다른 손은 무릎에 올린다. 눈은 앞을 바라보며 멍하니 있고, 입술은 다물고 있다. 거실의 따뜻한 조명이 그녀의 몸을 비춘다. 카메라는 정면에서 상체를 중심으로 잡는다.",
+          "prompt": "nude woman sitting on sofa, legs crossed, one hand on armrest, other hand on knee, blank gaze forward, lips closed, warm living room lighting, upper body shot, front view, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": null
+        },
+        {
+          "id": "4aa34041-d2ed-4d61-8008-3fa5092526f6",
+          "name": "알몸으로 바닥에 앉아 스트레칭한다",
+          "description": "임진아가 알몸으로 바닥에 앉아 다리를 앞으로 쭉 뻗고 상체를 숙여 발끝을 잡는다. 팔은 발끝을 향해 뻗고, 어깨에 힘이 들어간다. 눈은 아래를 보며 집중하고, 입술은 살짝 깨문다. 방의 밝은 조명이 그녀의 등을 비춘다. 카메라는 옆에서 상체와 다리를 함께 잡는다.",
+          "prompt": "nude woman sitting on floor, legs extended forward, bending torso toward feet, reaching for toes, arms stretched, shoulders tense, looking down, biting lip, focused expression, bright room lighting, upper body shot, side view, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": null
+        },
+        {
+          "id": "a1941824-ae0a-48ac-a8a4-063778f7214c",
+          "name": "알몸으로 책상에 앉아 서류를 본다",
+          "description": "임진아가 알몸으로 책상에 앉아 서류를 읽고 있다. 한 손은 서류를 잡고, 다른 손은 볼펜을 쥐고 있다. 눈은 서류에 집중하고, 입술은 다물고 있다. 책상 위에는 낡은 계산기와 재떨이가 있다. 카메라는 정면에서 상체를 중심으로 잡는다.",
+          "prompt": "nude woman sitting at desk, reading documents, one hand holding paper, other hand holding pen, focused gaze on paper, lips closed, old calculator and ashtray on desk, upper body shot, front view, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
+        },
+        {
+          "id": "1d9f7075-0e6e-49ed-9abd-04c6d6a8e61f",
+          "name": "알몸으로 침대에 엎드려 다리를 흔든다",
+          "description": "임진아가 알몸으로 침대에 엎드려 팔꿈치를 베개에 대고 다리를 위아래로 흔들고 있다. 얼굴은 베개에 기대고, 눈은 옆을 바라보며 미소를 띤다. 침실의 은은한 조명이 그녀의 등을 비춘다. 카메라는 옆에서 상체를 중심으로 잡는다.",
+          "prompt": "nude woman lying on stomach on bed, elbows on pillow, legs kicking up and down, face resting on pillow, looking to side, slight smile, soft bedroom lighting, upper body shot, side view, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": null
+        },
+        {
+          "id": "4e708b29-d7eb-4dc5-b542-61b5a35c7bdd",
+          "name": "알몸으로 거울 앞에서 머리를 묶는다",
+          "description": "임진아가 알몸으로 거울 앞에 서서 머리를 묶고 있다. 두 손을 머리 뒤로 올려 긴 흑발을 모아 묶는다. 눈은 거울 속 자신을 바라보고, 입술은 살짝 다물고 있다. 거울 속 모습이 그대로 비친다. 카메라는 뒤쪽에서 그녀의 뒷모습과 거울 속 얼굴을 함께 잡는다.",
+          "prompt": "nude woman standing in front of mirror, tying hair up, both hands behind head gathering long black hair, looking at own reflection, lips closed, mirror reflection visible, cowboy shot, from behind, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": null
+        },
+        {
+          "id": "259e6723-93f5-4e3c-a3d0-777ccde6b25f",
+          "name": "알몸으로 소파에 엎드려 낮잠을 잔다",
+          "description": "임진아가 알몸으로 소파에 엎드려 팔을 베개 삼아 낮잠을 자고 있다. 얼굴은 팔에 묻히고, 눈은 감겨 있다. 다리는 소파 가장자리에 걸쳐 있다. 거실의 따뜻한 조명이 그녀의 등을 비춘다. 카메라는 옆에서 상체를 중심으로 잡는다.",
+          "prompt": "nude woman lying on stomach on sofa, arms as pillow, face buried in arms, eyes closed, legs draped over edge, warm living room lighting, upper body shot, side view, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": null
+        },
+        {
+          "id": "473edd71-c3a0-425a-9e41-96d244bbe63c",
+          "name": "알몸으로 부엌에서 물을 마신다",
+          "description": "임진아가 알몸으로 부엌에 서서 물을 마시고 있다. 한 손은 유리잔을 들고, 다른 손은 카운터에 기대고 있다. 목을 뒤로 젖히며 물을 마시고, 눈은 감겨 있다. 부엌의 밝은 조명이 그녀의 몸을 비춘다. 카메라는 정면에서 상체를 중심으로 잡는다.",
+          "prompt": "nude woman standing in kitchen, drinking water from glass, one hand holding glass, other hand on counter, tilting head back, eyes closed, bright kitchen lighting, upper body shot, front view, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": null
+        },
+        {
+          "id": "d4a09494-0868-4beb-87cd-f0d3e8784ba7",
+          "name": "알몸으로 옥상에서 바람을 쐰다",
+          "description": "임진아가 알몸으로 옥상에 서서 바람을 쐬고 있다. 두 팔을 벌리고 눈을 감으며 바람을 느낀다. 입술은 살짝 벌어져 있다. 도시의 밤 불빛이 그녀를 비춘다. 카메라는 뒤쪽에서 그녀의 뒷모습을 상체 중심으로 잡는다.",
+          "prompt": "nude woman standing on rooftop, arms spread, eyes closed, feeling wind, lips slightly parted, city night lights, cowboy shot, from behind, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": "4b8e1552-79cb-4a9b-850d-719480b51027"
+        },
+        {
+          "id": "5f5deaeb-a72c-41b0-9566-884d7fa5a4f0",
+          "name": "알몸으로 침대에 앉아 다리를 만진다",
+          "description": "임진아가 알몸으로 침대에 앉아 한쪽 다리를 들어 올려 만지고 있다. 한 손은 발목을 잡고, 다른 손은 종아리를 쓰다듬는다. 눈은 다리를 바라보며 집중하고, 입술은 다물고 있다. 침실의 은은한 조명이 그녀의 몸을 비춘다. 카메라는 옆에서 상체를 중심으로 잡는다.",
+          "prompt": "nude woman sitting on bed, lifting one leg, hand on ankle, other hand stroking calf, looking at leg, lips closed, soft bedroom lighting, upper body shot, side view, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": null
+        },
+        {
+          "id": "dd42a9d8-409a-4c1f-be5a-f01b777b2b8e",
+          "name": "알몸으로 거울 앞에서 어깨를 돌린다",
+          "description": "임진아가 알몸으로 거울 앞에 서서 어깨를 돌리며 몸을 풀고 있다. 한 손은 반대쪽 어깨를 잡고, 다른 손은 옆구리에 댄다. 눈은 거울 속 자신을 바라보고, 입술은 살짝 다물고 있다. 거울 속 모습이 그대로 비친다. 카메라는 정면에서 상체를 중심으로 잡는다.",
+          "prompt": "nude woman standing in front of mirror, rolling shoulders, one hand on opposite shoulder, other hand on side, looking at own reflection, lips closed, mirror reflection visible, upper body shot, front view, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": null
+        },
+        {
+          "id": "6cda2962-67a3-42b0-b40e-4a4790ad3de1",
+          "name": "알몸으로 부엌에서 아침을 먹는다",
+          "description": "임진아가 알몸으로 부엌 카운터에 서서 아침을 먹고 있다. 한 손은 토스트를 들고, 다른 손은 커피잔을 잡는다. 눈은 앞을 바라보며 멍하니 있고, 입술은 다물고 있다. 부엌의 밝은 조명이 그녀의 몸을 비춘다. 카메라는 정면에서 상체를 중심으로 잡는다.",
+          "prompt": "nude woman standing at kitchen counter, eating breakfast, one hand holding toast, other hand holding coffee cup, blank gaze forward, lips closed, bright kitchen lighting, upper body shot, front view, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": null
+        },
+        {
+          "id": "5aeb4680-d350-41a5-9eaa-81933e26952c",
+          "name": "알몸으로 소파에 앉아 TV를 본다",
+          "description": "임진아가 알몸으로 소파에 앉아 TV를 보고 있다. 한 손은 리모컨을 들고, 다른 손은 무릎에 올린다. 눈은 TV 화면을 바라보고, 입술은 살짝 벌어져 있다. 거실의 어두운 조명이 그녀의 몸을 비춘다. 카메라는 옆에서 상체를 중심으로 잡는다.",
+          "prompt": "nude woman sitting on sofa, watching TV, one hand holding remote, other hand on knee, gazing at TV screen, lips slightly parted, dim living room lighting, upper body shot, side view, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": null
+        },
+        {
+          "id": "4b28802c-aa87-4e03-935b-9dd5c0c5228e",
+          "name": "알몸으로 침대에 앉아 머리를 말린다",
+          "description": "임진아가 알몸으로 침대에 앉아 머리를 말리고 있다. 한 손은 드라이어를 들고, 다른 손은 머리카락을 만지며 말린다. 눈은 거울을 바라보고, 입술은 다물고 있다. 침실의 밝은 조명이 그녀의 몸을 비춘다. 카메라는 정면에서 상체를 중심으로 잡는다.",
+          "prompt": "nude woman sitting on bed, drying hair with hairdryer, one hand holding dryer, other hand touching hair, looking at mirror, lips closed, bright bedroom lighting, upper body shot, front view, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": null
+        },
+        {
+          "id": "4fac523c-ccfd-48da-9e80-685d9b64cd1c",
+          "name": "알몸으로 거울 앞에서 화장을 지운다",
+          "description": "임진아가 알몸으로 거울 앞에 서서 화장을 지우고 있다. 한 손은 화장솜을 들고, 다른 손은 얼굴을 닦는다. 눈은 거울 속 자신을 바라보고, 입술은 다물고 있다. 거울 속 모습이 그대로 비친다. 카메라는 정면에서 상체를 중심으로 잡는다.",
+          "prompt": "nude woman standing in front of mirror, removing makeup, one hand holding cotton pad, other hand wiping face, looking at own reflection, lips closed, mirror reflection visible, upper body shot, front view, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": null
+        },
+        {
+          "id": "0d126985-6f06-404e-bf3e-beed10dd6b78",
+          "name": "알몸으로 소파에 앉아 다리를 뻗는다",
+          "description": "임진아가 알몸으로 소파에 앉아 다리를 앞으로 쭉 뻗고 있다. 한 손은 소파 팔걸이에 기대고, 다른 손은 무릎에 올린다. 눈은 앞을 바라보며 멍하니 있고, 입술은 다물고 있다. 거실의 따뜻한 조명이 그녀의 몸을 비춘다. 카메라는 옆에서 상체를 중심으로 잡는다.",
+          "prompt": "nude woman sitting on sofa, legs extended forward, one hand on armrest, other hand on knee, blank gaze forward, lips closed, warm living room lighting, upper body shot, side view, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": null
+        },
+        {
+          "id": "0f70bce7-3020-441e-b786-85c19ee2ff5d",
+          "name": "알몸으로 책상에 앉아 펜을 돌린다",
+          "description": "임진아가 알몸으로 책상에 앉아 펜을 손가락 사이로 돌리고 있다. 한 손은 펜을 돌리고, 다른 손은 턱을 괴고 있다. 눈은 서류를 바라보며 생각에 잠겨 있고, 입술은 살짝 깨문다. 책상 위에는 낡은 계산기와 재떨이가 있다. 카메라는 정면에서 상체를 중심으로 잡는다.",
+          "prompt": "nude woman sitting at desk, spinning pen between fingers, one hand on chin, gazing at documents, thoughtful expression, biting lip, old calculator and ashtray on desk, upper body shot, front view, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
+        },
+        {
+          "id": "ca65c43a-87dd-419f-8196-31cee3646ef0",
+          "name": "알몸으로 침대에 누워 이불을 끌어안는다",
+          "description": "임진아가 알몸으로 침대에 누워 이불을 끌어안고 있다. 두 팔로 이불을 감싸고, 얼굴을 이불에 묻는다. 눈은 감겨 있고, 입술은 다물고 있다. 침실의 은은한 조명이 그녀의 몸을 비춘다. 카메라는 옆에서 상체를 중심으로 잡는다.",
+          "prompt": "nude woman lying on bed, hugging blanket, both arms wrapped around blanket, face buried in blanket, eyes closed, lips closed, soft bedroom lighting, upper body shot, side view, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": null
+        },
+        {
+          "id": "91a7c3c5-2300-4a3b-bed4-9cd9d44c01f1",
+          "name": "알몸으로 거울 앞에서 피어싱을 만진다",
+          "description": "임진아가 알몸으로 거울 앞에 서서 귀의 피어싱을 만지고 있다. 한 손은 귀를 만지고, 다른 손은 머리카락을 넘긴다. 눈은 거울 속 자신을 바라보고, 입술은 살짝 다물고 있다. 거울 속 모습이 그대로 비친다. 카메라는 정면에서 상체를 중심으로 잡는다.",
+          "prompt": "nude woman standing in front of mirror, touching ear piercing, one hand on ear, other hand brushing hair, looking at own reflection, lips closed, mirror reflection visible, upper body shot, front view, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": null
+        },
+        {
+          "id": "3eee6f2c-4384-45e3-acfe-7d20b0740a98",
+          "name": "알몸으로 부엌에서 간식을 먹는다",
+          "description": "임진아가 알몸으로 부엌 카운터에 서서 간식을 먹고 있다. 한 손은 과자를 들고, 다른 손은 입가를 닦는다. 눈은 앞을 바라보며 멍하니 있고, 입술은 다물고 있다. 부엌의 밝은 조명이 그녀의 몸을 비춘다. 카메라는 정면에서 상체를 중심으로 잡는다.",
+          "prompt": "nude woman standing at kitchen counter, eating snack, one hand holding cookie, other hand wiping mouth, blank gaze forward, lips closed, bright kitchen lighting, upper body shot, front view, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": null
+        },
+        {
+          "id": "0162cf4d-e49a-43a0-9038-3845b27b0bf5",
+          "name": "알몸으로 소파에 앉아 눈을 비빈다",
+          "description": "임진아가 알몸으로 소파에 앉아 눈을 비비고 있다. 한 손은 눈을 비비고, 다른 손은 무릎에 올린다. 눈은 감겨 있고, 입술은 다물고 있다. 거실의 어두운 조명이 그녀의 몸을 비춘다. 카메라는 정면에서 상체를 중심으로 잡는다.",
+          "prompt": "nude woman sitting on sofa, rubbing eyes, one hand on eye, other hand on knee, eyes closed, lips closed, dim living room lighting, upper body shot, front view, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": null
+        },
+        {
+          "id": "b762998d-ac52-4f2d-8454-b8fe210d87dc",
+          "name": "알몸으로 책상에 앉아 서류를 덮는다",
+          "description": "임진아가 알몸으로 책상에 앉아 서류를 덮고 있다. 한 손은 서류를 덮고, 다른 손은 이마를 짚는다. 눈은 아래를 바라보며 지친 표정이고, 입술은 다물고 있다. 책상 위에는 낡은 계산기와 재떨이가 있다. 카메라는 정면에서 상체를 중심으로 잡는다.",
+          "prompt": "nude woman sitting at desk, closing documents, one hand on paper, other hand on forehead, looking down, tired expression, lips closed, old calculator and ashtray on desk, upper body shot, front view, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
+        },
+        {
+          "id": "234654ec-02c2-477f-a9f7-2f3127a60f14",
+          "name": "알몸으로 침대에 앉아 발을 만진다",
+          "description": "임진아가 알몸으로 침대에 앉아 한쪽 발을 들어 올려 만지고 있다. 한 손은 발목을 잡고, 다른 손은 발바닥을 쓰다듬는다. 눈은 발을 바라보며 집중하고, 입술은 다물고 있다. 침실의 은은한 조명이 그녀의 몸을 비춘다. 카메라는 옆에서 상체를 중심으로 잡는다.",
+          "prompt": "nude woman sitting on bed, lifting one foot, hand on ankle, other hand stroking sole, looking at foot, lips closed, soft bedroom lighting, upper body shot, side view, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": null
+        },
+        {
+          "id": "ba81096b-5991-4187-818e-8500492515f1",
+          "name": "알몸으로 거울 앞에서 머리를 흔든다",
+          "description": "임진아가 알몸으로 거울 앞에 서서 머리를 흔들고 있다. 두 손을 머리에 대고 긴 흑발을 흔들며 정리한다. 눈은 거울 속 자신을 바라보고, 입술은 살짝 벌어져 있다. 거울 속 모습이 그대로 비친다. 카메라는 정면에서 상체를 중심으로 잡는다.",
+          "prompt": "nude woman standing in front of mirror, shaking hair, both hands on head, long black hair flowing, looking at own reflection, lips slightly parted, mirror reflection visible, upper body shot, front view, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": null
+        },
+        {
+          "id": "a30dc172-2465-4caf-b52b-618a7235d351",
+          "name": "알몸으로 부엌에서 설거지를 한다",
+          "description": "임진아가 알몸으로 부엌 싱크대 앞에 서서 설거지를 하고 있다. 한 손은 접시를 잡고, 다른 손은 수세미로 닦는다. 눈은 아래를 바라보며 집중하고, 입술은 다물고 있다. 부엌의 밝은 조명이 그녀의 몸을 비춘다. 카메라는 옆에서 상체를 중심으로 잡는다.",
+          "prompt": "nude woman standing at kitchen sink, washing dishes, one hand holding plate, other hand scrubbing with sponge, looking down, focused expression, lips closed, bright kitchen lighting, upper body shot, side view, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": null
+        },
+        {
+          "id": "d3779611-559f-46ff-bd48-921d0b85b18f",
+          "name": "알몸으로 책상에 앉아 볼펜을 깨문다",
+          "description": "임진아가 알몸으로 책상에 앉아 볼펜을 입에 물고 있다. 한 손은 볼펜을 잡고, 다른 손은 서류를 만지고 있다. 눈은 서류를 바라보며 집중하고, 입술은 볼펜을 깨물고 있다. 책상 위에는 낡은 계산기와 재떨이가 있다. 카메라는 정면에서 상체를 중심으로 잡는다.",
+          "prompt": "nude woman sitting at desk, biting pen, one hand holding pen, other hand on paper, gazing at documents, focused expression, biting pen, old calculator and ashtray on desk, upper body shot, front view, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
+        },
+        {
+          "id": "456cb11b-89d8-4238-9554-382e9ce08d31",
+          "name": "알몸으로 거울 앞에서 어깨를 으쓱인다",
+          "description": "임진아가 알몸으로 거울 앞에 서서 어깨를 으쓱이고 있다. 두 어깨를 위로 올렸다 내리며 몸을 풀고, 한 손은 옆구리에 댄다. 눈은 거울 속 자신을 바라보고, 입술은 살짝 다물고 있다. 거울 속 모습이 그대로 비친다. 카메라는 정면에서 상체를 중심으로 잡는다.",
+          "prompt": "nude woman standing in front of mirror, shrugging shoulders, both shoulders raised and lowered, one hand on side, looking at own reflection, lips closed, mirror reflection visible, upper body shot, front view, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": null
+        },
+        {
+          "id": "0968d8ca-6174-4f75-8198-760636be7168",
+          "name": "알몸으로 부엌에서 냉장고를 연다",
+          "description": "임진아가 알몸으로 부엌에 서서 냉장고를 열고 있다. 한 손은 냉장고 문을 잡고, 다른 손은 안을 살핀다. 눈은 냉장고 안을 바라보고, 입술은 다물고 있다. 부엌의 밝은 조명이 그녀의 몸을 비춘다. 카메라는 옆에서 상체를 중심으로 잡는다.",
+          "prompt": "nude woman standing in kitchen, opening refrigerator, one hand on door, other hand looking inside, gazing into fridge, lips closed, bright kitchen lighting, upper body shot, side view, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": null
+        },
+        {
+          "id": "50186e2d-6a5e-4183-be1b-d966b5115bcf",
+          "name": "알몸으로 소파에 앉아 이어폰을 낀다",
+          "description": "임진아가 알몸으로 소파에 앉아 이어폰을 끼고 있다. 한 손은 이어폰을 귀에 대고, 다른 손은 휴대폰을 만지고 있다. 눈은 앞을 바라보며 멍하니 있고, 입술은 다물고 있다. 거실의 어두운 조명이 그녀의 몸을 비춘다. 카메라는 정면에서 상체를 중심으로 잡는다.",
+          "prompt": "nude woman sitting on sofa, putting in earbuds, one hand on ear, other hand holding phone, blank gaze forward, lips closed, dim living room lighting, upper body shot, front view, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": null
+        },
+        {
+          "id": "8874b8fc-db70-4c29-9f1b-60ebc9d8382e",
+          "name": "알몸으로 책상에 앉아 커피를 마신다",
+          "description": "임진아가 알몸으로 책상에 앉아 커피를 마시고 있다. 한 손은 커피잔을 들고, 다른 손은 서류를 만지고 있다. 눈은 커피를 바라보며 멍하니 있고, 입술은 다물고 있다. 책상 위에는 낡은 계산기와 재떨이가 있다. 카메라는 정면에서 상체를 중심으로 잡는다.",
+          "prompt": "nude woman sitting at desk, drinking coffee, one hand holding cup, other hand on paper, gazing at coffee, blank expression, lips closed, old calculator and ashtray on desk, upper body shot, front view, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
+        },
+        {
+          "id": "332f86f8-cd18-4157-838b-3abb38ce6cf7",
+          "name": "알몸으로 거울 앞에서 옆모습을 본다",
+          "description": "임진아가 알몸으로 거울 앞에 서서 옆모습을 살펴본다. 한 손은 허리에 얹고, 다른 손은 머리카락을 만지며 자세를 고른다. 눈은 거울 속 자신을 응시하고, 입술은 약간 비죽 올라간 시크한 표정이다. 거울 속 모습이 그대로 비친다. 카메라는 뒤쪽에서 그녀의 옆모습과 거울 속 얼굴을 함께 잡는다.",
+          "prompt": "nude woman standing in front of mirror, side profile, one hand on hip, other hand touching hair, looking at own reflection, slight smirk, confident expression, mirror reflection visible, cowboy shot, from behind, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": null
+        },
+        {
+          "id": "5781d76a-267d-4227-b154-40c33fa50294",
+          "name": "알몸으로 책상에 앉아 이마를 짚는다",
+          "description": "임진아가 알몸으로 책상에 앉아 이마를 짚고 있다. 한 손은 이마를 짚고, 다른 손은 서류를 만지고 있다. 눈은 아래를 바라보며 지친 표정이고, 입술은 다물고 있다. 책상 위에는 낡은 계산기와 재떨이가 있다. 카메라는 정면에서 상체를 중심으로 잡는다.",
+          "prompt": "nude woman sitting at desk, hand on forehead, other hand on paper, looking down, tired expression, lips closed, old calculator and ashtray on desk, upper body shot, front view, eye level",
+          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
+          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
+        }
+      ],
+      "order": 1,
+      "createdAt": 1787651867867,
+      "updatedAt": 1787748531863,
+      "thumbnail": null
+    },
+    {
       "id": "fe76a540-4775-4b6c-b338-61252122409d",
       "name": "정혜지",
       "summary": "청담의 고급 헤어샵에서 손님과의 친밀함을 직업처럼 다루는 화려한 27세 헤어 디자이너.",
@@ -1991,7 +2947,7 @@
           "backgroundId": null
         }
       ],
-      "order": 1,
+      "order": 2,
       "createdAt": 1787468035662,
       "updatedAt": 1787572029947,
       "thumbnail": "/api/images/0109b4a9-8cf7-4371-94fb-7529bb57fbcb.png"
@@ -2914,7 +3870,7 @@
           "backgroundId": null
         }
       ],
-      "order": 2,
+      "order": 3,
       "createdAt": 1787406647804,
       "updatedAt": 1787486145466,
       "thumbnail": "/api/images/c5188eec-946b-4025-9f90-79744a2a1703.png"
@@ -4168,7 +5124,7 @@
           "backgroundId": "d27cb7e7-ad35-4e12-b4fe-d299aea9d16e"
         }
       ],
-      "order": 3,
+      "order": 4,
       "createdAt": 1787331139417,
       "updatedAt": 1787478390860,
       "thumbnail": "/api/images/1330eb70-2647-463b-a690-734dcf9f4841.png"
@@ -5263,7 +6219,7 @@
           "backgroundId": "a7071d2f-ce1d-4474-aa38-8f7ef3919c9e"
         }
       ],
-      "order": 4,
+      "order": 5,
       "createdAt": 1787500110458,
       "updatedAt": 1787551429389,
       "thumbnail": "/api/images/a5680b1c-7cc5-4050-bc51-0eb1b4554865.png"
@@ -6194,7 +7150,7 @@
           "backgroundId": "beac5759-229c-4f21-b588-665667632560"
         }
       ],
-      "order": 5,
+      "order": 6,
       "createdAt": 1787490941516,
       "updatedAt": 1787499749598,
       "thumbnail": "/api/images/3f81db80-fc86-450c-b82c-2cef09ac53a2.png"
@@ -7115,7 +8071,7 @@
           "backgroundId": null
         }
       ],
-      "order": 6,
+      "order": 7,
       "createdAt": 1787479300119,
       "updatedAt": 1787496329491,
       "thumbnail": "/api/images/09a7a16d-55dc-4ea3-874b-22ad3a2cc1b3.png"
@@ -8069,7 +9025,7 @@
           "backgroundId": "5f724c39-9fbc-4392-acbd-00963043a6f7"
         }
       ],
-      "order": 7,
+      "order": 8,
       "createdAt": 1787294514993,
       "updatedAt": 1787560375585,
       "thumbnail": "/api/images/b7866c57-93fa-4cbc-a419-72bfbc1edddd.png"
@@ -9006,7 +9962,7 @@
           "backgroundId": "2975fca4-e703-438c-be1a-48f5471b88b3"
         }
       ],
-      "order": 8,
+      "order": 9,
       "createdAt": 1787143923989,
       "updatedAt": 1787221308504,
       "thumbnail": "/api/images/6f33fdc1-7143-4b73-98e0-ad030bcc9a32.png"
@@ -10038,7 +10994,7 @@
           "backgroundId": "3730bc42-2d9e-4f69-931d-21488dd248e3"
         }
       ],
-      "order": 9,
+      "order": 10,
       "createdAt": 1787212698231,
       "updatedAt": 1787409054306,
       "thumbnail": "/api/images/ce07c238-59b1-4f7d-9778-65b025d3efa3.png"
@@ -10259,7 +11215,7 @@
           "backgroundId": "ae7887cc-3f00-48e9-a9b3-ef62cd080d19"
         }
       ],
-      "order": 10,
+      "order": 11,
       "createdAt": 1786695445952,
       "updatedAt": 1786709501146,
       "thumbnail": "/api/images/739b5ec8-5876-4239-b33a-3830632b2b83.png"
@@ -10524,1049 +11480,10 @@
           "backgroundId": "1a8b860b-bfb6-4e1c-87a7-6299b1e43a06"
         }
       ],
-      "order": 11,
+      "order": 12,
       "createdAt": 1786695445952,
       "updatedAt": 1787463740339,
       "thumbnail": "/api/images/4a1b74f1-f31b-4f08-84ef-030b481a822e.png"
-    },
-    {
-      "id": "168375da-f8cb-40f0-a092-d6c0e4cf92ef",
-      "name": "임진아",
-      "summary": "과거 일진이었던, 지금은 자금난에 허덕이는 광고회사 대표. 문신과 날나리 티가 남아 있는 성인 여성.",
-      "synopsis": "임진아는 고등학교 시절 교내에서 악명 높은 일진이었다. 특히 조용하고 반항하지 못했던 주인공을 만만한 상대로 여기며 지속적으로 괴롭혔다. 하지만 졸업 후 두 사람의 인생은 완전히 달라졌다.\n\n주인공은 성공한 플랫폼 기업의 사업개발팀장 또는 대표가 되었고, 신규 프로젝트의 협력사를 선정하고 계약 연장 여부를 결정할 권한을 쥐고 있다.\n\n반면 임진아는 아버지가 운영하던 소규모 광고·콘텐츠 제작사를 이어받았다. 회사는 이미 자금난에 빠져 있으며, 직원들의 급여와 대출 상환까지 밀리기 직전이다. 그런 상황에서 주인공 회사가 추진하는 대규모 프로젝트의 협력사로 선정된다면 단숨에 위기를 넘길 수 있다.\n\n임진아는 계약을 따내기 위해 직접 최종 미팅에 참석하고, 그 자리에서 발주 담당자가 과거 자신이 괴롭혔던 주인공이라는 사실을 알게 된다.\n\n주인공은 임진아의 회사가 제출한 기획안을 검토하고, 수정 요청을 내리고, 계약 조건을 협상하며, 최종적으로 업체를 탈락시킬 수도 있다. 임진아는 주인공의 요구가 까다롭고 자존심을 건드리더라도 쉽게 거절할 수 없다. 계약이 무산되면 자신뿐 아니라 오래 함께한 직원들까지 일자리를 잃기 때문이다.\n\n임진아는 여전히 날나리 티를 벗지 못했다. 어깨부터 팔뚝까지 이어지는 화려한 문신, 짙은 아이라인, 시크한 표정. 하지만 그 이면에는 회사를 지키려는 책임감과, 과거의 자신을 부끄러워하는 마음이 공존한다. 그녀는 매일 아침 회사에 가장 먼저 도착해 직원들의 급여 명세서를 확인하고, 밤늦게까지 기획안을 다듬는다. 사무실 한편에는 아버지가 쓰던 낡은 계산기와 담배 재떨이가 그대로 남아 있다.\n\n그녀가 가장 피하고 싶은 것은 주인공과의 재회이지만, 동시에 계약을 따내야만 하는 상황. 자존심과 생존 사이에서 갈등하며, 결국 그녀는 낡은 오토바이를 타고 미팅 장소로 향한다. 그녀의 곁에는 오래 함께한 직원들, 그리고 아버지의 유산인 회사를 지키려는 결의가 있다.",
-      "mainImage": {
-        "url": "/api/images/7b1e3ae1-c4b8-4e9f-a47f-a8632f234250.png",
-        "thumbnailUrl": "/api/images/thumb/7b1e3ae1-c4b8-4e9f-a47f-a8632f234250.png?v=2",
-        "filename": "7b1e3ae1-c4b8-4e9f-a47f-a8632f234250.png",
-        "params": {
-          "backend": "comfyui",
-          "model": "comfyui/local-sdxl",
-          "model_name": "hassakuXLIllustrious_v13StyleA.safetensors",
-          "prompt": "masterpiece, (black jacket:1.2), (grey shirt:1.2), (blue jeans:1.2), ultra-HD, cinematic lighting, photorealistic, impressionism (1.5), high detail, depth of field, (blurred background), (dramatic lighting), masterpiece, best quality, very aesthetic, 8k, masterpiece, best quality, realistic, masterpiece, best quality, 8k, simple_background, nalari-jina, adult woman, late 20s, long straight black hair reaching below shoulders, swept-back bangs exposing forehead, sharp narrow eyes, thick black eyeliner, neutral beige eyeshadow, light skin tone, small mole on nose bridge, slim build with broad shoulders and long limbs, faded black tattoo covering left shoulder down to forearm, slightly blurred faded ink, multiple small silver ring piercings on ears, short trimmed nails, confident cool expression, black leather biker jacket, solid black, matte leather, fitted, hip-length, zipped halfway; heather grey cotton crew-neck t-shirt, solid, slim fit; faded blue denim jeans, straight-leg, worn knees, mid-rise; black leather combat boots, lace-up; black leather wristband and silver chain bracelet on wrist, matte fabric texture, dull fabric, natural cloth texture, realistic fabric, cowboy shot, side view, woman opening office door, holding keys in one hand, leather jacket draped over shoulder, slightly narrowed sleepy eyes, pressed lips, body facing doorway, gaze scanning inside, morning light from window, worn office interior visible, small advertising agency office, worn wooden desks and chairs, beige walls with framed ad posters, cluttered shelves with papers and folders, old calculator and ashtray on desk, large window with afternoon sunlight, warm yellowish lighting, cozy but worn atmosphere, (masterpiece, best quality), safe, amazing quality, very aesthetic, absurdres, highres, newest, HDR, 8K, high detail RAW color art",
-          "negative_prompt": "Female tongue, female tongue out, Neck grab, worst quality, low quality, displeasing, text, , watermark, bad anatomy, text, artist name, signature, hearts, deformed hands, missing finger, shiny skin,child,children, black lace bra, black lace panties, lingerie, bra, panties, shiny clothes, glossy fabric, satin sheen, latex, wet look, front view, looking at viewer, direct eye contact, upper body, from behind, rooftop, night sky, moonlight, shiny fabric, pvc, metallic fabric, motorcycle, helmet, parking lot, asphalt, city buildings, sunset, orange and purple hues",
-          "num_inference_steps": 48,
-          "guidance_scale": 4,
-          "width": 1080,
-          "height": 1920,
-          "num_images": 1,
-          "output_format": "jpeg",
-          "generation_mode": "text_to_image",
-          "seed": 1424540471,
-          "sampler_name": "euler_ancestral",
-          "scheduler": "normal",
-          "clip_skip": 2,
-          "vae_name": "",
-          "krea2_workflow": "generic",
-          "output_upscale_blend": 0.6,
-          "upscale_model_name": "",
-          "hires_upscale": 2,
-          "hires_steps": 10,
-          "hires_denoise": 0.4,
-          "img2img_resize": 1.5,
-          "adetailer_enabled": false,
-          "adetailer_model": "face_yolov8n.pt",
-          "adetailer_checkpoint": "",
-          "adetailer_prompt": "",
-          "adetailer_negative_prompt": "",
-          "adetailer_use_steps": false,
-          "adetailer_steps": 20,
-          "adetailer_confidence": 0.5,
-          "adetailer_mask_blur": 4,
-          "adetailer_noise_multiplier": 1,
-          "adetailer_inpaint_only_masked": true,
-          "adetailer_loras": [],
-          "adetailer_denoise": 0.4,
-          "loras": [
-            {
-              "path": "DetailedEyes_V3.safetensors",
-              "scale": 1
-            },
-            {
-              "path": "USNR STYLE_XL_lokr.safetensors",
-              "scale": 0.45
-            },
-            {
-              "path": "ponyv4_noob1_2_adamW-000017.safetensors",
-              "scale": 0.9
-            },
-            {
-              "path": "GENESIS_MK0.4.safetensors",
-              "scale": 0.5
-            },
-            {
-              "path": "nalari-jina.safetensors",
-              "scale": 1
-            }
-          ],
-          "embeddings": [],
-          "controlnets": [],
-          "prompt_weighting": true,
-          "style_image": null,
-          "character_image": null,
-          "character_reference_strength": 0.7,
-          "source_image": null,
-          "denoise_strength": 0.6,
-          "pose_reference_image": null,
-          "pose_reference_model": "illustriousXL_v10.safetensors",
-          "pose_reference_strength": 0.8,
-          "enable_safety_checker": false
-        }
-      },
-      "appearanceDescription": "임진아는 20대 후반의 성인 여성으로, 과거의 날나리 기질이 그대로 남아 있다. 긴 흑발을 어깨 아래로 자연스럽게 늘어뜨렸고, 앞머리는 시원하게 넘겨 이마를 드러낸다. 눈매는 가늘고 날카로우며, 짙은 스모키 아이라인으로 또렷하게 강조되어 있다. 피부는 건강한 밀크톤이고, 콧등에는 작은 점이 하나 있다. 체격은 슬림하지만 어깨가 넓고 팔다리가 길다. 왼쪽 어깨부터 팔뚝까지 이어지는 검은색 문신이 있으며, 시간이 지나며 색이 약간 흐려진 상태다. 귀에는 작은 실버 링 피어싱이 여러 개 있고, 손톱은 짧게 깎여 있다. 평소 표정은 시크하고 도도하지만, 긴장하면 입술을 깨물거나 눈썹을 찌푸리는 버릇이 있다.",
-      "appearancePrompt": "adult woman, late 20s, long straight black hair reaching below shoulders, swept-back bangs exposing forehead, sharp narrow eyes, thick black eyeliner, neutral beige eyeshadow, light skin tone, small mole on nose bridge, slim build with broad shoulders and long limbs, faded black tattoo covering left shoulder down to forearm, slightly blurred faded ink, multiple small silver ring piercings on ears, short trimmed nails, confident cool expression",
-      "loras": [
-        {
-          "path": "nalari-jina.safetensors",
-          "scale": 1,
-          "triggerWords": "nalari-jina"
-        }
-      ],
-      "outfits": [
-        {
-          "id": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "name": "일상복",
-          "description": "임진아의 평소 일상복. 검은색 가죽 재킷을 입고, 안에는 회색 무지 티셔츠를 입는다. 하의는 낡은 청바지로, 무릎 부분이 닳아 있다. 발에는 검은색 워커를 신는다. 손목에는 가죽 밴드와 실버 체인 팔찌를 착용한다.",
-          "prompt": "black leather biker jacket, solid black, matte leather, fitted, hip-length, zipped halfway; heather grey cotton crew-neck t-shirt, solid, slim fit; faded blue denim jeans, straight-leg, worn knees, mid-rise; black leather combat boots, lace-up; black leather wristband and silver chain bracelet on wrist"
-        },
-        {
-          "id": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "name": "속옷",
-          "description": "임진아의 속옷. 검은색 레이스 브라와 팬티 세트로, 브라 컵에는 레이스 패턴이 있고 팬티는 하이웨스트 스타일이다. 어깨끈은 얇고, 전체적으로 시크한 느낌을 준다.",
-          "prompt": "black lace bra, solid black, delicate floral lace pattern, underwire, thin straps; black lace high-waist panties, solid black, matching lace pattern, high-waist"
-        },
-        {
-          "id": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "name": "알몸",
-          "description": "임진아의 알몸 상태. 옷을 입지 않은 모습으로, 왼쪽 어깨부터 팔뚝까지 이어지는 검은색 문신이 그대로 드러난다. 문신은 시간이 지나며 색이 약간 흐려진 상태다. 귀에는 실버 링 피어싱이 여러 개 있다.",
-          "prompt": "nude, no clothes, bare skin, light skin tone, slim build, broad shoulders, long limbs, faded black tattoo covering left shoulder down to forearm, slightly blurred faded ink, multiple small silver ring piercings on ears, short trimmed nails"
-        }
-      ],
-      "backgrounds": [
-        {
-          "id": "bf3e0573-13b4-4259-8aba-d403143f3c6d",
-          "name": "광고회사 사무실",
-          "description": "임진아가 운영하는 소규모 광고·콘텐츠 제작사의 사무실. 낡은 나무 책상과 의자가 놓여 있고, 벽에는 광고 포트폴리오가 붙어 있다. 창문으로 오후 햇살이 들어온다.",
-          "prompt": "small advertising agency office, worn wooden desks and chairs, beige walls with framed ad posters, cluttered shelves with papers and folders, old calculator and ashtray on desk, large window with afternoon sunlight, warm yellowish lighting, cozy but worn atmosphere"
-        },
-        {
-          "id": "84a52108-6a3f-4f83-ae53-a3e1cb965434",
-          "name": "회의실",
-          "description": "광고회사의 회의실. 중앙에 긴 테이블이 있고, 벽에는 화이트보드가 있다. 형광등 불빛이 밝게 비추고, 분위기는 다소 긴장된 느낌이다.",
-          "prompt": "corporate meeting room, long white table with black chairs, whiteboard on wall with marker notes, fluorescent ceiling lights, bright cool lighting, neutral gray walls, formal tense atmosphere"
-        },
-        {
-          "id": "1d2e8d69-a1d8-4645-a020-8a4d6569314c",
-          "name": "주인공 회사 로비",
-          "description": "주인공이 다니는 대기업의 로비. 높은 천장과 대리석 바닥, 모던한 인테리어가 특징이다. 유리 벽으로 햇빛이 들어오고, 사람들이 오간다.",
-          "prompt": "modern corporate lobby, high ceiling, marble floor, glass walls with sunlight, sleek reception desk, minimalist furniture, bright airy atmosphere, people walking in background"
-        },
-        {
-          "id": "c3ce4198-c530-433a-a298-22aab259a052",
-          "name": "오토바이 주차장",
-          "description": "임진아가 오토바이를 타고 오는 장소. 아스팔트 바닥에 오토바이가 주차되어 있고, 뒤로 도시 건물이 보인다. 저녁 노을이 지고 있다.",
-          "prompt": "outdoor parking lot, asphalt ground, parked motorcycle, city buildings in background, evening sunset sky, orange and purple hues, warm dramatic lighting, urban atmosphere"
-        },
-        {
-          "id": "4b8e1552-79cb-4a9b-850d-719480b51027",
-          "name": "옥상",
-          "description": "광고회사 건물의 옥상. 낡은 철제 난간과 콘크리트 바닥, 전선이 지나간다. 밤에는 도시 불빛이 보이고, 담배를 피우며 쉬기 좋은 장소다.",
-          "prompt": "building rooftop, old metal railing, concrete floor, utility wires overhead, city lights visible at night, dark blue night sky, cool moonlight, melancholic atmosphere"
-        }
-      ],
-      "situations": [
-        {
-          "id": "ee063198-da6c-413d-bff6-5c17401434db",
-          "name": "아침 출근, 사무실 문을 연다",
-          "description": "임진아가 아침 일찍 사무실에 도착해 문을 열고 들어선다. 손에는 열쇠를 쥐고 있고, 어깨에는 가죽 재킷을 걸쳤다. 눈은 아직 덜 뜨인 듯 약간 가늘게 뜨고, 입은 굳게 다물려 있다. 몸은 문 쪽으로 향하고, 시선은 사무실 안쪽을 훑는다. 카메라는 옆에서 허리 위로 잡아, 그녀의 뒷모습과 문 너머의 사무실 풍경을 함께 담는다.",
-          "prompt": "cowboy shot, side view, woman opening office door, holding keys in one hand, leather jacket draped over shoulder, slightly narrowed sleepy eyes, pressed lips, body facing doorway, gaze scanning inside, morning light from window, worn office interior visible",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
-        },
-        {
-          "id": "c2add57e-93f6-4850-ac17-415dd7ebc29d",
-          "name": "급여 명세서를 확인한다",
-          "description": "임진아가 책상에 앉아 급여 명세서를 들여다본다. 두 손으로 서류를 잡고, 눈썹이 좁혀지며 시선이 숫자에 고정된다. 입술을 살짝 깨물고, 어깨에 힘이 들어가 있다. 카메라는 정면에서 상반신을 잡아, 그녀의 긴장된 표정과 책상 위 서류 더미를 함께 보여준다.",
-          "prompt": "upper body, front view, woman sitting at desk, holding payroll documents with both hands, furrowed brows, gaze fixed on numbers, biting lip, tense shoulders, desk cluttered with papers, office background",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
-        },
-        {
-          "id": "e91c10d6-2f44-4c3c-93be-889363ecefc1",
-          "name": "직원에게 지시를 내린다",
-          "description": "임진아가 서서 직원에게 지시를 내린다. 한 손은 허리에 얹고, 다른 손은 앞으로 뻗어 설명한다. 눈은 또렷하게 뜨고, 입은 다소 강한 어조로 움직인다. 몸은 정면을 향하고, 시선은 상대를 똑바로 본다. 카메라는 약간 아래에서 무릎 위로 잡아, 그녀의 당당한 자세를 강조한다.",
-          "prompt": "knee up, slight low angle, woman standing, giving instructions, one hand on hip, other hand extended pointing, clear wide eyes, firm mouth, facing forward, gaze at subordinate, office interior",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
-        },
-        {
-          "id": "961f094e-6b82-4504-98f0-3a746f52e81b",
-          "name": "커피를 마시며 창밖을 본다",
-          "description": "임진아가 부엌 창가에 서서 머그컵을 두 손으로 감싼다. 속옷 차림으로, 어깨와 팔뚝의 문신이 드러난다. 시선은 창밖으로 향하고, 눈은 약간 가늘게 뜨며 무심한 표정을 짓는다. 입술은 커피를 마시기 직전에 살짝 벌어져 있다. 카메라는 앞에서 상체를 잡는다.",
-          "prompt": "standing by kitchen window, upper body, front view, eye level, holding mug with both hands, looking outside, slightly narrowed eyes, relaxed neutral expression, slightly parted lips, black lace bra and panties, faded tattoo on left shoulder, morning sunlight, cozy kitchen",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "018b7f25-f801-49ed-9b01-ceeb0ddcdf58",
-          "name": "기획안을 밤새 다듬는다",
-          "description": "임진아가 밤늦게 사무실에서 기획안을 다듬는다. 책상에 팔꿈치를 대고, 한 손으로 펜을 돌리며, 다른 손은 키보드 위에 있다. 눈은 화면을 응시하고, 눈 밑에 다크서클이 보인다. 입은 지친 듯 살짝 벌어져 있고, 어깨는 축 처져 있다. 카메라는 옆에서 상반신을 잡아, 그녀의 피로한 모습과 화면의 불빛을 함께 담는다.",
-          "prompt": "upper body, side view, woman at desk late at night, elbow on desk, twirling pen, other hand on keyboard, staring at screen, dark circles under eyes, slightly parted tired mouth, slumped shoulders, screen glow on face, office dark",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
-        },
-        {
-          "id": "dc0c4f4b-27fc-4dea-931c-dec639f18fd4",
-          "name": "아버지의 계산기를 만지작거린다",
-          "description": "임진아가 책상 위에 놓인 낡은 계산기를 만지작거린다. 손끝으로 버튼을 누르며, 눈은 계산기를 내려다본다. 눈썹이 약간 올라가고, 입술은 굳게 다물려 있다. 몸은 앞으로 숙여져 있고, 시선은 계산기에 고정된다. 카메라는 위에서 상반신을 잡아, 그녀의 조용한 모습과 계산기의 낡은 질감을 강조한다.",
-          "prompt": "upper body, high angle, woman leaning over desk, touching old calculator, pressing buttons with fingertips, slightly raised brows, pressed lips, body leaning forward, gaze down at calculator, worn office desk",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
-        },
-        {
-          "id": "09b7cfbc-633a-43d6-a471-1b0463c9f44c",
-          "name": "담배를 피우며 옥상에 서 있다",
-          "description": "임진아가 옥상 난간에 기대어 담배를 피운다. 한 손으로 담배를 입에 물고, 다른 손은 난간을 잡는다. 눈은 도시 불빛을 바라보며 가늘게 뜨고, 표정은 무심하다. 몸은 난간 쪽으로 향하고, 시선은 아래 도시를 본다. 카메라는 뒤에서 상반신을 잡아, 그녀의 뒷모습과 도시 야경을 함께 담는다.",
-          "prompt": "upper body, from behind, woman leaning on rooftop railing, holding cigarette to mouth, other hand gripping railing, narrowed eyes looking at city lights, indifferent expression, body facing railing, night city view, cool moonlight",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "4b8e1552-79cb-4a9b-850d-719480b51027"
-        },
-        {
-          "id": "e30a91f7-2eb1-4cd7-bb36-853e1541ec07",
-          "name": "오토바이를 타고 출발한다",
-          "description": "새벽녘, 임진아는 낡은 오토바이에 올라탄다. 한 손으로 헬멧을 쓰고, 다른 손으로 시동을 건다. 눈매는 날카롭게 가라앉아 있고, 입술은 굳게 다물려 있다. 어깨에 힘이 들어가 있고, 상체가 앞으로 약간 숙여진 자세다. 시선은 앞을 뚫어지게 응시한다. 측면에서 상반신을 잡은 구도로, 카메라는 눈높이에서 비스듬히 바라본다.",
-          "prompt": "knee up, side view, eye level, slight low angle, sitting on motorcycle, one hand putting on helmet, other hand on ignition, leaning forward, tense shoulders, sharp narrowed eyes, pressed lips, determined expression, gaze forward, black leather jacket, heather grey t-shirt, faded blue jeans, black combat boots, outdoor parking lot, dawn light",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "c3ce4198-c530-433a-a298-22aab259a052"
-        },
-        {
-          "id": "5cfcf1b3-175a-4028-bf87-4cada191ddad",
-          "name": "미팅 전 거울을 본다",
-          "description": "임진아가 회의실 앞 거울 앞에 서서 옷매무새를 점검한다. 한 손으로 재킷 깃을 정리하고, 다른 손은 허리에 얹는다. 눈은 거울 속 자신을 똑바로 보고, 입술을 한 번 깨문다. 몸은 정면을 향하고, 시선은 거울을 본다. 카메라는 정면에서 상반신을 잡아, 그녀의 긴장된 표정을 담는다.",
-          "prompt": "upper body, front view, woman standing before mirror, adjusting jacket collar with one hand, other hand on hip, looking at own reflection, biting lip once, body facing mirror, tense expression, meeting room corridor background",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "84a52108-6a3f-4f83-ae53-a3e1cb965434"
-        },
-        {
-          "id": "c7432698-274f-4fc2-88d3-cc539db04527",
-          "name": "회의실 문 앞에서 숨을 고른다",
-          "description": "임진아가 회의실 문 앞에 서서 숨을 고른다. 두 손을 앞으로 모아 쥐고, 눈을 감았다가 뜬다. 눈썹이 약간 찌푸려지고, 입은 굳게 다물려 있다. 몸은 문을 향하고, 시선은 문 손잡이를 본다. 카메라는 옆에서 무릎 위로 잡아, 그녀의 결의와 긴장을 함께 담는다.",
-          "prompt": "knee up, side view, woman standing before meeting room door, hands clasped in front, eyes closed then open, slightly furrowed brows, pressed lips, body facing door, gaze at door handle, corridor lighting",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "84a52108-6a3f-4f83-ae53-a3e1cb965434"
-        },
-        {
-          "id": "35e8bc77-82c6-4316-84c6-d760981c2579",
-          "name": "주인공을 마주한다",
-          "description": "임진아가 회의실에서 주인공을 마주한다. 두 손은 무릎 위에 올리고, 눈은 크게 뜨며 약간 흔들린다. 입술이 살짝 벌어지고, 어깨에 힘이 들어간다. 몸은 정면을 향하고, 시선은 상대를 똑바로 본다. 카메라는 정면에서 상반신을 잡아, 그녀의 당황한 표정을 담는다.",
-          "prompt": "upper body, front view, woman sitting at meeting table, hands on knees, wide slightly shaken eyes, slightly parted lips, tense shoulders, body facing forward, gaze at counterpart, meeting room background",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "84a52108-6a3f-4f83-ae53-a3e1cb965434"
-        },
-        {
-          "id": "86808a9c-1e46-4d49-8b50-96d60044f831",
-          "name": "기획안을 발표한다",
-          "description": "임진아가 회의실에서 기획안을 발표한다. 한 손으로 리모컨을 들고, 다른 손은 화면을 가리킨다. 눈은 또렷하게 뜨고, 목소리에 힘이 실린 듯 입이 또렷하게 움직인다. 몸은 화면 쪽으로 향하고, 시선은 청중을 본다. 카메라는 옆에서 무릎 위로 잡아, 그녀의 발표하는 자세를 강조한다.",
-          "prompt": "knee up, side view, woman presenting in meeting room, holding remote in one hand, other hand pointing at screen, clear wide eyes, firm mouth, body facing screen, gaze at audience, presentation screen visible",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "84a52108-6a3f-4f83-ae53-a3e1cb965434"
-        },
-        {
-          "id": "e8860051-a65a-4acc-82f8-de04cd89c4c0",
-          "name": "주인공의 지적에 맞선다",
-          "description": "임진아가 주인공의 지적에 맞서 설명한다. 두 손을 테이블에 짚고, 눈썹을 치켜올리며 눈을 가늘게 뜬다. 입술을 꾹 다물었다가 다시 연다. 몸은 앞으로 약간 숙여지고, 시선은 상대를 똑바로 본다. 카메라는 약간 아래에서 상반신을 잡아, 그녀의 강한 기세를 담는다.",
-          "prompt": "upper body, slight low angle, woman leaning forward over table, hands on table, raised brows, narrowed eyes, pressed lips then opening, body leaning forward, gaze at counterpart, tense meeting room",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "84a52108-6a3f-4f83-ae53-a3e1cb965434"
-        },
-        {
-          "id": "2ce2b1de-5b30-4306-b6ee-0561e6aaf598",
-          "name": "계약 조건을 협상한다",
-          "description": "임진아가 계약 조건을 협상하며 서류를 넘긴다. 한 손으로 서류를 상대에게 밀고, 다른 손은 볼펜을 쥔다. 눈은 차분하지만 날카롭고, 입은 단호하게 다물려 있다. 몸은 정면을 향하고, 시선은 상대의 눈을 본다. 카메라는 정면에서 상반신을 잡아, 그녀의 냉정한 협상 태도를 담는다.",
-          "prompt": "upper body, front view, woman at meeting table, sliding documents with one hand, holding pen in other hand, calm but sharp eyes, firm closed mouth, body facing forward, gaze at counterpart, meeting room",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "84a52108-6a3f-4f83-ae53-a3e1cb965434"
-        },
-        {
-          "id": "3b80de48-22dd-4836-859d-b72f434ce14c",
-          "name": "휴게실에서 혼자 숨을 돌린다",
-          "description": "임진아가 휴게실 소파에 앉아 혼자 숨을 돌린다. 두 손을 무릎에 올리고, 눈은 아래로 떨군다. 눈썹이 약간 처지고, 입술은 지친 듯 살짝 벌어진다. 몸은 소파에 깊숙이 기대고, 시선은 바닥을 본다. 카메라는 옆에서 상반신을 잡아, 그녀의 지친 모습을 담는다.",
-          "prompt": "upper body, side view, woman sitting on sofa in break room, hands on knees, eyes cast down, slightly drooping brows, tired slightly parted lips, body leaning back into sofa, gaze at floor, break room background",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
-        },
-        {
-          "id": "61047505-c9a3-4e1c-8514-2d3fc66b6462",
-          "name": "직원들의 급여를 확인하며 안도한다",
-          "description": "임진아가 책상에서 급여 명세서를 확인하고 안도한다. 한 손으로 서류를 잡고, 다른 손은 가슴에 얹는다. 눈은 부드럽게 뜨고, 입꼬리가 살짝 올라간다. 몸은 의자에 기대고, 시선은 서류를 본다. 카메라는 정면에서 상반신을 잡아, 그녀의 안도한 표정을 담는다.",
-          "prompt": "upper body, front view, woman sitting at desk, holding payroll documents, other hand on chest, softly opened eyes, slight upward mouth, body leaning back in chair, gaze at documents, office background",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
-        },
-        {
-          "id": "a1f6ec73-cf39-4ba1-8eb7-490cbf1c9a33",
-          "name": "밤거리를 걷는다",
-          "description": "임진아가 밤거리를 걷는다. 한 손은 재킷 주머니에 넣고, 다른 손은 휴대폰을 든다. 눈은 앞을 바라보며 약간 가늘게 뜨고, 표정은 무심하다. 몸은 앞으로 향하고, 시선은 도로를 본다. 카메라는 뒤에서 무릎 위로 잡아, 그녀의 뒷모습과 도시의 불빛을 함께 담는다.",
-          "prompt": "knee up, from behind, woman walking on night street, one hand in jacket pocket, other hand holding phone, slightly narrowed eyes looking ahead, indifferent expression, body facing forward, city lights, night atmosphere",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "c3ce4198-c530-433a-a298-22aab259a052"
-        },
-        {
-          "id": "324f357d-76bc-444b-a599-5d3dc17873cc",
-          "name": "옥상에서 담배를 끄고 결심한다",
-          "description": "임진아가 옥상에서 담배를 끄고 결심한다. 한 손으로 담배를 바닥에 비벼 끄고, 다른 손은 난간을 잡는다. 눈은 도시를 바라보며 단단해지고, 입술을 꾹 다문다. 몸은 곧게 펴지고, 시선은 먼 곳을 본다. 카메라는 옆에서 상반신을 잡아, 그녀의 결의에 찬 표정을 담는다.",
-          "prompt": "upper body, side view, woman on rooftop, stubbing out cigarette with one hand, other hand gripping railing, determined eyes looking at city, pressed lips, straightened posture, night city view",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "4b8e1552-79cb-4a9b-850d-719480b51027"
-        },
-        {
-          "id": "57d3a7a2-d8f4-4437-9fcf-70d029041eab",
-          "name": "사무실에서 커피를 타고 있다",
-          "description": "임진아가 사무실 한쪽에서 커피를 탄다. 한 손으로 주전자를 들고, 다른 손은 컵을 잡는다. 눈은 커피를 따라가는 흐름을 보고, 입은 무표정하게 다물려 있다. 몸은 약간 앞으로 숙여지고, 시선은 컵을 본다. 카메라는 옆에서 상반신을 잡아, 그녀의 일상적인 모습을 담는다.",
-          "prompt": "upper body, side view, woman making coffee in office, holding kettle in one hand, cup in other hand, eyes following coffee stream, neutral closed mouth, body leaning slightly forward, gaze at cup, office kitchenette",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
-        },
-        {
-          "id": "66720040-2530-4dc2-bd27-f6c34aa1cb48",
-          "name": "직원과 짧은 대화를 나눈다",
-          "description": "임진아가 직원과 짧은 대화를 나눈다. 두 손을 주머니에 넣고, 눈은 상대를 보며 약간 부드럽게 뜬다. 입꼬리가 살짝 올라가고, 몸은 상대 쪽으로 향한다. 시선은 상대의 얼굴을 본다. 카메라는 정면에서 상반신을 잡아, 그녀의 드문 미소를 담는다.",
-          "prompt": "upper body, front view, woman talking with employee, hands in pockets, softly opened eyes, slight upward mouth, body facing counterpart, gaze at counterpart's face, office background",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
-        },
-        {
-          "id": "67088854-6a44-45f9-a90e-cdc3ebdc7aba",
-          "name": "주인공에게 전화를 걸려다 멈춘다",
-          "description": "임진아가 휴대폰을 들고 주인공에게 전화를 걸려다 멈춘다. 한 손으로 휴대폰을 쥐고, 다른 손은 이마를 짚는다. 눈은 휴대폰 화면을 보며 망설이고, 입술을 깨문다. 몸은 책상에 기대고, 시선은 화면을 본다. 카메라는 위에서 상반신을 잡아, 그녀의 망설이는 모습을 담는다.",
-          "prompt": "upper body, high angle, woman holding phone, hesitating to call, one hand on forehead, eyes on phone screen, biting lip, body leaning on desk, gaze at screen, office background",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
-        },
-        {
-          "id": "77a04fcf-4ef0-43d5-9f32-390c6c688e9f",
-          "name": "계약서를 다시 읽는다",
-          "description": "임진아가 계약서를 다시 읽는다. 두 손으로 서류를 들고, 눈은 글자를 따라 움직인다. 눈썹이 약간 좁혀지고, 입술은 굳게 다물려 있다. 몸은 앞으로 숙여지고, 시선은 서류에 고정된다. 카메라는 옆에서 상반신을 잡아, 그녀의 집중한 모습을 담는다.",
-          "prompt": "upper body, side view, woman reading contract, holding documents with both hands, eyes moving along text, slightly furrowed brows, pressed lips, body leaning forward, gaze fixed on documents, office background",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
-        },
-        {
-          "id": "63c86a92-3b8f-4141-95ba-0ec63329f60a",
-          "name": "옥상에서 도시를 바라본다",
-          "description": "임진아가 옥상 난간에 서서 도시를 바라본다. 두 손은 난간을 잡고, 눈은 먼 곳을 보며 약간 가늘게 뜬다. 표정은 무심하지만 눈빛에 복잡한 감정이 담겨 있다. 몸은 정면을 향하고, 시선은 도시를 본다. 카메라는 뒤에서 상반신을 잡아, 그녀의 뒷모습과 도시 풍경을 함께 담는다.",
-          "prompt": "upper body, from behind, woman standing at rooftop railing, hands on railing, slightly narrowed distant gaze, indifferent but complex eyes, body facing city, looking at city, daytime sky",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "4b8e1552-79cb-4a9b-850d-719480b51027"
-        },
-        {
-          "id": "9ca96d67-2ea3-4085-aead-ea44e120ba3c",
-          "name": "오토바이를 세우고 헬멧을 벗는다",
-          "description": "임진아가 오토바이를 세우고 헬멧을 벗는다. 한 손으로 헬멧을 들고, 다른 손은 머리카락을 정리한다. 눈은 앞을 보며 약간 가늘게 뜨고, 입은 다문 채 숨을 고른다. 몸은 오토바이에 걸쳐 앉아 있고, 시선은 건물을 본다. 카메라는 옆에서 무릎 위로 잡아, 그녀의 도착한 모습을 담는다.",
-          "prompt": "knee up, side view, woman sitting on motorcycle, removing helmet, holding helmet in one hand, other hand fixing hair, slightly narrowed eyes looking ahead, closed mouth catching breath, body seated on bike, gaze at building, parking lot",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "c3ce4198-c530-433a-a298-22aab259a052"
-        },
-        {
-          "id": "bd5ad7cf-534a-4ad8-b542-c75c8a293ad4",
-          "name": "로비에서 주인공을 기다린다",
-          "description": "임진아가 로비 소파에 앉아 주인공을 기다린다. 한 손은 무릎 위에, 다른 손은 휴대폰을 만지작거린다. 눈은 엘리베이터 쪽을 보며 약간 초조하게 뜨고, 입술을 한 번 깨문다. 몸은 앞으로 약간 숙여지고, 시선은 엘리베이터를 본다. 카메라는 옆에서 상반신을 잡아, 그녀의 초조한 모습을 담는다.",
-          "prompt": "upper body, side view, woman sitting on lobby sofa, one hand on knee, other hand fidgeting with phone, slightly anxious eyes looking at elevator, biting lip once, body leaning forward slightly, gaze at elevator, modern lobby",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "1d2e8d69-a1d8-4645-a020-8a4d6569314c"
-        },
-        {
-          "id": "de473b45-5ca3-4920-9535-fce2de896d68",
-          "name": "엘리베이터에서 숨을 고른다",
-          "description": "임진아가 엘리베이터 안에서 숨을 고른다. 두 손을 앞으로 모아 쥐고, 눈을 감았다가 뜬다. 눈썹이 약간 찌푸려지고, 입은 굳게 다물려 있다. 몸은 벽에 기대고, 시선은 바닥을 본다. 카메라는 위에서 상반신을 잡아, 그녀의 긴장된 모습을 담는다.",
-          "prompt": "upper body, high angle, woman in elevator, hands clasped in front, eyes closed then open, slightly furrowed brows, pressed lips, body leaning against wall, gaze at floor, elevator interior",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "1d2e8d69-a1d8-4645-a020-8a4d6569314c"
-        },
-        {
-          "id": "60c67da9-88cc-4d19-8b8f-61520e975ff3",
-          "name": "회의 후 복도를 걷는다",
-          "description": "임진아가 회의 후 복도를 걷는다. 한 손은 서류를 들고, 다른 손은 이마를 짚는다. 눈은 아래로 떨구고, 입술은 지친 듯 살짝 벌어진다. 몸은 약간 구부정하고, 시선은 바닥을 본다. 카메라는 뒤에서 무릎 위로 잡아, 그녀의 지친 뒷모습을 담는다.",
-          "prompt": "knee up, from behind, woman walking down corridor, holding documents in one hand, other hand on forehead, eyes cast down, tired slightly parted lips, slightly hunched posture, gaze at floor, corridor lighting",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "84a52108-6a3f-4f83-ae53-a3e1cb965434"
-        },
-        {
-          "id": "92bcd582-c3e8-4f3b-9208-1b2706514f2e",
-          "name": "사무실에서 낮잠을 청한다",
-          "description": "임진아가 사무실 소파에 앉아 잠시 눈을 붙인다. 두 손은 무릎 위에 올리고, 눈은 감고, 입은 약간 벌어져 있다. 몸은 소파에 기대고, 숨소리가 고르다. 카메라는 옆에서 상반신을 잡아, 그녀의 지친 모습을 담는다.",
-          "prompt": "upper body, side view, woman dozing on office sofa, hands on knees, eyes closed, slightly parted mouth, body leaning back on sofa, even breathing, office background",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
-        },
-        {
-          "id": "cf4f0d74-6b9d-4d68-91f5-ada1593d043b",
-          "name": "주인공에게 커피를 건넨다",
-          "description": "임진아가 주인공에게 커피를 건넨다. 한 손으로 컵을 들고 상대에게 내밀고, 다른 손은 자신의 컵을 잡는다. 눈은 상대를 보며 약간 부드럽게 뜨고, 입꼬리가 살짝 올라간다. 몸은 상대 쪽으로 향하고, 시선은 상대의 얼굴을 본다. 카메라는 정면에서 상반신을 잡아, 그녀의 어색한 미소를 담는다.",
-          "prompt": "upper body, front view, woman offering coffee to counterpart, holding cup in one hand extending, other hand holding own cup, softly opened eyes, slight upward mouth, body facing counterpart, gaze at counterpart's face, meeting room",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "84a52108-6a3f-4f83-ae53-a3e1cb965434"
-        },
-        {
-          "id": "7cbc93c0-fc7b-42fe-82a9-32923e7b5e61",
-          "name": "옥상에서 비를 맞는다",
-          "description": "임진아가 옥상에서 비를 맞으며 서 있다. 두 손은 주머니에 넣고, 눈은 감고, 빗방울이 얼굴에 떨어진다. 입술은 굳게 다물려 있고, 몸은 곧게 서 있다. 카메라는 위에서 상반신을 잡아, 그녀의 고요한 모습과 빗줄기를 담는다.",
-          "prompt": "upper body, high angle, woman standing on rooftop in rain, hands in pockets, eyes closed, raindrops on face, pressed lips, straight posture, rain streaks, grey sky",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "4b8e1552-79cb-4a9b-850d-719480b51027"
-        },
-        {
-          "id": "1ae58755-7c7c-49a2-a55b-1f1851605ee4",
-          "name": "사무실 불을 끄고 퇴근한다",
-          "description": "임진아가 사무실 불을 끄고 퇴근한다. 한 손은 스위치에, 다른 손은 가방을 든다. 눈은 어두워진 사무실을 한 번 돌아보고, 입은 무표정하게 다물려 있다. 몸은 출구 쪽으로 향하고, 시선은 사무실을 본다. 카메라는 옆에서 무릎 위로 잡아, 그녀의 퇴근하는 모습을 담는다.",
-          "prompt": "knee up, side view, woman turning off office light, one hand on switch, other hand holding bag, eyes glancing back at dark office, neutral closed mouth, body facing exit, gaze at office, dim office",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
-        },
-        {
-          "id": "00be1e2c-2391-4b28-9ce5-3426badcc20e",
-          "name": "오토바이를 타고 밤길을 달린다",
-          "description": "밤거리를 오토바이로 달리는 임진아. 몸을 낮게 숙이고 핸들을 꽉 쥐고 있다. 바람에 머리카락이 흩날리고, 눈은 가늘게 뜨고 있다. 입가에는 옅은 미소가 떠올라 있다. 도시의 네온 불빛이 그녀의 옆모습을 비춘다. 뒤에서 상반신을 잡은 구도로, 카메라는 약간 낮은 각도에서 따라붙는다.",
-          "prompt": "upper body, from behind, low angle, riding motorcycle at night, leaning forward, gripping handlebars, hair blowing in wind, narrowed eyes, faint smile, city neon lights reflecting, motion blur background, black leather jacket, heather grey t-shirt, faded blue jeans, black combat boots, night city street",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "c3ce4198-c530-433a-a298-22aab259a052"
-        },
-        {
-          "id": "2918430b-3a17-4a31-9a9f-64f59ad53290",
-          "name": "주인공과 마주 앉아 침묵한다",
-          "description": "임진아가 주인공과 마주 앉아 침묵한다. 두 손은 무릎 위에 올리고, 눈은 아래로 떨군다. 눈썹이 약간 처지고, 입술은 굳게 다물려 있다. 몸은 의자에 깊숙이 기대고, 시선은 테이블을 본다. 카메라는 옆에서 상반신을 잡아, 그녀의 무거운 침묵을 담는다.",
-          "prompt": "upper body, side view, woman sitting across from counterpart in silence, hands on knees, eyes cast down, slightly drooping brows, pressed lips, body leaning back in chair, gaze at table, meeting room",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "84a52108-6a3f-4f83-ae53-a3e1cb965434"
-        },
-        {
-          "id": "ec0ee5b3-f291-40be-811f-d93c372cc8b8",
-          "name": "직원의 격려에 고개를 끄덕인다",
-          "description": "임진아가 직원의 격려에 고개를 끄덕인다. 두 손은 주머니에 넣고, 눈은 부드럽게 뜨며 약간 촉촉하다. 입꼬리가 살짝 올라가고, 몸은 상대 쪽으로 향한다. 시선은 상대의 얼굴을 본다. 카메라는 정면에서 상반신을 잡아, 그녀의 감동한 표정을 담는다.",
-          "prompt": "upper body, front view, woman nodding to employee's encouragement, hands in pockets, softly opened slightly glistening eyes, slight upward mouth, body facing counterpart, gaze at counterpart's face, office background",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
-        },
-        {
-          "id": "6e89df6f-2ba0-4763-8517-f18389abcdc9",
-          "name": "계약 성공 후 사무실에서 미소 짓는다",
-          "description": "임진아가 계약 성공 후 사무실에서 혼자 미소 짓는다. 한 손은 서류를 들고, 다른 손은 볼을 만진다. 눈은 부드럽게 뜨고, 입꼬리가 크게 올라간다. 몸은 책상에 기대고, 시선은 서류를 본다. 카메라는 정면에서 상반신을 잡아, 그녀의 드문 환한 미소를 담는다.",
-          "prompt": "upper body, front view, woman smiling alone in office after contract success, holding documents in one hand, other hand touching cheek, softly opened eyes, big upward mouth, body leaning on desk, gaze at documents, office background",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
-        },
-        {
-          "id": "d07c9e80-d7ae-4ba1-a0ee-01a70f74933b",
-          "name": "옥상에서 맥주를 마신다",
-          "description": "임진아가 옥상에서 맥주 캔을 마신다. 한 손으로 캔을 들고, 다른 손은 난간을 잡는다. 눈은 도시를 보며 약간 가늘게 뜨고, 표정은 편안하다. 몸은 난간에 기대고, 시선은 도시를 본다. 카메라는 옆에서 상반신을 잡아, 그녀의 여유로운 모습을 담는다.",
-          "prompt": "upper body, side view, woman drinking beer on rooftop, holding can in one hand, other hand on railing, slightly narrowed relaxed eyes, comfortable expression, body leaning on railing, looking at city, night view",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "4b8e1552-79cb-4a9b-850d-719480b51027"
-        },
-        {
-          "id": "c9f4d851-1f50-43eb-beee-71c69aec78c2",
-          "name": "주인공에게 사과한다",
-          "description": "임진아가 주인공에게 사과한다. 두 손을 앞으로 모아 쥐고, 눈은 아래로 떨군다. 눈썹이 좁혀지고, 입술을 깨문다. 몸은 앞으로 숙여지고, 시선은 바닥을 본다. 카메라는 옆에서 상반신을 잡아, 그녀의 진심 어린 사과를 담는다.",
-          "prompt": "upper body, side view, woman apologizing to counterpart, hands clasped in front, eyes cast down, furrowed brows, biting lip, body bowing forward, gaze at floor, meeting room",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "84a52108-6a3f-4f83-ae53-a3e1cb965434"
-        },
-        {
-          "id": "29212c4b-dfed-4fa6-ae73-010a395d91c3",
-          "name": "직원들과 함께 웃는다",
-          "description": "임진아가 직원들과 함께 웃는다. 한 손은 직원의 어깨에, 다른 손은 허리에 얹는다. 눈은 활짝 뜨고, 입을 크게 벌려 웃는다. 몸은 직원 쪽으로 향하고, 시선은 직원을 본다. 카메라는 정면에서 상반신을 잡아, 그녀의 밝은 웃음을 담는다.",
-          "prompt": "upper body, front view, woman laughing with employees, one hand on employee's shoulder, other hand on hip, wide open eyes, big open-mouth laugh, body facing employees, gaze at employees, office background",
-          "outfitId": "bb274773-1baa-42ab-9f3e-31a316c93b22",
-          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
-        },
-        {
-          "id": "ba983079-38e8-480f-9420-edaa755a3cea",
-          "name": "아침, 침대에서 일어난다",
-          "description": "임진아가 침대에 엎드린 채 천천히 눈을 뜬다. 이불을 가슴까지 끌어올려 속옷 차림의 상체를 살짝 가린다. 어깨와 팔뚝의 문신이 드러나고, 눈은 아직 잠에 취해 반쯤 감겨 있다. 입술은 약간 벌어져 있고, 손가락으로 이불 가장자리를 움켜쥔다. 카메라는 옆에서 상체를 잡는다.",
-          "prompt": "lying on stomach in bed, upper body, side view, eye level, pulling blanket up to chest, half-closed sleepy eyes, slightly parted lips, hand gripping blanket edge, black lace bra straps visible, faded tattoo on left shoulder, morning light, cozy bedroom",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "ca25935d-502c-47c3-a982-37b186f9110f",
-          "name": "거울 앞에서 속옷을 고른다",
-          "description": "임진아가 전신 거울 앞에 서서 검은 레이스 브라의 어깨끈을 손으로 만지작거린다. 고개를 약간 기울여 자신의 모습을 살피고, 눈썹을 살짝 찌푸리며 고민하는 표정을 짓는다. 입술은 한쪽만 살짝 깨물고 있다. 카메라는 뒤에서 어깨 위로 잡는다.",
-          "prompt": "standing in front of full-length mirror, upper body, from behind, shoulder-level camera, adjusting black lace bra strap with one hand, head tilted, furrowed brows, biting lower lip, black lace high-waist panties, faded tattoo on left shoulder, bright bathroom lighting",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "7e8b9aed-656a-435e-892f-5b8e32a2c0c9",
-          "name": "화장실에서 세수한다",
-          "description": "임진아가 세면대 앞에 서서 물로 얼굴을 적신다. 두 손으로 물을 떠 얼굴에 끼얹고, 눈을 감은 채 물방울이 흘러내린다. 속옷 차림이라 어깨와 팔뚝의 문신이 그대로 드러난다. 표정은 무표정하지만 눈썹이 약간 찌푸려져 있다. 카메라는 앞에서 상체를 잡는다.",
-          "prompt": "standing at sink, upper body, front view, eye level, splashing water on face with both hands, eyes closed, water droplets on skin, black lace bra and panties, faded tattoo on left shoulder, neutral expression with slightly furrowed brows, bright bathroom light",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "395c2dd1-1f1a-4930-a883-2f0e5f3bb1f1",
-          "name": "옷장 앞에서 고민한다",
-          "description": "임진아가 열린 옷장 앞에 서서 팔짱을 끼고 옷을 고른다. 고개를 약간 숙여 옷장 안을 응시하고, 입술을 삐죽 내밀며 고민하는 표정을 짓는다. 속옷 차림이라 옆구리와 어깨의 문신이 드러난다. 카메라는 옆에서 상체를 잡는다.",
-          "prompt": "standing in front of open closet, upper body, side view, eye level, arms crossed, looking at clothes, pouting lips, furrowed brows, black lace bra and panties, faded tattoo on left shoulder, warm bedroom light, closet with hanging clothes",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "6d88481f-44a6-4935-b1d5-53a5c8e7187b",
-          "name": "소파에 앉아 휴대폰을 본다",
-          "description": "임진아가 소파에 앉아 한 손으로 휴대폰을 들고, 다른 손은 무릎 위에 올린다. 속옷 차림으로 다리를 꼬고 앉아 있다. 눈은 휴대폰 화면에 고정되어 있고, 눈썹이 약간 찌푸려져 있다. 입술은 약간 다물고 있다. 카메라는 옆에서 상체를 잡는다.",
-          "prompt": "sitting on sofa, upper body, side view, eye level, holding smartphone with one hand, other hand on knee, legs crossed, looking at screen, furrowed brows, pressed lips, black lace bra and panties, faded tattoo on left shoulder, warm living room light",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "1c72c08b-7c4a-4fae-abd8-469f489b239c",
-          "name": "바닥에 앉아 스트레칭한다",
-          "description": "임진아가 거실 바닥에 앉아 두 팔을 머리 위로 뻗어 스트레칭한다. 속옷 차림으로, 팔을 올리면 옆구리와 어깨의 문신이 더 드러난다. 눈은 감고 있고, 입술은 약간 벌어져 있다. 카메라는 앞에서 상체를 잡는다.",
-          "prompt": "sitting on floor, upper body, front view, eye level, stretching arms overhead, eyes closed, slightly parted lips, black lace bra and panties, faded tattoo on left shoulder and side, bright living room, morning light",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "bd040de7-41b1-4dce-8aec-c302ee84c5b7",
-          "name": "책상에 앉아 서류를 본다",
-          "description": "임진아가 책상에 앉아 서류를 읽는다. 속옷 차림으로, 한 손으로 서류를 들고 다른 손은 턱을 괴고 있다. 눈은 서류에 고정되어 있고, 눈썹이 약간 찌푸려져 있다. 입술은 약간 다물고 있다. 카메라는 옆에서 상체를 잡는다.",
-          "prompt": "sitting at desk, upper body, side view, eye level, reading documents with one hand, other hand on chin, furrowed brows, pressed lips, black lace bra and panties, faded tattoo on left shoulder, desk lamp light, office at night",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
-        },
-        {
-          "id": "31dced82-6080-4979-a7cb-23c7e80118be",
-          "name": "침대에 누워 천장을 본다",
-          "description": "임진아가 침대에 등을 대고 누워 천장을 바라본다. 속옷 차림으로, 한 손은 배 위에 올리고 다른 손은 이불 위에 놓는다. 눈은 크게 뜨고, 입술은 약간 벌어져 있다. 표정은 무심하지만 눈빛에 고민이 담겨 있다. 카메라는 위에서 상체를 잡는다.",
-          "prompt": "lying on back in bed, upper body, from above, looking at ceiling, one hand on stomach, other hand on blanket, wide eyes, slightly parted lips, thoughtful expression, black lace bra and panties, faded tattoo on left shoulder, dim bedroom light",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "1a7e77be-8010-47e7-b1ed-be8087fe5ebc",
-          "name": "거울 앞에서 머리를 묶는다",
-          "description": "임진아가 거울 앞에 서서 두 손으로 머리를 뒤로 묶는다. 속옷 차림으로, 팔을 올리면 옆구리와 어깨의 문신이 드러난다. 눈은 거울 속 자신을 바라보고, 입술은 약간 다물고 있다. 카메라는 뒤에서 상체를 잡는다.",
-          "prompt": "standing in front of mirror, upper body, from behind, tying hair back with both hands, arms raised, looking at own reflection, pressed lips, black lace bra and panties, faded tattoo on left shoulder, bright bathroom light",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "50fe1ea1-308c-4207-88be-edf6914b546b",
-          "name": "소파에 엎드려 낮잠을 잔다",
-          "description": "임진아가 소파에 엎드려 팔을 베고 낮잠을 잔다. 속옷 차림으로, 등과 어깨의 문신이 드러난다. 눈은 감고 있고, 입술은 약간 벌어져 있다. 카메라는 옆에서 상체를 잡는다.",
-          "prompt": "lying face down on sofa, upper body, side view, eye level, sleeping with arms as pillow, eyes closed, slightly parted lips, black lace bra and panties, faded tattoo on left shoulder and back, warm afternoon light, cozy living room",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "e23dd337-e8a5-4853-b757-b6cee7be0fd7",
-          "name": "부엌에서 물을 마신다",
-          "description": "임진아가 부엌에서 유리잔에 물을 따라 마신다. 속옷 차림으로, 한 손으로 잔을 들고 다른 손은 허리에 올린다. 고개를 약간 뒤로 젓히고, 눈은 감고 있다. 입술은 잔에 닿아 있다. 카메라는 앞에서 상체를 잡는다.",
-          "prompt": "standing in kitchen, upper body, front view, eye level, drinking water from glass, one hand holding glass, other hand on hip, head tilted back, eyes closed, lips on glass, black lace bra and panties, faded tattoo on left shoulder, bright kitchen light",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "d5237dd2-029e-4a38-9a8a-add7c80ae1c1",
-          "name": "옥상에서 바람을 쐰다",
-          "description": "임진아가 옥상 난간에 기대어 서 있다. 속옷 차림으로, 두 손은 난간을 잡고 있다. 바람에 머리카락이 흩날리고, 눈은 멀리 도시를 바라본다. 입술은 약간 다물고, 표정은 무심하다. 카메라는 뒤에서 상체를 잡는다.",
-          "prompt": "standing at rooftop railing, upper body, from behind, leaning on railing with both hands, wind blowing hair, looking at city, neutral expression, black lace bra and panties, faded tattoo on left shoulder, evening sky, city lights",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": "4b8e1552-79cb-4a9b-850d-719480b51027"
-        },
-        {
-          "id": "dcbef29f-6a7c-49fc-ae76-7693ff7de4aa",
-          "name": "침대에 앉아 다리를 만진다",
-          "description": "임진아가 침대 가장자리에 앉아 한쪽 다리를 들어 올려 손으로 만진다. 속옷 차림으로, 다리와 허벅지가 드러난다. 고개를 숙여 다리를 보고, 눈썹이 약간 찌푸려져 있다. 입술은 약간 다물고 있다. 카메라는 옆에서 상체를 잡는다.",
-          "prompt": "sitting on edge of bed, upper body, side view, eye level, lifting one leg with hand, looking at leg, furrowed brows, pressed lips, black lace bra and panties, faded tattoo on left shoulder, dim bedroom light",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "396a02f4-d5cd-4df5-95ce-9e9e151a1bea",
-          "name": "거울 앞에서 옆모습을 본다",
-          "description": "임진아가 거울 앞에 서서 옆모습을 살핀다. 속옷 차림으로, 한 손은 허리에 올리고 다른 손은 머리를 만진다. 고개를 약간 돌려 거울 속 자신을 보고, 입술은 약간 다물고 있다. 카메라는 앞에서 상체를 잡는다.",
-          "prompt": "standing in front of mirror, upper body, front view, eye level, looking at side profile, one hand on hip, other hand touching hair, head turned, pressed lips, black lace bra and panties, faded tattoo on left shoulder, bright bathroom light",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "a514be51-f2ec-49f0-95bd-5ec5f18f9e2b",
-          "name": "소파에 앉아 담배를 끄다",
-          "description": "임진아가 소파에 앉아 재떨이에 담배를 끈다. 속옷 차림으로, 한 손으로 담배를 비비고 다른 손은 무릎에 올린다. 눈은 담배를 보고, 입술은 약간 다물고 있다. 표정은 무심하다. 카메라는 옆에서 상체를 잡는다.",
-          "prompt": "sitting on sofa, upper body, side view, eye level, stubbing out cigarette in ashtray, one hand on knee, looking at cigarette, neutral expression, black lace bra and panties, faded tattoo on left shoulder, dim living room light",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "a1b3cd04-fe8b-4adb-9737-c086d30553c6",
-          "name": "책상에 앉아 이마를 짚는다",
-          "description": "임진아가 책상에 앉아 한 손으로 이마를 짚는다. 속옷 차림으로, 다른 손은 책상 위에 놓는다. 눈은 감고 있고, 입술은 약간 다물고 있다. 표정은 지친 기색이 보인다. 카메라는 앞에서 상체를 잡는다.",
-          "prompt": "sitting at desk, upper body, front view, eye level, one hand on forehead, eyes closed, pressed lips, tired expression, black lace bra and panties, faded tattoo on left shoulder, desk lamp light, office at night",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
-        },
-        {
-          "id": "e197f07a-1dee-4580-ab69-3a3cdf75482e",
-          "name": "침대에 누워 휴대폰을 본다",
-          "description": "임진아가 침대에 옆으로 누워 휴대폰을 본다. 속옷 차림으로, 한 손으로 휴대폰을 들고 다른 손은 베개를 감싼다. 눈은 화면에 고정되어 있고, 입술은 약간 벌어져 있다. 카메라는 옆에서 상체를 잡는다.",
-          "prompt": "lying on side in bed, upper body, side view, eye level, looking at smartphone, one hand holding phone, other hand on pillow, eyes on screen, slightly parted lips, black lace bra and panties, faded tattoo on left shoulder, dim bedroom light",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "6a88a3d0-b2bf-44a1-ae4c-602ef9ebefa5",
-          "name": "거울 앞에서 어깨를 돌린다",
-          "description": "임진아가 거울 앞에 서서 어깨를 돌리며 몸을 풀다. 속옷 차림으로, 팔을 돌리면 어깨와 팔뚝의 문신이 움직인다. 눈은 거울 속 자신을 보고, 입술은 약간 다물고 있다. 카메라는 앞에서 상체를 잡는다.",
-          "prompt": "standing in front of mirror, upper body, front view, eye level, rolling shoulders, arms moving, looking at own reflection, pressed lips, black lace bra and panties, faded tattoo on left shoulder, bright bathroom light",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "6ed00ab8-f88b-4753-bb38-829a5867a42b",
-          "name": "부엌에서 아침을 먹는다",
-          "description": "임진아가 부엌 테이블에 앉아 토스트를 먹는다. 속옷 차림으로, 한 손으로 토스트를 들고 다른 손은 커피잔을 잡는다. 눈은 앞을 보고, 입술은 약간 벌어져 있다. 카메라는 옆에서 상체를 잡는다.",
-          "prompt": "sitting at kitchen table, upper body, side view, eye level, eating toast with one hand, other hand on coffee cup, looking ahead, slightly parted lips, black lace bra and panties, faded tattoo on left shoulder, morning light, cozy kitchen",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "0c072724-d857-4468-bc3a-2091d8827add",
-          "name": "소파에 앉아 TV를 본다",
-          "description": "임진아가 소파에 앉아 TV를 본다. 속옷 차림으로, 한 손은 리모컨을 들고 다른 손은 무릎에 올린다. 눈은 화면에 고정되어 있고, 입술은 약간 다물고 있다. 카메라는 앞에서 상체를 잡는다.",
-          "prompt": "sitting on sofa, upper body, front view, eye level, watching TV, holding remote with one hand, other hand on knee, eyes on screen, pressed lips, black lace bra and panties, faded tattoo on left shoulder, dim living room light, TV glow",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "d040f195-8a93-46b4-ac4c-f67e548a0d72",
-          "name": "침대에 앉아 머리를 말린다",
-          "description": "임진아가 침대에 앉아 수건으로 머리를 말린다. 속옷 차림으로, 두 손으로 수건을 잡고 머리를 문지른다. 눈은 감고 있고, 입술은 약간 벌어져 있다. 카메라는 옆에서 상체를 잡는다.",
-          "prompt": "sitting on bed, upper body, side view, eye level, drying hair with towel, both hands on towel, eyes closed, slightly parted lips, black lace bra and panties, faded tattoo on left shoulder, warm bedroom light",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "6f8e89ef-ebdc-4ecd-ae4c-152123a202cc",
-          "name": "거울 앞에서 화장을 지운다",
-          "description": "임진아가 거울 앞에 서서 화장솜으로 눈가를 닦는다. 속옷 차림으로, 한 손으로 화장솜을 들고 다른 손은 거울을 잡는다. 눈은 약간 감고 있고, 입술은 약간 다물고 있다. 카메라는 앞에서 상체를 잡는다.",
-          "prompt": "standing in front of mirror, upper body, front view, eye level, removing makeup with cotton pad, one hand holding cotton, other hand on mirror, eyes half-closed, pressed lips, black lace bra and panties, faded tattoo on left shoulder, bright bathroom light",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "4925e372-99be-4936-8802-e78a89d06b45",
-          "name": "소파에 앉아 다리를 꼰다",
-          "description": "임진아가 소파에 앉아 다리를 꼬고 팔짱을 낀다. 속옷 차림으로, 어깨와 팔뚝의 문신이 드러난다. 눈은 앞을 보고, 입술은 약간 다물고 있다. 표정은 시크하다. 카메라는 앞에서 상체를 잡는다.",
-          "prompt": "sitting on sofa, upper body, front view, eye level, legs crossed, arms crossed, looking ahead, cool expression, black lace bra and panties, faded tattoo on left shoulder, warm living room light",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "8d68027e-9329-4667-b3de-d043d1522160",
-          "name": "책상에 앉아 펜을 돌린다",
-          "description": "임진아가 책상에 앉아 한 손으로 펜을 돌린다. 속옷 차림으로, 다른 손은 턱을 괴고 있다. 눈은 펜을 따라가고, 입술은 약간 다물고 있다. 카메라는 옆에서 상체를 잡는다.",
-          "prompt": "sitting at desk, upper body, side view, eye level, spinning pen with one hand, other hand on chin, looking at pen, pressed lips, black lace bra and panties, faded tattoo on left shoulder, desk lamp light, office at night",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
-        },
-        {
-          "id": "4755720f-ace6-431b-85d8-6fcc1f2fb40c",
-          "name": "침대에 누워 이불을 끌어안는다",
-          "description": "임진아가 침대에 옆으로 누워 이불을 끌어안는다. 속옷 차림으로, 두 팔로 이불을 감싼다. 눈은 감고 있고, 입술은 약간 벌어져 있다. 표정은 편안하다. 카메라는 옆에서 상체를 잡는다.",
-          "prompt": "lying on side in bed, upper body, side view, eye level, hugging blanket with both arms, eyes closed, slightly parted lips, relaxed expression, black lace bra and panties, faded tattoo on left shoulder, dim bedroom light",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "69e737f1-a9ac-4474-9804-037fd5ebfe84",
-          "name": "거울 앞에서 피어싱을 만진다",
-          "description": "임진아가 거울 앞에 서서 귀의 피어싱을 만진다. 속옷 차림으로, 한 손으로 귀를 만지고 다른 손은 거울을 잡는다. 눈은 거울 속 자신을 보고, 입술은 약간 다물고 있다. 카메라는 앞에서 상체를 잡는다.",
-          "prompt": "standing in front of mirror, upper body, front view, eye level, touching ear piercing with one hand, other hand on mirror, looking at own reflection, pressed lips, black lace bra and panties, faded tattoo on left shoulder, bright bathroom light",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "7a244088-0f4c-4bd3-9cfa-a6bbf53a6595",
-          "name": "부엌에서 간식을 먹는다",
-          "description": "임진아가 부엌에 서서 과자를 먹는다. 속옷 차림으로, 한 손으로 과자를 들고 다른 손은 허리에 올린다. 눈은 앞을 보고, 입술은 약간 벌어져 있다. 카메라는 앞에서 상체를 잡는다.",
-          "prompt": "standing in kitchen, upper body, front view, eye level, eating snack with one hand, other hand on hip, looking ahead, slightly parted lips, black lace bra and panties, faded tattoo on left shoulder, bright kitchen light",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "742644f2-62dd-4165-8665-63bc551c23e8",
-          "name": "소파에 앉아 눈을 비빈다",
-          "description": "임진아가 소파에 앉아 한 손으로 눈을 비빈다. 속옷 차림으로, 다른 손은 무릎에 올린다. 눈은 약간 감고 있고, 입술은 약간 다물고 있다. 표정은 피곤하다. 카메라는 앞에서 상체를 잡는다.",
-          "prompt": "sitting on sofa, upper body, front view, eye level, rubbing eyes with one hand, other hand on knee, eyes half-closed, pressed lips, tired expression, black lace bra and panties, faded tattoo on left shoulder, dim living room light",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "d53240b1-3aac-4918-abd1-6f8295ce89d8",
-          "name": "책상에 앉아 서류를 덮는다",
-          "description": "임진아가 책상에 앉아 서류를 덮고 한숨을 쉰다. 속옷 차림으로, 두 손을 서류 위에 올린다. 눈은 서류를 보고, 입술은 약간 다물고 있다. 표정은 지친 기색이 보인다. 카메라는 옆에서 상체를 잡는다.",
-          "prompt": "sitting at desk, upper body, side view, eye level, closing documents with both hands, looking at papers, pressed lips, tired expression, black lace bra and panties, faded tattoo on left shoulder, desk lamp light, office at night",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
-        },
-        {
-          "id": "415a965b-bf7c-4af5-9773-e5a89cb8b83e",
-          "name": "침대에 앉아 발을 만진다",
-          "description": "임진아가 침대에 앉아 한쪽 발을 들어 올려 손으로 만진다. 속옷 차림으로, 다리와 허벅지가 드러난다. 고개를 숙여 발을 보고, 눈썹이 약간 찌푸려져 있다. 입술은 약간 다물고 있다. 카메라는 옆에서 상체를 잡는다.",
-          "prompt": "sitting on bed, upper body, side view, eye level, lifting one foot with hand, looking at foot, furrowed brows, pressed lips, black lace bra and panties, faded tattoo on left shoulder, dim bedroom light",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "1dfd73e4-4e4c-4047-ad05-d07a7ec3fb62",
-          "name": "거울 앞에서 머리를 흔든다",
-          "description": "임진아가 거울 앞에 서서 머리를 흔들어 정리한다. 속옷 차림으로, 두 손으로 머리를 쓸어 넘긴다. 눈은 거울 속 자신을 보고, 입술은 약간 다물고 있다. 카메라는 앞에서 상체를 잡는다.",
-          "prompt": "standing in front of mirror, upper body, front view, eye level, shaking head to fix hair, both hands running through hair, looking at own reflection, pressed lips, black lace bra and panties, faded tattoo on left shoulder, bright bathroom light",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "be2e5831-b972-4ace-b4e6-77100952177d",
-          "name": "부엌에서 설거지를 한다",
-          "description": "임진아가 부엌에서 설거지를 한다. 속옷 차림으로, 두 손으로 그릇을 닦는다. 눈은 그릇을 보고, 입술은 약간 다물고 있다. 표정은 무심하다. 카메라는 옆에서 상체를 잡는다.",
-          "prompt": "standing at kitchen sink, upper body, side view, eye level, washing dishes with both hands, looking at dishes, neutral expression, black lace bra and panties, faded tattoo on left shoulder, bright kitchen light",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "238288c1-ce10-4961-b6b9-8586aeb630ac",
-          "name": "소파에 앉아 다리를 뻗는다",
-          "description": "임진아가 소파에 앉아 다리를 앞으로 뻗는다. 속옷 차림으로, 두 손은 무릎 위에 올린다. 눈은 앞을 보고, 입술은 약간 다물고 있다. 표정은 편안하다. 카메라는 앞에서 상체를 잡는다.",
-          "prompt": "sitting on sofa, upper body, front view, eye level, stretching legs forward, hands on knees, looking ahead, relaxed expression, black lace bra and panties, faded tattoo on left shoulder, warm living room light",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "20a045f7-5365-4791-9244-44cd684a5cd2",
-          "name": "책상에 앉아 볼펜을 깨문다",
-          "description": "임진아가 책상에 앉아 볼펜을 입에 물고 생각한다. 속옷 차림으로, 한 손은 책상 위에 놓고 다른 손은 볼펜을 잡는다. 눈은 위를 보고, 입술은 볼펜을 물고 있다. 카메라는 앞에서 상체를 잡는다.",
-          "prompt": "sitting at desk, upper body, front view, eye level, biting pen with mouth, one hand on desk, other hand holding pen, looking up, lips on pen, black lace bra and panties, faded tattoo on left shoulder, desk lamp light, office at night",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
-        },
-        {
-          "id": "1b09c351-200a-41c0-8bc6-229ccc59ccbf",
-          "name": "침대에 엎드려 다리를 흔든다",
-          "description": "임진아가 침대에 엎드려 다리를 위로 올려 흔든다. 속옷 차림으로, 두 팔은 베개를 감싼다. 눈은 앞을 보고, 입술은 약간 벌어져 있다. 표정은 장난스럽다. 카메라는 옆에서 상체를 잡는다.",
-          "prompt": "lying face down on bed, upper body, side view, eye level, kicking legs up, arms hugging pillow, looking ahead, slightly parted lips, playful expression, black lace bra and panties, faded tattoo on left shoulder, bright bedroom light",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "24804b7d-19b0-48c6-a8ce-d05d453ea23c",
-          "name": "거울 앞에서 어깨를 으쓱인다",
-          "description": "임진아가 거울 앞에 서서 어깨를 으쓱인다. 속옷 차림으로, 두 손은 허리에 올린다. 눈은 거울 속 자신을 보고, 입술은 약간 다물고 있다. 표정은 시크하다. 카메라는 앞에서 상체를 잡는다.",
-          "prompt": "standing in front of mirror, upper body, front view, eye level, shrugging shoulders, hands on hips, looking at own reflection, cool expression, black lace bra and panties, faded tattoo on left shoulder, bright bathroom light",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "77bd494f-da8e-40bb-8219-08244a4b3d28",
-          "name": "부엌에서 냉장고를 연다",
-          "description": "임진아가 부엌에서 냉장고를 열고 내용물을 본다. 속옷 차림으로, 한 손은 냉장고 문을 잡고 다른 손은 턱을 괸다. 눈은 냉장고 안을 보고, 입술은 약간 다물고 있다. 카메라는 옆에서 상체를 잡는다.",
-          "prompt": "standing at refrigerator, upper body, side view, eye level, opening fridge with one hand, other hand on chin, looking inside, pressed lips, black lace bra and panties, faded tattoo on left shoulder, bright kitchen light, fridge interior visible",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "b382d048-e38b-4b98-80fd-a8b33af7780a",
-          "name": "소파에 앉아 이어폰을 낀다",
-          "description": "임진아가 소파에 앉아 이어폰을 귀에 꽂는다. 속옷 차림으로, 한 손으로 이어폰을 잡고 다른 손은 휴대폰을 든다. 눈은 휴대폰을 보고, 입술은 약간 다물고 있다. 카메라는 앞에서 상체를 잡는다.",
-          "prompt": "sitting on sofa, upper body, front view, eye level, putting in earbuds with one hand, other hand holding smartphone, looking at phone, pressed lips, black lace bra and panties, faded tattoo on left shoulder, warm living room light",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": null
-        },
-        {
-          "id": "09deb53c-6c74-45cd-8f90-51c9ef191a1e",
-          "name": "책상에 앉아 커피를 마신다",
-          "description": "임진아가 책상에 앉아 커피를 마신다. 속옷 차림으로, 한 손으로 머그컵을 들고 다른 손은 책상 위에 놓는다. 눈은 앞을 보고, 입술은 잔에 닿아 있다. 카메라는 옆에서 상체를 잡는다.",
-          "prompt": "sitting at desk, upper body, side view, eye level, drinking coffee from mug, one hand holding mug, other hand on desk, looking ahead, lips on mug, black lace bra and panties, faded tattoo on left shoulder, desk lamp light, office at night",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
-        },
-        {
-          "id": "db1aa769-b0e4-4351-b94e-560f85cd6a96",
-          "name": "거울 앞에서 속옷을 벗는다",
-          "description": "임진아가 거울 앞에 서서 검은 레이스 속옷을 벗으려 한다. 양손이 등 뒤로 가 브라 후크를 풀고 있고, 어깨가 살짝 앞으로 구부정해진다. 시선은 거울 속 자신의 문신이 드러난 어깨로 향한다. 입술을 살짝 깨물며 과거의 자신을 떠올리는 듯한 복잡한 표정이다. 카메라는 측면에서 허리 위로 잡아 문신과 손동작이 함께 보이게 한다.",
-          "prompt": "adult woman, late 20s, long straight black hair, swept-back bangs, sharp eyes, thick black eyeliner, light skin tone, small mole on nose bridge, slim build, broad shoulders, faded black tattoo on left shoulder to forearm, multiple small silver ring piercings on ears, wearing black lace bra and high-waist panties, standing in front of mirror, both hands reaching behind back to unclasp bra, shoulders slightly hunched forward, biting lip, complex expression, gaze at own tattooed shoulder in mirror, cowboy shot, side angle, eye level, mirror reflection visible",
-          "outfitId": "82b698a4-f44a-4686-826a-47a0e0e598e6",
-          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
-        },
-        {
-          "id": "7b9980bf-1b5a-4c1c-89f3-1407321c19f5",
-          "name": "알몸으로 침대에 누워 천장을 본다",
-          "description": "임진아가 알몸으로 침대에 등을 대고 누워 있다. 두 팔을 머리 위로 뻗어 베개를 감싸고, 다리는 자연스럽게 벌려져 있다. 눈은 천장을 바라보며 생각에 잠겨 있고, 입술은 살짝 벌어져 있다. 침실의 은은한 조명이 그녀의 몸을 비춘다. 카메라는 침대 옆에서 상체를 중심으로 잡는다.",
-          "prompt": "nude woman lying on back on bed, arms stretched above head gripping pillow, legs slightly apart, gazing at ceiling, lips slightly parted, thoughtful expression, soft bedroom lighting, upper body shot, side angle, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": null
-        },
-        {
-          "id": "4ea20b4a-d45c-4078-a6e6-ee0808561045",
-          "name": "알몸으로 거울 앞에 서서 옆모습을 본다",
-          "description": "임진아가 알몸으로 거울 앞에 서서 옆모습을 살펴본다. 한 손은 허리에 얹고, 다른 손은 머리카락을 만지며 자세를 고른다. 눈은 거울 속 자신을 응시하고, 입술은 약간 비죽 올라간 시크한 표정이다. 거울 속 모습이 그대로 비친다. 카메라는 뒤쪽에서 그녀의 옆모습과 거울 속 얼굴을 함께 잡는다.",
-          "prompt": "nude woman standing in front of mirror, side profile, one hand on hip, other hand touching hair, looking at own reflection, slight smirk, confident expression, mirror reflection visible, cowboy shot, from behind, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": null
-        },
-        {
-          "id": "f5c56155-3842-4599-9658-6c98163f4fc1",
-          "name": "알몸으로 소파에 앉아 다리를 꼰다",
-          "description": "임진아가 알몸으로 소파에 앉아 다리를 꼬고 있다. 한 손은 소파 팔걸이에 기대고, 다른 손은 무릎에 올린다. 눈은 앞을 바라보며 멍하니 있고, 입술은 다물고 있다. 거실의 따뜻한 조명이 그녀의 몸을 비춘다. 카메라는 정면에서 상체를 중심으로 잡는다.",
-          "prompt": "nude woman sitting on sofa, legs crossed, one hand on armrest, other hand on knee, blank gaze forward, lips closed, warm living room lighting, upper body shot, front view, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": null
-        },
-        {
-          "id": "4aa34041-d2ed-4d61-8008-3fa5092526f6",
-          "name": "알몸으로 바닥에 앉아 스트레칭한다",
-          "description": "임진아가 알몸으로 바닥에 앉아 다리를 앞으로 쭉 뻗고 상체를 숙여 발끝을 잡는다. 팔은 발끝을 향해 뻗고, 어깨에 힘이 들어간다. 눈은 아래를 보며 집중하고, 입술은 살짝 깨문다. 방의 밝은 조명이 그녀의 등을 비춘다. 카메라는 옆에서 상체와 다리를 함께 잡는다.",
-          "prompt": "nude woman sitting on floor, legs extended forward, bending torso toward feet, reaching for toes, arms stretched, shoulders tense, looking down, biting lip, focused expression, bright room lighting, upper body shot, side view, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": null
-        },
-        {
-          "id": "a1941824-ae0a-48ac-a8a4-063778f7214c",
-          "name": "알몸으로 책상에 앉아 서류를 본다",
-          "description": "임진아가 알몸으로 책상에 앉아 서류를 읽고 있다. 한 손은 서류를 잡고, 다른 손은 볼펜을 쥐고 있다. 눈은 서류에 집중하고, 입술은 다물고 있다. 책상 위에는 낡은 계산기와 재떨이가 있다. 카메라는 정면에서 상체를 중심으로 잡는다.",
-          "prompt": "nude woman sitting at desk, reading documents, one hand holding paper, other hand holding pen, focused gaze on paper, lips closed, old calculator and ashtray on desk, upper body shot, front view, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
-        },
-        {
-          "id": "1d9f7075-0e6e-49ed-9abd-04c6d6a8e61f",
-          "name": "알몸으로 침대에 엎드려 다리를 흔든다",
-          "description": "임진아가 알몸으로 침대에 엎드려 팔꿈치를 베개에 대고 다리를 위아래로 흔들고 있다. 얼굴은 베개에 기대고, 눈은 옆을 바라보며 미소를 띤다. 침실의 은은한 조명이 그녀의 등을 비춘다. 카메라는 옆에서 상체를 중심으로 잡는다.",
-          "prompt": "nude woman lying on stomach on bed, elbows on pillow, legs kicking up and down, face resting on pillow, looking to side, slight smile, soft bedroom lighting, upper body shot, side view, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": null
-        },
-        {
-          "id": "4e708b29-d7eb-4dc5-b542-61b5a35c7bdd",
-          "name": "알몸으로 거울 앞에서 머리를 묶는다",
-          "description": "임진아가 알몸으로 거울 앞에 서서 머리를 묶고 있다. 두 손을 머리 뒤로 올려 긴 흑발을 모아 묶는다. 눈은 거울 속 자신을 바라보고, 입술은 살짝 다물고 있다. 거울 속 모습이 그대로 비친다. 카메라는 뒤쪽에서 그녀의 뒷모습과 거울 속 얼굴을 함께 잡는다.",
-          "prompt": "nude woman standing in front of mirror, tying hair up, both hands behind head gathering long black hair, looking at own reflection, lips closed, mirror reflection visible, cowboy shot, from behind, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": null
-        },
-        {
-          "id": "259e6723-93f5-4e3c-a3d0-777ccde6b25f",
-          "name": "알몸으로 소파에 엎드려 낮잠을 잔다",
-          "description": "임진아가 알몸으로 소파에 엎드려 팔을 베개 삼아 낮잠을 자고 있다. 얼굴은 팔에 묻히고, 눈은 감겨 있다. 다리는 소파 가장자리에 걸쳐 있다. 거실의 따뜻한 조명이 그녀의 등을 비춘다. 카메라는 옆에서 상체를 중심으로 잡는다.",
-          "prompt": "nude woman lying on stomach on sofa, arms as pillow, face buried in arms, eyes closed, legs draped over edge, warm living room lighting, upper body shot, side view, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": null
-        },
-        {
-          "id": "473edd71-c3a0-425a-9e41-96d244bbe63c",
-          "name": "알몸으로 부엌에서 물을 마신다",
-          "description": "임진아가 알몸으로 부엌에 서서 물을 마시고 있다. 한 손은 유리잔을 들고, 다른 손은 카운터에 기대고 있다. 목을 뒤로 젖히며 물을 마시고, 눈은 감겨 있다. 부엌의 밝은 조명이 그녀의 몸을 비춘다. 카메라는 정면에서 상체를 중심으로 잡는다.",
-          "prompt": "nude woman standing in kitchen, drinking water from glass, one hand holding glass, other hand on counter, tilting head back, eyes closed, bright kitchen lighting, upper body shot, front view, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": null
-        },
-        {
-          "id": "d4a09494-0868-4beb-87cd-f0d3e8784ba7",
-          "name": "알몸으로 옥상에서 바람을 쐰다",
-          "description": "임진아가 알몸으로 옥상에 서서 바람을 쐬고 있다. 두 팔을 벌리고 눈을 감으며 바람을 느낀다. 입술은 살짝 벌어져 있다. 도시의 밤 불빛이 그녀를 비춘다. 카메라는 뒤쪽에서 그녀의 뒷모습을 상체 중심으로 잡는다.",
-          "prompt": "nude woman standing on rooftop, arms spread, eyes closed, feeling wind, lips slightly parted, city night lights, cowboy shot, from behind, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": "4b8e1552-79cb-4a9b-850d-719480b51027"
-        },
-        {
-          "id": "5f5deaeb-a72c-41b0-9566-884d7fa5a4f0",
-          "name": "알몸으로 침대에 앉아 다리를 만진다",
-          "description": "임진아가 알몸으로 침대에 앉아 한쪽 다리를 들어 올려 만지고 있다. 한 손은 발목을 잡고, 다른 손은 종아리를 쓰다듬는다. 눈은 다리를 바라보며 집중하고, 입술은 다물고 있다. 침실의 은은한 조명이 그녀의 몸을 비춘다. 카메라는 옆에서 상체를 중심으로 잡는다.",
-          "prompt": "nude woman sitting on bed, lifting one leg, hand on ankle, other hand stroking calf, looking at leg, lips closed, soft bedroom lighting, upper body shot, side view, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": null
-        },
-        {
-          "id": "dd42a9d8-409a-4c1f-be5a-f01b777b2b8e",
-          "name": "알몸으로 거울 앞에서 어깨를 돌린다",
-          "description": "임진아가 알몸으로 거울 앞에 서서 어깨를 돌리며 몸을 풀고 있다. 한 손은 반대쪽 어깨를 잡고, 다른 손은 옆구리에 댄다. 눈은 거울 속 자신을 바라보고, 입술은 살짝 다물고 있다. 거울 속 모습이 그대로 비친다. 카메라는 정면에서 상체를 중심으로 잡는다.",
-          "prompt": "nude woman standing in front of mirror, rolling shoulders, one hand on opposite shoulder, other hand on side, looking at own reflection, lips closed, mirror reflection visible, upper body shot, front view, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": null
-        },
-        {
-          "id": "6cda2962-67a3-42b0-b40e-4a4790ad3de1",
-          "name": "알몸으로 부엌에서 아침을 먹는다",
-          "description": "임진아가 알몸으로 부엌 카운터에 서서 아침을 먹고 있다. 한 손은 토스트를 들고, 다른 손은 커피잔을 잡는다. 눈은 앞을 바라보며 멍하니 있고, 입술은 다물고 있다. 부엌의 밝은 조명이 그녀의 몸을 비춘다. 카메라는 정면에서 상체를 중심으로 잡는다.",
-          "prompt": "nude woman standing at kitchen counter, eating breakfast, one hand holding toast, other hand holding coffee cup, blank gaze forward, lips closed, bright kitchen lighting, upper body shot, front view, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": null
-        },
-        {
-          "id": "5aeb4680-d350-41a5-9eaa-81933e26952c",
-          "name": "알몸으로 소파에 앉아 TV를 본다",
-          "description": "임진아가 알몸으로 소파에 앉아 TV를 보고 있다. 한 손은 리모컨을 들고, 다른 손은 무릎에 올린다. 눈은 TV 화면을 바라보고, 입술은 살짝 벌어져 있다. 거실의 어두운 조명이 그녀의 몸을 비춘다. 카메라는 옆에서 상체를 중심으로 잡는다.",
-          "prompt": "nude woman sitting on sofa, watching TV, one hand holding remote, other hand on knee, gazing at TV screen, lips slightly parted, dim living room lighting, upper body shot, side view, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": null
-        },
-        {
-          "id": "4b28802c-aa87-4e03-935b-9dd5c0c5228e",
-          "name": "알몸으로 침대에 앉아 머리를 말린다",
-          "description": "임진아가 알몸으로 침대에 앉아 머리를 말리고 있다. 한 손은 드라이어를 들고, 다른 손은 머리카락을 만지며 말린다. 눈은 거울을 바라보고, 입술은 다물고 있다. 침실의 밝은 조명이 그녀의 몸을 비춘다. 카메라는 정면에서 상체를 중심으로 잡는다.",
-          "prompt": "nude woman sitting on bed, drying hair with hairdryer, one hand holding dryer, other hand touching hair, looking at mirror, lips closed, bright bedroom lighting, upper body shot, front view, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": null
-        },
-        {
-          "id": "4fac523c-ccfd-48da-9e80-685d9b64cd1c",
-          "name": "알몸으로 거울 앞에서 화장을 지운다",
-          "description": "임진아가 알몸으로 거울 앞에 서서 화장을 지우고 있다. 한 손은 화장솜을 들고, 다른 손은 얼굴을 닦는다. 눈은 거울 속 자신을 바라보고, 입술은 다물고 있다. 거울 속 모습이 그대로 비친다. 카메라는 정면에서 상체를 중심으로 잡는다.",
-          "prompt": "nude woman standing in front of mirror, removing makeup, one hand holding cotton pad, other hand wiping face, looking at own reflection, lips closed, mirror reflection visible, upper body shot, front view, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": null
-        },
-        {
-          "id": "0d126985-6f06-404e-bf3e-beed10dd6b78",
-          "name": "알몸으로 소파에 앉아 다리를 뻗는다",
-          "description": "임진아가 알몸으로 소파에 앉아 다리를 앞으로 쭉 뻗고 있다. 한 손은 소파 팔걸이에 기대고, 다른 손은 무릎에 올린다. 눈은 앞을 바라보며 멍하니 있고, 입술은 다물고 있다. 거실의 따뜻한 조명이 그녀의 몸을 비춘다. 카메라는 옆에서 상체를 중심으로 잡는다.",
-          "prompt": "nude woman sitting on sofa, legs extended forward, one hand on armrest, other hand on knee, blank gaze forward, lips closed, warm living room lighting, upper body shot, side view, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": null
-        },
-        {
-          "id": "0f70bce7-3020-441e-b786-85c19ee2ff5d",
-          "name": "알몸으로 책상에 앉아 펜을 돌린다",
-          "description": "임진아가 알몸으로 책상에 앉아 펜을 손가락 사이로 돌리고 있다. 한 손은 펜을 돌리고, 다른 손은 턱을 괴고 있다. 눈은 서류를 바라보며 생각에 잠겨 있고, 입술은 살짝 깨문다. 책상 위에는 낡은 계산기와 재떨이가 있다. 카메라는 정면에서 상체를 중심으로 잡는다.",
-          "prompt": "nude woman sitting at desk, spinning pen between fingers, one hand on chin, gazing at documents, thoughtful expression, biting lip, old calculator and ashtray on desk, upper body shot, front view, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
-        },
-        {
-          "id": "ca65c43a-87dd-419f-8196-31cee3646ef0",
-          "name": "알몸으로 침대에 누워 이불을 끌어안는다",
-          "description": "임진아가 알몸으로 침대에 누워 이불을 끌어안고 있다. 두 팔로 이불을 감싸고, 얼굴을 이불에 묻는다. 눈은 감겨 있고, 입술은 다물고 있다. 침실의 은은한 조명이 그녀의 몸을 비춘다. 카메라는 옆에서 상체를 중심으로 잡는다.",
-          "prompt": "nude woman lying on bed, hugging blanket, both arms wrapped around blanket, face buried in blanket, eyes closed, lips closed, soft bedroom lighting, upper body shot, side view, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": null
-        },
-        {
-          "id": "91a7c3c5-2300-4a3b-bed4-9cd9d44c01f1",
-          "name": "알몸으로 거울 앞에서 피어싱을 만진다",
-          "description": "임진아가 알몸으로 거울 앞에 서서 귀의 피어싱을 만지고 있다. 한 손은 귀를 만지고, 다른 손은 머리카락을 넘긴다. 눈은 거울 속 자신을 바라보고, 입술은 살짝 다물고 있다. 거울 속 모습이 그대로 비친다. 카메라는 정면에서 상체를 중심으로 잡는다.",
-          "prompt": "nude woman standing in front of mirror, touching ear piercing, one hand on ear, other hand brushing hair, looking at own reflection, lips closed, mirror reflection visible, upper body shot, front view, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": null
-        },
-        {
-          "id": "3eee6f2c-4384-45e3-acfe-7d20b0740a98",
-          "name": "알몸으로 부엌에서 간식을 먹는다",
-          "description": "임진아가 알몸으로 부엌 카운터에 서서 간식을 먹고 있다. 한 손은 과자를 들고, 다른 손은 입가를 닦는다. 눈은 앞을 바라보며 멍하니 있고, 입술은 다물고 있다. 부엌의 밝은 조명이 그녀의 몸을 비춘다. 카메라는 정면에서 상체를 중심으로 잡는다.",
-          "prompt": "nude woman standing at kitchen counter, eating snack, one hand holding cookie, other hand wiping mouth, blank gaze forward, lips closed, bright kitchen lighting, upper body shot, front view, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": null
-        },
-        {
-          "id": "0162cf4d-e49a-43a0-9038-3845b27b0bf5",
-          "name": "알몸으로 소파에 앉아 눈을 비빈다",
-          "description": "임진아가 알몸으로 소파에 앉아 눈을 비비고 있다. 한 손은 눈을 비비고, 다른 손은 무릎에 올린다. 눈은 감겨 있고, 입술은 다물고 있다. 거실의 어두운 조명이 그녀의 몸을 비춘다. 카메라는 정면에서 상체를 중심으로 잡는다.",
-          "prompt": "nude woman sitting on sofa, rubbing eyes, one hand on eye, other hand on knee, eyes closed, lips closed, dim living room lighting, upper body shot, front view, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": null
-        },
-        {
-          "id": "b762998d-ac52-4f2d-8454-b8fe210d87dc",
-          "name": "알몸으로 책상에 앉아 서류를 덮는다",
-          "description": "임진아가 알몸으로 책상에 앉아 서류를 덮고 있다. 한 손은 서류를 덮고, 다른 손은 이마를 짚는다. 눈은 아래를 바라보며 지친 표정이고, 입술은 다물고 있다. 책상 위에는 낡은 계산기와 재떨이가 있다. 카메라는 정면에서 상체를 중심으로 잡는다.",
-          "prompt": "nude woman sitting at desk, closing documents, one hand on paper, other hand on forehead, looking down, tired expression, lips closed, old calculator and ashtray on desk, upper body shot, front view, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
-        },
-        {
-          "id": "234654ec-02c2-477f-a9f7-2f3127a60f14",
-          "name": "알몸으로 침대에 앉아 발을 만진다",
-          "description": "임진아가 알몸으로 침대에 앉아 한쪽 발을 들어 올려 만지고 있다. 한 손은 발목을 잡고, 다른 손은 발바닥을 쓰다듬는다. 눈은 발을 바라보며 집중하고, 입술은 다물고 있다. 침실의 은은한 조명이 그녀의 몸을 비춘다. 카메라는 옆에서 상체를 중심으로 잡는다.",
-          "prompt": "nude woman sitting on bed, lifting one foot, hand on ankle, other hand stroking sole, looking at foot, lips closed, soft bedroom lighting, upper body shot, side view, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": null
-        },
-        {
-          "id": "ba81096b-5991-4187-818e-8500492515f1",
-          "name": "알몸으로 거울 앞에서 머리를 흔든다",
-          "description": "임진아가 알몸으로 거울 앞에 서서 머리를 흔들고 있다. 두 손을 머리에 대고 긴 흑발을 흔들며 정리한다. 눈은 거울 속 자신을 바라보고, 입술은 살짝 벌어져 있다. 거울 속 모습이 그대로 비친다. 카메라는 정면에서 상체를 중심으로 잡는다.",
-          "prompt": "nude woman standing in front of mirror, shaking hair, both hands on head, long black hair flowing, looking at own reflection, lips slightly parted, mirror reflection visible, upper body shot, front view, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": null
-        },
-        {
-          "id": "a30dc172-2465-4caf-b52b-618a7235d351",
-          "name": "알몸으로 부엌에서 설거지를 한다",
-          "description": "임진아가 알몸으로 부엌 싱크대 앞에 서서 설거지를 하고 있다. 한 손은 접시를 잡고, 다른 손은 수세미로 닦는다. 눈은 아래를 바라보며 집중하고, 입술은 다물고 있다. 부엌의 밝은 조명이 그녀의 몸을 비춘다. 카메라는 옆에서 상체를 중심으로 잡는다.",
-          "prompt": "nude woman standing at kitchen sink, washing dishes, one hand holding plate, other hand scrubbing with sponge, looking down, focused expression, lips closed, bright kitchen lighting, upper body shot, side view, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": null
-        },
-        {
-          "id": "d3779611-559f-46ff-bd48-921d0b85b18f",
-          "name": "알몸으로 책상에 앉아 볼펜을 깨문다",
-          "description": "임진아가 알몸으로 책상에 앉아 볼펜을 입에 물고 있다. 한 손은 볼펜을 잡고, 다른 손은 서류를 만지고 있다. 눈은 서류를 바라보며 집중하고, 입술은 볼펜을 깨물고 있다. 책상 위에는 낡은 계산기와 재떨이가 있다. 카메라는 정면에서 상체를 중심으로 잡는다.",
-          "prompt": "nude woman sitting at desk, biting pen, one hand holding pen, other hand on paper, gazing at documents, focused expression, biting pen, old calculator and ashtray on desk, upper body shot, front view, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
-        },
-        {
-          "id": "456cb11b-89d8-4238-9554-382e9ce08d31",
-          "name": "알몸으로 거울 앞에서 어깨를 으쓱인다",
-          "description": "임진아가 알몸으로 거울 앞에 서서 어깨를 으쓱이고 있다. 두 어깨를 위로 올렸다 내리며 몸을 풀고, 한 손은 옆구리에 댄다. 눈은 거울 속 자신을 바라보고, 입술은 살짝 다물고 있다. 거울 속 모습이 그대로 비친다. 카메라는 정면에서 상체를 중심으로 잡는다.",
-          "prompt": "nude woman standing in front of mirror, shrugging shoulders, both shoulders raised and lowered, one hand on side, looking at own reflection, lips closed, mirror reflection visible, upper body shot, front view, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": null
-        },
-        {
-          "id": "0968d8ca-6174-4f75-8198-760636be7168",
-          "name": "알몸으로 부엌에서 냉장고를 연다",
-          "description": "임진아가 알몸으로 부엌에 서서 냉장고를 열고 있다. 한 손은 냉장고 문을 잡고, 다른 손은 안을 살핀다. 눈은 냉장고 안을 바라보고, 입술은 다물고 있다. 부엌의 밝은 조명이 그녀의 몸을 비춘다. 카메라는 옆에서 상체를 중심으로 잡는다.",
-          "prompt": "nude woman standing in kitchen, opening refrigerator, one hand on door, other hand looking inside, gazing into fridge, lips closed, bright kitchen lighting, upper body shot, side view, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": null
-        },
-        {
-          "id": "50186e2d-6a5e-4183-be1b-d966b5115bcf",
-          "name": "알몸으로 소파에 앉아 이어폰을 낀다",
-          "description": "임진아가 알몸으로 소파에 앉아 이어폰을 끼고 있다. 한 손은 이어폰을 귀에 대고, 다른 손은 휴대폰을 만지고 있다. 눈은 앞을 바라보며 멍하니 있고, 입술은 다물고 있다. 거실의 어두운 조명이 그녀의 몸을 비춘다. 카메라는 정면에서 상체를 중심으로 잡는다.",
-          "prompt": "nude woman sitting on sofa, putting in earbuds, one hand on ear, other hand holding phone, blank gaze forward, lips closed, dim living room lighting, upper body shot, front view, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": null
-        },
-        {
-          "id": "8874b8fc-db70-4c29-9f1b-60ebc9d8382e",
-          "name": "알몸으로 책상에 앉아 커피를 마신다",
-          "description": "임진아가 알몸으로 책상에 앉아 커피를 마시고 있다. 한 손은 커피잔을 들고, 다른 손은 서류를 만지고 있다. 눈은 커피를 바라보며 멍하니 있고, 입술은 다물고 있다. 책상 위에는 낡은 계산기와 재떨이가 있다. 카메라는 정면에서 상체를 중심으로 잡는다.",
-          "prompt": "nude woman sitting at desk, drinking coffee, one hand holding cup, other hand on paper, gazing at coffee, blank expression, lips closed, old calculator and ashtray on desk, upper body shot, front view, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
-        },
-        {
-          "id": "332f86f8-cd18-4157-838b-3abb38ce6cf7",
-          "name": "알몸으로 거울 앞에서 옆모습을 본다",
-          "description": "임진아가 알몸으로 거울 앞에 서서 옆모습을 살펴본다. 한 손은 허리에 얹고, 다른 손은 머리카락을 만지며 자세를 고른다. 눈은 거울 속 자신을 응시하고, 입술은 약간 비죽 올라간 시크한 표정이다. 거울 속 모습이 그대로 비친다. 카메라는 뒤쪽에서 그녀의 옆모습과 거울 속 얼굴을 함께 잡는다.",
-          "prompt": "nude woman standing in front of mirror, side profile, one hand on hip, other hand touching hair, looking at own reflection, slight smirk, confident expression, mirror reflection visible, cowboy shot, from behind, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": null
-        },
-        {
-          "id": "5781d76a-267d-4227-b154-40c33fa50294",
-          "name": "알몸으로 책상에 앉아 이마를 짚는다",
-          "description": "임진아가 알몸으로 책상에 앉아 이마를 짚고 있다. 한 손은 이마를 짚고, 다른 손은 서류를 만지고 있다. 눈은 아래를 바라보며 지친 표정이고, 입술은 다물고 있다. 책상 위에는 낡은 계산기와 재떨이가 있다. 카메라는 정면에서 상체를 중심으로 잡는다.",
-          "prompt": "nude woman sitting at desk, hand on forehead, other hand on paper, looking down, tired expression, lips closed, old calculator and ashtray on desk, upper body shot, front view, eye level",
-          "outfitId": "15d1013d-a484-4f5f-b0f8-1517e6d42ac5",
-          "backgroundId": "bf3e0573-13b4-4259-8aba-d403143f3c6d"
-        }
-      ],
-      "order": 12,
-      "createdAt": 1787651867867,
-      "updatedAt": 1787673980392,
-      "thumbnail": "/api/images/7b1e3ae1-c4b8-4e9f-a47f-a8632f234250.png"
     },
     {
       "id": "344a0e18-294a-4819-9a38-d84320e2c59d",
