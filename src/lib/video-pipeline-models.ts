@@ -202,6 +202,22 @@ export async function collectVideoPipelineModels(
   }
 
   const required = collectRequiredFiles(workflow);
+
+  // Optional LoRAs the pipeline can enable at generation time (injected
+  // loraSlots and DaSiWa stack toggles) are invisible to the workflow walk —
+  // the baked graph carries them disabled — but the pod still needs the files
+  // for the toggle to work, so list them too.
+  const optionalLoras = new Set<string>();
+  for (const slot of pipeline.loraSlots ?? []) optionalLoras.add(slot.loraName);
+  for (const toggle of pipeline.stackLoraToggles ?? []) {
+    for (const name of Object.values(toggle.loraByOption)) optionalLoras.add(name);
+  }
+  for (const name of optionalLoras) {
+    if (!required.some((r) => r.folder === "loras" && r.filename === name)) {
+      required.push({ folder: "loras", filename: name });
+    }
+  }
+
   const models: VideoPipelineModel[] = required.map(({ folder, filename }) => {
     const key = `${folder}/${filename}`;
     const base = basename(filename);

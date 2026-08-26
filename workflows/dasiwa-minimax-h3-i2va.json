@@ -36,7 +36,7 @@
  },
  "2678": {
   "inputs": {
-   "stack_data": "[{\"on\":false,\"lora\":\"HMNSFW_AIO_V2.safetensors\",\"str\":0.5,\"vs\":1,\"as\":1},{\"on\":false,\"lora\":\"riding_pose_H3_i2v_v1.0.safetensors\",\"str\":0.8,\"vs\":1,\"as\":1},{\"on\":false,\"lora\":\"minimax_h3_fl2v_lightx2v_turbo_8step_v1.0_resized_avg_rank_24_bf16.safetensors\",\"str\":1,\"vs\":1,\"as\":1},{\"on\":false,\"lora\":\"epic_cumshots-MiniMaxH3-ALPHA-CUMSH0T.safetensors\",\"str\":0.9,\"vs\":1,\"as\":1},{\"on\":false,\"lora\":\"deepthroat_v02.safetensors\",\"str\":1,\"vs\":1,\"as\":1},{\"on\":true,\"lora\":\"MysticXXX_MMH3-V3.safetensors\",\"str\":0.9,\"vs\":1,\"as\":1},{\"on\":false,\"lora\":\"H3_Slop_Twerk_V0.1.safetensors\",\"str\":1,\"vs\":1,\"as\":1}]",
+   "stack_data": "[{\"on\":false,\"lora\":\"HMNSFW_AIO_V2.safetensors\",\"str\":0.5,\"vs\":1,\"as\":1},{\"on\":false,\"lora\":\"riding_pose_H3_i2v_v1.0.safetensors\",\"str\":0.8,\"vs\":1,\"as\":1},{\"on\":false,\"lora\":\"minimax_h3_fl2v_lightx2v_turbo_8step_v1.0_resized_avg_rank_24_bf16.safetensors\",\"str\":1,\"vs\":1,\"as\":1},{\"on\":false,\"lora\":\"minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy_resized_avg_rank_21_bf16.safetensors\",\"str\":0.75,\"vs\":1,\"as\":1},{\"on\":false,\"lora\":\"epic_cumshots-MiniMaxH3-ALPHA-CUMSH0T.safetensors\",\"str\":0.9,\"vs\":1,\"as\":1},{\"on\":false,\"lora\":\"deepthroat_v02.safetensors\",\"str\":1,\"vs\":1,\"as\":1},{\"on\":true,\"lora\":\"MysticXXX_MMH3-V3.safetensors\",\"str\":0.9,\"vs\":1,\"as\":1},{\"on\":false,\"lora\":\"H3_Slop_Twerk_V0.1.safetensors\",\"str\":1,\"vs\":1,\"as\":1}]",
    "model_type": "Basic",
    "model": [
     "2730",

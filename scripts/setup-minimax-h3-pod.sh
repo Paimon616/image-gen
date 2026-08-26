@@ -13,7 +13,7 @@
 #   ssh -p <ssh-port> root@<pod-ip> 'bash /workspace/setup-minimax-h3-pod.sh'
 #
 # What it does:
-#   1. Downloads the 6 model files (HF mirrors; aria2 16-way for the big ones)
+#   1. Downloads the 8 model files (HF mirrors; aria2 16-way for the big ones)
 #   2. Upgrades ComfyUI to v0.34.0 (MiniMax H3 needs >= 0.30.0)
 #   3. Installs ComfyUI-DaSiWa-Nodes
 #   4. Restarts ComfyUI and verifies the DaSiWa nodes are live
@@ -50,6 +50,9 @@ dl_small(){ # dl_small <dest> <url>
 step "downloads: start"
 dl_small "$M/vae_approx/taeh3.safetensors" "https://huggingface.co/Kijai/MiniMax-H3-TAE/resolve/main/vae_approx/taeh3.safetensors" &
 dl_small "$M/loras/MysticXXX_MMH3-V3.safetensors" "https://huggingface.co/Kutches/minmax/resolve/main/MysticXXX_MMH3-V3.safetensors" &
+# lightx2v turbo distill LoRAs (optional, enabled via the pipeline's Turbo LoRA control)
+dl_small "$M/loras/minimax_h3_fl2v_lightx2v_turbo_8step_v1.0_resized_avg_rank_24_bf16.safetensors" "https://huggingface.co/Kijai/MiniMax-H3_comfy/resolve/main/loras/minimax_h3_fl2v_lightx2v_turbo_8step_v1.0_resized_avg_rank_24_bf16.safetensors" &
+dl_small "$M/loras/minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy_resized_avg_rank_21_bf16.safetensors" "https://huggingface.co/Kijai/MiniMax-H3_comfy/resolve/main/loras/minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy_resized_avg_rank_21_bf16.safetensors" &
 dl_small "$M/vae/MiniMaxH3/minimax_h3_audio_vae_fp32.safetensors" "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/vae/minimax_h3_audio_vae_fp32.safetensors" &
 dl_big "$M/vae/MiniMaxH3/minimax_h3_video_vae_fp16.safetensors" "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/vae/minimax_h3_video_vae_fp16.safetensors"
 dl_big "$M/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors" "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"

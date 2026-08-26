@@ -8940,5 +8940,35 @@
       "video"
     ],
     "note": "확인됨: civitai 2856467 v3.0 (0.28GB). DaSiWa MiniMax H3 파이프라인의 유일한 활성 LoRA(strength 0.9, workflow에 baked)."
+  },
+  "loras/minimax_h3_fl2v_lightx2v_turbo_8step_v1.0_resized_avg_rank_24_bf16.safetensors": {
+    "name": "MiniMax H3 lightx2v Turbo 8-step (rank 24)",
+    "version": "v1.0",
+    "base_model": "MiniMax H3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Kijai/MiniMax-H3_comfy/resolve/main/loras/minimax_h3_fl2v_lightx2v_turbo_8step_v1.0_resized_avg_rank_24_bf16.safetensors",
+    "tags": [
+      "minimax-h3",
+      "lora",
+      "turbo",
+      "distill"
+    ],
+    "note": "확인됨: Kijai/MiniMax-H3_comfy (0.36GB, lightx2v 원본의 rank-24 축소판). DaSiWa 파이프라인 Turbo LoRA 컨트롤의 8-step 옵션. 권장: strength 1.0 + steps 8."
+  },
+  "loras/minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy_resized_avg_rank_21_bf16.safetensors": {
+    "name": "MiniMax H3 lightx2v Turbo 4-step (rank 21)",
+    "version": "v0.1",
+    "base_model": "MiniMax H3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Kijai/MiniMax-H3_comfy/resolve/main/loras/minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy_resized_avg_rank_21_bf16.safetensors",
+    "tags": [
+      "minimax-h3",
+      "lora",
+      "turbo",
+      "distill"
+    ],
+    "note": "확인됨: Kijai/MiniMax-H3_comfy (0.31GB). DaSiWa 파이프라인 Turbo LoRA 컨트롤의 4-step 옵션. 권장: strength 0.75 + steps 4~12 + res_multistep(참조 영상 세팅: 0.75 / 12 steps)."
   }
 }

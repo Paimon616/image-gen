@@ -35,7 +35,10 @@ import {
 import { getRunpodCheckpointCapabilities } from "./runpod";
 import { DEFAULT_PARAMS, normalizeGenerationSeed } from "./types";
 import { censorModelFile } from "./censor-assets";
-import type { VideoPipelineLoraSlot } from "./video-pipelines";
+import type {
+  VideoPipelineLoraSlot,
+  VideoPipelineStackLoraToggle,
+} from "./video-pipelines";
 import { resolveVideoPipeline, resolveVideoWorkflowPath } from "./video-pipelines";
 
 const DEFAULT_COMFYUI_URL = "http://127.0.0.1:8188";
@@ -2385,11 +2388,22 @@ function isAudioMediaRef(ref: ComfyMediaRef) {
 }
 
 function videoRefsFromHistory(history: ComfyHistoryItem | undefined) {
-  const all = Object.values(history?.outputs ?? {}).flatMap((output) => [
+  const collected = Object.values(history?.outputs ?? {}).flatMap((output) => [
     ...(output.videos ?? []),
     ...(output.gifs ?? []),
     ...(output.images ?? []).filter(isVideoMediaRef),
   ]);
+  // Some nodes report the same encoded file under more than one ui key —
+  // DaSiWa_EnhancedVideoCombine lists it in both `images` and `gifs` — so the
+  // flatten above would collect it twice and every run would save duplicate
+  // videos. Keep one ref per (type, subfolder, filename) identity.
+  const seen = new Set<string>();
+  const all = collected.filter((ref) => {
+    const key = `${ref.type ?? "output"}|${ref.subfolder ?? ""}|${ref.filename}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
   // Some workflows emit intermediate previews alongside the final render — e.g.
   // the 10Eros triple-pass has a VHS_VideoCombine with save_output=false that
   // writes a first-pass clip to the temp dir. ComfyUI tags those with
@@ -2755,6 +2769,35 @@ function replaceWorkflowPlaceholders(value: unknown, params: VideoGenerationPara
   return value;
 }
 
+// Wrap a plain prompt into the MiniMax H3 Director structured format the model
+// was trained on. The subject-preservation anchors ("fully_preserved") are what
+// keep the clip locked to the source image — without them MiniMax H3 drifts away
+// from the start frame and the picture degrades over the clip's duration. A
+// prompt that already carries the structured sections is passed through as-is.
+function formatMinimaxDirectorPrompt(
+  prompt: string,
+  soundPrompt?: string | null
+) {
+  if (!prompt || /integrated_multimodal_description/i.test(prompt)) return prompt;
+  const soundscape =
+    (soundPrompt ?? "").trim() || "Natural sounds matching the on-screen action";
+  return [
+    "For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced.",
+    "",
+    "integrated_multimodal_description: subject_definitions:",
+    "Picture 1 ([Shot 1] first frame): fully_preserved - opening frame matches the source image exactly.",
+    "Subject 1 (appears in [Shot 1]): fully_preserved - face, hair, eyes, outfit details, body, and identity are retained throughout.",
+    "",
+    "integrated_multimodal_description:",
+    "[Shot 1] High-quality animation matching the reference style. Preserve the exact character identity and art style of the source image for the whole clip.",
+    prompt,
+    "",
+    `overall_soundscape: ${soundscape}`,
+    "",
+    "non_diegetic_music: N/A",
+  ].join("\n");
+}
+
 function applyVideoParamsToWorkflow(
   workflow: Record<string, unknown>,
   params: VideoGenerationParams
@@ -2819,26 +2862,69 @@ function applyVideoParamsToWorkflow(
     // the prompt is a direct `prompt` input, and the image is the first item of the
     // `timeline_data` JSON string (an input-dir filename, same format LoadImage
     // uses). Patch both so the generic prompt box and image picker drive it.
+    //
+    // IMPORTANT: the Director IGNORES its `prompt` input whenever `builder_state`
+    // carries authored content (imd/soundscape/simple_prompt) — it conditions on
+    // build_prompt(builder_state) instead. A captured workflow bakes the source
+    // video's scene text into builder_state (and a stale resolved_prompt inside
+    // timeline_data), so patching `prompt` alone leaves every generation secretly
+    // conditioned on the ORIGINAL video's scene. Rewrite builder_state to lossless
+    // simple mode carrying the user's prompt verbatim, and scrub the stale copies.
     if (classType === "MiniMaxH3Director") {
+      const autoformat =
+        (params.video_pipeline_settings as Record<string, unknown> | undefined)
+          ?.prompt_autoformat !== false;
+      const directorPrompt = autoformat
+        ? formatMinimaxDirectorPrompt(params.prompt, params.sound_prompt)
+        : params.prompt;
       if (typeof inputs.prompt === "string" && !patchedPositiveText) {
-        inputs.prompt = params.prompt;
+        inputs.prompt = directorPrompt;
         patchedPositiveText = true;
       }
-      if (sourceImage && typeof inputs.timeline_data === "string") {
+      if (params.prompt && typeof inputs.builder_state === "string") {
+        inputs.builder_state = JSON.stringify({
+          version: 1,
+          mode: typeof inputs.mode === "string" ? inputs.mode : "I2VA",
+          prompt_mode: "simple",
+          simple_prompt: directorPrompt,
+        });
+      }
+      if (typeof inputs.timeline_data === "string") {
         try {
-          const timeline = JSON.parse(inputs.timeline_data) as {
+          const timeline = JSON.parse(inputs.timeline_data) as Record<string, unknown> & {
             items?: Array<Record<string, unknown>>;
           };
-          const first = timeline.items?.find((item) => item?.type === "image");
-          if (first) {
-            first.value = sourceImage;
-            // Stale UI-only fields from the captured graph; the Director reads
-            // the actual file, so drop them rather than lie about the new image.
-            delete first.thumbnail;
-            delete first.source_width;
-            delete first.source_height;
-            inputs.timeline_data = JSON.stringify(timeline);
+          let timelineChanged = false;
+          if (sourceImage) {
+            const first = timeline.items?.find((item) => item?.type === "image");
+            if (first) {
+              first.value = sourceImage;
+              // Stale UI-only fields from the captured graph; the Director reads
+              // the actual file, so drop them rather than lie about the new image.
+              delete first.thumbnail;
+              delete first.source_width;
+              delete first.source_height;
+              timelineChanged = true;
+            }
           }
+          // Stale prompt copies from the captured source video. The Director falls
+          // back to these (timeline builder_state when the builder_state input is
+          // empty; resolved_prompt via legacy migration), so a leftover copy can
+          // resurrect the original video's scene text.
+          if (params.prompt) {
+            for (const staleKey of [
+              "builder_state",
+              "resolved_prompt",
+              "simple_prompt",
+              "prompt_blocks",
+            ]) {
+              if (staleKey in timeline) {
+                delete timeline[staleKey];
+                timelineChanged = true;
+              }
+            }
+          }
+          if (timelineChanged) inputs.timeline_data = JSON.stringify(timeline);
         } catch {
           // Malformed timeline_data — leave the baked reference image in place.
         }
@@ -2907,9 +2993,63 @@ function applyVideoPipelineSettingsToWorkflow(
     injectVideoPipelineLora(workflow, slot, settings);
   }
 
+  for (const toggle of pipeline.stackLoraToggles ?? []) {
+    applyStackLoraToggle(workflow, toggle, settings);
+  }
+
   injectCensorNodes(workflow, params.censor);
 
   return workflow;
+}
+
+// Flip a LoRA that is already baked (with on:false) into a DaSiWa_LTX2LoraLoader
+// `stack_data` stack. All managed entries are forced off first so switching the
+// select between options never leaves two turbo distills enabled at once. When
+// the select stays on the off-value (and no managed entry was baked on) the
+// stack_data string is left byte-for-byte untouched.
+function applyStackLoraToggle(
+  workflow: Record<string, unknown>,
+  toggle: VideoPipelineStackLoraToggle,
+  settings: Record<string, string | number | boolean>
+) {
+  const node = workflow[toggle.nodeId];
+  if (!node || typeof node !== "object" || Array.isArray(node)) return;
+  const inputs = (node as { inputs?: Record<string, unknown> }).inputs;
+  if (!inputs || typeof inputs.stack_data !== "string") return;
+
+  let stack: Array<{ on?: boolean; lora?: string; str?: number }>;
+  try {
+    stack = JSON.parse(inputs.stack_data);
+  } catch {
+    return;
+  }
+  if (!Array.isArray(stack)) return;
+
+  const managed = new Set(Object.values(toggle.loraByOption));
+  let changed = false;
+  for (const entry of stack) {
+    if (entry?.lora && managed.has(entry.lora) && entry.on) {
+      entry.on = false;
+      changed = true;
+    }
+  }
+
+  const selected = String(settings[toggle.selectKey] ?? "").trim();
+  const loraName = toggle.loraByOption[selected];
+  if (selected && selected !== toggle.offValue && loraName) {
+    const rawStrength = Number(settings[toggle.strengthKey]);
+    const strength = Number.isFinite(rawStrength) ? rawStrength : undefined;
+    if (strength !== 0) {
+      const entry = stack.find((item) => item?.lora === loraName);
+      if (entry) {
+        entry.on = true;
+        if (strength !== undefined) entry.str = strength;
+        changed = true;
+      }
+    }
+  }
+
+  if (changed) inputs.stack_data = JSON.stringify(stack);
 }
 
 // Every NudeNet detection label. ComfyUI-Nudenet's `FilterdLabel` node requires a
@@ -3110,13 +3250,79 @@ async function loadWorkflowFromEnv(
     throw new Error(`${envName} must point to a ComfyUI API workflow JSON object.`);
   }
 
-  return applyVideoPipelineSettingsToWorkflow(
+  const applied = applyVideoPipelineSettingsToWorkflow(
     applyVideoParamsToWorkflow(
       replaceWorkflowPlaceholders(workflow, resolvedParams) as Record<string, unknown>,
       resolvedParams
     ),
     resolvedParams
   );
+  return adaptMinimaxDirectorCanvas(applied, resolvedParams, options);
+}
+
+// MiniMax H3 Director: the canvas width/height patched by the pipeline controls
+// assume the captured source's 9:16 aspect. When the start image's aspect
+// differs, the Director fits the conditioning into that mismatched canvas and
+// the clip renders visibly squashed or stretched. Unless the pipeline's Auto
+// Aspect toggle is off, recompute the canvas from the real image aspect while
+// keeping the configured Width×Height pixel budget, snapped to the 16px grid.
+async function adaptMinimaxDirectorCanvas(
+  workflow: Record<string, unknown>,
+  params: VideoGenerationParams,
+  options?: ComfyClientOptions
+) {
+  const director = Object.values(workflow).find(
+    (node) =>
+      node &&
+      typeof node === "object" &&
+      !Array.isArray(node) &&
+      (node as { class_type?: unknown }).class_type === "MiniMaxH3Director"
+  ) as { inputs?: Record<string, unknown> } | undefined;
+  const inputs = director?.inputs;
+  const imageName = params.source_image;
+  if (
+    !inputs ||
+    !imageName ||
+    typeof inputs.width !== "number" ||
+    typeof inputs.height !== "number"
+  ) {
+    return workflow;
+  }
+
+  const pipeline = resolveVideoPipeline(params.video_pipeline || params.video_model);
+  const settings = {
+    ...pipeline.defaults,
+    ...(params.video_pipeline_settings ?? {}),
+  } as Record<string, unknown>;
+  if (settings.auto_aspect === false) return workflow;
+
+  try {
+    // The start image already lives in the target ComfyUI's input dir (uploaded
+    // or referenced by name), so read it back from there — the only place the
+    // file is guaranteed to exist for both local and RunPod targets.
+    const res = await comfyFetch(
+      `/view?filename=${encodeURIComponent(imageName)}&type=input`,
+      {},
+      options
+    );
+    const buffer = Buffer.from(await res.arrayBuffer());
+    const sharp = (await import("sharp")).default;
+    const meta = await sharp(buffer).metadata();
+    if (!meta.width || !meta.height) return workflow;
+
+    const budget = inputs.width * inputs.height;
+    const aspect = meta.width / meta.height;
+    // MiniMax H3 latents are pixel/16 and the transformer patchifies them 2×2,
+    // so both pixel dimensions must be multiples of 32 — a 16px-only multiple
+    // (e.g. 1168 → latent 73) makes patchify_video's reshape blow up.
+    const snap = (value: number) =>
+      Math.min(1920, Math.max(256, Math.round(value / 32) * 32));
+    inputs.width = snap(Math.sqrt(budget * aspect));
+    inputs.height = snap(Math.sqrt(budget / aspect));
+  } catch {
+    // Image unreadable — keep the configured canvas rather than failing the run.
+  }
+  return workflow;
 }
 
 async function loadVideoWorkflow(

@@ -40,6 +40,27 @@ export interface VideoPipelineDefinition {
    * injected, so the workflow runs byte-for-byte identically to before.
    */
   loraSlots?: VideoPipelineLoraSlot[];
+  /**
+   * Optional toggles for LoRAs that already live inside a DaSiWa_LTX2LoraLoader
+   * `stack_data` stack (baked into the workflow with `on: false`). Unlike
+   * `loraSlots` nothing is injected — the toggle just flips the matching stack
+   * entry's `on` flag (and strength) at generation time. When the select stays on
+   * `offValue` the stack_data string is left byte-for-byte untouched.
+   */
+  stackLoraToggles?: VideoPipelineStackLoraToggle[];
+}
+
+export interface VideoPipelineStackLoraToggle {
+  /** Pipeline-setting key whose value selects the stack LoRA (equals `offValue` = disabled). */
+  selectKey: string;
+  /** Pipeline-setting key holding the numeric strength (`str` in stack_data); 0 keeps it off. */
+  strengthKey: string;
+  /** Select value that means "leave the stack untouched" (e.g. "None"). */
+  offValue: string;
+  /** Node id of the DaSiWa_LTX2LoraLoader carrying the stack. */
+  nodeId: string;
+  /** Map from select option label to the exact `lora` filename inside stack_data. */
+  loraByOption: Record<string, string>;
 }
 
 export interface VideoPipelineLoraSlot {
@@ -693,9 +714,21 @@ const ltx25T2vControls: VideoPipelineControl[] = [
 // given the same image/prompt/seed. Prompt and reference image live on the
 // MiniMaxH3Director node and are injected by applyVideoParamsToWorkflow (the
 // Director has no negative-prompt input — the guider is CFG-less BasicGuider).
-// The DaSiWa LoRA stack (node 2678) stays baked as captured: only
-// MysticXXX_MMH3-V3 @ 0.9 is enabled. Requires ComfyUI >= 0.30.0 (native MiniMax
-// H3) plus the ComfyUI-DaSiWa-Nodes and ComfyUI-KJNodes packs on the pod.
+// The DaSiWa LoRA stack (node 2678) defaults to the captured state — only
+// MysticXXX_MMH3-V3 @ 0.9 enabled — but the lightx2v turbo distill LoRAs (baked
+// into the stack with on:false) can be flipped on via the Turbo LoRA control
+// below for 8-step / 4-step fast sampling. Requires ComfyUI >= 0.30.0 (native
+// MiniMax H3) plus the ComfyUI-DaSiWa-Nodes and ComfyUI-KJNodes packs on the pod.
+const MMH3_TURBO_OFF = "None";
+const MMH3_TURBO_8STEP = "8-step v1.0 (품질 우선 터보)";
+const MMH3_TURBO_4STEP = "4-step v0.1 (최고 속도)";
+const MMH3_TURBO_LORAS: Record<string, string> = {
+  [MMH3_TURBO_8STEP]:
+    "minimax_h3_fl2v_lightx2v_turbo_8step_v1.0_resized_avg_rank_24_bf16.safetensors",
+  [MMH3_TURBO_4STEP]:
+    "minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy_resized_avg_rank_21_bf16.safetensors",
+};
+
 const dasiwaMinimaxH3I2vaControls: VideoPipelineControl[] = [
   {
     key: "seed",
@@ -741,7 +774,7 @@ const dasiwaMinimaxH3I2vaControls: VideoPipelineControl[] = [
     max: 1920,
     step: 16,
     group: "resize",
-    help: "출력 가로(node 2730 width)입니다. MiniMax H3는 16px 그리드를 사용하므로 16의 배수여야 합니다. 원본 영상은 736×1280(9:16 세로)입니다.",
+    help: "출력 가로(node 2730 width)입니다. MiniMax H3는 latent가 16px당 1이고 2×2 패치를 쓰므로 32의 배수여야 합니다(16의 배수만으로는 patchify reshape 오류). 원본 영상은 736×1280(9:16 세로)입니다.",
     patches: [{ nodeId: "2730", input: "width" }],
   },
   {
@@ -757,6 +790,30 @@ const dasiwaMinimaxH3I2vaControls: VideoPipelineControl[] = [
     patches: [{ nodeId: "2730", input: "height" }],
   },
   {
+    key: "auto_aspect",
+    label: "Auto Aspect",
+    type: "boolean",
+    defaultValue: true,
+    group: "resize",
+    help:
+      "시작 이미지의 가로세로 비율에 맞춰 출력 캔버스를 자동 재계산합니다(Width×Height 픽셀 예산 유지, 16px 배수). " +
+      "끄면 Width/Height 값을 그대로 쓰며, 이미지 비율과 다르면 영상이 좁아지거나(홀쭉) 늘어나 보일 수 있습니다.",
+    patches: [],
+  },
+  {
+    key: "prompt_autoformat",
+    label: "Prompt Auto-Format",
+    type: "boolean",
+    defaultValue: true,
+    group: "conditioning",
+    help:
+      "프롬프트가 MiniMax Director 형식이 아니면 원본 예시 영상들과 같은 구조로 자동 포장합니다 " +
+      "(시작 이미지 fully_preserved 앵커 + integrated_multimodal_description + overall_soundscape). " +
+      "이 보존 앵커가 없으면 영상이 진행될수록 인물과 그림이 시작 이미지에서 멀어지며 뭉개지기 쉽습니다. " +
+      "'integrated_multimodal_description'을 이미 포함한 프롬프트는 그대로 전달됩니다.",
+    patches: [],
+  },
+  {
     key: "steps",
     label: "Steps",
     type: "number",
@@ -765,7 +822,7 @@ const dasiwaMinimaxH3I2vaControls: VideoPipelineControl[] = [
     max: 40,
     step: 1,
     group: "sampling",
-    help: "BasicScheduler steps(node 1512:2590/2679)입니다. 원본은 20 step이며, MiniMaxH3Cache가 중간 구간을 재사용해 체감 속도를 높입니다.",
+    help: "BasicScheduler steps(node 1512:2590/2679)입니다. 원본은 20 step이며, MiniMaxH3Cache가 중간 구간을 재사용해 체감 속도를 높입니다. Turbo LoRA 사용 시 8-step은 steps 8, 4-step은 steps 4~12로 함께 낮추세요.",
     patches: [
       { nodeId: "1512:2590", input: "steps" },
       { nodeId: "1512:2679", input: "steps" },
@@ -776,10 +833,51 @@ const dasiwaMinimaxH3I2vaControls: VideoPipelineControl[] = [
     label: "Sampler",
     type: "select",
     defaultValue: "dpmpp_2m",
-    options: ["dpmpp_2m", "euler", "euler_ancestral", "uni_pc"],
+    options: ["dpmpp_2m", "res_multistep", "euler", "euler_ancestral", "uni_pc"],
     group: "sampling",
-    help: "KSamplerSelect(node 1512:2598)의 sampler입니다. 원본 영상은 dpmpp_2m을 사용했습니다.",
+    help: "KSamplerSelect(node 1512:2598)의 sampler입니다. 원본 영상은 dpmpp_2m을 사용했습니다. res_multistep은 lightx2v turbo 계열 공식 예시들이 쓰는 sampler로, Turbo LoRA와 함께 쓸 때 권장됩니다.",
     patches: [{ nodeId: "1512:2598", input: "sampler_name" }],
+  },
+  {
+    key: "turbo_lora",
+    label: "Turbo LoRA",
+    type: "select",
+    defaultValue: MMH3_TURBO_OFF,
+    options: [MMH3_TURBO_OFF, MMH3_TURBO_8STEP, MMH3_TURBO_4STEP],
+    group: "lora",
+    help:
+      "lightx2v turbo distill LoRA로 저스텝 고속 샘플링을 켭니다(DaSiWa 스택 node 2678). " +
+      "'None'이면 원본과 완전히 동일하게 동작합니다. 8-step v1.0은 steps 8 + 강도 1.0, " +
+      "4-step v0.1은 steps 4~12 + 강도 0.75 권장(참조 영상은 4-step @ 0.75, 12 steps, res_multistep 사용). " +
+      "pod의 ComfyUI/models/loras에 해당 파일이 있어야 합니다(setup-minimax-h3-pod.sh가 함께 받습니다).",
+    patches: [],
+  },
+  {
+    key: "turbo_strength",
+    label: "Turbo Strength",
+    type: "number",
+    defaultValue: 1,
+    min: 0,
+    max: 1.5,
+    step: 0.05,
+    group: "lora",
+    help: "Turbo LoRA 강도(stack_data의 str)입니다. 8-step 권장 1.0, 4-step 권장 0.75. 0이면 선택돼 있어도 켜지 않습니다.",
+    patches: [],
+  },
+  {
+    key: "cache_reuse_threshold",
+    label: "Cache Reuse Threshold",
+    type: "number",
+    defaultValue: 0.05,
+    min: 0,
+    max: 0.3,
+    step: 0.01,
+    group: "advanced",
+    help: "MiniMaxH3Cache(node 1512:2722/2723)의 reuse_threshold입니다. 원본 0.05. 높이면 중간 step 재사용이 늘어 빨라지지만 디테일이 뭉개질 수 있고, 0이면 재사용을 사실상 끄므로 최고 품질(가장 느림)입니다.",
+    patches: [
+      { nodeId: "1512:2722", input: "reuse_threshold" },
+      { nodeId: "1512:2723", input: "reuse_threshold" },
+    ],
   },
   {
     key: "shift_video",
@@ -818,7 +916,7 @@ const BUILTIN_VIDEO_PIPELINES: VideoPipelineDefinition[] = [
     id: "dasiwa-minimax-h3-i2va",
     label: "MiniMax H3 (DaSiWa) - I2V + audio",
     description:
-      "DaSiWa MythicAlchemy MiniMax H3 이미지→비디오+오디오 워크플로우(원본 영상에서 캡처한 실행 그래프 그대로). REF2VA Hybrid 체크포인트 + Qwen3-VL 32B(nvfp4) 인코더 + MysticXXX v3 LoRA(0.9, baked). ComfyUI 0.30.0+ 와 ComfyUI-DaSiWa-Nodes / ComfyUI-KJNodes가 설치된 pod가 필요합니다(onechat_ltx25_h100_002 세팅 완료). 프롬프트는 MiniMax Director 형식(integrated_multimodal_description …)을 쓰면 원본과 같은 스타일로 동작하며, negative prompt는 지원하지 않습니다.",
+      "DaSiWa MythicAlchemy MiniMax H3 이미지→비디오+오디오 워크플로우(원본 영상에서 캡처한 실행 그래프 그대로). REF2VA Hybrid 체크포인트 + Qwen3-VL 32B(nvfp4) 인코더 + MysticXXX v3 LoRA(0.9, baked). Turbo LoRA 컨트롤로 lightx2v 8-step/4-step distill을 켜면 저스텝 고속 생성이 가능합니다. ComfyUI 0.30.0+ 와 ComfyUI-DaSiWa-Nodes / ComfyUI-KJNodes가 설치된 pod가 필요합니다(onechat_ltx25_h100_002 세팅 완료). 프롬프트는 MiniMax Director 형식(integrated_multimodal_description …)을 쓰면 원본과 같은 스타일로 동작하며, negative prompt는 지원하지 않습니다.",
     workflowPath: "workflows/dasiwa-minimax-h3-i2va.json",
     mode: "i2v",
     // DaSiWa_EnhancedVideoCombine muxes the audio-VAE output into the file, so
@@ -827,6 +925,15 @@ const BUILTIN_VIDEO_PIPELINES: VideoPipelineDefinition[] = [
     canvas: NO_CANVAS_SUPPORT,
     defaults: defaultsFromControls(dasiwaMinimaxH3I2vaControls),
     controls: dasiwaMinimaxH3I2vaControls,
+    stackLoraToggles: [
+      {
+        selectKey: "turbo_lora",
+        strengthKey: "turbo_strength",
+        offValue: MMH3_TURBO_OFF,
+        nodeId: "2678",
+        loraByOption: MMH3_TURBO_LORAS,
+      },
+    ],
   },
   {
     id: "ltx25-i2v-two-stage",
