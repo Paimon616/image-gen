@@ -7,6 +7,8 @@ import {
   useMemo,
   useRef,
   useState,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
 } from "react";
 import {
   Check,
@@ -16,6 +18,9 @@ import {
   Download,
   FileJson,
   Film,
+  FolderMinus,
+  FolderPlus,
+  FolderX,
   ImagePlus,
   Loader2,
   Maximize2,
@@ -156,6 +161,23 @@ const T = {
   pickerEmpty: { ko: "이미지가 없습니다.", en: "No images." },
   close: { ko: "닫기", en: "Close" },
   galleryTitle: { ko: "영상 갤러리", en: "Video Gallery" },
+  multiSelect: { ko: "다중선택", en: "Multi-select" },
+  selectionDone: { ko: "선택 종료", en: "Done" },
+  selectAll: { ko: "전체 선택", en: "Select all" },
+  deselectAll: { ko: "전체 해제", en: "Deselect all" },
+  batchWorkspace: { ko: "일괄 작업 워크스페이스", en: "Batch workspace" },
+  noWorkspace: { ko: "워크스페이스 없음", en: "No workspace" },
+  wsAdd: { ko: "추가", en: "Add" },
+  wsRemove: { ko: "제거", en: "Remove" },
+  wsClear: { ko: "워크스페이스 비우기", en: "Clear workspaces" },
+  wsClearHint: {
+    ko: "선택한 영상을 모든 워크스페이스에서 제외합니다",
+    en: "Remove selected videos from every workspace",
+  },
+  zipHint: {
+    ko: "선택한 영상을 zip으로 묶어 다운로드합니다",
+    en: "Bundles the selected videos into a zip download",
+  },
   thumbWidth: { ko: "영상 크기", en: "Video width" },
   refresh: { ko: "새로고침", en: "Refresh" },
   viewDetail: { ko: "상세 보기", en: "View details" },
@@ -348,6 +370,13 @@ export default function SeedancePage() {
   const [error, setError] = useState<string | null>(null);
   const [thumbnailWidth, setThumbnailWidth] = useState(320);
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
+  const [gallerySelectionMode, setGallerySelectionMode] = useState(false);
+  const [selectedVideoIds, setSelectedVideoIds] = useState<Set<string>>(
+    new Set()
+  );
+  const [batchWorkspaceId, setBatchWorkspaceId] = useState("");
+  const [batchActionBusy, setBatchActionBusy] = useState(false);
+  const [batchDownloadBusy, setBatchDownloadBusy] = useState(false);
   const promptRef = useRef<HTMLTextAreaElement>(null);
 
   // One-time restore of the remembered settings (the store writes them back on
@@ -406,6 +435,11 @@ export default function SeedancePage() {
   const activeWorkspaceId = useMediaWorkspaceStore(
     (s) => s.byMedia.seedance.activeWorkspaceId
   );
+  const seedanceWorkspaces = useMediaWorkspaceStore(
+    (s) => s.byMedia.seedance.workspaces
+  );
+  const setFileWorkspace = useMediaWorkspaceStore((s) => s.setFileWorkspace);
+  const fetchMediaWorkspaces = useMediaWorkspaceStore((s) => s.fetchWorkspaces);
 
   // The generation itself lives in a module-scope runner (seedance-generation),
   // so a run — and a Paimon situation batch — keeps streaming after this page
@@ -517,6 +551,226 @@ export default function SeedancePage() {
     () => detailVideos.find((video) => video.id === selectedVideoId) ?? null,
     [detailVideos, selectedVideoId]
   );
+
+  // --- Gallery multi-select (mirrors the image generation screen). Only
+  // finished clips participate: pending cards have no file to act on. --------
+  const selectedVideos = useMemo(
+    () => detailVideos.filter((video) => selectedVideoIds.has(video.id)),
+    [detailVideos, selectedVideoIds]
+  );
+  const selectedVideoCount = selectedVideos.length;
+  const allVideosSelected =
+    detailVideos.length > 0 && selectedVideoCount === detailVideos.length;
+  const selectedBatchWorkspaceId =
+    batchWorkspaceId || seedanceWorkspaces[0]?.id || "";
+
+  const toggleGallerySelectionMode = useCallback(() => {
+    setGallerySelectionMode((enabled) => {
+      if (enabled) {
+        setSelectedVideoIds(new Set());
+      }
+      return !enabled;
+    });
+  }, []);
+
+  const toggleVideoSelection = useCallback((video: SeedanceVideo) => {
+    setSelectedVideoIds((current) => {
+      const next = new Set(current);
+      if (next.has(video.id)) {
+        next.delete(video.id);
+      } else {
+        next.add(video.id);
+      }
+      return next;
+    });
+  }, []);
+
+  const selectAllVideos = useCallback(() => {
+    setSelectedVideoIds(new Set(detailVideos.map((video) => video.id)));
+  }, [detailVideos]);
+
+  const clearVideoSelection = useCallback(() => {
+    setSelectedVideoIds(new Set());
+  }, []);
+
+  // Drag-to-range selection over the finished clips, same as the image
+  // gallery: handlers read from refs so cards stay cheap to re-render.
+  const detailVideosRef = useRef(detailVideos);
+  detailVideosRef.current = detailVideos;
+  const selectedVideoIdsRef = useRef(selectedVideoIds);
+  selectedVideoIdsRef.current = selectedVideoIds;
+  const dragRef = useRef<{
+    anchor: number;
+    mode: boolean; // true = select the range, false = deselect it
+    moved: boolean;
+    baseline: Set<string>;
+  } | null>(null);
+  const suppressClickRef = useRef(false);
+
+  useEffect(() => {
+    const endDrag = () => {
+      dragRef.current = null;
+    };
+    window.addEventListener("pointerup", endDrag);
+    window.addEventListener("pointercancel", endDrag);
+    return () => {
+      window.removeEventListener("pointerup", endDrag);
+      window.removeEventListener("pointercancel", endDrag);
+    };
+  }, []);
+
+  const handleSelectPointerDown = useCallback((index: number) => {
+    suppressClickRef.current = false;
+    const video = detailVideosRef.current[index];
+    if (!video) {
+      dragRef.current = null;
+      return;
+    }
+    const baseline = new Set(selectedVideoIdsRef.current);
+    const mode = !baseline.has(video.id);
+    dragRef.current = { anchor: index, mode, moved: false, baseline };
+  }, []);
+
+  const handleSelectPointerEnter = useCallback((index: number) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+    drag.moved = true;
+    suppressClickRef.current = true;
+    const list = detailVideosRef.current;
+    const lo = Math.min(drag.anchor, index);
+    const hi = Math.max(drag.anchor, index);
+    const next = new Set(drag.baseline);
+    for (let i = lo; i <= hi; i++) {
+      const id = list[i]?.id;
+      if (!id) continue;
+      if (drag.mode) next.add(id);
+      else next.delete(id);
+    }
+    setSelectedVideoIds(next);
+  }, []);
+
+  const handleCardToggle = useCallback(
+    (video: SeedanceVideo) => {
+      if (suppressClickRef.current) {
+        suppressClickRef.current = false;
+        return;
+      }
+      toggleVideoSelection(video);
+    },
+    [toggleVideoSelection]
+  );
+
+  const deleteSelectedVideos = useCallback(async () => {
+    if (selectedVideos.length === 0 || batchActionBusy) return;
+
+    setBatchActionBusy(true);
+    try {
+      for (const video of selectedVideos) {
+        await deleteVideo(video);
+      }
+      setSelectedVideoIds(new Set());
+    } finally {
+      setBatchActionBusy(false);
+    }
+  }, [batchActionBusy, deleteVideo, selectedVideos]);
+
+  const updateSelectedVideoWorkspace = useCallback(
+    async (assigned: boolean) => {
+      if (!selectedBatchWorkspaceId || selectedVideos.length === 0) return;
+
+      setBatchActionBusy(true);
+      try {
+        for (const video of selectedVideos) {
+          const workspaces = await setFileWorkspace(
+            "seedance",
+            video.filename,
+            selectedBatchWorkspaceId,
+            assigned
+          );
+          if (workspaces) {
+            applyWorkspaces(video, workspaces);
+          }
+        }
+        setSelectedVideoIds(new Set());
+      } finally {
+        setBatchActionBusy(false);
+      }
+    },
+    [applyWorkspaces, selectedBatchWorkspaceId, selectedVideos, setFileWorkspace]
+  );
+
+  const clearSelectedVideoWorkspaces = useCallback(async () => {
+    if (selectedVideos.length === 0 || batchActionBusy) return;
+
+    setBatchActionBusy(true);
+    try {
+      for (const video of selectedVideos) {
+        const response = await fetch("/api/workspaces/assign", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            media: "seedance",
+            filename: video.filename,
+            workspaceIds: [],
+          }),
+        }).catch(() => null);
+        if (response?.ok) {
+          applyWorkspaces(video, []);
+        }
+      }
+      void fetchMediaWorkspaces("seedance");
+      setSelectedVideoIds(new Set());
+    } finally {
+      setBatchActionBusy(false);
+    }
+  }, [applyWorkspaces, batchActionBusy, fetchMediaWorkspaces, selectedVideos]);
+
+  const downloadSelectedVideos = useCallback(async () => {
+    if (selectedVideos.length === 0 || batchActionBusy || batchDownloadBusy) {
+      return;
+    }
+
+    setBatchDownloadBusy(true);
+    try {
+      // A single clip downloads directly; multiple clips are bundled
+      // server-side into one zip.
+      if (selectedVideos.length === 1) {
+        const a = document.createElement("a");
+        a.href = selectedVideos[0].url;
+        a.download = selectedVideos[0].filename;
+        a.click();
+        return;
+      }
+
+      const res = await fetch("/api/videos/zip", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          media: "seedance",
+          filenames: selectedVideos.map((video) => video.filename),
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Failed to build zip archive");
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `seedance-${Date.now()}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    } catch {
+      // The button simply re-enables; each card still offers its own download.
+    } finally {
+      setBatchDownloadBusy(false);
+    }
+  }, [batchActionBusy, batchDownloadBusy, selectedVideos]);
 
   const isGenerating = pending.some((p) => p.status?.state === "generating" || p.status?.state === "queued");
   const canGenerate =
@@ -795,10 +1049,136 @@ export default function SeedancePage() {
 
       {/* Results */}
       <main className="flex flex-1 flex-col overflow-hidden">
-        <div className="flex items-center justify-between gap-3 border-b border-border px-6 py-3">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 gap-y-2 border-b border-border px-6 py-3">
+          <div className="flex flex-wrap items-center gap-3 gap-y-2">
             <Film className="h-4 w-4 text-muted-foreground" />
             <h2 className="text-sm font-semibold">{tr("galleryTitle", language)}</h2>
+            <Button
+              type="button"
+              size="sm"
+              variant={gallerySelectionMode ? "default" : "outline"}
+              onClick={toggleGallerySelectionMode}
+              className="h-8"
+            >
+              {gallerySelectionMode
+                ? tr("selectionDone", language)
+                : tr("multiSelect", language)}
+            </Button>
+            {gallerySelectionMode && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="whitespace-nowrap rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
+                  {language === "ko"
+                    ? `${selectedVideoCount}개 선택`
+                    : `${selectedVideoCount} selected`}
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8"
+                  onClick={
+                    allVideosSelected ? clearVideoSelection : selectAllVideos
+                  }
+                  disabled={detailVideos.length === 0}
+                >
+                  {allVideosSelected
+                    ? tr("deselectAll", language)
+                    : tr("selectAll", language)}
+                </Button>
+                <select
+                  value={selectedBatchWorkspaceId}
+                  onChange={(event) => setBatchWorkspaceId(event.target.value)}
+                  className="h-8 max-w-44 rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
+                  disabled={seedanceWorkspaces.length === 0 || batchActionBusy}
+                  aria-label={tr("batchWorkspace", language)}
+                >
+                  {seedanceWorkspaces.length === 0 ? (
+                    <option value="">{tr("noWorkspace", language)}</option>
+                  ) : (
+                    seedanceWorkspaces.map((workspace) => (
+                      <option key={workspace.id} value={workspace.id}>
+                        {workspace.name}
+                      </option>
+                    ))
+                  )}
+                </select>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5"
+                  onClick={() => void updateSelectedVideoWorkspace(true)}
+                  disabled={
+                    batchActionBusy ||
+                    !selectedBatchWorkspaceId ||
+                    selectedVideoCount === 0
+                  }
+                >
+                  <FolderPlus className="h-3.5 w-3.5" />
+                  {tr("wsAdd", language)}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5"
+                  onClick={() => void updateSelectedVideoWorkspace(false)}
+                  disabled={
+                    batchActionBusy ||
+                    !selectedBatchWorkspaceId ||
+                    selectedVideoCount === 0
+                  }
+                >
+                  <FolderMinus className="h-3.5 w-3.5" />
+                  {tr("wsRemove", language)}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5"
+                  onClick={() => void clearSelectedVideoWorkspaces()}
+                  disabled={batchActionBusy || selectedVideoCount === 0}
+                  title={tr("wsClearHint", language)}
+                >
+                  <FolderX className="h-3.5 w-3.5" />
+                  {tr("wsClear", language)}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5"
+                  onClick={() => void downloadSelectedVideos()}
+                  disabled={
+                    batchActionBusy ||
+                    batchDownloadBusy ||
+                    selectedVideoCount === 0
+                  }
+                  title={
+                    selectedVideoCount > 1 ? tr("zipHint", language) : undefined
+                  }
+                >
+                  {batchDownloadBusy ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Download className="h-3.5 w-3.5" />
+                  )}
+                  {tr("download", language)}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="destructive"
+                  className="h-8 gap-1.5"
+                  onClick={() => void deleteSelectedVideos()}
+                  disabled={batchActionBusy || selectedVideoCount === 0}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  {tr("delete", language)}
+                </Button>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2">
@@ -813,7 +1193,7 @@ export default function SeedancePage() {
                 min={SEEDANCE_THUMBNAIL_MIN_WIDTH}
                 max={SEEDANCE_THUMBNAIL_MAX_WIDTH}
                 step={20}
-                className="w-28"
+                style={{ width: "110px" }}
               />
               <span className="w-8 text-right font-mono text-xs tabular-nums">
                 {thumbnailWidth}
@@ -868,11 +1248,17 @@ export default function SeedancePage() {
                   onDismiss={() => removePending(card.id)}
                 />
               ))}
-              {detailVideos.map((video) => (
+              {detailVideos.map((video, index) => (
                 <VideoCard
                   key={video.id}
                   lang={language}
                   video={video}
+                  index={index}
+                  selectionMode={gallerySelectionMode}
+                  selected={selectedVideoIds.has(video.id)}
+                  onToggleSelect={handleCardToggle}
+                  onSelectPointerDown={handleSelectPointerDown}
+                  onSelectPointerEnter={handleSelectPointerEnter}
                   onOpenDetail={() => setSelectedVideoId(video.id)}
                   onDelete={() => deleteVideo(video)}
                   onWorkspacesChange={(workspaces) =>
@@ -1017,9 +1403,15 @@ function ToggleRow({
 function MasonryCell({
   className,
   children,
+  onPointerDown,
+  onPointerEnter,
+  onClick,
 }: {
   className?: string;
   children: React.ReactNode;
+  onPointerDown?: (event: ReactPointerEvent<HTMLElement>) => void;
+  onPointerEnter?: (event: ReactPointerEvent<HTMLElement>) => void;
+  onClick?: (event: ReactMouseEvent<HTMLElement>) => void;
 }) {
   const cellRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -1047,6 +1439,9 @@ function MasonryCell({
         "relative overflow-hidden rounded-xl border border-border bg-card shadow-sm",
         className
       )}
+      onPointerDown={onPointerDown}
+      onPointerEnter={onPointerEnter}
+      onClick={onClick}
     >
       <div ref={contentRef}>{children}</div>
     </article>
@@ -1123,6 +1518,12 @@ function PendingCard({
 function VideoCard({
   lang,
   video,
+  index,
+  selectionMode,
+  selected,
+  onToggleSelect,
+  onSelectPointerDown,
+  onSelectPointerEnter,
   onOpenDetail,
   onDelete,
   onReuse,
@@ -1130,6 +1531,12 @@ function VideoCard({
 }: {
   lang: Lang;
   video: SeedanceVideo;
+  index: number;
+  selectionMode: boolean;
+  selected: boolean;
+  onToggleSelect: (video: SeedanceVideo) => void;
+  onSelectPointerDown: (index: number) => void;
+  onSelectPointerEnter: (index: number) => void;
   onOpenDetail: () => void;
   onDelete: () => Promise<void>;
   onReuse: () => void;
@@ -1140,40 +1547,79 @@ function VideoCard({
   const [deleteError, setDeleteError] = useState("");
 
   return (
-    <MasonryCell className="group">
-      <Button
-        type="button"
-        size="icon-sm"
-        variant="secondary"
-        className="absolute left-2 top-2 z-20 shadow-md"
-        onClick={onOpenDetail}
-        aria-label={tr("viewDetail", lang)}
-        title={tr("viewDetail", lang)}
-      >
-        <Maximize2 />
-      </Button>
+    <MasonryCell
+      className={cn(
+        "group",
+        selected && "border-primary ring-2 ring-primary/50",
+        selectionMode && "cursor-pointer select-none"
+      )}
+      onPointerDown={(event) => {
+        if (!selectionMode) return;
+        if (event.button !== 0) return;
+
+        const target = event.target as HTMLElement;
+        if (target.closest("button,a,input,select,textarea,video")) return;
+
+        event.preventDefault();
+        onSelectPointerDown(index);
+      }}
+      onPointerEnter={() => {
+        if (!selectionMode) return;
+        onSelectPointerEnter(index);
+      }}
+      onClick={(event) => {
+        if (!selectionMode) return;
+
+        const target = event.target as HTMLElement;
+        if (target.closest("button,a,input,select,textarea")) return;
+
+        onToggleSelect(video);
+      }}
+    >
+      {selectionMode && (
+        <div className="pointer-events-none absolute left-2 top-2 z-30 flex h-7 w-7 items-center justify-center rounded-md border border-white/70 bg-black/55 text-white shadow-sm">
+          {selected && <Check className="h-4 w-4" />}
+        </div>
+      )}
+      {!selectionMode && (
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="secondary"
+          className="absolute left-2 top-2 z-20 shadow-md"
+          onClick={onOpenDetail}
+          aria-label={tr("viewDetail", lang)}
+          title={tr("viewDetail", lang)}
+        >
+          <Maximize2 />
+        </Button>
+      )}
       {/* The same workspaces as the image gallery — this screen only ever
           lists the clips filed under them. */}
-      <div className="absolute right-11 top-2 z-20 shadow-md">
-        <MediaWorkspacePicker
-          media="seedance"
-          filename={video.filename}
-          workspaceIds={video.workspaces ?? []}
-          onChange={onWorkspacesChange}
-        />
-      </div>
-      <Button
-        type="button"
-        size="icon-sm"
-        variant="destructive"
-        className="absolute right-2 top-2 z-20 shadow-md"
-        onClick={() => setConfirmingDelete((current) => !current)}
-        disabled={deleting}
-        aria-label={tr("delete", lang)}
-        title={tr("delete", lang)}
-      >
-        {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
-      </Button>
+      {!selectionMode && (
+        <div className="absolute right-11 top-2 z-20 shadow-md">
+          <MediaWorkspacePicker
+            media="seedance"
+            filename={video.filename}
+            workspaceIds={video.workspaces ?? []}
+            onChange={onWorkspacesChange}
+          />
+        </div>
+      )}
+      {!selectionMode && (
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="destructive"
+          className="absolute right-2 top-2 z-20 shadow-md"
+          onClick={() => setConfirmingDelete((current) => !current)}
+          disabled={deleting}
+          aria-label={tr("delete", lang)}
+          title={tr("delete", lang)}
+        >
+          {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
+        </Button>
+      )}
       {confirmingDelete && (
         <div className="absolute right-2 top-12 z-30 w-44 rounded-md border border-border bg-popover p-2.5 shadow-xl">
           <p className="text-[11px] font-medium text-popover-foreground">
@@ -1219,6 +1665,8 @@ function VideoCard({
           </div>
         </div>
       )}
+      {/* In selection mode the player must not swallow clicks — the card
+          itself is the selection surface. */}
       <video
         src={video.url}
         controls
@@ -1226,7 +1674,10 @@ function VideoCard({
         muted
         playsInline
         preload="metadata"
-        className="block h-auto w-full bg-black"
+        className={cn(
+          "block h-auto w-full bg-black",
+          selectionMode && "pointer-events-none"
+        )}
       />
       <div className="space-y-1 border-t border-border p-3">
         <p className="line-clamp-2 text-sm font-medium">

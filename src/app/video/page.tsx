@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import Link from "next/link";
 import { AppSidebar } from "@/components/app-sidebar";
 import { WorkspaceBar } from "@/components/workspace-bar";
@@ -75,6 +75,9 @@ import {
   Download,
   FileJson,
   Film,
+  FolderMinus,
+  FolderPlus,
+  FolderX,
   GripVertical,
   Check,
   CheckCircle2,
@@ -285,8 +288,14 @@ const VIDEO_THUMBNAIL_MAX_WIDTH = 560;
 
 function VideoGalleryCard({
   video,
+  index,
   language,
   liveDetail,
+  selectionMode,
+  selected,
+  onToggleSelect,
+  onSelectPointerDown,
+  onSelectPointerEnter,
   onDelete,
   onCancelGeneration,
   onReuse,
@@ -295,8 +304,14 @@ function VideoGalleryCard({
   onWorkspacesChange,
 }: {
   video: GeneratedVideo;
+  index: number;
   language: AppLanguage;
   liveDetail?: GenerationDetail;
+  selectionMode: boolean;
+  selected: boolean;
+  onToggleSelect: (video: GeneratedVideo) => void;
+  onSelectPointerDown: (index: number) => void;
+  onSelectPointerEnter: (index: number) => void;
   onDelete: (video: GeneratedVideo) => Promise<void>;
   onCancelGeneration: (video: GeneratedVideo) => void;
   onReuse: (video: GeneratedVideo) => void;
@@ -375,12 +390,49 @@ function VideoGalleryCard({
     return () => observer.disconnect();
   }, []);
 
+  // Same selection surface as the image gallery cards: pointer-down anchors a
+  // drag range, click toggles, and real controls inside the card keep working.
+  const selectionSurfaceProps = {
+    onPointerDown: (event: ReactPointerEvent<HTMLElement>) => {
+      if (!selectionMode) return;
+      if (event.button !== 0) return;
+
+      const target = event.target as HTMLElement;
+      if (target.closest("button,a,input,select,textarea,video")) return;
+
+      event.preventDefault();
+      onSelectPointerDown(index);
+    },
+    onPointerEnter: () => {
+      if (!selectionMode) return;
+      onSelectPointerEnter(index);
+    },
+    onClick: (event: ReactMouseEvent<HTMLElement>) => {
+      if (!selectionMode) return;
+
+      const target = event.target as HTMLElement;
+      if (target.closest("button,a,input,select,textarea")) return;
+
+      onToggleSelect(video);
+    },
+  };
+  const selectionArticleClass = `${
+    selected ? "border-primary ring-2 ring-primary/50" : "border-border"
+  } ${selectionMode ? "cursor-pointer select-none" : ""}`;
+  const selectionBadge = selectionMode ? (
+    <div className="pointer-events-none absolute left-2 top-2 z-30 flex h-7 w-7 items-center justify-center rounded-md border border-white/70 bg-black/55 text-white shadow-sm">
+      {selected && <Check className="h-4 w-4" />}
+    </div>
+  ) : null;
+
   if (!hasVideo) {
     return (
       <article
         ref={articleRef}
-        className="relative overflow-hidden rounded-md border border-border shadow-sm"
+        className={`relative overflow-hidden rounded-md border shadow-sm ${selectionArticleClass}`}
+        {...selectionSurfaceProps}
       >
+        {selectionBadge}
         <div
           ref={contentRef}
           className={`relative flex flex-col gap-3 p-3 ${
@@ -641,42 +693,50 @@ function VideoGalleryCard({
   return (
     <article
       ref={articleRef}
-      className="relative overflow-hidden rounded-md border border-border bg-card shadow-sm"
+      className={`relative overflow-hidden rounded-md border bg-card shadow-sm ${selectionArticleClass}`}
+      {...selectionSurfaceProps}
     >
+      {selectionBadge}
       <div ref={contentRef}>
-        <Button
-          type="button"
-          size="icon-sm"
-          variant="secondary"
-          className="absolute left-2 top-2 z-20 shadow-md"
-          onClick={() => onOpenDetail(video)}
-          aria-label={language === "ko" ? "상세 보기" : "View details"}
-          title={language === "ko" ? "상세 보기" : "View details"}
-        >
-          <Maximize2 />
-        </Button>
+        {!selectionMode && (
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="secondary"
+            className="absolute left-2 top-2 z-20 shadow-md"
+            onClick={() => onOpenDetail(video)}
+            aria-label={language === "ko" ? "상세 보기" : "View details"}
+            title={language === "ko" ? "상세 보기" : "View details"}
+          >
+            <Maximize2 />
+          </Button>
+        )}
         {/* Workspaces are shared with the image gallery; this clip only ever
             shows up under the video screens' view of them. */}
-        <div className="absolute right-11 top-2 z-20 shadow-md">
-          <MediaWorkspacePicker
-            media="videos"
-            filename={video.filename}
-            workspaceIds={video.workspaces ?? []}
-            onChange={(workspaceIds) => onWorkspacesChange(video, workspaceIds)}
-          />
-        </div>
-        <Button
-          type="button"
-          size="icon-sm"
-          variant="destructive"
-          className="absolute right-2 top-2 z-20 shadow-md"
-          onClick={() => setConfirmingDelete((current) => !current)}
-          disabled={deleting}
-          aria-label="Delete video"
-          title="Delete video"
-        >
-          {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
-        </Button>
+        {!selectionMode && (
+          <div className="absolute right-11 top-2 z-20 shadow-md">
+            <MediaWorkspacePicker
+              media="videos"
+              filename={video.filename}
+              workspaceIds={video.workspaces ?? []}
+              onChange={(workspaceIds) => onWorkspacesChange(video, workspaceIds)}
+            />
+          </div>
+        )}
+        {!selectionMode && (
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="destructive"
+            className="absolute right-2 top-2 z-20 shadow-md"
+            onClick={() => setConfirmingDelete((current) => !current)}
+            disabled={deleting}
+            aria-label="Delete video"
+            title="Delete video"
+          >
+            {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
+          </Button>
+        )}
         {confirmingDelete && (
           <div className="absolute right-2 top-12 z-30 w-44 rounded-md border border-border bg-popover p-2.5 shadow-xl">
             <p className="text-[11px] font-medium text-popover-foreground">
@@ -722,11 +782,14 @@ function VideoGalleryCard({
             </div>
           </div>
         )}
-        <div className="bg-background">
+        {/* In selection mode the player must not swallow clicks — the card
+            itself is the selection surface. */}
+        <div className={`bg-background ${selectionMode ? "pointer-events-none" : ""}`}>
           {isGif(video) ? (
             <img
               src={video.url}
               alt={video.params?.prompt || "Generated video"}
+              draggable={false}
               className="block h-auto w-full"
             />
           ) : (
@@ -1344,6 +1407,13 @@ export default function VideoPage() {
   const [thumbnailWidth, setThumbnailWidth] = useState(320);
   const [editorWidth, setEditorWidth] = useState(576);
   const [editorOpen, setEditorOpen] = useState(true);
+  const [gallerySelectionMode, setGallerySelectionMode] = useState(false);
+  const [selectedVideoIds, setSelectedVideoIds] = useState<Set<string>>(
+    new Set()
+  );
+  const [batchWorkspaceId, setBatchWorkspaceId] = useState("");
+  const [batchActionBusy, setBatchActionBusy] = useState(false);
+  const [batchDownloadBusy, setBatchDownloadBusy] = useState(false);
   const layoutRef = useRef<HTMLDivElement | null>(null);
   const [civitaiUrl, setCivitaiUrl] = useState("");
   const [civitaiStatus, setCivitaiStatus] = useState("");
@@ -2296,6 +2366,15 @@ export default function VideoPage() {
   const activeWorkspaceId = useMediaWorkspaceStore(
     (state) => state.byMedia.videos.activeWorkspaceId
   );
+  const videoWorkspaces = useMediaWorkspaceStore(
+    (state) => state.byMedia.videos.workspaces
+  );
+  const setFileWorkspace = useMediaWorkspaceStore(
+    (state) => state.setFileWorkspace
+  );
+  const fetchMediaWorkspaces = useMediaWorkspaceStore(
+    (state) => state.fetchWorkspaces
+  );
 
   const applyVideoWorkspaces = useCallback(
     (video: GeneratedVideo, workspaces: string[]) => {
@@ -2603,6 +2682,258 @@ export default function VideoPage() {
     const rest = saved.filter((video) => !pendingIds.has(video.id));
     return [...pendingVideos, ...rest].sort((a, b) => b.timestamp - a.timestamp);
   }, [activeWorkspaceId, pendingVideos, videos]);
+
+  // --- Gallery multi-select (mirrors the image generation screen) ----------
+  const selectedVideos = useMemo(
+    () => visibleVideos.filter((video) => selectedVideoIds.has(video.id)),
+    [selectedVideoIds, visibleVideos]
+  );
+  // Only saved clips (with a file on disk) can join workspaces or download.
+  const selectedPersistedVideos = useMemo(
+    () =>
+      selectedVideos.filter((video) => Boolean(video.filename) && Boolean(video.url)),
+    [selectedVideos]
+  );
+  const selectedVideoCount = selectedVideos.length;
+  const selectedPersistedVideoCount = selectedPersistedVideos.length;
+  const allVideosSelected =
+    visibleVideos.length > 0 && selectedVideoCount === visibleVideos.length;
+  const selectedBatchWorkspaceId =
+    batchWorkspaceId || videoWorkspaces[0]?.id || "";
+
+  const toggleGallerySelectionMode = useCallback(() => {
+    setGallerySelectionMode((enabled) => {
+      if (enabled) {
+        setSelectedVideoIds(new Set());
+      }
+      return !enabled;
+    });
+  }, []);
+
+  const toggleVideoSelection = useCallback((video: GeneratedVideo) => {
+    setSelectedVideoIds((current) => {
+      const next = new Set(current);
+      if (next.has(video.id)) {
+        next.delete(video.id);
+      } else {
+        next.add(video.id);
+      }
+      return next;
+    });
+  }, []);
+
+  const selectAllVideos = useCallback(() => {
+    setSelectedVideoIds(new Set(visibleVideos.map((video) => video.id)));
+  }, [visibleVideos]);
+
+  const clearVideoSelection = useCallback(() => {
+    setSelectedVideoIds(new Set());
+  }, []);
+
+  // Drag-to-range selection. Handlers stay stable (read from refs) so the
+  // cards don't re-render on every pointer move — same as the image gallery.
+  const visibleVideosRef = useRef(visibleVideos);
+  visibleVideosRef.current = visibleVideos;
+  const selectedVideoIdsRef = useRef(selectedVideoIds);
+  selectedVideoIdsRef.current = selectedVideoIds;
+  const dragRef = useRef<{
+    anchor: number;
+    mode: boolean; // true = select the range, false = deselect it
+    moved: boolean;
+    baseline: Set<string>;
+  } | null>(null);
+  // Set after a drag so the trailing click doesn't toggle the anchor back.
+  const suppressClickRef = useRef(false);
+
+  useEffect(() => {
+    const endDrag = () => {
+      dragRef.current = null;
+    };
+    window.addEventListener("pointerup", endDrag);
+    window.addEventListener("pointercancel", endDrag);
+    return () => {
+      window.removeEventListener("pointerup", endDrag);
+      window.removeEventListener("pointercancel", endDrag);
+    };
+  }, []);
+
+  const handleSelectPointerDown = useCallback((index: number) => {
+    suppressClickRef.current = false;
+    const video = visibleVideosRef.current[index];
+    if (!video) {
+      dragRef.current = null;
+      return;
+    }
+    const baseline = new Set(selectedVideoIdsRef.current);
+    // Drag from an unselected clip selects; from a selected clip deselects.
+    const mode = !baseline.has(video.id);
+    dragRef.current = { anchor: index, mode, moved: false, baseline };
+  }, []);
+
+  const handleSelectPointerEnter = useCallback((index: number) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+    drag.moved = true;
+    suppressClickRef.current = true;
+    const list = visibleVideosRef.current;
+    const lo = Math.min(drag.anchor, index);
+    const hi = Math.max(drag.anchor, index);
+    const next = new Set(drag.baseline);
+    for (let i = lo; i <= hi; i++) {
+      const id = list[i]?.id;
+      if (!id) continue;
+      if (drag.mode) next.add(id);
+      else next.delete(id);
+    }
+    setSelectedVideoIds(next);
+  }, []);
+
+  const handleCardToggle = useCallback(
+    (video: GeneratedVideo) => {
+      if (suppressClickRef.current) {
+        suppressClickRef.current = false;
+        return;
+      }
+      toggleVideoSelection(video);
+    },
+    [toggleVideoSelection]
+  );
+
+  const deleteSelectedVideos = useCallback(async () => {
+    if (selectedVideos.length === 0 || batchActionBusy) return;
+
+    setBatchActionBusy(true);
+    try {
+      for (const video of selectedVideos) {
+        if (video.filename && video.url) {
+          await fetch("/api/videos/" + encodeURIComponent(video.filename), {
+            method: "DELETE",
+          }).catch(() => {});
+          setVideos((current) => current.filter((item) => item.id !== video.id));
+        } else {
+          // Pending / error / canceled cards live client-side only.
+          removePendingVideoById(video.id);
+        }
+      }
+      setSelectedVideoIds(new Set());
+    } finally {
+      setBatchActionBusy(false);
+    }
+  }, [batchActionBusy, removePendingVideoById, selectedVideos, setVideos]);
+
+  const updateSelectedVideoWorkspace = useCallback(
+    async (assigned: boolean) => {
+      if (!selectedBatchWorkspaceId || selectedPersistedVideos.length === 0) {
+        return;
+      }
+
+      setBatchActionBusy(true);
+      try {
+        for (const video of selectedPersistedVideos) {
+          const workspaces = await setFileWorkspace(
+            "videos",
+            video.filename,
+            selectedBatchWorkspaceId,
+            assigned
+          );
+          if (workspaces) {
+            applyVideoWorkspaces(video, workspaces);
+          }
+        }
+        setSelectedVideoIds(new Set());
+      } finally {
+        setBatchActionBusy(false);
+      }
+    },
+    [
+      applyVideoWorkspaces,
+      selectedBatchWorkspaceId,
+      selectedPersistedVideos,
+      setFileWorkspace,
+    ]
+  );
+
+  const clearSelectedVideoWorkspaces = useCallback(async () => {
+    if (selectedPersistedVideos.length === 0 || batchActionBusy) return;
+
+    setBatchActionBusy(true);
+    try {
+      for (const video of selectedPersistedVideos) {
+        const response = await fetch("/api/workspaces/assign", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            media: "videos",
+            filename: video.filename,
+            workspaceIds: [],
+          }),
+        }).catch(() => null);
+        if (response?.ok) {
+          applyVideoWorkspaces(video, []);
+        }
+      }
+      void fetchMediaWorkspaces("videos");
+      setSelectedVideoIds(new Set());
+    } finally {
+      setBatchActionBusy(false);
+    }
+  }, [
+    applyVideoWorkspaces,
+    batchActionBusy,
+    fetchMediaWorkspaces,
+    selectedPersistedVideos,
+  ]);
+
+  const downloadSelectedVideos = useCallback(async () => {
+    if (
+      selectedPersistedVideos.length === 0 ||
+      batchActionBusy ||
+      batchDownloadBusy
+    ) {
+      return;
+    }
+
+    setBatchDownloadBusy(true);
+    try {
+      const filenames = selectedPersistedVideos.map((video) => video.filename);
+
+      // A single clip downloads directly (no zip round-trip needed); multiple
+      // clips are bundled server-side into one zip.
+      if (filenames.length === 1) {
+        const a = document.createElement("a");
+        a.href = "/api/videos/" + encodeURIComponent(filenames[0]);
+        a.download = filenames[0];
+        a.click();
+        return;
+      }
+
+      const res = await fetch("/api/videos/zip", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ media: "videos", filenames }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Failed to build zip archive");
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `videos-${Date.now()}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    } catch {
+      // The button simply re-enables; individual clips can still be downloaded
+      // from their cards.
+    } finally {
+      setBatchDownloadBusy(false);
+    }
+  }, [batchActionBusy, batchDownloadBusy, selectedPersistedVideos]);
 
   // Only finished videos (with a playable URL) participate in the detail modal
   // and its prev/next navigation.
@@ -3999,8 +4330,8 @@ export default function VideoPage() {
       )}
 
       <main className="flex flex-1 flex-col overflow-hidden">
-        <div className="flex items-center justify-between border-b border-border p-4">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-y-2 border-b border-border p-4">
+          <div className="flex flex-wrap items-center gap-3 gap-y-2">
             <Button
               type="button"
               size="icon-sm"
@@ -4013,6 +4344,155 @@ export default function VideoPage() {
             </Button>
             <Film className="h-4 w-4 text-muted-foreground" />
             <h2 className="text-sm font-medium">Video Gallery</h2>
+            <Button
+              type="button"
+              size="sm"
+              variant={gallerySelectionMode ? "default" : "outline"}
+              onClick={toggleGallerySelectionMode}
+              className="h-8"
+            >
+              {gallerySelectionMode
+                ? language === "ko" ? "선택 종료" : "Done"
+                : language === "ko" ? "다중선택" : "Multi-select"}
+            </Button>
+            {gallerySelectionMode && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="whitespace-nowrap rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
+                  {language === "ko"
+                    ? `${selectedVideoCount}개 선택`
+                    : `${selectedVideoCount} selected`}
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8"
+                  onClick={
+                    allVideosSelected ? clearVideoSelection : selectAllVideos
+                  }
+                  disabled={visibleVideos.length === 0}
+                >
+                  {allVideosSelected
+                    ? language === "ko" ? "전체 해제" : "Deselect all"
+                    : language === "ko" ? "전체 선택" : "Select all"}
+                </Button>
+                <select
+                  value={selectedBatchWorkspaceId}
+                  onChange={(event) => setBatchWorkspaceId(event.target.value)}
+                  className="h-8 max-w-44 rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
+                  disabled={videoWorkspaces.length === 0 || batchActionBusy}
+                  aria-label={
+                    language === "ko" ? "일괄 작업 워크스페이스" : "Batch workspace"
+                  }
+                >
+                  {videoWorkspaces.length === 0 ? (
+                    <option value="">
+                      {language === "ko" ? "워크스페이스 없음" : "No workspace"}
+                    </option>
+                  ) : (
+                    videoWorkspaces.map((workspace) => (
+                      <option key={workspace.id} value={workspace.id}>
+                        {workspace.name}
+                      </option>
+                    ))
+                  )}
+                </select>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5"
+                  onClick={() => void updateSelectedVideoWorkspace(true)}
+                  disabled={
+                    batchActionBusy ||
+                    !selectedBatchWorkspaceId ||
+                    selectedPersistedVideoCount === 0
+                  }
+                  title={
+                    selectedPersistedVideoCount === 0
+                      ? language === "ko"
+                        ? "저장된 비디오만 워크스페이스에 추가할 수 있습니다"
+                        : "Only saved videos can be assigned to workspaces"
+                      : undefined
+                  }
+                >
+                  <FolderPlus className="h-3.5 w-3.5" />
+                  {language === "ko" ? "추가" : "Add"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5"
+                  onClick={() => void updateSelectedVideoWorkspace(false)}
+                  disabled={
+                    batchActionBusy ||
+                    !selectedBatchWorkspaceId ||
+                    selectedPersistedVideoCount === 0
+                  }
+                >
+                  <FolderMinus className="h-3.5 w-3.5" />
+                  {language === "ko" ? "제거" : "Remove"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5"
+                  onClick={() => void clearSelectedVideoWorkspaces()}
+                  disabled={batchActionBusy || selectedPersistedVideoCount === 0}
+                  title={
+                    language === "ko"
+                      ? "선택한 비디오를 모든 워크스페이스에서 제외합니다"
+                      : "Remove selected videos from every workspace"
+                  }
+                >
+                  <FolderX className="h-3.5 w-3.5" />
+                  {language === "ko" ? "워크스페이스 비우기" : "Clear workspaces"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5"
+                  onClick={() => void downloadSelectedVideos()}
+                  disabled={
+                    batchActionBusy ||
+                    batchDownloadBusy ||
+                    selectedPersistedVideoCount === 0
+                  }
+                  title={
+                    selectedPersistedVideoCount === 0
+                      ? language === "ko"
+                        ? "저장된 비디오만 다운로드할 수 있습니다"
+                        : "Only saved videos can be downloaded"
+                      : selectedPersistedVideoCount > 1
+                        ? language === "ko"
+                          ? "선택한 비디오를 zip으로 묶어 다운로드합니다"
+                          : "Bundles the selected videos into a zip download"
+                        : undefined
+                  }
+                >
+                  {batchDownloadBusy ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Download className="h-3.5 w-3.5" />
+                  )}
+                  {language === "ko" ? "다운로드" : "Download"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="destructive"
+                  className="h-8 gap-1.5"
+                  onClick={() => void deleteSelectedVideos()}
+                  disabled={batchActionBusy || selectedVideoCount === 0}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  {language === "ko" ? "삭제" : "Delete"}
+                </Button>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2">
@@ -4027,7 +4507,7 @@ export default function VideoPage() {
                 min={VIDEO_THUMBNAIL_MIN_WIDTH}
                 max={VIDEO_THUMBNAIL_MAX_WIDTH}
                 step={20}
-                className="w-28"
+                style={{ width: "110px" }}
               />
               <span className="w-8 text-right text-xs font-mono tabular-nums">
                 {thumbnailWidth}
@@ -4072,16 +4552,22 @@ export default function VideoPage() {
                 gridAutoRows: "8px",
               }}
             >
-              {visibleVideos.map((video) => (
+              {visibleVideos.map((video, index) => (
                 <VideoGalleryCard
                   key={video.id}
                   video={video}
+                  index={index}
                   language={language}
                   liveDetail={
                     video.id === activeGeneration?.id
                       ? generationDetails[0]
                       : undefined
                   }
+                  selectionMode={gallerySelectionMode}
+                  selected={selectedVideoIds.has(video.id)}
+                  onToggleSelect={handleCardToggle}
+                  onSelectPointerDown={handleSelectPointerDown}
+                  onSelectPointerEnter={handleSelectPointerEnter}
                   onDelete={deleteVideo}
                   onCancelGeneration={(item) => cancelGeneration(item.id)}
                   onReuse={reuseVideoParams}
