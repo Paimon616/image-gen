@@ -18,7 +18,9 @@ import {
   CloudDownload,
   CloudOff,
   Copy,
+  FileX,
   GripVertical,
+  ImageOff,
   Images as ImagesIcon,
   LayoutGrid,
   Loader2,
@@ -32,6 +34,14 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -1535,20 +1545,35 @@ export function CharacterStudio() {
     [removeImage]
   );
 
-  // 통합 삭제: removes the situation AND deletes its generated images from disk
-  // (the plain delete button above keeps the images in the gallery).
-  const removeSituationWithImages = useCallback(
+  // 이미지만 삭제 (단일 상황, 확인 없음): 상황은 남기고 포함된 이미지를
+  // 디스크·갤러리에서 모두 지운다 (bulkDeleteSituationImages의 단일판).
+  // 확인 UI는 호출부(갤러리 카드 확인 모달)가 담당한다.
+  const deleteSituationImagesCore = useCallback(
     async (situationId: string) => {
-      if (!selected) return;
       const images = situationImages[situationId] ?? [];
-      if (
-        !window.confirm(
-          images.length > 0
-            ? `상황과 포함된 이미지 ${images.length}개를 함께 삭제할까요? 이미지는 갤러리에서도 사라지고 되돌릴 수 없어요.`
-            : "이 상황을 삭제할까요? (포함된 이미지 없음)"
-        )
-      )
-        return;
+      if (images.length === 0) return;
+      setSituationImages((prev) => {
+        const next = { ...prev };
+        delete next[situationId];
+        return next;
+      });
+      await Promise.all(
+        images.map(async (image) => {
+          await fetch(`/api/images/${image.filename}`, {
+            method: "DELETE",
+          }).catch(() => {});
+          removeImage(image.id);
+        })
+      );
+    },
+    [removeImage, situationImages]
+  );
+
+  // 통합 삭제 (확인 없음): removes the situation AND deletes its generated
+  // images from disk. 확인 UI는 호출부가 담당한다.
+  const removeSituationWithImagesCore = useCallback(
+    async (situationId: string) => {
+      const images = situationImages[situationId] ?? [];
       removeSituation(situationId);
       setSituationImages((prev) => {
         const next = { ...prev };
@@ -1564,8 +1589,81 @@ export function CharacterStudio() {
         })
       );
     },
-    [removeImage, removeSituation, selected, situationImages]
+    [removeImage, removeSituation, situationImages]
   );
+
+  // 통합 삭제: removes the situation AND deletes its generated images from disk
+  // (the plain delete button above keeps the images in the gallery).
+  const removeSituationWithImages = useCallback(
+    async (situationId: string) => {
+      if (!selected) return;
+      const images = situationImages[situationId] ?? [];
+      if (
+        !window.confirm(
+          images.length > 0
+            ? `상황과 포함된 이미지 ${images.length}개를 함께 삭제할까요? 이미지는 갤러리에서도 사라지고 되돌릴 수 없어요.`
+            : "이 상황을 삭제할까요? (포함된 이미지 없음)"
+        )
+      )
+        return;
+      await removeSituationWithImagesCore(situationId);
+    },
+    [removeSituationWithImagesCore, selected, situationImages]
+  );
+
+  // ---- 갤러리 카드 플로팅 버튼의 삭제 확인 모달 ----
+
+  const [cardConfirm, setCardConfirm] = useState<{
+    situationId: string;
+    action: "images" | "situation" | "both";
+  } | null>(null);
+
+  const cardConfirmInfo = useMemo(() => {
+    if (!cardConfirm || !selected) return null;
+    const situation = selected.situations.find(
+      (item) => item.id === cardConfirm.situationId
+    );
+    if (!situation) return null;
+    const name = situation.name || "이름 없는 상황";
+    const count = situationImages[cardConfirm.situationId]?.length ?? 0;
+    switch (cardConfirm.action) {
+      case "images":
+        return {
+          title: "이미지 제거",
+          description: `"${name}" 상황의 이미지 ${count}개를 삭제할까요? 상황은 유지되지만 이미지는 갤러리에서도 사라지고 되돌릴 수 없어요.`,
+          confirmLabel: "이미지 제거",
+        };
+      case "situation":
+        return {
+          title: "상황 제거",
+          description: `"${name}" 상황을 삭제할까요? 포함된 이미지는 갤러리에 남아요.`,
+          confirmLabel: "상황 제거",
+        };
+      case "both":
+        return {
+          title: "둘다 제거",
+          description:
+            count > 0
+              ? `"${name}" 상황과 포함된 이미지 ${count}개를 함께 삭제할까요? 이미지는 갤러리에서도 사라지고 되돌릴 수 없어요.`
+              : `"${name}" 상황을 삭제할까요? (포함된 이미지 없음)`,
+          confirmLabel: "둘다 제거",
+        };
+    }
+  }, [cardConfirm, selected, situationImages]);
+
+  const confirmCardAction = useCallback(() => {
+    if (!cardConfirm) return;
+    const { situationId, action } = cardConfirm;
+    setCardConfirm(null);
+    if (action === "images") void deleteSituationImagesCore(situationId);
+    else if (action === "situation") removeSituation(situationId);
+    else void removeSituationWithImagesCore(situationId);
+  }, [
+    cardConfirm,
+    deleteSituationImagesCore,
+    removeSituation,
+    removeSituationWithImagesCore,
+  ]);
 
   // Wipe every situation for the selected character at once — used by the "모두
   // 제거" button when a batch-generated set needs to be cleared and regenerated.
@@ -2239,22 +2337,34 @@ export function CharacterStudio() {
                               situation.id
                             );
                             return (
-                              <button
+                              <div
                                 key={situation.id}
-                                type="button"
+                                role="button"
+                                tabIndex={0}
                                 onClick={() => {
                                   if (situationSelectMode)
                                     toggleSituationChecked(situation.id);
                                   else if (cover) setSelectedImage(cover);
                                 }}
+                                onKeyDown={(event) => {
+                                  if (
+                                    event.key === "Enter" ||
+                                    event.key === " "
+                                  ) {
+                                    event.preventDefault();
+                                    if (situationSelectMode)
+                                      toggleSituationChecked(situation.id);
+                                    else if (cover) setSelectedImage(cover);
+                                  }
+                                }}
                                 className={cn(
                                   "group relative aspect-[3/4] overflow-hidden rounded-md border border-border bg-muted text-left",
                                   situationSelectMode
                                     ? checked
-                                      ? "border-primary ring-2 ring-primary/50"
-                                      : "hover:border-primary/50"
+                                      ? "cursor-pointer border-primary ring-2 ring-primary/50"
+                                      : "cursor-pointer hover:border-primary/50"
                                     : cover
-                                      ? "transition-opacity hover:opacity-90"
+                                      ? "cursor-pointer"
                                       : "cursor-default"
                                 )}
                                 title={
@@ -2298,7 +2408,60 @@ export function CharacterStudio() {
                                     <Check className="size-3.5" />
                                   </span>
                                 )}
-                              </button>
+                                {!situationSelectMode && (
+                                  /* 플로팅 버튼 — 카드 오른쪽 가장자리에 아이콘
+                                     스택으로 표시. 호버 중에만 보이고 클릭을
+                                     받으며, 클릭 시 확인 모달을 연다. */
+                                  <span className="pointer-events-none absolute right-1.5 top-1/2 flex -translate-y-1/2 flex-col gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+                                    <button
+                                      type="button"
+                                      className="pointer-events-none flex size-7 items-center justify-center rounded-full bg-background/90 text-foreground shadow hover:bg-background group-hover:pointer-events-auto"
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        if (images.length === 0) return;
+                                        setCardConfirm({
+                                          situationId: situation.id,
+                                          action: "images",
+                                        });
+                                      }}
+                                      aria-label="이미지 제거"
+                                      title="이미지만 삭제해요. 상황은 유지되고, 이미지는 갤러리에서도 사라져요."
+                                    >
+                                      <ImageOff className="size-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="pointer-events-none flex size-7 items-center justify-center rounded-full bg-background/90 text-foreground shadow hover:bg-background group-hover:pointer-events-auto"
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        setCardConfirm({
+                                          situationId: situation.id,
+                                          action: "situation",
+                                        });
+                                      }}
+                                      aria-label="상황 제거"
+                                      title="상황만 삭제해요. 이미지는 갤러리에 남아요."
+                                    >
+                                      <FileX className="size-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="pointer-events-none flex size-7 items-center justify-center rounded-full bg-destructive/90 text-destructive-foreground shadow hover:bg-destructive group-hover:pointer-events-auto"
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        setCardConfirm({
+                                          situationId: situation.id,
+                                          action: "both",
+                                        });
+                                      }}
+                                      aria-label="둘다 제거"
+                                      title="상황과 포함된 이미지를 함께 삭제해요. 이미지는 갤러리에서도 사라져요."
+                                    >
+                                      <Trash2 className="size-3.5" />
+                                    </button>
+                                  </span>
+                                )}
+                              </div>
                             );
                           })}
                         </div>
@@ -2667,6 +2830,39 @@ export function CharacterStudio() {
           }}
         />
       )}
+
+      {/* 갤러리 카드 플로팅 버튼 삭제 확인 모달 */}
+      <Dialog
+        open={!!cardConfirmInfo}
+        onOpenChange={(open) => {
+          if (!open) setCardConfirm(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{cardConfirmInfo?.title}</DialogTitle>
+            <DialogDescription>
+              {cardConfirmInfo?.description}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setCardConfirm(null)}
+            >
+              취소
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={confirmCardAction}
+            >
+              {cardConfirmInfo?.confirmLabel}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
