@@ -630,7 +630,38 @@ export async function POST(req: NextRequest) {
                 : "";
             shouldGenerate = Boolean(result.shouldGenerate);
           } catch {
+            // Salvage a broken buffer (truncation, prose around the JSON): the
+            // partial reply and a paramsPatch that already closed are both
+            // still usable — the video surfaces read the patch from `done`
+            // only, so dropping it here lost real edits.
             reply = extractPartialString(contentBuffer) ?? "";
+            const rawPatch = extractCompleteObject(contentBuffer, "paramsPatch");
+            if (rawPatch) {
+              try {
+                paramsPatch = JSON.parse(rawPatch);
+              } catch {
+                // Keep the empty patch.
+              }
+            }
+            // No JSON at all → the model answered in prose (usually a
+            // refusal). Show that text instead of the generic fallback.
+            if (!reply && !contentBuffer.includes("{")) {
+              reply = contentBuffer.trim();
+            }
+          }
+
+          const patchEmpty =
+            !paramsPatch ||
+            typeof paramsPatch !== "object" ||
+            Object.keys(paramsPatch as Record<string, unknown>).length === 0;
+          if (!reply && !attachmentNotice && patchEmpty) {
+            // The turn produced nothing usable — the client will show its
+            // "반영할 내용을 만들지 못했어요" fallback. Keep the raw model
+            // output in the server log so that fallback stays diagnosable.
+            console.warn(
+              "[paimon] empty turn — raw completion (first 2000 chars):",
+              contentBuffer.slice(0, 2000) || "(empty)"
+            );
           }
 
           send("done", { reply, paramsPatch, attachmentNotice, shouldGenerate });

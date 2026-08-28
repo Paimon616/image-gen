@@ -303,59 +303,93 @@ export async function streamJsonCompletion({
     return anthropicText(await stream.finalMessage());
   }
 
-  const response = await postOpenAiCompatible(
-    llm.provider,
-    llm.apiKey,
-    {
-      model: llm.model,
-      temperature,
-      stream: true,
-      response_format: { type: "json_object" },
-      ...reasoningPayload(llm),
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-    },
-    signal
-  );
-
-  if (!response.body) {
-    throw new PaimonLlmError(
-      `${chatProviderMeta(llm.provider).label} returned an empty stream.`
+  // Two silent-failure modes used to end a turn with an empty buffer and the
+  // generic "반영할 내용을 만들지 못했어요" fallback: OpenRouter reports
+  // moderation/provider failures as an `error` object INSIDE a 200 SSE stream
+  // (which the parser skipped as a non-delta line), and DeepSeek's JSON-output
+  // mode is documented to occasionally return empty content. Now a mid-stream
+  // error surfaces with its real message, and an empty completion retries once
+  // (nothing was forwarded to the client yet) before failing with the reason.
+  let finishReason = "";
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const response = await postOpenAiCompatible(
+      llm.provider,
+      llm.apiKey,
+      {
+        model: llm.model,
+        temperature,
+        stream: true,
+        response_format: { type: "json_object" },
+        ...reasoningPayload(llm),
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+      },
+      signal
     );
-  }
 
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let sseBuffer = "";
-  let content = "";
+    if (!response.body) {
+      throw new PaimonLlmError(
+        `${chatProviderMeta(llm.provider).label} returned an empty stream.`
+      );
+    }
 
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let sseBuffer = "";
+    let content = "";
+    finishReason = "";
 
-    sseBuffer += decoder.decode(value, { stream: true });
-    const lines = sseBuffer.split("\n");
-    sseBuffer = lines.pop() ?? "";
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
 
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith("data:")) continue;
-      const payload = trimmed.slice("data:".length).trim();
-      if (!payload || payload === "[DONE]") continue;
+      sseBuffer += decoder.decode(value, { stream: true });
+      const lines = sseBuffer.split("\n");
+      sseBuffer = lines.pop() ?? "";
 
-      try {
-        const chunk = JSON.parse(payload);
-        const delta = chunk?.choices?.[0]?.delta?.content;
-        if (typeof delta !== "string" || !delta) continue;
-        content += delta;
-        onDelta(delta);
-      } catch {
-        // Ignore keep-alive comments / non-JSON lines.
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("data:")) continue;
+        const payload = trimmed.slice("data:".length).trim();
+        if (!payload || payload === "[DONE]") continue;
+
+        try {
+          const chunk = JSON.parse(payload);
+          const streamError =
+            chunk?.error?.message ?? chunk?.choices?.[0]?.error?.message;
+          if (streamError) throw new PaimonLlmError(String(streamError));
+          const reason = chunk?.choices?.[0]?.finish_reason;
+          if (typeof reason === "string" && reason) finishReason = reason;
+          const delta = chunk?.choices?.[0]?.delta?.content;
+          if (typeof delta !== "string" || !delta) continue;
+          content += delta;
+          onDelta(delta);
+        } catch (error) {
+          if (error instanceof PaimonLlmError) throw error;
+          // Ignore keep-alive comments / non-JSON lines.
+        }
       }
+    }
+
+    if (content.trim()) {
+      if (finishReason && finishReason !== "stop") {
+        // A truncated ("length") or filtered completion still returns text;
+        // leave the reason in the log so a later JSON-parse failure on this
+        // buffer is diagnosable.
+        console.warn(
+          `[paimon] ${llm.provider}/${llm.model} completion ended with finish_reason=${finishReason}`
+        );
+      }
+      return content;
     }
   }
 
-  return content;
+  const reasonLabel = finishReason ? ` (finish_reason: ${finishReason})` : "";
+  throw new PaimonLlmError(
+    finishReason === "content_filter"
+      ? `모델 제공자가 이번 요청을 검열해 빈 답변을 반환했습니다${reasonLabel}. 표현을 조금 바꿔 다시 시도해 주세요.`
+      : `${chatProviderMeta(llm.provider).label} 모델이 빈 답변을 반환했습니다${reasonLabel}. 다시 시도해 주세요.`
+  );
 }
