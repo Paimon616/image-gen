@@ -486,6 +486,10 @@ export const useVideoGenerationQueueStore = create<VideoGenerationQueueState>(
         source_image: source.source_image
           ? toAbsoluteImageUrl(source.source_image)
           : source.source_image,
+        // Extra keyframe refs (multi-ref pipelines) need the same absolutizing.
+        extra_ref_images: (source.extra_ref_images ?? [])
+          .filter(Boolean)
+          .map((image) => toAbsoluteImageUrl(image)),
         // A pipeline that renders its own audio never needs the separate pass;
         // drop any stale toggle so the backend doesn't queue a redundant audio
         // workflow.

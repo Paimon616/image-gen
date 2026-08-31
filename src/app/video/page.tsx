@@ -199,10 +199,16 @@ interface VideoPipelineOption {
   id: string;
   label: string;
   description: string;
+  traits?: {
+    bestFor: string;
+    strengths: string[];
+    weaknesses: string[];
+  };
   workflowPath: string;
   mode: "i2v" | "t2v";
   experimental?: boolean;
   embedsAudio?: boolean;
+  maxRefImages?: number;
   canvas?: VideoPipelineCanvasSupport;
   defaults: Record<string, string | number | boolean>;
   controls: VideoPipelineControlOption[];
@@ -3409,6 +3415,41 @@ export default function VideoPage() {
                     ? "이미지 기반 영상 모델이며 시작 이미지가 필요합니다."
                     : "Image-to-video preset; a start image is required."}
               </p>
+
+              {selectedVideoPipeline?.traits && (
+                <div className="space-y-1.5 rounded-md border border-border bg-muted/40 px-3 py-2">
+                  <p className="text-xs leading-relaxed text-foreground">
+                    <span className="font-semibold">
+                      {language === "ko" ? "이럴 때: " : "Best for: "}
+                    </span>
+                    {selectedVideoPipeline.traits.bestFor}
+                  </p>
+                  <ul className="space-y-0.5">
+                    {selectedVideoPipeline.traits.strengths.map((item) => (
+                      <li
+                        key={item}
+                        className="flex gap-1.5 text-xs leading-relaxed text-muted-foreground"
+                      >
+                        <span className="shrink-0 font-semibold text-emerald-600 dark:text-emerald-400">
+                          +
+                        </span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                    {selectedVideoPipeline.traits.weaknesses.map((item) => (
+                      <li
+                        key={item}
+                        className="flex gap-1.5 text-xs leading-relaxed text-muted-foreground"
+                      >
+                        <span className="shrink-0 font-semibold text-red-500 dark:text-red-400">
+                          −
+                        </span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
 
             {selectedVideoPipeline?.controls?.length ? (
@@ -3948,6 +3989,41 @@ export default function VideoPage() {
                     : undefined
                 }
               />
+
+              {(selectedVideoPipeline?.maxRefImages ?? 1) > 1 && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    {language === "ko"
+                      ? "추가 키프레임(선택): 중간·끝 장면 이미지를 지정하면 해당 시점의 구도와 포즈가 고정됩니다. 각 시점은 Pipeline의 Conditioning 설정에서 조정합니다."
+                      : "Extra keyframes (optional): pin mid/end poses to their timestamps. Adjust each timestamp in the Pipeline Conditioning settings."}
+                  </p>
+                  {Array.from(
+                    { length: (selectedVideoPipeline?.maxRefImages ?? 1) - 1 },
+                    (_, index) => (
+                      <ImageUpload
+                        key={index}
+                        label={`Keyframe ${index + 2}`}
+                        description={
+                          language === "ko"
+                            ? `${index + 2}번째 레퍼런스 이미지 (선택)`
+                            : `Reference image ${index + 2} (optional)`
+                        }
+                        value={params.extra_ref_images?.[index] ?? null}
+                        onChange={(url) => {
+                          const next = [...(params.extra_ref_images ?? [])];
+                          while (next.length <= index) next.push("");
+                          next[index] = url ?? "";
+                          while (next.length > 0 && !next[next.length - 1]) {
+                            next.pop();
+                          }
+                          updateParams({ extra_ref_images: next });
+                        }}
+                        previewClassName="h-24 w-full object-cover"
+                      />
+                    )
+                  )}
+                </div>
+              )}
             </div>
 
             {showCanvasPanel ? (

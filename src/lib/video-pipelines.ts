@@ -9,13 +9,28 @@ export interface VideoPipelineCanvasSupport {
   fps: boolean;
 }
 
+export interface VideoPipelineTraits {
+  /** One-line "이럴 때 쓰세요" summary shown in the pipeline picker. */
+  bestFor: string;
+  strengths: string[];
+  weaknesses: string[];
+}
+
 export interface VideoPipelineDefinition {
   id: string;
   label: string;
   description: string;
+  /** 특징/장단점 card rendered under the pipeline picker. */
+  traits?: VideoPipelineTraits;
   workflowPath: string;
   mode: "i2v" | "t2v";
   experimental?: boolean;
+  /**
+   * How many reference/keyframe images the workflow accepts (default 1 — the
+   * start image). >1 makes the UI offer extra optional keyframe slots, wired
+   * through params.extra_ref_images.
+   */
+  maxRefImages?: number;
   /**
    * The workflow renders audio and muxes it into the output on its own (e.g. the
    * LTXV audio VAE path or a CreateVideo/VideoCombine node fed an `audio` input).
@@ -956,12 +971,209 @@ const dasiwaMinimaxH3I2vaControls: VideoPipelineControl[] = [
   },
 ];
 
+// Native MiniMax H3 multi-reference I2VA, captured from an mp4's embedded
+// ComfyUI prompt (2026-08 sample with notably clean hand rendering). Uses the
+// core MiniMaxH3ReferenceToVideo node with up to 4 keyframe images pinned to
+// timestamps in the prompt header. Compared to the DaSiWa Director pipeline:
+// no MiniMaxH3Cache (every step computed), no style LoRA, and an
+// ExtendIntermediateSigmas node that adds extra low-sigma refinement steps —
+// the combination that kept fine anatomy (hands) intact in the source video.
+// The captured graph's ComfyMathExpression/easy-int/rgthree nodes were replaced
+// with literals + server-side length math, so only KJNodes is required beyond
+// ComfyUI core (>= 0.30.0 for native MiniMax H3).
+const minimaxH3MultiRefControls: VideoPipelineControl[] = [
+  {
+    key: "seed",
+    label: "Seed",
+    type: "number",
+    defaultValue: 852030847335123,
+    min: 0,
+    step: 1,
+    group: "core",
+    help: "RandomNoise seed(node 129)입니다. 캡처된 원본 영상의 seed가 기본값입니다.",
+    patches: [{ nodeId: "129", input: "noise_seed" }],
+  },
+  {
+    key: "duration_seconds",
+    label: "Duration (sec)",
+    type: "number",
+    defaultValue: 15,
+    min: 1,
+    max: 15,
+    step: 0.5,
+    group: "core",
+    help: "생성할 영상 길이(초)입니다. 24fps 고정이며 프레임 수는 서버가 length ≡ 5 (mod 17) 규칙으로 환산해 ReferenceToVideo(node 136)에 넣습니다. 원본 영상은 15초입니다.",
+    patches: [],
+  },
+  {
+    key: "width",
+    label: "Width",
+    type: "number",
+    defaultValue: 640,
+    min: 256,
+    max: 1920,
+    step: 32,
+    group: "resize",
+    help: "출력 가로(node 136 width)입니다. MiniMax H3는 32의 배수여야 합니다. 원본 영상은 640×864입니다.",
+    patches: [{ nodeId: "136", input: "width" }],
+  },
+  {
+    key: "height",
+    label: "Height",
+    type: "number",
+    defaultValue: 864,
+    min: 256,
+    max: 1920,
+    step: 32,
+    group: "resize",
+    help: "출력 세로(node 136 height)입니다. 32의 배수여야 합니다.",
+    patches: [{ nodeId: "136", input: "height" }],
+  },
+  {
+    key: "auto_aspect",
+    label: "Auto Aspect",
+    type: "boolean",
+    defaultValue: true,
+    group: "resize",
+    help: "시작 이미지의 가로세로 비율에 맞춰 출력 캔버스를 자동 재계산합니다(Width×Height 픽셀 예산 유지, 32px 배수).",
+    patches: [],
+  },
+  {
+    key: "prompt_autoformat",
+    label: "Prompt Auto-Format",
+    type: "boolean",
+    defaultValue: true,
+    group: "conditioning",
+    help:
+      "프롬프트 앞에 레퍼런스 정렬 헤더(Picture N aligns with the X-second mark …)를 자동으로 붙이고, " +
+      "사운드 프롬프트가 있으면 overall_soundscape 블록으로 덧붙입니다. " +
+      "'aligns with the'를 이미 포함한 프롬프트는 그대로 전달됩니다. " +
+      "원본 예시처럼 subject_definitions / detailed_description 구조까지 직접 쓰면 결과가 가장 좋습니다.",
+    patches: [],
+  },
+  {
+    key: "ref2_seconds",
+    label: "Keyframe 2 Time (sec)",
+    type: "number",
+    defaultValue: 5,
+    min: 0,
+    max: 15,
+    step: 0.5,
+    group: "conditioning",
+    help: "두 번째 키프레임 이미지가 정렬될 시점(초)입니다. 참조와 캔버스 섹션에서 Keyframe 2 이미지를 지정했을 때만 사용됩니다.",
+    patches: [],
+  },
+  {
+    key: "ref3_seconds",
+    label: "Keyframe 3 Time (sec)",
+    type: "number",
+    defaultValue: 10,
+    min: 0,
+    max: 15,
+    step: 0.5,
+    group: "conditioning",
+    help: "세 번째 키프레임 이미지가 정렬될 시점(초)입니다.",
+    patches: [],
+  },
+  {
+    key: "ref4_seconds",
+    label: "Keyframe 4 Time (sec)",
+    type: "number",
+    defaultValue: 14,
+    min: 0,
+    max: 15,
+    step: 0.5,
+    group: "conditioning",
+    help: "네 번째 키프레임 이미지가 정렬될 시점(초)입니다.",
+    patches: [],
+  },
+  {
+    key: "steps",
+    label: "Steps",
+    type: "number",
+    defaultValue: 20,
+    min: 4,
+    max: 40,
+    step: 1,
+    group: "sampling",
+    help: "BasicScheduler steps(node 124)입니다. 원본은 20 step + ExtendIntermediateSigmas 추가 2 step입니다.",
+    patches: [{ nodeId: "124", input: "steps" }],
+  },
+  {
+    key: "sampler",
+    label: "Sampler",
+    type: "select",
+    defaultValue: "euler",
+    options: ["euler", "dpmpp_2m", "res_multistep", "euler_ancestral", "uni_pc"],
+    group: "sampling",
+    help: "KSamplerSelect(node 123)의 sampler입니다. 원본 영상은 euler를 사용했습니다.",
+    patches: [{ nodeId: "123", input: "sampler_name" }],
+  },
+  {
+    key: "extend_sigma_steps",
+    label: "Detail Extra Steps",
+    type: "number",
+    defaultValue: 2,
+    min: 0,
+    max: 8,
+    step: 1,
+    group: "sampling",
+    help: "ExtendIntermediateSigmas(node 163)가 저노이즈 구간에 추가 삽입하는 step 수입니다. 손·얼굴 같은 미세 디테일이 정리되는 구간을 강화합니다. 원본 2. 0이면 삽입하지 않습니다.",
+    patches: [{ nodeId: "163", input: "steps" }],
+  },
+  {
+    key: "extend_sigma_start",
+    label: "Detail Steps Start σ",
+    type: "number",
+    defaultValue: 0.65,
+    min: 0.05,
+    max: 5,
+    step: 0.05,
+    group: "sampling",
+    help: "추가 step 삽입을 시작하는 sigma입니다(node 163 start_at_sigma, 이 값 이하 구간에 삽입). 원본 0.65.",
+    patches: [{ nodeId: "163", input: "start_at_sigma" }],
+  },
+  {
+    key: "sage_attention",
+    label: "SageAttention",
+    type: "select",
+    defaultValue: "disabled",
+    options: ["disabled", "auto"],
+    group: "advanced",
+    help: "PathchSageAttentionKJ(node 151)입니다. 원본 영상은 auto(+compile)로 생성됐지만 pod에 sageattention 패키지가 없으면 실패하므로 기본은 disabled입니다. 품질에는 영향이 없고 속도만 달라집니다.",
+    patches: [{ nodeId: "151", input: "sage_attention" }],
+  },
+  {
+    key: "allow_compile",
+    label: "Torch Compile",
+    type: "boolean",
+    defaultValue: false,
+    group: "advanced",
+    help: "node 151의 allow_compile입니다. 켜면 torch.compile로 반복 생성이 빨라지지만 첫 실행 컴파일에 수 분이 걸릴 수 있습니다.",
+    patches: [{ nodeId: "151", input: "allow_compile" }],
+  },
+];
+
 const BUILTIN_VIDEO_PIPELINES: VideoPipelineDefinition[] = [
   {
     id: "dasiwa-minimax-h3-i2va",
     label: "MiniMax H3 (DaSiWa) - I2V + audio",
     description:
       "DaSiWa MythicAlchemy MiniMax H3 이미지→비디오+오디오 워크플로우(원본 영상에서 캡처한 실행 그래프 그대로). REF2VA Hybrid 체크포인트 + Qwen3-VL 32B(nvfp4) 인코더 + MysticXXX v3 LoRA(0.9, baked). Turbo LoRA 컨트롤로 lightx2v 8-step/4-step distill을 켜면 저스텝 고속 생성이 가능합니다. ComfyUI 0.30.0+ 와 ComfyUI-DaSiWa-Nodes / ComfyUI-KJNodes가 설치된 pod가 필요합니다(onechat_ltx25_h100_002 세팅 완료). 프롬프트는 MiniMax Director 형식(integrated_multimodal_description …)을 쓰면 원본과 같은 스타일로 동작하며, negative prompt는 지원하지 않습니다.",
+    traits: {
+      bestFor: "그림체·캐릭터 일관성이 최우선인 컷, 시작 이미지 1장으로 빠르게 뽑을 때",
+      strengths: [
+        "그림체·캐릭터 일관성 유지가 현재 파이프라인 중 최상급",
+        "Director 형식 보존 앵커로 시작 이미지에서 이탈이 적음",
+        "MiniMaxH3Cache로 스텝 재사용 — 동급 대비 빠름",
+        "오디오 동시 생성 + Turbo LoRA로 8/4-step 고속 모드 지원",
+      ],
+      weaknesses: [
+        "손가락 등 미세 해부학이 잘 깨짐 (캐시 재사용 + MysticXXX LoRA 영향 — Advanced의 Cache 설정으로 완화 가능)",
+        "네거티브 프롬프트 미지원 (CFG-less BasicGuider)",
+        "레퍼런스 이미지 1장만 사용 — 중간 구도를 지정할 수 없음",
+      ],
+    },
     workflowPath: "workflows/dasiwa-minimax-h3-i2va.json",
     mode: "i2v",
     // DaSiWa_EnhancedVideoCombine muxes the audio-VAE output into the file, so
@@ -981,10 +1193,52 @@ const BUILTIN_VIDEO_PIPELINES: VideoPipelineDefinition[] = [
     ],
   },
   {
+    id: "minimax-h3-native-multiref-i2va",
+    label: "MiniMax H3 (native) - Multi-Ref I2VA",
+    description:
+      "ComfyUI 네이티브 MiniMaxH3ReferenceToVideo 기반 멀티 레퍼런스 이미지→비디오+오디오 워크플로우(손 표현이 깨끗했던 실제 영상의 임베디드 그래프에서 추출). 같은 REF2VA Hybrid 체크포인트를 쓰지만 키프레임 이미지를 최대 4장까지 타임라인에 앵커하고, 캐시 없이 전 스텝을 실제 계산하며, 저노이즈 구간에 추가 step을 삽입합니다. 시작 이미지 1장만 넣으면 단일 레퍼런스로도 동작합니다. ComfyUI 0.30.0+ 와 ComfyUI-KJNodes가 필요합니다(onechat_ltx25_h100_002 pod 호환).",
+    traits: {
+      bestFor: "손·포즈가 중요한 컷, 시작→중간→끝 구도를 직접 설계하고 싶을 때",
+      strengths: [
+        "키프레임 이미지 최대 4장을 타임라인에 앵커 — 포즈·손 표현이 구조적으로 안정",
+        "캐시 없음 + 저노이즈 추가 step으로 미세 디테일(손가락·얼굴) 최상",
+        "스타일 LoRA가 없어 원본 그림체가 그대로 유지됨",
+        "오디오 동시 생성(soundscape 프롬프트 지원)",
+      ],
+      weaknesses: [
+        "캐시가 없어 DaSiWa 파이프라인보다 생성이 느림",
+        "키프레임을 쓰려면 중간·끝 장면 이미지를 직접 준비해야 함",
+        "타임스탬프 기반 상세 프롬프트를 써야 원본급 결과가 나옴 (Paimon에게 요청 가능)",
+        "네거티브 프롬프트 미지원 (CFG-less BasicGuider)",
+      ],
+    },
+    workflowPath: "workflows/minimax-h3-native-multiref-i2va.json",
+    mode: "i2v",
+    maxRefImages: 4,
+    // CreateVideo (node 149) muxes the audio-VAE output into the file.
+    embedsAudio: true,
+    canvas: NO_CANVAS_SUPPORT,
+    defaults: defaultsFromControls(minimaxH3MultiRefControls),
+    controls: minimaxH3MultiRefControls,
+  },
+  {
     id: "ltx25-i2v-two-stage",
     label: "LTX-2.5 - I2V (two-stage, high quality)",
     description:
       "공식 Lightricks LTX-2.5 이미지→비디오 2-stage distilled 워크플로우(bf16). 1차 생성 후 latent x2 업스케일 + 재샘플로 고해상도(예: 960×544 → ~1920×1088), 오디오까지 함께 생성됩니다. bf16 기준 80GB급 GPU 권장.",
+    traits: {
+      bestFor: "고해상도(~1920×1088) 결과물이 필요할 때, 실사풍·시네마틱 컷",
+      strengths: [
+        "2-stage latent 업스케일로 출력 해상도가 가장 높음",
+        "공식 Lightricks distilled 워크플로 — 8-step 고정 스케줄로 예측 가능한 품질",
+        "오디오 동시 생성",
+      ],
+      weaknesses: [
+        "MiniMax 계열 대비 그림체·캐릭터 일관성 유지가 약함",
+        "bf16 기준 80GB급 GPU 필요",
+        "두 pass를 돌아 생성 시간이 긺",
+      ],
+    },
     workflowPath: "workflows/ltx25-i2v-two-stage.json",
     mode: "i2v",
     // CreateVideo (node 5518:4849) muxes the LTXV-audio-VAE output into the file,
@@ -999,6 +1253,19 @@ const BUILTIN_VIDEO_PIPELINES: VideoPipelineDefinition[] = [
     label: "LTX-2.5 - T2V (two-stage, high quality)",
     description:
       "공식 Lightricks LTX-2.5 텍스트→비디오 2-stage distilled 워크플로우(bf16). 시작 이미지 없이 프롬프트만으로 생성하며, 1차 생성 후 latent x2 업스케일 + 재샘플로 고해상도(예: 960×544 → ~1920×1088), 오디오까지 함께 생성됩니다. bf16 기준 80GB급 GPU 권장.",
+    traits: {
+      bestFor: "시작 이미지 없이 프롬프트만으로 고해상도 영상을 만들 때",
+      strengths: [
+        "시작 이미지 불필요 — 프롬프트만으로 생성",
+        "2-stage latent 업스케일로 고해상도 출력",
+        "오디오 동시 생성",
+      ],
+      weaknesses: [
+        "레퍼런스가 없어 캐릭터·그림체를 정확히 지정하기 어려움",
+        "bf16 기준 80GB급 GPU 필요",
+        "두 pass를 돌아 생성 시간이 긺",
+      ],
+    },
     workflowPath: "workflows/ltx25-t2v-two-stage.json",
     mode: "t2v",
     embedsAudio: true,
@@ -1010,6 +1277,18 @@ const BUILTIN_VIDEO_PIPELINES: VideoPipelineDefinition[] = [
     id: "sulphur-ltx23-i2v-distilled-fast",
     label: "Sulphur LTX 2.3 - I2V (distilled, fast)",
     description: "RunPod Video Sulphur LTX 2.3 image-to-video distilled workflow",
+    traits: {
+      bestFor: "빠른 시안·반복 실험, 구도와 동작을 여러 번 시험해볼 때",
+      strengths: [
+        "distilled 저스텝 샘플링으로 생성 속도가 가장 빠른 축",
+        "동아시아 얼굴 충실도 LoRA 슬롯 지원",
+        "오디오 동시 생성",
+      ],
+      weaknesses: [
+        "base 대비 디테일·질감이 떨어짐",
+        "그림체 유지력이 MiniMax 계열보다 약함",
+      ],
+    },
     workflowPath: "workflows/sulphur_ltx23_i2v_distilled.json",
     mode: "i2v",
     embedsAudio: true,
@@ -1022,6 +1301,18 @@ const BUILTIN_VIDEO_PIPELINES: VideoPipelineDefinition[] = [
     id: "sulphur-ltx23-i2v-base-high-quality",
     label: "Sulphur LTX 2.3 - I2V (base, high quality)",
     description: "RunPod Video Sulphur LTX 2.3 image-to-video base workflow",
+    traits: {
+      bestFor: "LTX 2.3 계열에서 품질을 우선할 때의 기본 선택지",
+      strengths: [
+        "distilled보다 디테일·질감이 좋음",
+        "동아시아 얼굴 충실도 LoRA 슬롯 지원",
+        "오디오 동시 생성",
+      ],
+      weaknesses: [
+        "distilled 대비 생성이 느림",
+        "그림체 유지력이 MiniMax 계열보다 약함",
+      ],
+    },
     workflowPath: "workflows/sulphur_ltx23_i2v_base.json",
     mode: "i2v",
     embedsAudio: true,
@@ -1034,6 +1325,17 @@ const BUILTIN_VIDEO_PIPELINES: VideoPipelineDefinition[] = [
     id: "sulphur-ltx23-t2v-distilled-fast",
     label: "Sulphur LTX 2.3 - T2V (distilled, fast)",
     description: "RunPod Video Sulphur LTX 2.3 text-to-video distilled workflow",
+    traits: {
+      bestFor: "시작 이미지 없이 아이디어를 빠르게 영상으로 확인할 때",
+      strengths: [
+        "시작 이미지 불필요 + distilled 저스텝으로 가장 가볍고 빠름",
+        "오디오 동시 생성",
+      ],
+      weaknesses: [
+        "레퍼런스가 없어 캐릭터·그림체 제어가 어려움",
+        "base 대비 디테일이 떨어짐",
+      ],
+    },
     workflowPath: "workflows/sulphur_ltx23_t2v_distilled.json",
     mode: "t2v",
     embedsAudio: true,
@@ -1046,6 +1348,17 @@ const BUILTIN_VIDEO_PIPELINES: VideoPipelineDefinition[] = [
     id: "sulphur-ltx23-t2v-base-high-quality",
     label: "Sulphur LTX 2.3 - T2V (base, high quality)",
     description: "RunPod Video Sulphur LTX 2.3 text-to-video base workflow",
+    traits: {
+      bestFor: "프롬프트만으로 LTX 2.3 품질 상한을 뽑고 싶을 때",
+      strengths: [
+        "시작 이미지 불필요, distilled보다 디테일이 좋음",
+        "오디오 동시 생성",
+      ],
+      weaknesses: [
+        "레퍼런스가 없어 캐릭터·그림체 제어가 어려움",
+        "distilled 대비 생성이 느림",
+      ],
+    },
     workflowPath: "workflows/sulphur_ltx23_t2v_base.json",
     mode: "t2v",
     embedsAudio: true,
@@ -1058,6 +1371,17 @@ const BUILTIN_VIDEO_PIPELINES: VideoPipelineDefinition[] = [
     id: "10eros-i2v-triple-pass",
     label: "10Eros - I2V (triple-pass, experimental)",
     description: "RunPod Video 10Eros image-to-video triple-pass workflow",
+    traits: {
+      bestFor: "3-pass 샘플링 특유의 질감을 실험해보고 싶을 때 (실험용)",
+      strengths: [
+        "triple-pass 재샘플링으로 독특한 디테일 표현",
+        "동아시아 얼굴 충실도 LoRA 슬롯 지원, 오디오 동시 생성",
+      ],
+      weaknesses: [
+        "실험(experimental) 단계 — 결과 편차가 큼",
+        "3-pass라 생성 시간이 매우 긺",
+      ],
+    },
     workflowPath: "workflows/10Eros_10SNodes_TripleSample_I2V.json",
     mode: "i2v",
     experimental: true,
@@ -1074,6 +1398,19 @@ const BUILTIN_VIDEO_PIPELINES: VideoPipelineDefinition[] = [
     label: "PornMaster-krea2 (LTX 2.3) - I2V + audio",
     description:
       "RunPod Video reconstruction of the PornMaster-krea2 LTX 2.3 image-to-video workflow (baked NSFW LoRA stack, two-pass upscale + RTX super resolution).",
+    traits: {
+      bestFor: "실사풍 성인 컷을 업스케일 포함 한 번에 뽑을 때 (실험용)",
+      strengths: [
+        "NSFW LoRA 스택이 사전 구성되어 있음",
+        "2-pass 업스케일 + RTX super resolution으로 최종 해상도가 높음",
+        "오디오 동시 생성",
+      ],
+      weaknesses: [
+        "실험(experimental) 단계 — 재구성 워크플로라 원본과 차이가 있을 수 있음",
+        "LoRA 스택이 애니메이션 그림체 유지에는 불리함",
+        "여러 pass를 돌아 생성 시간이 긺",
+      ],
+    },
     workflowPath: "workflows/krea2-pornmaster-ltx23-i2v.json",
     mode: "i2v",
     experimental: true,

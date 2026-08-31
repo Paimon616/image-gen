@@ -2798,6 +2798,102 @@ function formatMinimaxDirectorPrompt(
   ].join("\n");
 }
 
+// MiniMax H3 ReferenceToVideo (native multi-ref workflow): up to 4 keyframe
+// images arrive as `ref_images.ref_image_N` links to LoadImage nodes. Assign
+// [source_image, ...extra_ref_images] in order, and DELETE the unused
+// ref_images entries plus their LoadImage nodes — a LoadImage left pointing at
+// the captured placeholder filename would fail ComfyUI validation. The prompt
+// lives in a PrimitiveStringMultiline feeding the node's `prompt` input; when
+// autoformat is on and the user text lacks an alignment header, prepend one
+// built from the pipeline's keyframe-timestamp settings (the model uses this
+// header to pin each picture to a moment in the clip).
+function applyMinimaxMultiRefToWorkflow(
+  workflow: Record<string, unknown>,
+  params: VideoGenerationParams
+) {
+  const refEntry = Object.values(workflow).find(
+    (node) =>
+      node &&
+      typeof node === "object" &&
+      !Array.isArray(node) &&
+      (node as { class_type?: unknown }).class_type === "MiniMaxH3ReferenceToVideo"
+  ) as { inputs?: Record<string, unknown> } | undefined;
+  const inputs = refEntry?.inputs;
+  if (!inputs) return false;
+
+  const refs = [params.source_image ?? "", ...(params.extra_ref_images ?? [])]
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  const refKeys = Object.keys(inputs)
+    .filter((key) => key.startsWith("ref_images."))
+    .sort();
+  refKeys.forEach((key, index) => {
+    const link = inputs[key];
+    const loadNodeId = Array.isArray(link) ? String(link[0]) : "";
+    const loadNode = workflow[loadNodeId] as
+      | { class_type?: unknown; inputs?: Record<string, unknown> }
+      | undefined;
+    if (index < refs.length) {
+      if (loadNode?.class_type === "LoadImage" && loadNode.inputs) {
+        loadNode.inputs.image = refs[index];
+      }
+    } else {
+      delete inputs[key];
+      if (loadNode?.class_type === "LoadImage") delete workflow[loadNodeId];
+    }
+  });
+
+  if (params.prompt) {
+    const promptLink = inputs.prompt;
+    const promptNode = Array.isArray(promptLink)
+      ? (workflow[String(promptLink[0])] as
+          | { inputs?: Record<string, unknown> }
+          | undefined)
+      : undefined;
+    if (promptNode?.inputs && typeof promptNode.inputs.value === "string") {
+      const pipeline = resolveVideoPipeline(
+        params.video_pipeline || params.video_model
+      );
+      const settings = {
+        ...pipeline.defaults,
+        ...(params.video_pipeline_settings ?? {}),
+      } as Record<string, unknown>;
+      promptNode.inputs.value = formatMinimaxMultiRefPrompt(
+        params,
+        settings,
+        refs.length
+      );
+    }
+  }
+  return true;
+}
+
+function formatMinimaxMultiRefPrompt(
+  params: VideoGenerationParams,
+  settings: Record<string, unknown>,
+  refCount: number
+) {
+  let prompt = params.prompt;
+  if (settings.prompt_autoformat === false) return prompt;
+
+  const soundPrompt = (params.sound_prompt ?? "").trim();
+  if (soundPrompt && !/overall_soundscape/i.test(prompt)) {
+    prompt = `${prompt}\n\noverall_soundscape: ${soundPrompt}`;
+  }
+  if (/aligns with the/i.test(prompt)) return prompt;
+
+  const timeFor = (index: number) => {
+    if (index === 0) return 0;
+    const value = Number(settings[`ref${index + 1}_seconds`]);
+    return Number.isFinite(value) && value >= 0 ? value : index * 5;
+  };
+  const marks = Array.from({ length: Math.max(1, refCount) }, (_, i) =>
+    `Picture ${i + 1} aligns with the ${timeFor(i).toFixed(2)}-second mark of the target video`
+  );
+  return `How the reference pictures align with the target video — ${marks.join("; ")}.\n\n${prompt}`;
+}
+
 function applyVideoParamsToWorkflow(
   workflow: Record<string, unknown>,
   params: VideoGenerationParams
@@ -2805,6 +2901,11 @@ function applyVideoParamsToWorkflow(
   const sourceImage = params.source_image ?? "";
   let patchedPositiveText = false;
   let patchedNegativeText = false;
+
+  // Multi-ref workflows own their LoadImage set and prompt node; the generic
+  // single-image / prompt-title patching below must not touch them.
+  const multiRefHandled = applyMinimaxMultiRefToWorkflow(workflow, params);
+  if (multiRefHandled) patchedPositiveText = true;
 
   for (const node of Object.values(workflow)) {
     if (!node || typeof node !== "object" || Array.isArray(node)) continue;
@@ -2852,7 +2953,7 @@ function applyVideoParamsToWorkflow(
       }
     }
 
-    if (classType === "LoadImage" && sourceImage) {
+    if (classType === "LoadImage" && sourceImage && !multiRefHandled) {
       inputs.image = sourceImage;
       continue;
     }
@@ -2944,7 +3045,15 @@ function applyVideoParamsToWorkflow(
       inputs.frame_rate = params.fps;
     }
 
-    if (classType === "CreateVideo" && typeof inputs.fps === "number") {
+    // MiniMax H3 ReferenceToVideo generates at a fixed 24fps cadence (the frame
+    // count is derived as duration×24), so the generic fps param — which stays
+    // at its 16 default while the canvas panel is hidden — must not re-time the
+    // mux: 362 frames muxed at 16fps play as 22.6s slow motion.
+    if (
+      classType === "CreateVideo" &&
+      typeof inputs.fps === "number" &&
+      !multiRefHandled
+    ) {
       inputs.fps = params.fps;
     }
 
@@ -2995,6 +3104,21 @@ function applyVideoPipelineSettingsToWorkflow(
 
   for (const toggle of pipeline.stackLoraToggles ?? []) {
     applyStackLoraToggle(workflow, toggle, settings);
+  }
+
+  // MiniMax H3 ReferenceToVideo takes `length` in frames at its fixed 24fps and
+  // the transformer requires length ≡ 5 (mod 17) (the captured graph computed
+  // this with a ComfyMathExpression node; we compute it here instead so the
+  // workflow needs no extra node pack). Derived from the duration control.
+  const multiRefDuration = Number(settings.duration_seconds);
+  if (Number.isFinite(multiRefDuration) && multiRefDuration > 0) {
+    for (const node of Object.values(workflow)) {
+      if (!node || typeof node !== "object" || Array.isArray(node)) continue;
+      const record = node as { class_type?: unknown; inputs?: Record<string, unknown> };
+      if (record.class_type !== "MiniMaxH3ReferenceToVideo" || !record.inputs) continue;
+      const rawFrames = Math.max(5, Math.round(multiRefDuration * 24));
+      record.inputs.length = rawFrames + ((5 - (rawFrames % 17)) % 17);
+    }
   }
 
   injectCensorNodes(workflow, params.censor);
@@ -3236,7 +3360,16 @@ async function loadWorkflowFromEnv(
   const resolvedSourceImage = params.source_image
     ? await resolveControlNetImage(params.source_image, options)
     : null;
-  const resolvedParams = { ...params, source_image: resolvedSourceImage };
+  const resolvedExtraRefs = await Promise.all(
+    (params.extra_ref_images ?? [])
+      .filter(Boolean)
+      .map((image) => resolveControlNetImage(image, options))
+  );
+  const resolvedParams = {
+    ...params,
+    source_image: resolvedSourceImage,
+    extra_ref_images: resolvedExtraRefs,
+  };
   const absolutePath = isAbsolute(workflowPath)
     ? workflowPath
     : join(/*turbopackIgnore: true*/ process.cwd(), workflowPath);
@@ -3271,13 +3404,16 @@ async function adaptMinimaxDirectorCanvas(
   params: VideoGenerationParams,
   options?: ComfyClientOptions
 ) {
-  const director = Object.values(workflow).find(
-    (node) =>
-      node &&
-      typeof node === "object" &&
-      !Array.isArray(node) &&
-      (node as { class_type?: unknown }).class_type === "MiniMaxH3Director"
-  ) as { inputs?: Record<string, unknown> } | undefined;
+  const director = Object.values(workflow).find((node) => {
+    if (!node || typeof node !== "object" || Array.isArray(node)) return false;
+    const classType = (node as { class_type?: unknown }).class_type;
+    // ReferenceToVideo (native multi-ref) has the same width/height-vs-start-image
+    // aspect mismatch, so it gets the same auto-aspect treatment.
+    return (
+      classType === "MiniMaxH3Director" ||
+      classType === "MiniMaxH3ReferenceToVideo"
+    );
+  }) as { inputs?: Record<string, unknown> } | undefined;
   const inputs = director?.inputs;
   const imageName = params.source_image;
   if (

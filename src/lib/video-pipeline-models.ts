@@ -384,6 +384,9 @@ const BUILTIN_NODE_TYPES = new Set<string>([
   "ModelAttentionBackend",
   "ModelPatchTorchSettings",
   "ComfySwitchNode",
+  // ComfyUI core (comfy_extras custom-sampler) used by the native MiniMax H3
+  // multi-ref workflow.
+  "ExtendIntermediateSigmas",
 ]);
 
 // Resolve which custom-node git repos a pipeline needs. When `installedTypes`

@@ -226,6 +226,12 @@ function normalizeVideoParams(rawBody: Partial<VideoGenerationParams>) {
     ltx_dasiwa_strength: clampNumber(rawBody.ltx_dasiwa_strength, DEFAULT_VIDEO_PARAMS.ltx_dasiwa_strength, 0, 2),
     seed: normalizeGenerationSeed(rawBody.seed),
     source_image: rawBody.source_image?.trim() || null,
+    extra_ref_images: Array.isArray(rawBody.extra_ref_images)
+      ? rawBody.extra_ref_images
+          .map((item) => String(item ?? "").trim())
+          .filter(Boolean)
+          .slice(0, 3)
+      : [],
     enable_sound: Boolean(rawBody.enable_sound),
     sound_prompt: String(rawBody.sound_prompt ?? "").trim(),
     negative_sound_prompt: String(rawBody.negative_sound_prompt ?? ""),

@@ -392,6 +392,9 @@ export interface VideoGenerationParams {
   ltx_dasiwa_strength: number;
   seed: number | null;
   source_image: string | null;
+  // Extra reference/keyframe images (2nd..4th) for pipelines that accept more
+  // than one (e.g. MiniMax H3 ReferenceToVideo). source_image stays the first.
+  extra_ref_images?: string[];
   enable_sound: boolean;
   sound_prompt: string;
   negative_sound_prompt: string;

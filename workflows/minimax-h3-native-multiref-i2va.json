@@ -1,0 +1,346 @@
+{
+ "119": {
+  "inputs": {
+   "vae_name": "MiniMaxH3/minimax_h3_video_vae_fp16.safetensors"
+  },
+  "class_type": "VAELoader",
+  "_meta": {
+   "title": "\u8f09\u5165 VAE"
+  }
+ },
+ "120": {
+  "inputs": {
+   "vae_name": "MiniMaxH3/minimax_h3_audio_vae_fp32.safetensors"
+  },
+  "class_type": "VAELoader",
+  "_meta": {
+   "title": "\u8f09\u5165 VAE"
+  }
+ },
+ "121": {
+  "inputs": {
+   "samples": [
+    "125",
+    0
+   ],
+   "vae": [
+    "120",
+    0
+   ]
+  },
+  "class_type": "VAEDecodeAudio",
+  "_meta": {
+   "title": "VAE \u89e3\u78bc\u97f3\u8a0a"
+  }
+ },
+ "122": {
+  "inputs": {
+   "samples": [
+    "125",
+    0
+   ],
+   "vae": [
+    "119",
+    0
+   ]
+  },
+  "class_type": "VAEDecode",
+  "_meta": {
+   "title": "VAE \u89e3\u78bc"
+  }
+ },
+ "123": {
+  "inputs": {
+   "sampler_name": "euler"
+  },
+  "class_type": "KSamplerSelect",
+  "_meta": {
+   "title": "K\u63a1\u6a23\u5668\u9078\u64c7"
+  }
+ },
+ "124": {
+  "inputs": {
+   "scheduler": "simple",
+   "steps": 20,
+   "denoise": 1.0,
+   "model": [
+    "155",
+    0
+   ]
+  },
+  "class_type": "BasicScheduler",
+  "_meta": {
+   "title": "BasicScheduler"
+  }
+ },
+ "125": {
+  "inputs": {
+   "noise": [
+    "129",
+    0
+   ],
+   "guider": [
+    "126",
+    0
+   ],
+   "sampler": [
+    "123",
+    0
+   ],
+   "sigmas": [
+    "163",
+    0
+   ],
+   "latent_image": [
+    "136",
+    1
+   ]
+  },
+  "class_type": "SamplerCustomAdvanced",
+  "_meta": {
+   "title": "SamplerCustomAdvanced"
+  }
+ },
+ "126": {
+  "inputs": {
+   "model": [
+    "155",
+    0
+   ],
+   "conditioning": [
+    "136",
+    0
+   ]
+  },
+  "class_type": "BasicGuider",
+  "_meta": {
+   "title": "\u57fa\u790e\u5f15\u5c0e\u5668"
+  }
+ },
+ "127": {
+  "inputs": {
+   "unet_name": "DasiwaMinimaxH3_dasiwaREF2VAHybridV1.safetensors",
+   "weight_dtype": "default"
+  },
+  "class_type": "UNETLoader",
+  "_meta": {
+   "title": "\u8f09\u5165\u64f4\u6563\u6a21\u578b"
+  }
+ },
+ "128": {
+  "inputs": {
+   "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+   "type": "minimax",
+   "device": "default"
+  },
+  "class_type": "CLIPLoader",
+  "_meta": {
+   "title": "\u8f09\u5165 CLIP"
+  }
+ },
+ "129": {
+  "inputs": {
+   "noise_seed": 852030847335123
+  },
+  "class_type": "RandomNoise",
+  "_meta": {
+   "title": "\u96a8\u6a5f\u96dc\u8a0a"
+  }
+ },
+ "136": {
+  "inputs": {
+   "prompt": [
+    "138",
+    0
+   ],
+   "width": 640,
+   "height": 864,
+   "length": 362,
+   "ref_image_size": "match",
+   "clip": [
+    "128",
+    0
+   ],
+   "vae": [
+    "119",
+    0
+   ],
+   "audio_vae": [
+    "120",
+    0
+   ],
+   "ref_images.ref_image_0": [
+    "137",
+    0
+   ],
+   "ref_images.ref_image_1": [
+    "139",
+    0
+   ],
+   "ref_images.ref_image_2": [
+    "144",
+    0
+   ],
+   "ref_images.ref_image_3": [
+    "157",
+    0
+   ]
+  },
+  "class_type": "MiniMaxH3ReferenceToVideo",
+  "_meta": {
+   "title": "MiniMax H3 Reference to Video"
+  }
+ },
+ "137": {
+  "inputs": {
+   "image": "001.png"
+  },
+  "class_type": "LoadImage",
+  "_meta": {
+   "title": "\u8f09\u5165\u5716\u7247"
+  },
+  "is_changed": [
+   "b49996840f974abecd69ef40be5105281cd3ad55f8e84c880a3d8daafce79e52"
+  ]
+ },
+ "138": {
+  "inputs": {
+   "value": "How the reference pictures align with the target video \u2014 Picture 1 (from Shot 1) aligns with the 0.00-second mark of the target video; Picture 2 (from Shot 1) aligns with the 0.50-second mark; Picture 3 (from Shot 2) aligns with the 12.00-second mark; Picture 4 (from Shot 3) aligns with the 14.50-second mark of the target video.\n\nsubject_definitions:\n<Subject 1> is the anime-style bathroom in <Picture 1>, featuring marble walls on the rear and right side, a white ceramic bidet, and a white-tiled floor.\n<Subject 2> is the pink-haired anime woman in <Picture 1> and <Picture 2>, with long pink twin-tailed hair tied by black bows, bright green eyes, yellow drop earrings, and a choker with a heart pendant.\n<Subject 3> is the white bidet with three wall-mounted control buttons labeled \"Stop\" (top), \"Normal\" (middle), and \"Max\" (bottom) on the right marble wall.\n<Subject 4> is the pink-haired woman in <Picture 3>, kneeling on the white-tiled floor with buttocks facing the camera, wearing the same blue T-shirt, lower body bare and barefoot.\n<Subject 5> is the close-up of the pink-haired woman in <Picture 4>, with green eyes, subtle blush on cheeks and nose, and a small pink mark on her forehead from hitting the floor.\n\nsummary:\n[keyframe completion] An anime-style 15-second video showing a pink-haired woman in a blue T-shirt using a high-tech bidet, transitioning from a curious seated pose to a surprised tumble, and ending on the floor with a dissatisfied look.\n\nretention_analysis:\n<Subject 1> (appears throughout): fully_preserved - the marble walls, white bidet, and white-tiled bathroom floor are maintained across all frames.\n<Subject 2> (appears in [Shot 1], [Shot 2]): fully_preserved - the pink twin-tailed hair, black bows, green eyes, yellow earrings, and heart choker are retained.\n<Subject 3> (appears in [Shot 1], [Shot 2]): fully_preserved - the white ceramic bidet and three labeled wall buttons (Stop, Normal, Max) are consistent.\n<Subject 4> (appears in [Shot 2]): fully_preserved - the kneeling pose, buttocks facing camera, blue T-shirt, bare lower body and feet are retained.\n<Subject 5> (appears in [Shot 2]): fully_preserved - the close-up face with pink forehead mark, green eyes, and cheek blush are retained.\n\ndetailed_description:\n[Shot 1] Anime style, cinematic lighting, a medium shot frames a young pink-haired woman in a blue T-shirt sitting on a white ceramic bidet at 0.00 seconds. The camera is static. She faces forward with both hands resting on her knees, wearing the same blue T-shirt shown in <Picture 1> that extends above her hips while her lower body remains bare and her feet are bare. Behind her and to her right are marble walls. The floor is covered in white tiles. On the right marble wall, three white control buttons are vertically aligned, labeled \"Stop\" (top), \"Normal\" (middle), and \"Max\" (bottom). She has a curious expression, her bright green eyes gazing upward at the wall-mounted buttons. Water droplets glisten on her skin.\n\n[Shot 1] At 00:02.000, the camera remains static as she extends her left index finger downward and presses the \"Normal\" button on the wall.\n\n[Shot 1] At 00:03.000, a gentle water column sprays upward from the bidet toward her lower body. She immediately clasps her legs together quickly to prevent the water from spraying out, her expression tightening with tension. Her blue T-shirt stays in place.\n\n[Shot 1] At 00:04.000, she closes her eyes with an expression of enjoyment and relieves. Her hands relax gracefully onto her thighs. A small smile forms as the water column continues its gentle rhythm.\n\n[Shot 1] At 00:06.000, she opens her eyes with an eager, expectant expression. She extends her left index finger upward once more and presses the \"Max\" button. Her lips part slightly.\n\n[Shot 1] At 00:07.000, she tilts her head downward, gazing at her thighs, with her right hand still resting on her thigh and her left hand moving to the side of her head. Her expression is slightly surprised.\n\n[Shot 1] At 00:08.000, a powerful water column erupts from the bidet directly toward her buttocks. The force lifts her upward from the bidet. Her hands flail desperately at her sides, and her expression shifts to panic. Her twin tails sway with the motion.\n\n[Shot 1] At 00:10.000, the water spray ceases. She tumbles forward, landing face-down with her buttocks raised high on the white-tiled floor in front of the bidet. A faint pink mark appears on her forehead from the impact.\n\n[Shot 2] At 00:12.000, the camera arcs around her with small amplitude at slow speed as she kneels on the white-tiled floor, face pressed against the ground and buttocks facing the camera. The view clearly shows her bare lower body \u2014 her pubic area and anus are visible from behind. She wears only the blue T-shirt. Her twin tails cascade behind her. As the camera continues its arc, between 00:14.000 and 00:15.000, she turns her head over her shoulder toward the camera with a pouty, dissatisfied expression. A small pink bruise mark is visible on her forehead. Her green eyes lock onto the viewer, her cheeks flushed with embarrassment and determination. The camera maintains its focus on her buttocks throughout the movement. The marble walls and white-tiled floor reflect the ambient light. Her pink twin-tailed hair with black bows frames her face beautifully.\n\noverall_soundscape:\nSoft water splashing and hissing from the bidet continues throughout the bathroom. The ceramic bidet produces gentle metallic clicks as the water column starts, strengthens, and stops. Her bare legs and buttocks make soft impacts against the white-tiled floor. Water droplets patter on her skin and the tiles. Her twin tails sway with a light rustling sound as she moves. A soft thud echoes when she falls face-down.\n\nnon_diegetic_music:\nA dynamic funk bass track drives the entire 15-second clip at a moderate-fast tempo with a warm, groovy mid-bass line. The bass builds in intensity between 6 and 10 seconds, peaking during the powerful water spray moment. Syncopated electric guitar plucks add rhythmic energy. The bass pattern is punchy and danceable, with tight drum syncopation. The music ends on a bright, unresolved groove as she turns her head."
+  },
+  "class_type": "PrimitiveStringMultiline",
+  "_meta": {
+   "title": "Reference Alignment Script"
+  }
+ },
+ "139": {
+  "inputs": {
+   "image": "002.png"
+  },
+  "class_type": "LoadImage",
+  "_meta": {
+   "title": "\u8f09\u5165\u5716\u7247"
+  },
+  "is_changed": [
+   "68a5e47e94b2ea09cb81f1f7f710d626bdbb53c3d5523b047b83a43b41d19f97"
+  ]
+ },
+ "144": {
+  "inputs": {
+   "image": "003.png"
+  },
+  "class_type": "LoadImage",
+  "_meta": {
+   "title": "\u8f09\u5165\u5716\u7247"
+  },
+  "is_changed": [
+   "93a32971465d2bcec40780d66ad0975d9f3dad3b4bc3fa412a7dd116db6b211f"
+  ]
+ },
+ "149": {
+  "inputs": {
+   "fps": 24.0,
+   "bit_depth": 8,
+   "images": [
+    "122",
+    0
+   ],
+   "audio": [
+    "121",
+    0
+   ]
+  },
+  "class_type": "CreateVideo",
+  "_meta": {
+   "title": "\u5efa\u7acb\u5f71\u7247"
+  }
+ },
+ "150": {
+  "inputs": {
+   "filename_prefix": "video/MinimaxH3",
+   "format": "mp4",
+   "codec": "auto",
+   "video-preview": "",
+   "video": [
+    "149",
+    0
+   ]
+  },
+  "class_type": "SaveVideo",
+  "_meta": {
+   "title": "\u5132\u5b58\u5f71\u7247"
+  }
+ },
+ "151": {
+  "inputs": {
+   "sage_attention": "disabled",
+   "allow_compile": false,
+   "model": [
+    "127",
+    0
+   ]
+  },
+  "class_type": "PathchSageAttentionKJ",
+  "_meta": {
+   "title": "Patch Sage Attention KJ"
+  }
+ },
+ "152": {
+  "inputs": {
+   "enable_fp16_accumulation": true,
+   "model": [
+    "151",
+    0
+   ]
+  },
+  "class_type": "ModelPatchTorchSettings",
+  "_meta": {
+   "title": "Model Patch Torch Settings"
+  }
+ },
+ "155": {
+  "inputs": {
+   "max_resolution": 1024,
+   "jpeg_quality": 80,
+   "suppress_default_preview": true,
+   "preview_frames": 240,
+   "preview_fps": 12,
+   "tiny_vae": "taeh3.safetensors",
+   "model": [
+    "152",
+    0
+   ]
+  },
+  "class_type": "ModelPreviewOverrideKJ",
+  "_meta": {
+   "title": "Model Preview Override"
+  }
+ },
+ "157": {
+  "inputs": {
+   "image": "004.png"
+  },
+  "class_type": "LoadImage",
+  "_meta": {
+   "title": "\u8f09\u5165\u5716\u7247"
+  },
+  "is_changed": [
+   "f4f1b5455dc1f80007729c2a3348a18b1a2998171342f794705b4a2784989131"
+  ]
+ },
+ "163": {
+  "inputs": {
+   "steps": 2,
+   "start_at_sigma": 0.65,
+   "end_at_sigma": 0.0,
+   "spacing": "linear",
+   "sigmas": [
+    "124",
+    0
+   ]
+  },
+  "class_type": "ExtendIntermediateSigmas",
+  "_meta": {
+   "title": "ExtendIntermediateSigmas"
+  }
+ }
+}
