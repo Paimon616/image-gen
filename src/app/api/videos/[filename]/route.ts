@@ -3,10 +3,14 @@ import { join } from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { removeFileAssignments } from "@/lib/workspaces";
 import { notifyWorkspaceFilesChanged } from "@/lib/runpod-share";
-import { VIDEO_OUTPUT_DIR, videoContentType } from "@/lib/server-videos";
+import {
+  VIDEO_OUTPUT_DIR,
+  videoContentType,
+  videoRangeResponse,
+} from "@/lib/server-videos";
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ filename: string }> }
 ) {
   try {
@@ -18,12 +22,12 @@ export async function GET(
 
     const buffer = await readFile(join(VIDEO_OUTPUT_DIR, filename));
 
-    return new NextResponse(buffer, {
-      headers: {
-        "Content-Type": videoContentType(filename),
-        "Cache-Control": "public, max-age=31536000, immutable",
-      },
-    });
+    // Range-aware so <video> elements can actually seek the clip.
+    return videoRangeResponse(
+      buffer,
+      videoContentType(filename),
+      req.headers.get("range")
+    );
   } catch {
     return NextResponse.json({ error: "Video not found" }, { status: 404 });
   }

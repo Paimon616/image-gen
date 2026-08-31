@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
-import { Bookmark, BrainCircuit, Clapperboard, DownloadCloud, Film, Images, Languages, Layers3, Search, Settings, Sparkles, UserRound } from "lucide-react";
+import { Bookmark, BrainCircuit, Clapperboard, DownloadCloud, EyeOff, Film, Images, Languages, Layers3, Search, Settings, Sparkles, UserRound } from "lucide-react";
 import { useStore, type AppLanguage } from "@/lib/store";
 import { useDownloadManagerStore } from "@/lib/download-manager-store";
 
@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { href: "/", labels: { ko: "이미지 생성", en: "Image Generation" }, icon: Images },
   { href: "/video", labels: { ko: "비디오 생성", en: "Video Generation" }, icon: Film },
   { href: "/video/seedance", labels: { ko: "SeeDance 생성", en: "SeeDance" }, icon: Clapperboard },
+  { href: "/censor", labels: { ko: "검열", en: "Censor" }, icon: EyeOff },
   { href: "/interrogate", labels: { ko: "프롬프트 추출", en: "Prompt Extraction" }, icon: Search },
   { href: "/models", labels: { ko: "모델", en: "Models" }, icon: Layers3 },
   { href: "/lora-training", labels: { ko: "LoRA 훈련", en: "LoRA Training" }, icon: BrainCircuit },

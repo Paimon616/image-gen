@@ -3,7 +3,7 @@ import { join } from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { removeFileAssignments } from "@/lib/workspaces";
 import { notifyWorkspaceFilesChanged } from "@/lib/runpod-share";
-import { SEEDANCE_OUTPUT_DIR } from "@/lib/server-videos";
+import { SEEDANCE_OUTPUT_DIR, videoRangeResponse } from "@/lib/server-videos";
 
 function isSafe(filename: string) {
   return !(
@@ -14,7 +14,7 @@ function isSafe(filename: string) {
 }
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ filename: string }> }
 ) {
   try {
@@ -23,12 +23,8 @@ export async function GET(
       return NextResponse.json({ error: "Invalid filename" }, { status: 400 });
     }
     const buffer = await readFile(join(SEEDANCE_OUTPUT_DIR, filename));
-    return new NextResponse(buffer, {
-      headers: {
-        "Content-Type": "video/mp4",
-        "Cache-Control": "public, max-age=31536000, immutable",
-      },
-    });
+    // Range-aware so <video> elements can actually seek the clip.
+    return videoRangeResponse(buffer, "video/mp4", req.headers.get("range"));
   } catch {
     return NextResponse.json({ error: "Video not found" }, { status: 404 });
   }

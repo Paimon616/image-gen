@@ -46,6 +46,63 @@ export function videoContentType(filename: string) {
   return "video/mp4";
 }
 
+/**
+ * Builds the GET response for a clip, honoring HTTP Range requests. Without
+ * range support (a plain 200 with no Accept-Ranges/Content-Length) Chrome
+ * treats the media as an unseekable stream (`video.seekable` stays empty), so
+ * setting `currentTime` silently snaps back to 0 — which broke every feature
+ * that seeks the preview player (the censor screen's full scan, for one).
+ */
+export function videoRangeResponse(
+  buffer: Buffer,
+  contentType: string,
+  rangeHeader: string | null
+): Response {
+  const size = buffer.byteLength;
+  const baseHeaders: Record<string, string> = {
+    "Content-Type": contentType,
+    "Cache-Control": "public, max-age=31536000, immutable",
+    "Accept-Ranges": "bytes",
+  };
+
+  const match = rangeHeader
+    ? /^bytes=(\d*)-(\d*)$/.exec(rangeHeader.trim())
+    : null;
+  if (match && (match[1] || match[2])) {
+    // "bytes=start-", "bytes=start-end", or the suffix form "bytes=-count".
+    const start = match[1]
+      ? Number.parseInt(match[1], 10)
+      : Math.max(0, size - Number.parseInt(match[2], 10));
+    const end = match[1] && match[2]
+      ? Math.min(Number.parseInt(match[2], 10), size - 1)
+      : size - 1;
+    if (start >= size || start > end) {
+      return new Response(null, {
+        status: 416,
+        headers: { ...baseHeaders, "Content-Range": `bytes */${size}` },
+      });
+    }
+    // Copy into a fresh ArrayBuffer-backed view (Response's BodyInit typing
+    // rejects views that could sit on a SharedArrayBuffer).
+    const body = new Uint8Array(end - start + 1);
+    body.set(buffer.subarray(start, end + 1));
+    return new Response(body, {
+      status: 206,
+      headers: {
+        ...baseHeaders,
+        "Content-Range": `bytes ${start}-${end}/${size}`,
+        "Content-Length": String(end - start + 1),
+      },
+    });
+  }
+
+  const whole = new Uint8Array(size);
+  whole.set(buffer);
+  return new Response(whole, {
+    headers: { ...baseHeaders, "Content-Length": String(size) },
+  });
+}
+
 export async function listVideoFilenames(media: VideoMedia): Promise<string[]> {
   const files = await readdir(videoOutputDir(media)).catch(() => [] as string[]);
   return files.filter(isValidVideoFilename);

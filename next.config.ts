@@ -16,6 +16,8 @@ const comfyUiTraceExcludes = [
 ];
 
 const nextConfig: NextConfig = {
+  // Native .node addon — must stay a runtime require, not be bundled.
+  serverExternalPackages: ["onnxruntime-node"],
   outputFileTracingExcludes: {
     "/*": comfyUiTraceExcludes,
     "/page": comfyUiTraceExcludes,
