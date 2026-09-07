@@ -9,6 +9,10 @@ import { CivitaiMissingResources } from "@/components/civitai-missing-resources"
 import { CopyLinkButton } from "@/components/copy-link-button";
 import { EditorSection } from "@/components/editor-section";
 import { ImageUpload } from "@/components/image-upload";
+import {
+  GalleryLoadMore,
+  LazyGalleryVideo,
+} from "@/components/lazy-gallery-video";
 import { VideoReferenceImport } from "@/components/video-reference-import";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -291,6 +295,9 @@ const VIDEO_EDITOR_MIN_WIDTH = 320;
 const VIDEO_GALLERY_MIN_WIDTH = 320;
 const VIDEO_THUMBNAIL_MIN_WIDTH = 180;
 const VIDEO_THUMBNAIL_MAX_WIDTH = 560;
+// Cards mounted at once; scrolling near the end grows the window by another
+// batch, so a gallery with hundreds of clips doesn't render them all up front.
+const VIDEO_GALLERY_RENDER_BATCH = 40;
 
 function VideoGalleryCard({
   video,
@@ -796,15 +803,15 @@ function VideoGalleryCard({
               src={video.url}
               alt={video.params?.prompt || "Generated video"}
               draggable={false}
+              loading="lazy"
               className="block h-auto w-full"
             />
           ) : (
-            <video
+            <LazyGalleryVideo
               src={video.url}
               controls
               muted
               playsInline
-              preload="metadata"
               className="block h-auto w-full"
             />
           )}
@@ -827,7 +834,7 @@ function VideoGalleryCard({
                     <Volume2 className="h-3.5 w-3.5 text-muted-foreground" />
                     Sound
                   </div>
-                  <audio src={audio.url} controls className="h-8 w-full" />
+                  <audio src={audio.url} controls preload="none" className="h-8 w-full" />
                 </div>
               ))}
             </div>
@@ -1318,7 +1325,7 @@ function VideoDetailModal({
                                 <Volume2 className="h-3.5 w-3.5 text-muted-foreground" />
                                 Sound
                               </div>
-                              <audio src={audio.url} controls className="h-8 w-full" />
+                              <audio src={audio.url} controls preload="none" className="h-8 w-full" />
                             </div>
                           ))}
                         </div>
@@ -2688,6 +2695,20 @@ export default function VideoPage() {
     const rest = saved.filter((video) => !pendingIds.has(video.id));
     return [...pendingVideos, ...rest].sort((a, b) => b.timestamp - a.timestamp);
   }, [activeWorkspaceId, pendingVideos, videos]);
+
+  // Incremental rendering: only the first N cards mount; a sentinel at the
+  // bottom of the grid grows the window as the user scrolls. Selection and
+  // batch actions still operate on the full visibleVideos list.
+  const [galleryRenderLimit, setGalleryRenderLimit] = useState(
+    VIDEO_GALLERY_RENDER_BATCH
+  );
+  const renderedVideos = useMemo(
+    () => visibleVideos.slice(0, galleryRenderLimit),
+    [galleryRenderLimit, visibleVideos]
+  );
+  const growGalleryRenderLimit = useCallback(() => {
+    setGalleryRenderLimit((limit) => limit + VIDEO_GALLERY_RENDER_BATCH);
+  }, []);
 
   // --- Gallery multi-select (mirrors the image generation screen) ----------
   const selectedVideos = useMemo(
@@ -4618,6 +4639,7 @@ export default function VideoPage() {
               </div>
             </div>
           ) : (
+            <>
             <div
               className="grid grid-flow-row-dense gap-4"
               style={{
@@ -4628,7 +4650,7 @@ export default function VideoPage() {
                 gridAutoRows: "8px",
               }}
             >
-              {visibleVideos.map((video, index) => (
+              {renderedVideos.map((video, index) => (
                 <VideoGalleryCard
                   key={video.id}
                   video={video}
@@ -4653,6 +4675,15 @@ export default function VideoPage() {
                 />
               ))}
             </div>
+            {visibleVideos.length > renderedVideos.length && (
+              <GalleryLoadMore
+                key={galleryRenderLimit}
+                onMore={growGalleryRenderLimit}
+              >
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </GalleryLoadMore>
+            )}
+            </>
           )}
         </div>
       </main>

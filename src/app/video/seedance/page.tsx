@@ -35,6 +35,10 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { AppSidebar } from "@/components/app-sidebar";
+import {
+  GalleryLoadMore,
+  LazyGalleryVideo,
+} from "@/components/lazy-gallery-video";
 import { WorkspaceBar } from "@/components/workspace-bar";
 import { MediaWorkspacePicker } from "@/components/workspace-picker";
 import {
@@ -89,6 +93,9 @@ const MAX_IMAGE_DIM = 1536;
 // like the ComfyUI video screen, so the slider below controls the same range.
 const SEEDANCE_THUMBNAIL_MIN_WIDTH = 180;
 const SEEDANCE_THUMBNAIL_MAX_WIDTH = 560;
+// Cards mounted at once; scrolling near the end grows the window by another
+// batch, so a gallery with hundreds of clips doesn't render them all up front.
+const SEEDANCE_GALLERY_RENDER_BATCH = 40;
 
 type Lang = "ko" | "en";
 
@@ -547,6 +554,20 @@ export default function SeedancePage() {
     () => visibleVideos.filter((video) => video.url),
     [visibleVideos]
   );
+
+  // Incremental rendering: only the first N cards mount; a sentinel at the
+  // bottom of the grid grows the window as the user scrolls. Selection and
+  // batch actions still operate on the full detailVideos list.
+  const [galleryRenderLimit, setGalleryRenderLimit] = useState(
+    SEEDANCE_GALLERY_RENDER_BATCH
+  );
+  const renderedVideos = useMemo(
+    () => detailVideos.slice(0, galleryRenderLimit),
+    [detailVideos, galleryRenderLimit]
+  );
+  const growGalleryRenderLimit = useCallback(() => {
+    setGalleryRenderLimit((limit) => limit + SEEDANCE_GALLERY_RENDER_BATCH);
+  }, []);
   const selectedVideo = useMemo(
     () => detailVideos.find((video) => video.id === selectedVideoId) ?? null,
     [detailVideos, selectedVideoId]
@@ -1225,6 +1246,7 @@ export default function SeedancePage() {
               <p className="max-w-xs text-sm">{tr("empty", language)}</p>
             </div>
           ) : (
+            <>
             <div
               className="grid grid-flow-row-dense gap-4"
               style={{
@@ -1248,7 +1270,7 @@ export default function SeedancePage() {
                   onDismiss={() => removePending(card.id)}
                 />
               ))}
-              {detailVideos.map((video, index) => (
+              {renderedVideos.map((video, index) => (
                 <VideoCard
                   key={video.id}
                   lang={language}
@@ -1268,6 +1290,15 @@ export default function SeedancePage() {
                 />
               ))}
             </div>
+            {detailVideos.length > renderedVideos.length && (
+              <GalleryLoadMore
+                key={galleryRenderLimit}
+                onMore={growGalleryRenderLimit}
+              >
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </GalleryLoadMore>
+            )}
+            </>
           )}
         </div>
       </main>
@@ -1667,13 +1698,12 @@ function VideoCard({
       )}
       {/* In selection mode the player must not swallow clicks — the card
           itself is the selection surface. */}
-      <video
+      <LazyGalleryVideo
         src={video.url}
         controls
         loop
         muted
         playsInline
-        preload="metadata"
         className={cn(
           "block h-auto w-full bg-black",
           selectionMode && "pointer-events-none"

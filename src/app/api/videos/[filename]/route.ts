@@ -1,4 +1,4 @@
-import { readFile, unlink } from "fs/promises";
+import { unlink } from "fs/promises";
 import { join } from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { removeFileAssignments } from "@/lib/workspaces";
@@ -6,7 +6,7 @@ import { notifyWorkspaceFilesChanged } from "@/lib/runpod-share";
 import {
   VIDEO_OUTPUT_DIR,
   videoContentType,
-  videoRangeResponse,
+  videoFileResponse,
 } from "@/lib/server-videos";
 
 export async function GET(
@@ -20,11 +20,9 @@ export async function GET(
       return NextResponse.json({ error: "Invalid filename" }, { status: 400 });
     }
 
-    const buffer = await readFile(join(VIDEO_OUTPUT_DIR, filename));
-
     // Range-aware so <video> elements can actually seek the clip.
-    return videoRangeResponse(
-      buffer,
+    return await videoFileResponse(
+      join(VIDEO_OUTPUT_DIR, filename),
       videoContentType(filename),
       req.headers.get("range")
     );

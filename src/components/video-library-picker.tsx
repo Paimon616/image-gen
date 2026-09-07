@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Loader2, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Film, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -22,7 +22,10 @@ function pickKey(video: LibraryVideo) {
 }
 
 /** One picker tile: the clip's first frame via a metadata-preloaded <video>,
- *  playing (muted) while hovered so the user can tell similar clips apart. */
+ *  playing (muted) while hovered so the user can tell similar clips apart.
+ *  The <video> only exists while the tile is (near) the viewport — mounting a
+ *  media player per clip at once exhausts the browser's decoder/player budget
+ *  and floods the server, freezing the modal on large galleries. */
 function VideoTile({
   video,
   order,
@@ -35,9 +38,25 @@ function VideoTile({
   onPick: () => void;
 }) {
   const selected = order > 0;
+  const tileRef = useRef<HTMLButtonElement>(null);
+  const [inView, setInView] = useState(false);
+
+  useEffect(() => {
+    const tile = tileRef.current;
+    if (!tile) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setInView(entry.isIntersecting),
+      // One screen of lead-in so scrolling feels instant without loading far
+      // offscreen tiles.
+      { rootMargin: "300px" }
+    );
+    observer.observe(tile);
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <button
+      ref={tileRef}
       type="button"
       onClick={onPick}
       title={video.filename}
@@ -48,21 +67,32 @@ function VideoTile({
           : "border-border hover:border-primary/60"
       )}
     >
-      <video
-        src={video.url}
-        preload="metadata"
-        muted
-        playsInline
-        loop
-        className="size-full object-contain"
-        onMouseEnter={(event) => {
-          void event.currentTarget.play().catch(() => {});
-        }}
-        onMouseLeave={(event) => {
-          event.currentTarget.pause();
-          event.currentTarget.currentTime = 0;
-        }}
-      />
+      {inView ? (
+        <video
+          src={video.url}
+          preload="metadata"
+          muted
+          playsInline
+          loop
+          className="size-full object-contain"
+          onLoadedMetadata={(event) => {
+            // metadata preload alone paints nothing on range-served clips;
+            // a tiny seek decodes the first frame as the thumbnail.
+            event.currentTarget.currentTime = 0.03;
+          }}
+          onMouseEnter={(event) => {
+            void event.currentTarget.play().catch(() => {});
+          }}
+          onMouseLeave={(event) => {
+            event.currentTarget.pause();
+            event.currentTarget.currentTime = 0;
+          }}
+        />
+      ) : (
+        <span className="flex size-full items-center justify-center">
+          <Film className="size-6 text-muted-foreground/50" />
+        </span>
+      )}
       <span className="absolute left-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white">
         {MEDIA_LABEL[video.media][ko ? "ko" : "en"]}
       </span>

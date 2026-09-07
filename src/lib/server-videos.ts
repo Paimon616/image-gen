@@ -1,4 +1,4 @@
-import { readdir, readFile, stat, writeFile } from "fs/promises";
+import { open, readdir, readFile, stat, writeFile } from "fs/promises";
 import { join } from "path";
 import type { CharacterSituationVideo, WorkspaceMedia } from "@/lib/types";
 
@@ -47,18 +47,22 @@ export function videoContentType(filename: string) {
 }
 
 /**
- * Builds the GET response for a clip, honoring HTTP Range requests. Without
- * range support (a plain 200 with no Accept-Ranges/Content-Length) Chrome
- * treats the media as an unseekable stream (`video.seekable` stays empty), so
- * setting `currentTime` silently snaps back to 0 — which broke every feature
- * that seeks the preview player (the censor screen's full scan, for one).
+ * Builds the GET response for a clip file, honoring HTTP Range requests.
+ * Without range support (a plain 200 with no Accept-Ranges/Content-Length)
+ * Chrome treats the media as an unseekable stream (`video.seekable` stays
+ * empty), so setting `currentTime` silently snaps back to 0 — which broke
+ * every feature that seeks the preview player (the censor screen's full scan,
+ * for one). Reads only the requested byte range from disk: a video grid can
+ * fire dozens of range requests at once, and reading whole files per request
+ * starved the server.
  */
-export function videoRangeResponse(
-  buffer: Buffer,
+export async function videoFileResponse(
+  filePath: string,
   contentType: string,
   rangeHeader: string | null
-): Response {
-  const size = buffer.byteLength;
+): Promise<Response> {
+  const info = await stat(filePath);
+  const size = info.size;
   const baseHeaders: Record<string, string> = {
     "Content-Type": contentType,
     "Cache-Control": "public, max-age=31536000, immutable",
@@ -68,37 +72,47 @@ export function videoRangeResponse(
   const match = rangeHeader
     ? /^bytes=(\d*)-(\d*)$/.exec(rangeHeader.trim())
     : null;
-  if (match && (match[1] || match[2])) {
+  const ranged = Boolean(match && (match?.[1] || match?.[2]));
+
+  let start = 0;
+  let end = size - 1;
+  if (match && ranged) {
     // "bytes=start-", "bytes=start-end", or the suffix form "bytes=-count".
-    const start = match[1]
+    start = match[1]
       ? Number.parseInt(match[1], 10)
       : Math.max(0, size - Number.parseInt(match[2], 10));
-    const end = match[1] && match[2]
-      ? Math.min(Number.parseInt(match[2], 10), size - 1)
-      : size - 1;
+    end =
+      match[1] && match[2]
+        ? Math.min(Number.parseInt(match[2], 10), size - 1)
+        : size - 1;
     if (start >= size || start > end) {
       return new Response(null, {
         status: 416,
         headers: { ...baseHeaders, "Content-Range": `bytes */${size}` },
       });
     }
-    // Copy into a fresh ArrayBuffer-backed view (Response's BodyInit typing
-    // rejects views that could sit on a SharedArrayBuffer).
-    const body = new Uint8Array(end - start + 1);
-    body.set(buffer.subarray(start, end + 1));
+  }
+
+  const length = end - start + 1;
+  const body = new Uint8Array(length);
+  const handle = await open(filePath, "r");
+  try {
+    await handle.read(body, 0, length, start);
+  } finally {
+    await handle.close();
+  }
+
+  if (ranged) {
     return new Response(body, {
       status: 206,
       headers: {
         ...baseHeaders,
         "Content-Range": `bytes ${start}-${end}/${size}`,
-        "Content-Length": String(end - start + 1),
+        "Content-Length": String(length),
       },
     });
   }
-
-  const whole = new Uint8Array(size);
-  whole.set(buffer);
-  return new Response(whole, {
+  return new Response(body, {
     headers: { ...baseHeaders, "Content-Length": String(size) },
   });
 }
