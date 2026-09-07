@@ -15,8 +15,9 @@
 # What it does:
 #   1. Downloads the 8 model files (HF mirrors; aria2 16-way for the big ones)
 #   2. Upgrades ComfyUI to v0.34.0 (MiniMax H3 needs >= 0.30.0)
-#   3. Installs ComfyUI-DaSiWa-Nodes
-#   4. Restarts ComfyUI and verifies the DaSiWa nodes are live
+#   3. Installs ComfyUI-DaSiWa-Nodes + ComfyUI-KJNodes (both MiniMax pipelines
+#      need KJNodes: ModelPreviewOverrideKJ / PathchSageAttentionKJ)
+#   4. Restarts ComfyUI and verifies the DaSiWa/KJ nodes are live
 set -uo pipefail
 C="${COMFY_DIR:-/workspace/runpod-slim/ComfyUI}"
 M="$C/models"
@@ -56,7 +57,10 @@ dl_small "$M/loras/minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy_resized_avg_r
 dl_small "$M/vae/MiniMaxH3/minimax_h3_audio_vae_fp32.safetensors" "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/vae/minimax_h3_audio_vae_fp32.safetensors" &
 dl_big "$M/vae/MiniMaxH3/minimax_h3_video_vae_fp16.safetensors" "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/vae/minimax_h3_video_vae_fp16.safetensors"
 dl_big "$M/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors" "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"
-dl_big "$M/diffusion_models/DasiwaMinimaxH3_dasiwaREF2VAHybridV1.safetensors" "https://huggingface.co/yamanakaaa2015/mymodel/resolve/main/MiniMax/DasiwaMinimaxH3_dasiwaREF2VAHybridV1.safetensors"
+# 2026-09-04: the yamanakaaa2015/mymodel int8 mirror (19.53GiB, SHA 71c61492…)
+# went 401/private. frauleinpiss/DasiwaH3mirror hosts the same DaSiWa REF2VA
+# Hybrid v1 in bf16 (34GB, SHA ddd1641d…) — higher precision, fine on H100 80GB.
+dl_big "$M/diffusion_models/DasiwaMinimaxH3_dasiwaREF2VAHybridV1.safetensors" "https://huggingface.co/frauleinpiss/DasiwaH3mirror/resolve/main/DasiwaMinimaxH3_dasiwaREF2VAHybridV1.safetensors"
 
 step "comfyui: checkout $COMFY_REF"
 cd "$C"
@@ -72,6 +76,14 @@ if [ ! -d ComfyUI-DaSiWa-Nodes ]; then
 fi
 if [ -f ComfyUI-DaSiWa-Nodes/requirements.txt ]; then
   python3 -m pip install -q -r ComfyUI-DaSiWa-Nodes/requirements.txt 2>&1 | grep -v "^\[notice\]" | tail -3
+fi
+
+step "custom_nodes: ComfyUI-KJNodes"
+if [ ! -d ComfyUI-KJNodes ]; then
+  git clone -q https://github.com/kijai/ComfyUI-KJNodes.git
+fi
+if [ -f ComfyUI-KJNodes/requirements.txt ]; then
+  python3 -m pip install -q -r ComfyUI-KJNodes/requirements.txt 2>&1 | grep -v "^\[notice\]" | tail -3
 fi
 
 step "waiting for downloads..."
@@ -93,4 +105,8 @@ done
 curl -s http://127.0.0.1:8188/system_stats | python3 -c "import json,sys; print('version:', json.load(sys.stdin)['system']['comfyui_version'])"
 DASIWA_BYTES=$(curl -s "http://127.0.0.1:8188/object_info/DaSiWa_EnhancedVideoCombine" | wc -c)
 if [ "$DASIWA_BYTES" -gt 10 ]; then step "DaSiWa nodes: OK"; else step "ERROR: DaSiWa nodes did not load — check /workspace/comfyui.log"; exit 1; fi
+KJ_BYTES=$(curl -s "http://127.0.0.1:8188/object_info/ModelPreviewOverrideKJ" | wc -c)
+if [ "$KJ_BYTES" -gt 10 ]; then step "KJNodes: OK"; else step "ERROR: KJNodes did not load — check /workspace/comfyui.log"; exit 1; fi
+R2V_BYTES=$(curl -s "http://127.0.0.1:8188/object_info/MiniMaxH3ReferenceToVideo" | wc -c)
+if [ "$R2V_BYTES" -gt 10 ]; then step "native MiniMaxH3ReferenceToVideo: OK"; else step "ERROR: MiniMaxH3ReferenceToVideo missing — ComfyUI version too old?"; exit 1; fi
 step "ALL DONE"
