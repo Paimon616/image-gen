@@ -12,6 +12,7 @@ import {
 import { createPortal } from "react-dom";
 import {
   Check,
+  ChevronDown,
   Cloud,
   CloudAlert,
   CloudDownload,
@@ -57,6 +58,7 @@ function WorkspaceChip({
   onSelect,
   onRename,
   onDelete,
+  onClose,
   onShare,
   onUnshare,
   onDragStart,
@@ -75,6 +77,7 @@ function WorkspaceChip({
   onSelect: () => void;
   onRename: (name: string) => void;
   onDelete: () => void;
+  onClose: () => void;
   onShare: () => void;
   onUnshare: () => void;
   onDragStart: () => void;
@@ -396,6 +399,22 @@ function WorkspaceChip({
               )}
               <button
                 type="button"
+                onClick={() => {
+                  onClose();
+                  closeMenu();
+                }}
+                title={
+                  ko
+                    ? "목록에서만 숨깁니다. 좌측 워크스페이스 메뉴에서 선택하면 다시 표시됩니다."
+                    : "Hides only the chip. Re-open it from the workspace menu on the left."
+                }
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent"
+              >
+                <X className="h-3.5 w-3.5" />
+                {ko ? "목록에서 닫기" : "Close from bar"}
+              </button>
+              <button
+                type="button"
                 onClick={() => setConfirmingDelete(true)}
                 className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-destructive transition-colors hover:bg-destructive/10"
               >
@@ -408,6 +427,232 @@ function WorkspaceChip({
         document.body
       )}
     </div>
+  );
+}
+
+// Fixed selector at the far-left of the bar: every workspace is reachable here
+// without touching the horizontal scroller. Picking one activates it and, if
+// its chip was closed from the strip, brings the chip back.
+function WorkspaceDropdown({
+  ko,
+  isImages,
+  workspaces,
+  activeWorkspaceId,
+  ungroupedCount,
+  openIds,
+  onSelect,
+  onSelectAll,
+  onSelectUngrouped,
+}: {
+  ko: boolean;
+  isImages: boolean;
+  workspaces: WorkspaceSummary[];
+  activeWorkspaceId: string | null;
+  ungroupedCount: number;
+  /** null = every chip is shown in the strip. */
+  openIds: string[] | null;
+  onSelect: (workspaceId: string) => void;
+  onSelectAll: () => void;
+  onSelectUngrouped: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(
+    null
+  );
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Portal + fixed positioning, same as the chip menu, so no ancestor overflow
+  // can clip the list.
+  useLayoutEffect(() => {
+    if (!open) return;
+
+    const updatePosition = () => {
+      const rect = triggerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const width = 288; // w-72
+      const left = Math.min(
+        Math.max(8, rect.left),
+        window.innerWidth - width - 8
+      );
+      setMenuPos({ top: rect.bottom + 6, left });
+    };
+
+    updatePosition();
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        !triggerRef.current?.contains(target) &&
+        !menuRef.current?.contains(target)
+      ) {
+        setOpen(false);
+      }
+    };
+    window.addEventListener("mousedown", handlePointerDown);
+    return () => window.removeEventListener("mousedown", handlePointerDown);
+  }, [open]);
+
+  const activeWorkspace = workspaces.find(
+    (workspace) => workspace.id === activeWorkspaceId
+  );
+  const hiddenLabel = ko ? "닫힘" : "closed";
+
+  const rowClass = (selected: boolean) =>
+    `flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition-colors ${
+      selected
+        ? "bg-primary/10 font-medium text-foreground"
+        : "text-foreground hover:bg-accent"
+    }`;
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        aria-expanded={open}
+        title={
+          ko
+            ? "워크스페이스 전체 목록에서 선택"
+            : "Pick from the full workspace list"
+        }
+        className="flex max-w-56 shrink-0 items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:border-primary/50"
+      >
+        <Layers className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        <span className="truncate">
+          {activeWorkspace
+            ? activeWorkspace.name
+            : activeWorkspaceId === UNGROUPED_WORKSPACE_ID
+              ? ko
+                ? "그룹없음"
+                : "Ungrouped"
+              : ko
+                ? "전체 보기"
+                : isImages
+                  ? "All images"
+                  : "All videos"}
+        </span>
+        <span className="rounded-full bg-muted px-1.5 text-[10px] tabular-nums text-muted-foreground">
+          {workspaces.length}
+        </span>
+        <ChevronDown
+          className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${
+            open ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+
+      {open &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            ref={menuRef}
+            className="fixed z-[200] flex max-h-80 w-72 flex-col overflow-y-auto rounded-md border border-border bg-popover p-1.5 text-foreground shadow-xl"
+            style={{
+              top: menuPos?.top ?? -9999,
+              left: menuPos?.left ?? -9999,
+              visibility: menuPos ? "visible" : "hidden",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                onSelectAll();
+                setOpen(false);
+              }}
+              className={rowClass(activeWorkspaceId === null)}
+            >
+              <span className="flex-1 truncate">
+                {ko ? "전체 보기" : isImages ? "All images" : "All videos"}
+              </span>
+              {activeWorkspaceId === null && (
+                <Check className="h-3.5 w-3.5 shrink-0 text-primary" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onSelectUngrouped();
+                setOpen(false);
+              }}
+              className={rowClass(activeWorkspaceId === UNGROUPED_WORKSPACE_ID)}
+            >
+              <FolderX className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <span className="flex-1 truncate">
+                {ko ? "그룹없음" : "Ungrouped"}
+              </span>
+              <span className="rounded-full bg-muted px-1.5 text-[10px] tabular-nums text-muted-foreground">
+                {ungroupedCount}
+              </span>
+              {activeWorkspaceId === UNGROUPED_WORKSPACE_ID && (
+                <Check className="h-3.5 w-3.5 shrink-0 text-primary" />
+              )}
+            </button>
+
+            {workspaces.length > 0 && (
+              <div className="mx-1 my-1 border-t border-border" />
+            )}
+
+            {workspaces.map((workspace) => {
+              const closed =
+                openIds !== null && !openIds.includes(workspace.id);
+              return (
+                <button
+                  key={workspace.id}
+                  type="button"
+                  onClick={() => {
+                    onSelect(workspace.id);
+                    setOpen(false);
+                  }}
+                  title={
+                    closed
+                      ? ko
+                        ? "선택하면 목록에 다시 표시됩니다"
+                        : "Selecting re-opens its chip in the bar"
+                      : workspace.name
+                  }
+                  className={rowClass(workspace.id === activeWorkspaceId)}
+                >
+                  <span
+                    className={`flex-1 truncate ${closed ? "text-muted-foreground" : ""}`}
+                  >
+                    {workspace.name}
+                  </span>
+                  {closed && (
+                    <span className="shrink-0 rounded border border-border px-1 text-[9px] uppercase tracking-wide text-muted-foreground">
+                      {hiddenLabel}
+                    </span>
+                  )}
+                  <span className="rounded-full bg-muted px-1.5 text-[10px] tabular-nums text-muted-foreground">
+                    {workspace.count}
+                  </span>
+                  {workspace.id === activeWorkspaceId && (
+                    <Check className="h-3.5 w-3.5 shrink-0 text-primary" />
+                  )}
+                </button>
+              );
+            })}
+
+            {workspaces.length === 0 && (
+              <p className="px-2 py-1.5 text-[11px] text-muted-foreground">
+                {ko ? "워크스페이스가 없습니다." : "No workspaces yet."}
+              </p>
+            )}
+          </div>,
+          document.body
+        )}
+    </>
   );
 }
 
@@ -533,6 +778,50 @@ export function WorkspaceBar({
   const [shareMessage, setShareMessage] = useState("");
   const [downloadOpen, setDownloadOpen] = useState(false);
 
+  // Which workspace chips are shown in the horizontal strip. `null` means all
+  // of them (the default until the user closes one); the explicit list is kept
+  // per media in localStorage so each screen remembers its own strip. Closing a
+  // chip never deletes the workspace — the fixed dropdown re-opens it.
+  const openStorageKey = `workspace-bar-open:${media}`;
+  const [openIds, setOpenIds] = useState<string[] | null>(null);
+  const openLoadedRef = useRef(false);
+
+  useEffect(() => {
+    openLoadedRef.current = false;
+    try {
+      const raw = window.localStorage.getItem(openStorageKey);
+      const parsed = raw ? (JSON.parse(raw) as unknown) : null;
+      setOpenIds(
+        Array.isArray(parsed)
+          ? parsed.filter((id): id is string => typeof id === "string")
+          : null
+      );
+    } catch {
+      setOpenIds(null);
+    }
+    openLoadedRef.current = true;
+  }, [openStorageKey]);
+
+  useEffect(() => {
+    if (!openLoadedRef.current) return;
+    try {
+      if (openIds === null) {
+        window.localStorage.removeItem(openStorageKey);
+      } else {
+        window.localStorage.setItem(openStorageKey, JSON.stringify(openIds));
+      }
+    } catch {
+      // Persistence is best-effort; the strip still works for this session.
+    }
+  }, [openIds, openStorageKey]);
+
+  const openWorkspaceChip = useCallback((workspaceId: string) => {
+    setOpenIds((current) => {
+      if (current === null || current.includes(workspaceId)) return current;
+      return [...current, workspaceId];
+    });
+  }, []);
+
   const refreshShares = useCallback(async () => {
     try {
       const res = await fetch("/api/runpod/share/state?kind=workspaces", {
@@ -632,6 +921,35 @@ export function WorkspaceBar({
     return ordered;
   }, [workspaces, draftOrder]);
 
+  // Chips actually rendered in the strip. Closed workspaces stay out of the
+  // strip but remain in `orderedWorkspaces` (and in the dropdown).
+  const visibleWorkspaces = useMemo(
+    () =>
+      openIds === null
+        ? orderedWorkspaces
+        : orderedWorkspaces.filter((workspace) =>
+            openIds.includes(workspace.id)
+          ),
+    [orderedWorkspaces, openIds]
+  );
+
+  const closeWorkspaceChip = useCallback(
+    (workspaceId: string) => {
+      setOpenIds((current) => {
+        // Materialize "all open" into an explicit list before removing one.
+        const base =
+          current === null
+            ? orderedWorkspaces.map((workspace) => workspace.id)
+            : current;
+        return base.filter((id) => id !== workspaceId);
+      });
+      // Leaving a hidden workspace as the active filter would be invisible, so
+      // closing the active chip falls back to "all".
+      if (activeWorkspaceId === workspaceId) setActiveWorkspace(null);
+    },
+    [orderedWorkspaces, activeWorkspaceId, setActiveWorkspace]
+  );
+
   const moveWorkspace = (workspaceId: string, targetIndex: number) => {
     const ids = orderedWorkspaces.map((workspace) => workspace.id);
     const from = ids.indexOf(workspaceId);
@@ -687,112 +1005,37 @@ export function WorkspaceBar({
     setCreating(false);
     try {
       const workspace = await createWorkspace(name);
-      if (workspace) setActiveWorkspace(workspace.id);
+      if (workspace) {
+        openWorkspaceChip(workspace.id);
+        setActiveWorkspace(workspace.id);
+      }
     } finally {
       submittingRef.current = false;
     }
   };
 
   return (
-    <div
-      className="flex items-center gap-2 overflow-x-auto border-b border-border px-4 py-2"
-      onDragOver={(event) => {
-        if (draggingId) event.preventDefault();
-      }}
-      onDrop={(event) => {
-        if (draggingId) event.preventDefault();
-      }}
-    >
-      <Layers className="h-4 w-4 shrink-0 text-muted-foreground" />
+    <div className="flex items-center gap-2 border-b border-border px-4 py-2">
+      {/* Fixed at the far left, outside the horizontal scroller: the full
+          workspace list is always one click away, however long the strip is. */}
+      <WorkspaceDropdown
+        ko={ko}
+        isImages={isImages}
+        workspaces={orderedWorkspaces}
+        activeWorkspaceId={activeWorkspaceId}
+        ungroupedCount={ungroupedCount}
+        openIds={openIds}
+        onSelect={(workspaceId) => {
+          openWorkspaceChip(workspaceId);
+          setActiveWorkspace(workspaceId);
+        }}
+        onSelectAll={() => setActiveWorkspace(null)}
+        onSelectUngrouped={() => setActiveWorkspace(UNGROUPED_WORKSPACE_ID)}
+      />
 
-      <button
-        type="button"
-        onClick={() => setActiveWorkspace(null)}
-        className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-          activeWorkspaceId === null
-            ? "border-primary bg-primary text-primary-foreground"
-            : "border-border bg-card text-foreground hover:border-primary/50"
-        }`}
-      >
-        {ko ? "전체 보기" : isImages ? "All images" : "All videos"}
-      </button>
-
-      <button
-        type="button"
-        onClick={() => setActiveWorkspace(UNGROUPED_WORKSPACE_ID)}
-        className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-          activeWorkspaceId === UNGROUPED_WORKSPACE_ID
-            ? "border-primary bg-primary text-primary-foreground"
-            : "border-border bg-card text-foreground hover:border-primary/50"
-        }`}
-        title={
-          ko
-            ? `어떤 워크스페이스에도 속하지 않은 ${mediaNoun}`
-            : isImages
-              ? "Images not in any workspace"
-              : "Videos not in any workspace"
-        }
-      >
-        <FolderX className="h-3.5 w-3.5" />
-        {ko ? "그룹없음" : "Ungrouped"}
-        <span
-          className={`rounded-full px-1.5 text-[10px] tabular-nums ${
-            activeWorkspaceId === UNGROUPED_WORKSPACE_ID
-              ? "bg-primary-foreground/20 text-primary-foreground"
-              : "bg-muted text-muted-foreground"
-          }`}
-        >
-          {ungroupedCount}
-        </span>
-      </button>
-
-      {orderedWorkspaces.map((workspace, index) => (
-        <WorkspaceChip
-          key={workspace.id}
-          workspace={workspace}
-          active={workspace.id === activeWorkspaceId}
-          ko={ko}
-          dragging={workspace.id === draggingId}
-          shared={Boolean(shares[workspace.id])}
-          sharing={sharingId === workspace.id}
-          shareError={shares[workspace.id]?.error ?? ""}
-          onSelect={() => setActiveWorkspace(workspace.id)}
-          onRename={(name) => void renameWorkspace(workspace.id, name)}
-          onDelete={() => {
-            void deleteWorkspace(workspace.id);
-            setShares((current) => {
-              const next = { ...current };
-              delete next[workspace.id];
-              return next;
-            });
-          }}
-          onShare={() => void shareWorkspace(workspace.id)}
-          onUnshare={() => void unshareWorkspace(workspace.id)}
-          onDragStart={() => {
-            setDraggingId(workspace.id);
-            setDraftOrder(orderedWorkspaces.map((item) => item.id));
-          }}
-          onDragEnter={() => {
-            if (!draggingId || draggingId === workspace.id) return;
-            const next = moveWorkspace(draggingId, index);
-            if (next) setDraftOrder(next);
-          }}
-          onDragEnd={() => {
-            const next = draftOrder;
-            setDraggingId(null);
-            setDraftOrder(null);
-            const current = workspaces.map((item) => item.id);
-            if (next && next.join("\u0000") !== current.join("\u0000")) {
-              void reorderWorkspaces(next);
-            }
-          }}
-          onMove={(offset) => {
-            const next = moveWorkspace(workspace.id, index + offset);
-            if (next) void reorderWorkspaces(next);
-          }}
-        />
-      ))}
-
+      {/* Create / download sit in the fixed area next to the dropdown — as
+          icon buttons, so they are always findable without scrolling the
+          strip to its far right. */}
       <div ref={createRef} className="relative shrink-0">
         {creating ? (
           <div className="flex items-center gap-1">
@@ -842,10 +1085,11 @@ export function WorkspaceBar({
           <button
             type="button"
             onClick={() => setCreating(true)}
-            className="flex shrink-0 items-center gap-1 rounded-full border border-dashed border-border px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-dashed border-border text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+            aria-label={ko ? "새 워크스페이스" : "New workspace"}
+            title={ko ? "새 워크스페이스" : "New workspace"}
           >
             <FolderPlus className="h-3.5 w-3.5" />
-            {ko ? "새 워크스페이스" : "New workspace"}
           </button>
         )}
       </div>
@@ -853,22 +1097,135 @@ export function WorkspaceBar({
       <button
         type="button"
         onClick={() => setDownloadOpen(true)}
-        className="flex shrink-0 items-center gap-1 rounded-full border border-dashed border-border px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-dashed border-border text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+        aria-label={ko ? `공유 ${mediaNoun} 다운로드` : "Download shared"}
         title={
           ko
-            ? "RunPod에 공유된 워크스페이스를 내려받습니다"
+            ? `RunPod에 공유된 워크스페이스를 내려받습니다 (공유 ${mediaNoun} 다운로드)`
             : "Download a workspace shared on RunPod"
         }
       >
         <CloudDownload className="h-3.5 w-3.5" />
-        {ko ? `공유 ${mediaNoun} 다운로드` : "Download shared"}
       </button>
+
+      <div
+        className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto"
+        onDragOver={(event) => {
+          if (draggingId) event.preventDefault();
+        }}
+        onDrop={(event) => {
+          if (draggingId) event.preventDefault();
+        }}
+      >
+      <button
+        type="button"
+        onClick={() => setActiveWorkspace(null)}
+        className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+          activeWorkspaceId === null
+            ? "border-primary bg-primary text-primary-foreground"
+            : "border-border bg-card text-foreground hover:border-primary/50"
+        }`}
+      >
+        {ko ? "전체 보기" : isImages ? "All images" : "All videos"}
+      </button>
+
+      <button
+        type="button"
+        onClick={() => setActiveWorkspace(UNGROUPED_WORKSPACE_ID)}
+        className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+          activeWorkspaceId === UNGROUPED_WORKSPACE_ID
+            ? "border-primary bg-primary text-primary-foreground"
+            : "border-border bg-card text-foreground hover:border-primary/50"
+        }`}
+        title={
+          ko
+            ? `어떤 워크스페이스에도 속하지 않은 ${mediaNoun}`
+            : isImages
+              ? "Images not in any workspace"
+              : "Videos not in any workspace"
+        }
+      >
+        <FolderX className="h-3.5 w-3.5" />
+        {ko ? "그룹없음" : "Ungrouped"}
+        <span
+          className={`rounded-full px-1.5 text-[10px] tabular-nums ${
+            activeWorkspaceId === UNGROUPED_WORKSPACE_ID
+              ? "bg-primary-foreground/20 text-primary-foreground"
+              : "bg-muted text-muted-foreground"
+          }`}
+        >
+          {ungroupedCount}
+        </span>
+      </button>
+
+      {visibleWorkspaces.map((workspace) => (
+        <WorkspaceChip
+          key={workspace.id}
+          workspace={workspace}
+          active={workspace.id === activeWorkspaceId}
+          ko={ko}
+          dragging={workspace.id === draggingId}
+          shared={Boolean(shares[workspace.id])}
+          sharing={sharingId === workspace.id}
+          shareError={shares[workspace.id]?.error ?? ""}
+          onSelect={() => setActiveWorkspace(workspace.id)}
+          onRename={(name) => void renameWorkspace(workspace.id, name)}
+          onDelete={() => {
+            void deleteWorkspace(workspace.id);
+            setOpenIds((current) =>
+              current === null
+                ? null
+                : current.filter((id) => id !== workspace.id)
+            );
+            setShares((current) => {
+              const next = { ...current };
+              delete next[workspace.id];
+              return next;
+            });
+          }}
+          onClose={() => closeWorkspaceChip(workspace.id)}
+          onShare={() => void shareWorkspace(workspace.id)}
+          onUnshare={() => void unshareWorkspace(workspace.id)}
+          onDragStart={() => {
+            setDraggingId(workspace.id);
+            setDraftOrder(orderedWorkspaces.map((item) => item.id));
+          }}
+          onDragEnter={() => {
+            if (!draggingId || draggingId === workspace.id) return;
+            // Indices are looked up in the full order — the strip can hide
+            // chips, so a chip's position among the visible ones is not its
+            // position in the stored order.
+            const targetIndex = orderedWorkspaces.findIndex(
+              (item) => item.id === workspace.id
+            );
+            const next = moveWorkspace(draggingId, targetIndex);
+            if (next) setDraftOrder(next);
+          }}
+          onDragEnd={() => {
+            const next = draftOrder;
+            setDraggingId(null);
+            setDraftOrder(null);
+            const current = workspaces.map((item) => item.id);
+            if (next && next.join("\u0000") !== current.join("\u0000")) {
+              void reorderWorkspaces(next);
+            }
+          }}
+          onMove={(offset) => {
+            const index = orderedWorkspaces.findIndex(
+              (item) => item.id === workspace.id
+            );
+            const next = moveWorkspace(workspace.id, index + offset);
+            if (next) void reorderWorkspaces(next);
+          }}
+        />
+      ))}
 
       {shareMessage && (
         <span className="shrink-0 text-[11px] text-muted-foreground">
           {shareMessage}
         </span>
       )}
+      </div>
 
       <RunpodShareDownloadDialog
         kind="workspaces"
@@ -879,6 +1236,7 @@ export function WorkspaceBar({
           // Jump straight to what was just downloaded: this refetches the list
           // filtered to that workspace, so its files show up at once.
           void fetchWorkspaces();
+          openWorkspaceChip(workspaceId);
           setActiveWorkspace(workspaceId);
           onDownloaded?.(workspaceId);
         }}
