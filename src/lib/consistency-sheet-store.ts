@@ -19,11 +19,11 @@ const PARAMS_STORAGE_KEY = "consistency-sheet-params-v2";
 // images are data URIs and far too large for localStorage.
 function persistParams(params: ConsistencySheetParams) {
   if (typeof window === "undefined") return;
-  const { mode, quality, workspaceId } = params;
+  const { mode, workspaceId } = params;
   try {
     window.localStorage.setItem(
       PARAMS_STORAGE_KEY,
-      JSON.stringify({ mode, quality, workspaceId })
+      JSON.stringify({ mode, workspaceId })
     );
   } catch {
     /* ignore */
@@ -93,12 +93,6 @@ export const useConsistencySheetStore = create<ConsistencySheetState>((set) => (
         params: {
           ...s.params,
           mode: saved.mode === "background" ? "background" : s.params.mode,
-          quality:
-            saved.quality === "low" ||
-            saved.quality === "medium" ||
-            saved.quality === "high"
-              ? saved.quality
-              : s.params.quality,
           workspaceId:
             typeof saved.workspaceId === "string"
               ? saved.workspaceId

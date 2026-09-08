@@ -1,40 +1,32 @@
 // Consistency sheet (일관성 시트) shared types + helpers.
 //
 // The consistency sheet screen generates character / background reference
-// sheets with GPT-Image-2 so later image/video generations can keep the same
-// identity and the same location. It goes through OpenRouter's dedicated image
-// endpoint server-side with the OpenRouter key from Settings (or
-// OPENROUTER_API_KEY):
-//   POST https://openrouter.ai/api/v1/images  { model, prompt, n,
-//        aspect_ratio, quality, input_references[] }
-// One JSON call covers both cases — references ride along as data URLs in
-// input_references (up to 16), so there is no separate edits/multipart path.
+// sheets so later image/video generations can keep the same identity and the
+// same location. It goes through OpenRouter server-side with the OpenRouter key
+// from Settings (or OPENROUTER_API_KEY), on the chat-completions path:
+//   POST https://openrouter.ai/api/v1/chat/completions
+//        { model, messages, modalities: ["image", "text"] }
+// The reference images ride along as image_url content parts in the single user
+// message, and the render comes back as message.images[].image_url.url.
 //
-// Note: OpenRouter's image API exposes no `size`, only `aspect_ratio` +
-// `quality`. That is why the sheet has quality tiers instead of the 1K/2K/4K
-// pixel tiers the OpenAI-direct endpoint allowed.
+// Why not OpenRouter's dedicated /api/v1/images endpoint (which is where
+// `openai/gpt-image-2` lives): for OpenAI models it routes through the account's
+// own OpenAI integration key, and this account's stored key is rejected. The
+// chat-completions path uses OpenRouter's own OpenAI credentials and works.
+//
+// Neither path exposes a size: the render always comes back 1024x1024, which is
+// the square the sheet layouts want anyway. `image_config` is accepted but
+// ignored here (a 16:9 request still returns 1024x1024), so there is no
+// resolution, aspect-ratio or quality knob to offer.
 
 export type ConsistencySheetMode = "character" | "background";
 
-export type ConsistencySheetQuality = "low" | "medium" | "high";
-
-export const CONSISTENCY_SHEET_QUALITIES: ConsistencySheetQuality[] = [
-  "low",
-  "medium",
-  "high",
-];
-
-// The sheet is always square: a turnaround row plus a face row (character) or a
-// 2x2 angle grid (background) both read best in 1:1.
-export const CONSISTENCY_SHEET_ASPECT_RATIO = "1:1";
-
-// GPT-Image-2's input_references limit.
+// The model's input-image limit.
 export const CONSISTENCY_SHEET_MAX_REFERENCES = 16;
 
 export interface ConsistencySheetParams {
   mode: ConsistencySheetMode;
   prompt: string;
-  quality: ConsistencySheetQuality;
   // Data URIs (data:image/...;base64,...) — reference images from the gallery,
   // a file drop, or the clipboard.
   references: string[];
@@ -46,7 +38,6 @@ export interface ConsistencySheetParams {
 export const DEFAULT_CONSISTENCY_SHEET_PARAMS: ConsistencySheetParams = {
   mode: "character",
   prompt: "",
-  quality: "high",
   references: [],
   workspaceId: "",
 };
@@ -94,8 +85,7 @@ export interface ConsistencySheetImage {
   params: {
     mode: ConsistencySheetMode;
     prompt: string;
-    quality: ConsistencySheetQuality;
-    aspectRatio: string;
+    model: string;
     referenceCount: number;
   } | null;
   // Workspace ids the file belongs to. Membership lives in workspaces.json —

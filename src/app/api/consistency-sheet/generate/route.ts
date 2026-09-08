@@ -4,27 +4,25 @@ import { join } from "path";
 import { NextRequest } from "next/server";
 import {
   buildConsistencySheetPrompt,
-  CONSISTENCY_SHEET_ASPECT_RATIO,
   CONSISTENCY_SHEET_MAX_REFERENCES,
-  CONSISTENCY_SHEET_QUALITIES,
-  DEFAULT_CONSISTENCY_SHEET_PARAMS,
   type ConsistencySheetImage,
   type ConsistencySheetParams,
-  type ConsistencySheetQuality,
 } from "@/lib/consistency-sheet";
 import { readSettings } from "@/lib/settings";
 import { isValidWorkspaceId, setFileWorkspaces } from "@/lib/workspaces";
 
 export const runtime = "nodejs";
-// A 4K GPT-Image-2 render can take a few minutes; keep the function alive.
+// A sheet render can take a few minutes; keep the function alive.
 export const maxDuration = 600;
 
 const OUTPUT_DIR = join(process.cwd(), "output", "consistency-sheet");
 
-// OpenRouter's dedicated image endpoint — not /chat/completions, and image
-// models are not listed in /api/v1/models either (see /api/v1/images/models).
-const OPENROUTER_IMAGES_URL = "https://openrouter.ai/api/v1/images";
-const MODEL = process.env.CONSISTENCY_SHEET_MODEL?.trim() || "openai/gpt-image-2";
+// Image generation on the chat-completions path, not OpenRouter's /api/v1/images
+// endpoint: that one routes OpenAI models through the account's own OpenAI
+// integration key, which this account's key is rejected on.
+const OPENROUTER_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions";
+const MODEL =
+  process.env.CONSISTENCY_SHEET_MODEL?.trim() || "openai/gpt-5.4-image-2";
 
 // Heartbeat cadence while the single long OpenRouter request is in flight, so
 // the client can show progress and proxies don't kill the idle SSE stream.
@@ -42,11 +40,6 @@ function asDataUrl(value: unknown): string | null {
 
 function normalizeParams(raw: Record<string, unknown>): ConsistencySheetParams {
   const mode = raw.mode === "background" ? "background" : "character";
-  const quality = CONSISTENCY_SHEET_QUALITIES.includes(
-    raw.quality as ConsistencySheetQuality
-  )
-    ? (raw.quality as ConsistencySheetQuality)
-    : DEFAULT_CONSISTENCY_SHEET_PARAMS.quality;
 
   const references = Array.isArray(raw.references)
     ? raw.references
@@ -58,7 +51,6 @@ function normalizeParams(raw: Record<string, unknown>): ConsistencySheetParams {
   return {
     mode,
     prompt: typeof raw.prompt === "string" ? raw.prompt : "",
-    quality,
     references,
     workspaceId: isValidWorkspaceId(raw.workspaceId) ? raw.workspaceId : "",
   };
@@ -143,9 +135,10 @@ export async function POST(req: NextRequest) {
       const ticker = setInterval(() => send("tick", { id: clientId }), TICK_INTERVAL_MS);
 
       try {
-        // Reference images ride along as data URLs, so one JSON call covers
-        // both the with- and without-references cases.
-        const res = await fetch(OPENROUTER_IMAGES_URL, {
+        // Reference images ride along as image_url parts of the single user
+        // message, so one call covers both the with- and without-references
+        // cases.
+        const res = await fetch(OPENROUTER_CHAT_URL, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${apiKey}`,
@@ -155,22 +148,32 @@ export async function POST(req: NextRequest) {
           },
           body: JSON.stringify({
             model: MODEL,
-            prompt,
-            n: 1,
-            aspect_ratio: CONSISTENCY_SHEET_ASPECT_RATIO,
-            quality: params.quality,
-            input_references: params.references.map((url) => ({
-              type: "image_url",
-              image_url: { url },
-            })),
+            modalities: ["image", "text"],
+            messages: [
+              {
+                role: "user",
+                content: [
+                  { type: "text", text: prompt },
+                  ...params.references.map((url) => ({
+                    type: "image_url",
+                    image_url: { url },
+                  })),
+                ],
+              },
+            ],
           }),
           signal: abortSignal,
         });
 
         const json = (await res.json().catch(() => null)) as {
-          data?: { b64_json?: string }[];
+          error?: { message?: string };
+          choices?: {
+            message?: { images?: { image_url?: { url?: string } }[] };
+          }[];
         } | null;
-        if (!res.ok) {
+        // OpenRouter reports upstream provider failures in an error body that
+        // can arrive with a 200, so don't gate this on res.ok.
+        if (!res.ok || json?.error) {
           send("error", {
             id: clientId,
             message: openaiErrorMessage(json, `이미지 생성 실패 (HTTP ${res.status})`),
@@ -179,7 +182,10 @@ export async function POST(req: NextRequest) {
           return;
         }
 
-        const b64 = json?.data?.[0]?.b64_json;
+        // message.images[].image_url.url is a data:image/png;base64,… payload.
+        const b64 = json?.choices?.[0]?.message?.images?.[0]?.image_url?.url
+          ?.split(",")
+          .at(1);
         if (!b64) {
           send("error", { id: clientId, message: "응답에 이미지가 없습니다." });
           close();
@@ -204,8 +210,7 @@ export async function POST(req: NextRequest) {
           params: {
             mode: params.mode,
             prompt: params.prompt,
-            quality: params.quality,
-            aspectRatio: CONSISTENCY_SHEET_ASPECT_RATIO,
+            model: MODEL,
             referenceCount: params.references.length,
           },
         };

@@ -1,5 +1,4 @@
 import {
-  CONSISTENCY_SHEET_ASPECT_RATIO,
   type ConsistencySheetImage,
   type ConsistencySheetParams,
 } from "./consistency-sheet";
@@ -65,13 +64,9 @@ export async function startConsistencySheetGeneration(
     timestamp: Date.now(),
     contentType: "image/png",
     prompt: source.prompt,
-    params: {
-      mode: source.mode,
-      prompt: source.prompt,
-      quality: source.quality,
-      aspectRatio: CONSISTENCY_SHEET_ASPECT_RATIO,
-      referenceCount: source.references.length,
-    },
+    // The finished sheet's params come back with the run; the pending card only
+    // ever shows the prompt, and the model is picked server-side.
+    params: null,
     status: {
       state: "queued",
       progress: 0.04,

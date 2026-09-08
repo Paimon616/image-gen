@@ -31,11 +31,9 @@ import { useStore } from "@/lib/store";
 import type { WorkspaceSummary } from "@/lib/types";
 import {
   CONSISTENCY_SHEET_MAX_REFERENCES,
-  CONSISTENCY_SHEET_QUALITIES,
   type ConsistencySheetImage,
   type ConsistencySheetMode,
   type ConsistencySheetParams,
-  type ConsistencySheetQuality,
 } from "@/lib/consistency-sheet";
 import { useConsistencySheetStore } from "@/lib/consistency-sheet-store";
 import {
@@ -51,8 +49,8 @@ type Lang = "ko" | "en";
 const T = {
   title: { ko: "일관성 시트", en: "Consistency Sheet" },
   subtitle: {
-    ko: "GPT-Image-2 (OpenRouter) · 캐릭터/배경 일관성 유지용 레퍼런스 시트",
-    en: "GPT-Image-2 via OpenRouter · Character / background reference sheets",
+    ko: "GPT-5.4 Image 2 (OpenRouter) · 캐릭터/배경 일관성 유지용 레퍼런스 시트",
+    en: "GPT-5.4 Image 2 via OpenRouter · Character / background reference sheets",
   },
   modeCharacter: { ko: "캐릭터 시트", en: "Character sheet" },
   modeBackground: { ko: "배경 시트", en: "Background sheet" },
@@ -66,8 +64,8 @@ const T = {
   },
   references: { ko: "레퍼런스 이미지", en: "Reference images" },
   referencesHint: {
-    ko: "갤러리·파일·붙여넣기로 추가 (최대 16장). GPT-Image-2가 이 이미지들의 정체성을 유지합니다.",
-    en: "Add from gallery, files or paste (up to 16). GPT-Image-2 keeps their identity.",
+    ko: "갤러리·파일·붙여넣기로 추가 (최대 16장). 모델이 이 이미지들의 정체성을 유지합니다.",
+    en: "Add from gallery, files or paste (up to 16). The model keeps their identity.",
   },
   pickFromGallery: { ko: "내 이미지에서 선택", en: "From my images" },
   chooseFile: { ko: "파일 선택", en: "Choose files" },
@@ -80,14 +78,6 @@ const T = {
     ko: "공간을 묘사하세요. 예) 해질녘 바닷가 방갈로, 야자수와 나무 데크.",
     en: "Describe the place. e.g. a beach bungalow at sunset.",
   },
-  quality: { ko: "품질 (1:1 고정)", en: "Quality (fixed 1:1)" },
-  qualityLow: { ko: "낮음", en: "Low" },
-  qualityMedium: { ko: "보통", en: "Medium" },
-  qualityHigh: { ko: "높음", en: "High" },
-  qualityHint: {
-    ko: "높음일수록 디테일이 살아나지만 느리고 비쌉니다.",
-    en: "Higher quality means more detail, but slower and pricier.",
-  },
   workspace: { ko: "저장할 워크스페이스", en: "Save to workspace" },
   noWorkspace: { ko: "워크스페이스 없음", en: "No workspace" },
   workspaceHint: {
@@ -96,8 +86,8 @@ const T = {
   },
   generate: { ko: "시트 생성", en: "Generate sheet" },
   costHint: {
-    ko: "생성에 30초~수분 소요. 품질이 높을수록 오래 걸립니다.",
-    en: "Takes 30s–minutes. Higher quality takes longer.",
+    ko: "생성에 30초~수분 소요. 1024×1024 한 장에 약 $0.22.",
+    en: "Takes 30s–minutes. About $0.22 per 1024×1024 sheet.",
   },
   galleryTitle: { ko: "시트 갤러리", en: "Sheet gallery" },
   empty: {
@@ -119,11 +109,6 @@ function tr(key: keyof typeof T, lang: Lang): string {
   return T[key][lang];
 }
 
-const QUALITY_LABEL: Record<ConsistencySheetQuality, keyof typeof T> = {
-  low: "qualityLow",
-  medium: "qualityMedium",
-  high: "qualityHigh",
-};
 
 /** Load a File or URL into an <img>, downscale to MAX_IMAGE_DIM, return a JPEG data URL. */
 async function toDataUrl(src: File | string): Promise<string> {
@@ -456,33 +441,6 @@ export default function ConsistencySheetPage() {
             />
           </div>
 
-          {/* Quality */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">
-              {tr("quality", language)}
-            </Label>
-            <div className="grid grid-cols-3 gap-1">
-              {CONSISTENCY_SHEET_QUALITIES.map((quality) => (
-                <button
-                  key={quality}
-                  type="button"
-                  onClick={() => patch({ quality })}
-                  className={cn(
-                    "rounded-md border px-2.5 py-1.5 text-xs font-semibold transition-colors",
-                    params.quality === quality
-                      ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                      : "border-border bg-card/60 text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {tr(QUALITY_LABEL[quality], language)}
-                </button>
-              ))}
-            </div>
-            <p className="text-[10.5px] leading-tight text-muted-foreground">
-              {tr("qualityHint", language)}
-            </p>
-          </div>
-
           {/* Save target */}
           <div className="space-y-1.5">
             <Label
@@ -597,7 +555,6 @@ export default function ConsistencySheetPage() {
                       patch({
                         mode: image.params.mode,
                         prompt: image.params.prompt,
-                        quality: image.params.quality,
                       });
                     } else {
                       patch({ prompt: image.prompt });
@@ -765,15 +722,13 @@ function SheetCard({
         <div className="flex items-center justify-between text-[10px] text-muted-foreground">
           <span>
             {image.params
-              ? `${
-                  image.params.mode === "character"
-                    ? lang === "ko"
-                      ? "캐릭터"
-                      : "Character"
-                    : lang === "ko"
-                      ? "배경"
-                      : "Background"
-                } · ${tr(QUALITY_LABEL[image.params.quality], lang)}`
+              ? image.params.mode === "character"
+                ? lang === "ko"
+                  ? "캐릭터"
+                  : "Character"
+                : lang === "ko"
+                  ? "배경"
+                  : "Background"
               : ""}
           </span>
           <span>
