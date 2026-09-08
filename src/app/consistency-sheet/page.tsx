@@ -674,7 +674,11 @@ function PendingCard({
       </div>
       <div className="space-y-2">
         {failed ? (
-          <p className="text-xs font-medium text-destructive">{status?.message}</p>
+          // Upstream errors can carry a very long unbroken token (e.g. a masked
+          // API key), so force a break or it blows the card out of the grid.
+          <p className="line-clamp-4 break-all text-xs font-medium text-destructive">
+            {status?.message}
+          </p>
         ) : (
           <>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
