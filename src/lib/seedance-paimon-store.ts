@@ -89,11 +89,8 @@ export const useSeedancePaimonStore = createPaimonConversationStore({
         seed: params.seed,
       },
       attachments: [
-        ...(params.firstFrame
-          ? [frameAttachment(params.firstFrame, "시작 이미지")]
-          : []),
-        ...(params.lastFrame
-          ? [frameAttachment(params.lastFrame, "끝 이미지")]
+        ...(params.imageReference
+          ? [frameAttachment(params.imageReference, "참조 이미지")]
           : []),
         // Named so Paimon writes a prompt that respects which sheet locks the
         // person and which one locks the location.

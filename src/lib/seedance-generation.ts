@@ -22,8 +22,8 @@ const STATUS_LABEL: Record<string, { ko: string; en: string }> = {
 
 const ERROR_LABEL = {
   needImage: {
-    ko: "시작 프레임이나 캐릭터·배경 시트 중 하나는 추가하세요.",
-    en: "Add a start frame, or a character / background sheet.",
+    ko: "참조 이미지를 최소 한 장 추가하세요.",
+    en: "Add at least one reference image.",
   },
   needPrompt: { ko: "프롬프트를 입력하세요.", en: "Enter a prompt." },
 } as const;
@@ -90,14 +90,16 @@ export async function startSeedanceGeneration(
       watermark: source.watermark,
       cleanFrame: source.cleanFrame,
       seed: source.seed,
-      hasFirstFrame: Boolean(source.firstFrame),
-      hasLastFrame: Boolean(source.lastFrame),
+      hasImageReference: Boolean(source.imageReference),
       hasCharacterReference: Boolean(source.characterReference),
       hasBackgroundReference: Boolean(source.backgroundReference),
     },
-    // Reference-only runs have no start frame, so the card previews whichever
-    // image the run was given.
-    thumbnail: source.firstFrame ?? source.characterReference ?? source.backgroundReference ?? null,
+    // The card previews whichever reference the run was given.
+    thumbnail:
+      source.imageReference ??
+      source.characterReference ??
+      source.backgroundReference ??
+      null,
     status: {
       state: "queued",
       progress: 0.04,

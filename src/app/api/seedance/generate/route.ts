@@ -67,8 +67,7 @@ function normalizeParams(raw: Record<string, unknown>): SeedanceParams {
     watermark: Boolean(raw.watermark),
     cleanFrame: raw.cleanFrame === undefined ? true : Boolean(raw.cleanFrame),
     seed,
-    firstFrame: mode === "i2v" ? asImageString(raw.firstFrame) : null,
-    lastFrame: mode === "i2v" ? asImageString(raw.lastFrame) : null,
+    imageReference: mode === "i2v" ? asImageString(raw.imageReference) : null,
     characterReference:
       mode === "i2v" ? asImageString(raw.characterReference) : null,
     backgroundReference:
@@ -168,7 +167,7 @@ export async function POST(req: NextRequest) {
         send("error", {
           id: clientId,
           message:
-            "이미지 → 영상 모드에는 시작 프레임이나 캐릭터·배경 시트 중 하나가 필요합니다.",
+            "이미지 → 영상 모드에는 참조 이미지가 최소 한 장 필요합니다.",
         });
         close();
         return;
@@ -323,8 +322,7 @@ export async function POST(req: NextRequest) {
             watermark: params.watermark,
             cleanFrame: params.cleanFrame,
             seed: params.seed,
-            hasFirstFrame: Boolean(params.firstFrame),
-            hasLastFrame: Boolean(params.lastFrame),
+            hasImageReference: Boolean(params.imageReference),
             hasCharacterReference: Boolean(params.characterReference),
             hasBackgroundReference: Boolean(params.backgroundReference),
           },

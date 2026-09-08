@@ -6,8 +6,7 @@
 // (ratio / resolution / duration / seed / camera lock / watermark) are appended
 // to the prompt text as `--flag value` tokens rather than sent as JSON fields.
 // See `buildSeedancePromptText` below. Reference images are attached as extra
-// entries in the request `content` array with a `role` (first_frame /
-// last_frame / reference_image).
+// entries in the request `content` array under `role: "reference_image"`.
 //
 // Endpoint + model id are overridable via env so the same screen keeps working
 // if BytePlus renames the model or the account lives in another region:
@@ -38,12 +37,13 @@ export interface SeedanceParams {
   cleanFrame: boolean; // append a "no on-screen text/subtitles/logo" clause
   seed: number | null;
   // Data URIs (data:image/...;base64,...) or public https URLs.
-  firstFrame: string | null;
-  lastFrame: string | null;
-  // Consistency-sheet references, one slot per role. ModelArk has no character
-  // / background role — both go on the wire as `reference_image` — so the two
-  // slots exist to fix the send order and to let the prompt say which is which
-  // (see buildSeedanceReferenceClause).
+  //
+  // All three slots go on the wire under the same `reference_image` role —
+  // ModelArk has no per-subject role — so they exist to fix the send order and
+  // to let the prompt say which is which (see buildSeedanceReferenceClause).
+  // Deliberately no first/last frame slot: ModelArk forces `--ratio adaptive`
+  // whenever one is present, which would take the ratio picker away.
+  imageReference: string | null;
   characterReference: string | null;
   backgroundReference: string | null;
 }
@@ -73,33 +73,18 @@ export const DEFAULT_SEEDANCE_PARAMS: SeedanceParams = {
   watermark: false,
   cleanFrame: true,
   seed: null,
-  firstFrame: null,
-  lastFrame: null,
+  imageReference: null,
   characterReference: null,
   backgroundReference: null,
 };
 
-/**
- * i2v needs at least one image, but a start frame is not the only way to give
- * it one: ModelArk accepts a request carrying only `reference_image` parts
- * (verified against the API), so the character / background sheets alone are
- * enough to generate.
- */
+/** i2v needs at least one of the reference slots filled. */
 export function hasSeedanceImage(params: SeedanceParams): boolean {
   return Boolean(
-    params.firstFrame || params.characterReference || params.backgroundReference
+    params.imageReference ||
+      params.characterReference ||
+      params.backgroundReference
   );
-}
-
-/**
- * ModelArk refuses an explicit ratio once a start frame is in play:
- *   "For first-frame or first-last-frame generation, the output ratio follows
- *    the first-frame image. Issues: [0] `ratio` must be `adaptive`."
- * So the ratio picker only applies to runs without a start frame (text-to-video
- * or a reference-only run, where an explicit `--ratio 16:9` is accepted).
- */
-export function seedanceRatioFollowsFirstFrame(params: SeedanceParams): boolean {
-  return params.mode === "i2v" && Boolean(params.firstFrame);
 }
 
 export function clampSeedanceDuration(value: unknown): number {
@@ -116,6 +101,7 @@ const CLEAN_FRAME_CLAUSE = "禁止：任何文字、字幕、LOGO或水印";
 // naming them in the prompt is the only way to tell the model which sheet is
 // which. The numbering has to follow the push order in buildSeedanceContent.
 const REFERENCE_LABELS = {
+  image: "整体参考，画面内容与构图以此为准",
   character: "角色一致性参考，人物的长相、发型、服装以此为准",
   background: "场景一致性参考，场地、布局、陈设、光线以此为准",
 } as const;
@@ -124,6 +110,7 @@ const REFERENCE_LABELS = {
 export function buildSeedanceReferenceClause(params: SeedanceParams): string {
   if (params.mode !== "i2v") return "";
   const labels: string[] = [];
+  if (params.imageReference) labels.push(REFERENCE_LABELS.image);
   if (params.characterReference) labels.push(REFERENCE_LABELS.character);
   if (params.backgroundReference) labels.push(REFERENCE_LABELS.background);
   return labels.map((label, i) => `参考图${i + 1}为${label}`).join("；");
@@ -132,8 +119,6 @@ export function buildSeedanceReferenceClause(params: SeedanceParams): string {
 /**
  * Build the ModelArk prompt text: the user's description followed by the
  * `--flag value` command tokens ModelArk parses for generation control.
- * `adaptive` ratio is omitted so the model derives the aspect from the first
- * frame image (its intended meaning); an explicit ratio is always sent.
  */
 export function buildSeedancePromptText(params: SeedanceParams): string {
   const segments: string[] = [];
@@ -145,16 +130,14 @@ export function buildSeedancePromptText(params: SeedanceParams): string {
 
   const flags: string[] = [];
   flags.push(`--resolution ${params.resolution}`);
-  if (seedanceRatioFollowsFirstFrame(params)) {
-    // Sending anything else here is rejected outright — the start frame decides.
-    flags.push("--ratio adaptive");
-  } else if (params.ratio !== "adaptive") {
+  if (params.ratio !== "adaptive") {
+    // Always accepted: there is no first/last frame to conflict with.
     flags.push(`--ratio ${params.ratio}`);
   } else if (params.mode === "t2v") {
-    // Text-to-video has no source frame to adapt to; fall back to 16:9.
+    // Text-to-video has no source image to adapt to; fall back to 16:9.
     flags.push("--ratio 16:9");
   } else {
-    // Reference-only run: ModelArk has its own behaviour for `adaptive` here (a
+    // ModelArk has its own behaviour for `adaptive` on a reference-only run (a
     // probe with square references came back `ratio: "9:16"`), and overriding
     // it would ignore the user's pick.
     flags.push("--ratio adaptive");
@@ -173,7 +156,7 @@ export interface SeedanceContentPart {
   type: "text" | "image_url";
   text?: string;
   image_url?: { url: string };
-  role?: "first_frame" | "last_frame" | "reference_image";
+  role?: "reference_image";
 }
 
 /**
@@ -186,23 +169,12 @@ export function buildSeedanceContent(params: SeedanceParams): SeedanceContentPar
   ];
 
   if (params.mode === "i2v") {
-    if (params.firstFrame) {
-      content.push({
-        type: "image_url",
-        image_url: { url: params.firstFrame },
-        role: "first_frame",
-      });
-    }
-    if (params.lastFrame) {
-      content.push({
-        type: "image_url",
-        image_url: { url: params.lastFrame },
-        role: "last_frame",
-      });
-    }
-    // Character before background — buildSeedanceReferenceClause numbers them
-    // in this order.
-    for (const ref of [params.characterReference, params.backgroundReference]) {
+    // buildSeedanceReferenceClause numbers the references in this same order.
+    for (const ref of [
+      params.imageReference,
+      params.characterReference,
+      params.backgroundReference,
+    ]) {
       if (!ref) continue;
       content.push({
         type: "image_url",
@@ -224,10 +196,9 @@ export interface SeedanceVideo {
   prompt: string;
   params: Omit<
     SeedanceParams,
-    "firstFrame" | "lastFrame" | "characterReference" | "backgroundReference"
+    "imageReference" | "characterReference" | "backgroundReference"
   > & {
-    hasFirstFrame: boolean;
-    hasLastFrame: boolean;
+    hasImageReference: boolean;
     hasCharacterReference: boolean;
     hasBackgroundReference: boolean;
   };

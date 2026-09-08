@@ -17,17 +17,15 @@ export const useSeedanceSituationStore = createSituationVideoStore({
   // prompt itself.
   withNegativePrompt: false,
 
-  hasStartFrame: () => Boolean(useSeedanceStore.getState().params.firstFrame),
+  hasStartFrame: () => Boolean(useSeedanceStore.getState().params.imageReference),
 
   applyStartFrame: async (imageUrl) => {
     const dataUrl = await readImageUrlAsJpegDataUrl(imageUrl);
     useSeedanceStore.getState().setParams((current) => ({
       ...current,
-      // A start frame only means anything in image-to-video mode.
+      // A reference image only means anything in image-to-video mode.
       mode: "i2v",
-      firstFrame: dataUrl,
-      // The old clip's end frame would fight the new situation's start frame.
-      lastFrame: null,
+      imageReference: dataUrl,
     }));
     return true;
   },

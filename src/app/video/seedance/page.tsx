@@ -76,7 +76,6 @@ import {
   SEEDANCE_PROMPT_CHIPS,
   SEEDANCE_RATIOS,
   SEEDANCE_RESOLUTIONS,
-  seedanceRatioFollowsFirstFrame,
   type SeedanceMode,
   type SeedanceParams,
   type SeedanceRatio,
@@ -108,15 +107,14 @@ const T = {
   },
   modeI2v: { ko: "이미지 → 영상", en: "Image → Video" },
   modeT2v: { ko: "텍스트 → 영상", en: "Text → Video" },
-  firstFrame: {
-    ko: "인물 이미지 (시작 프레임, 선택)",
-    en: "Person image (start frame, optional)",
+  imageReference: {
+    ko: "이미지 참조",
+    en: "Image reference",
   },
-  firstFrameHint: {
-    ko: "영상이 이 이미지에서 시작합니다. 비워두면 아래 캐릭터·배경 시트만으로 생성합니다.",
-    en: "The video starts from this image. Leave it empty to generate from the sheets below alone.",
+  imageReferenceHint: {
+    ko: "인물·구도 등 참고할 이미지를 넣습니다. 시작 프레임이 아니라 참조라서 화면 비율은 그대로 고를 수 있습니다.",
+    en: "A general reference for the subject or framing. It is a reference, not a start frame, so the aspect ratio stays selectable.",
   },
-  lastFrame: { ko: "종료 프레임 (선택)", en: "End frame (optional)" },
   references: { ko: "일관성 참조 이미지 (선택)", en: "Consistency references (optional)" },
   referencesHint: {
     ko: "캐릭터와 배경을 각각 고정합니다. 일관성 시트를 넣으면 가장 잘 먹습니다.",
@@ -147,10 +145,6 @@ const T = {
   resolution: { ko: "해상도", en: "Resolution" },
   ratio: { ko: "화면 비율", en: "Aspect ratio" },
   ratioAdaptive: { ko: "이미지 자동", en: "Adaptive" },
-  ratioLockedHint: {
-    ko: "시작 프레임이 있으면 비율은 그 이미지를 따릅니다. 비율을 직접 고르려면 시작 프레임을 비우고 캐릭터·배경 시트만 쓰세요.",
-    en: "With a start frame the ratio follows that image. To pick a ratio, clear the start frame and use the sheets only.",
-  },
   duration: { ko: "길이", en: "Duration" },
   seconds: { ko: "초", en: "s" },
   cameraFixed: { ko: "카메라 고정", en: "Lock camera" },
@@ -218,7 +212,7 @@ const T = {
   nextVideo: { ko: "다음 영상", en: "Next video" },
   sectionPrompt: { ko: "프롬프트", en: "Prompt" },
   sectionGeneration: { ko: "생성 정보", en: "Generation" },
-  sectionStartFrame: { ko: "시작 프레임", en: "Start frame" },
+  sectionStartFrame: { ko: "참조 이미지", en: "Reference image" },
   noPrompt: { ko: "프롬프트 없음", en: "No prompt" },
   noParams: {
     ko: "이 영상에 대한 생성 정보가 없습니다.",
@@ -227,9 +221,9 @@ const T = {
   fieldMode: { ko: "모드", en: "Mode" },
   fieldSeed: { ko: "시드", en: "Seed" },
   fieldActual: { ko: "실제 해상도", en: "Actual resolution" },
+  fieldImageReference: { ko: "이미지 참조", en: "Image ref" },
   fieldCharacterReference: { ko: "캐릭터 참조", en: "Character ref" },
   fieldBackgroundReference: { ko: "배경 참조", en: "Background ref" },
-  fieldEndFrame: { ko: "종료 프레임", en: "End frame" },
   on: { ko: "켜짐", en: "On" },
   off: { ko: "꺼짐", en: "Off" },
   present: { ko: "있음", en: "Yes" },
@@ -390,7 +384,6 @@ export default function SeedancePage() {
   const params = useSeedanceStore((s) => s.params);
   const setParams = useSeedanceStore((s) => s.setParams);
   const hydrateParams = useSeedanceStore((s) => s.hydrateParams);
-  const [showLastFrame, setShowLastFrame] = useState(false);
   const [picker, setPicker] = useState<null | ((url: string) => void)>(null);
   const [error, setError] = useState<string | null>(null);
   const [thumbnailWidth, setThumbnailWidth] = useState(320);
@@ -447,7 +440,7 @@ export default function SeedancePage() {
       if (!file) return;
       const dataUrl = await toDataUrl(file);
       setParams((p) => {
-        if (!p.firstFrame) return { ...p, firstFrame: dataUrl };
+        if (!p.imageReference) return { ...p, imageReference: dataUrl };
         return p;
       });
     };
@@ -817,8 +810,6 @@ export default function SeedancePage() {
       ? params.prompt.trim().length > 0
       : hasSeedanceImage(params);
 
-  const ratioLocked = seedanceRatioFollowsFirstFrame(params);
-
   return (
     <div className="flex h-screen bg-background">
       <AppSidebar />
@@ -861,31 +852,17 @@ export default function SeedancePage() {
             <div className="space-y-3">
               <DropZone
                 lang={language}
-                value={params.firstFrame}
-                onChange={(v) => patch({ firstFrame: v })}
-                onPickGallery={() => setPicker(() => (url: string) => void toDataUrl(url).then((d) => patch({ firstFrame: d })))}
-                label={tr("firstFrame", language)}
-                hint={tr("firstFrameHint", language)}
+                value={params.imageReference}
+                onChange={(v) => patch({ imageReference: v })}
+                onPickGallery={() =>
+                  setPicker(() => (url: string) =>
+                    void toDataUrl(url).then((d) => patch({ imageReference: d }))
+                  )
+                }
+                label={tr("imageReference", language)}
+                hint={tr("imageReferenceHint", language)}
                 large
               />
-
-              {!showLastFrame ? (
-                <button
-                  type="button"
-                  onClick={() => setShowLastFrame(true)}
-                  className="text-[11px] font-medium text-primary hover:underline"
-                >
-                  + {tr("lastFrame", language)}
-                </button>
-              ) : (
-                <DropZone
-                  lang={language}
-                  value={params.lastFrame}
-                  onChange={(v) => patch({ lastFrame: v })}
-                  onPickGallery={() => setPicker(() => (url: string) => void toDataUrl(url).then((d) => patch({ lastFrame: d })))}
-                  label={tr("lastFrame", language)}
-                />
-              )}
 
               {/* Always visible: one character slot and one background slot. */}
               <Separator />
@@ -982,29 +959,21 @@ export default function SeedancePage() {
               </div>
             </div>
 
-            {/* Ratio. Locked while a start frame is loaded — ModelArk rejects
-                any explicit ratio for a first-frame run. */}
+            {/* Ratio. Always selectable: every image goes on the wire as a
+                reference, and only a first/last frame would force `adaptive`. */}
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">{tr("ratio", language)}</Label>
               <div className="flex flex-wrap gap-1">
                 {SEEDANCE_RATIOS.map((r) => (
                   <SegButton
                     key={r}
-                    active={
-                      ratioLocked ? r === "adaptive" : params.ratio === r
-                    }
-                    disabled={ratioLocked && r !== "adaptive"}
+                    active={params.ratio === r}
                     onClick={() => patch({ ratio: r as SeedanceRatio })}
                   >
                     {r === "adaptive" ? tr("ratioAdaptive", language) : r}
                   </SegButton>
                 ))}
               </div>
-              {ratioLocked && (
-                <p className="text-[10.5px] leading-tight text-muted-foreground">
-                  {tr("ratioLockedHint", language)}
-                </p>
-              )}
             </div>
 
             {/* Duration */}
@@ -1394,24 +1363,20 @@ function SegButton({
   active,
   onClick,
   children,
-  disabled = false,
 }: {
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
-  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      disabled={disabled}
       className={cn(
         "rounded-md border px-2.5 py-1 text-xs font-semibold transition-colors",
         active
           ? "border-primary bg-primary text-primary-foreground shadow-sm"
-          : "border-border bg-card/60 text-muted-foreground hover:text-foreground",
-        disabled && "cursor-not-allowed opacity-40 hover:text-muted-foreground"
+          : "border-border bg-card/60 text-muted-foreground hover:text-foreground"
       )}
     >
       {children}
@@ -2152,8 +2117,12 @@ function VideoDetailModal({
                           value={params.cleanFrame ? tr("on", lang) : tr("off", lang)}
                         />
                         <DetailField
-                          label={tr("fieldEndFrame", lang)}
-                          value={params.hasLastFrame ? tr("present", lang) : tr("absent", lang)}
+                          label={tr("fieldImageReference", lang)}
+                          value={
+                            params.hasImageReference
+                              ? tr("present", lang)
+                              : tr("absent", lang)
+                          }
                         />
                         <DetailField
                           label={tr("fieldCharacterReference", lang)}
