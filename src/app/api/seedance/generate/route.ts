@@ -6,6 +6,7 @@ import {
   buildSeedanceContent,
   clampSeedanceDuration,
   DEFAULT_SEEDANCE_PARAMS,
+  hasSeedanceImage,
   SEEDANCE_RATIOS,
   SEEDANCE_RESOLUTIONS,
   type SeedanceParams,
@@ -160,10 +161,11 @@ export async function POST(req: NextRequest) {
         return;
       }
 
-      if (params.mode === "i2v" && !params.firstFrame) {
+      if (params.mode === "i2v" && !hasSeedanceImage(params)) {
         send("error", {
           id: clientId,
-          message: "이미지 → 영상 모드에는 시작 이미지가 필요합니다.",
+          message:
+            "이미지 → 영상 모드에는 시작 프레임이나 캐릭터·배경 시트 중 하나가 필요합니다.",
         });
         close();
         return;

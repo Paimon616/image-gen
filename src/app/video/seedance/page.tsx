@@ -71,6 +71,7 @@ import {
 } from "@/components/character-situation-picker";
 import {
   SEEDANCE_DURATION_MAX,
+  hasSeedanceImage,
   SEEDANCE_DURATION_MIN,
   SEEDANCE_PROMPT_CHIPS,
   SEEDANCE_RATIOS,
@@ -106,10 +107,13 @@ const T = {
   },
   modeI2v: { ko: "이미지 → 영상", en: "Image → Video" },
   modeT2v: { ko: "텍스트 → 영상", en: "Text → Video" },
-  firstFrame: { ko: "인물 이미지 (시작 프레임)", en: "Person image (start frame)" },
+  firstFrame: {
+    ko: "인물 이미지 (시작 프레임, 선택)",
+    en: "Person image (start frame, optional)",
+  },
   firstFrameHint: {
-    ko: "영상이 이 이미지에서 시작합니다. 내가 만든 인물 이미지를 넣으세요.",
-    en: "The video starts from this image. Drop the person you generated.",
+    ko: "영상이 이 이미지에서 시작합니다. 비워두면 아래 캐릭터·배경 시트만으로 생성합니다.",
+    en: "The video starts from this image. Leave it empty to generate from the sheets below alone.",
   },
   lastFrame: { ko: "종료 프레임 (선택)", en: "End frame (optional)" },
   references: { ko: "일관성 참조 이미지 (선택)", en: "Consistency references (optional)" },
@@ -804,7 +808,9 @@ export default function SeedancePage() {
 
   const isGenerating = pending.some((p) => p.status?.state === "generating" || p.status?.state === "queued");
   const canGenerate =
-    params.mode === "t2v" ? params.prompt.trim().length > 0 : Boolean(params.firstFrame);
+    params.mode === "t2v"
+      ? params.prompt.trim().length > 0
+      : hasSeedanceImage(params);
 
   return (
     <div className="flex h-screen bg-background">

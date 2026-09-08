@@ -79,6 +79,18 @@ export const DEFAULT_SEEDANCE_PARAMS: SeedanceParams = {
   backgroundReference: null,
 };
 
+/**
+ * i2v needs at least one image, but a start frame is not the only way to give
+ * it one: ModelArk accepts a request carrying only `reference_image` parts
+ * (verified against the API), so the character / background sheets alone are
+ * enough to generate.
+ */
+export function hasSeedanceImage(params: SeedanceParams): boolean {
+  return Boolean(
+    params.firstFrame || params.characterReference || params.backgroundReference
+  );
+}
+
 export function clampSeedanceDuration(value: unknown): number {
   const n = Math.round(Number(value));
   if (!Number.isFinite(n)) return DEFAULT_SEEDANCE_PARAMS.duration;
@@ -124,8 +136,10 @@ export function buildSeedancePromptText(params: SeedanceParams): string {
   flags.push(`--resolution ${params.resolution}`);
   if (params.ratio !== "adaptive") {
     flags.push(`--ratio ${params.ratio}`);
-  } else if (params.mode === "t2v") {
-    // Text-to-video has no source frame to adapt to; fall back to 16:9.
+  } else if (params.mode === "t2v" || !params.firstFrame) {
+    // `adaptive` means "take the aspect from the start frame". Text-to-video
+    // has no frame at all, and a reference-only run has nothing to adapt to
+    // either, so both fall back to 16:9.
     flags.push("--ratio 16:9");
   } else {
     flags.push("--ratio adaptive");

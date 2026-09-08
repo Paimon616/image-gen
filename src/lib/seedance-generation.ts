@@ -1,5 +1,5 @@
 import { useMediaWorkspaceStore } from "./media-workspace-store";
-import type { SeedanceParams, SeedanceVideo } from "./seedance";
+import { hasSeedanceImage, type SeedanceParams, type SeedanceVideo } from "./seedance";
 import { useSeedanceStore } from "./seedance-store";
 import type { SituationVideoLink } from "./situation-video-store";
 import { useStore } from "./store";
@@ -21,7 +21,10 @@ const STATUS_LABEL: Record<string, { ko: string; en: string }> = {
 };
 
 const ERROR_LABEL = {
-  needImage: { ko: "시작 이미지를 추가하세요.", en: "Add a start image." },
+  needImage: {
+    ko: "시작 프레임이나 캐릭터·배경 시트 중 하나는 추가하세요.",
+    en: "Add a start frame, or a character / background sheet.",
+  },
   needPrompt: { ko: "프롬프트를 입력하세요.", en: "Enter a prompt." },
 } as const;
 
@@ -49,7 +52,7 @@ export async function startSeedanceGeneration(
 ): Promise<string | null> {
   const language = currentLanguage();
 
-  if (source.mode === "i2v" && !source.firstFrame) {
+  if (source.mode === "i2v" && !hasSeedanceImage(source)) {
     return ERROR_LABEL.needImage[language];
   }
   if (!source.prompt.trim() && source.mode === "t2v") {
@@ -92,7 +95,9 @@ export async function startSeedanceGeneration(
       hasCharacterReference: Boolean(source.characterReference),
       hasBackgroundReference: Boolean(source.backgroundReference),
     },
-    thumbnail: source.firstFrame ?? null,
+    // Reference-only runs have no start frame, so the card previews whichever
+    // image the run was given.
+    thumbnail: source.firstFrame ?? source.characterReference ?? source.backgroundReference ?? null,
     status: {
       state: "queued",
       progress: 0.04,
