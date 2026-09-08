@@ -245,6 +245,50 @@ export default function ConsistencySheetPage() {
     []
   );
 
+  // Re-file a finished sheet. One workspace at a time, matching the dropdown in
+  // the control panel; an empty id means "no workspace". The card updates right
+  // away and the server's answer is authoritative (an id for a workspace that
+  // was deleted meanwhile is dropped there).
+  const assignWorkspace = useCallback(
+    async (image: ConsistencySheetImage, workspaceId: string) => {
+      setImages((prev) =>
+        prev.map((v) =>
+          v.id === image.id
+            ? { ...v, workspaces: workspaceId ? [workspaceId] : [] }
+            : v
+        )
+      );
+      const res = await fetch("/api/workspaces/assign", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          media: "consistencySheet",
+          filename: image.filename,
+          workspaceIds: workspaceId ? [workspaceId] : [],
+        }),
+      }).catch(() => null);
+      const data = (await res?.json().catch(() => null)) as {
+        workspaces?: string[];
+      } | null;
+      if (Array.isArray(data?.workspaces)) {
+        setImages((prev) =>
+          prev.map((v) =>
+            v.id === image.id ? { ...v, workspaces: data.workspaces } : v
+          )
+        );
+      }
+      // The dropdown shows each workspace's sheet count, so re-read the list.
+      await fetch("/api/workspaces?media=consistencySheet", { cache: "no-store" })
+        .then((r) => r.json())
+        .then((payload) => {
+          if (Array.isArray(payload?.workspaces))
+            setWorkspaces(payload.workspaces as WorkspaceSummary[]);
+        })
+        .catch(() => {});
+    },
+    [setImages]
+  );
+
   const deleteImage = useCallback(
     async (image: ConsistencySheetImage) => {
       if (!window.confirm(tr("deleteConfirm", language))) return;
@@ -545,9 +589,8 @@ export default function ConsistencySheetPage() {
                   key={image.id}
                   lang={language}
                   image={image}
-                  workspaceNames={(image.workspaces ?? [])
-                    .map((id) => workspaces.find((w) => w.id === id)?.name)
-                    .filter((name): name is string => Boolean(name))}
+                  workspaces={workspaces}
+                  onAssign={(workspaceId) => void assignWorkspace(image, workspaceId)}
                   onZoom={() => setZoomImage(image.url)}
                   onDelete={() => void deleteImage(image)}
                   onReusePrompt={() => {
@@ -674,18 +717,26 @@ function PendingCard({
 function SheetCard({
   lang,
   image,
-  workspaceNames,
+  workspaces,
+  onAssign,
   onZoom,
   onDelete,
   onReusePrompt,
 }: {
   lang: Lang;
   image: ConsistencySheetImage;
-  workspaceNames: string[];
+  workspaces: WorkspaceSummary[];
+  onAssign: (workspaceId: string) => void;
   onZoom: () => void;
   onDelete: () => void;
   onReusePrompt: () => void;
 }) {
+  // Membership is a list server-side, but this screen files a sheet under one
+  // workspace at a time, so the select shows the first id that still exists.
+  const assignedId =
+    (image.workspaces ?? []).find((id) => workspaces.some((w) => w.id === id)) ??
+    "";
+
   return (
     <div className="group overflow-hidden rounded-lg border border-border bg-card/60">
       <button
@@ -707,18 +758,19 @@ function SheetCard({
             {image.prompt}
           </p>
         )}
-        {workspaceNames.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {workspaceNames.map((name) => (
-              <span
-                key={name}
-                className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-secondary-foreground"
-              >
-                {name}
-              </span>
-            ))}
-          </div>
-        )}
+        <select
+          value={assignedId}
+          onChange={(e) => onAssign(e.target.value)}
+          aria-label={tr("workspace", lang)}
+          className="h-7 w-full rounded-md border border-input bg-background px-1.5 text-[11px] outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+        >
+          <option value="">{tr("noWorkspace", lang)}</option>
+          {workspaces.map((workspace) => (
+            <option key={workspace.id} value={workspace.id}>
+              {workspace.name}
+            </option>
+          ))}
+        </select>
         <div className="flex items-center justify-between text-[10px] text-muted-foreground">
           <span>
             {image.params

@@ -4,9 +4,10 @@ import { notifyWorkspaceFilesChanged } from "@/lib/runpod-share";
 import { isValidVideoFilename, isVideoMedia } from "@/lib/server-videos";
 import type { WorkspaceMedia } from "@/lib/types";
 
-// Workspace membership for the video screens. Images have their own route under
-// /api/images/[filename]/workspaces (it predates this one and the gallery still
-// calls it); everything else goes through here with an explicit media.
+// Workspace membership for the video and consistency-sheet screens. Images have
+// their own route under /api/images/[filename]/workspaces (it predates this one
+// and the gallery still calls it); everything else goes through here with an
+// explicit media.
 interface AssignBody {
   media?: unknown;
   filename?: unknown;
@@ -15,15 +16,22 @@ interface AssignBody {
   workspaceIds?: unknown;
 }
 
+// Consistency sheets are stills, so they never match the video filename rules.
+const SHEET_FILENAME_PATTERN = /^[\w.-]+\.(png|jpe?g|webp)$/i;
+
 function parseTarget(body: AssignBody | null) {
-  const media = isVideoMedia(body?.media)
-    ? (body.media as WorkspaceMedia)
-    : null;
-  const filename =
-    typeof body?.filename === "string" && isValidVideoFilename(body.filename)
-      ? body.filename
+  const filename = typeof body?.filename === "string" ? body.filename : null;
+  if (!filename || filename.includes("..")) return null;
+
+  if (body?.media === "consistencySheet") {
+    return SHEET_FILENAME_PATTERN.test(filename)
+      ? { media: "consistencySheet" as WorkspaceMedia, filename }
       : null;
-  return media && filename ? { media, filename } : null;
+  }
+  if (isVideoMedia(body?.media) && isValidVideoFilename(filename)) {
+    return { media: body.media as WorkspaceMedia, filename };
+  }
+  return null;
 }
 
 // POST toggles a single membership: { media, filename, workspaceId, assigned }
