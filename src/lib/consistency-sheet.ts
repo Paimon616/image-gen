@@ -7,19 +7,20 @@
 //   - with reference images →  POST /v1/images/edits   (multipart, image[] × up to 16)
 //   - without references    →  POST /v1/images/generations (JSON)
 // GPT-Image-2 accepts arbitrary sizes (both sides divisible by 16, aspect
-// between 1:3 and 3:1, total pixels 655,360‥8,294,400), so the fixed 9:16
-// sheet comes out at an exact 9:16 in every tier below.
+// between 1:3 and 3:1, total pixels 655,360‥8,294,400), so the fixed 1:1
+// sheet comes out square in every tier below.
 
 export type ConsistencySheetMode = "character" | "background";
 
 export type ConsistencySheetResolution = "1k" | "2k" | "4k";
 
-// Exact 9:16 sizes per tier. 2160x3840 is the API's pixel ceiling and OpenAI
-// marks >2560x1440 as experimental — the UI says so next to the 4K option.
+// Exact 1:1 sizes per tier. 2880x2880 (8,294,400 px) is the API's pixel
+// ceiling — the largest square it accepts — and OpenAI marks anything past
+// 2560x1440 as experimental, so the UI says so next to the 4K option.
 export const CONSISTENCY_SHEET_SIZES: Record<ConsistencySheetResolution, string> = {
-  "1k": "864x1536",
-  "2k": "1440x2560",
-  "4k": "2160x3840",
+  "1k": "1024x1024",
+  "2k": "2048x2048",
+  "4k": "2880x2880",
 };
 
 export const CONSISTENCY_SHEET_RESOLUTIONS: ConsistencySheetResolution[] = [

@@ -80,7 +80,7 @@ const T = {
     ko: "공간을 묘사하세요. 예) 해질녘 바닷가 방갈로, 야자수와 나무 데크.",
     en: "Describe the place. e.g. a beach bungalow at sunset.",
   },
-  resolution: { ko: "해상도 (9:16 고정)", en: "Resolution (fixed 9:16)" },
+  resolution: { ko: "해상도 (1:1 고정)", en: "Resolution (fixed 1:1)" },
   experimental: { ko: "실험적", en: "experimental" },
   generate: { ko: "시트 생성", en: "Generate sheet" },
   costHint: {
@@ -606,7 +606,7 @@ function PendingCard({
   const failed = status?.state === "error";
 
   return (
-    <div className="flex aspect-[9/16] flex-col justify-between rounded-lg border border-border bg-card/60 p-3">
+    <div className="flex aspect-square flex-col justify-between rounded-lg border border-border bg-card/60 p-3">
       <div className="text-[11px] leading-snug text-muted-foreground line-clamp-6">
         {card.prompt ||
           (lang === "ko" ? "레퍼런스 기반 시트" : "Reference-based sheet")}
@@ -667,7 +667,7 @@ function SheetCard({
       <button
         type="button"
         onClick={onZoom}
-        className="block aspect-[9/16] w-full cursor-zoom-in overflow-hidden bg-muted"
+        className="block aspect-square w-full cursor-zoom-in overflow-hidden bg-muted"
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
