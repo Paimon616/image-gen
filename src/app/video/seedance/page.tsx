@@ -382,7 +382,6 @@ export default function SeedancePage() {
   const setParams = useSeedanceStore((s) => s.setParams);
   const hydrateParams = useSeedanceStore((s) => s.hydrateParams);
   const [showLastFrame, setShowLastFrame] = useState(false);
-  const [showReferences, setShowReferences] = useState(false);
   const [picker, setPicker] = useState<null | ((url: string) => void)>(null);
   const [error, setError] = useState<string | null>(null);
   const [thumbnailWidth, setThumbnailWidth] = useState(320);
@@ -875,45 +874,42 @@ export default function SeedancePage() {
                 />
               )}
 
-              {!showReferences ? (
-                <button
-                  type="button"
-                  onClick={() => setShowReferences(true)}
-                  className="block text-[11px] font-medium text-primary hover:underline"
-                >
-                  + {tr("references", language)}
-                </button>
-              ) : (
-                <div className="space-y-3">
+              {/* Always visible: one character slot and one background slot. */}
+              <Separator />
+              <div className="space-y-3">
+                <div className="space-y-0.5">
+                  <Label className="text-xs font-semibold">
+                    {tr("references", language)}
+                  </Label>
                   <p className="text-[10.5px] leading-tight text-muted-foreground">
                     {tr("referencesHint", language)}
                   </p>
-                  <DropZone
-                    lang={language}
-                    value={params.characterReference}
-                    onChange={(v) => patch({ characterReference: v })}
-                    onPickGallery={() =>
-                      setPicker(() => (url: string) =>
-                        void toDataUrl(url).then((d) => patch({ characterReference: d }))
-                      )
-                    }
-                    label={tr("characterReference", language)}
-                    hint={tr("characterReferenceHint", language)}
-                  />
-                  <DropZone
-                    lang={language}
-                    value={params.backgroundReference}
-                    onChange={(v) => patch({ backgroundReference: v })}
-                    onPickGallery={() =>
-                      setPicker(() => (url: string) =>
-                        void toDataUrl(url).then((d) => patch({ backgroundReference: d }))
-                      )
-                    }
-                    label={tr("backgroundReference", language)}
-                    hint={tr("backgroundReferenceHint", language)}
-                  />
                 </div>
-              )}
+                <DropZone
+                  lang={language}
+                  value={params.characterReference}
+                  onChange={(v) => patch({ characterReference: v })}
+                  onPickGallery={() =>
+                    setPicker(() => (url: string) =>
+                      void toDataUrl(url).then((d) => patch({ characterReference: d }))
+                    )
+                  }
+                  label={tr("characterReference", language)}
+                  hint={tr("characterReferenceHint", language)}
+                />
+                <DropZone
+                  lang={language}
+                  value={params.backgroundReference}
+                  onChange={(v) => patch({ backgroundReference: v })}
+                  onPickGallery={() =>
+                    setPicker(() => (url: string) =>
+                      void toDataUrl(url).then((d) => patch({ backgroundReference: d }))
+                    )
+                  }
+                  label={tr("backgroundReference", language)}
+                  hint={tr("backgroundReferenceHint", language)}
+                />
+              </div>
             </div>
           )}
 
