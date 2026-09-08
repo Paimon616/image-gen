@@ -136,12 +136,13 @@ export function buildSeedancePromptText(params: SeedanceParams): string {
   flags.push(`--resolution ${params.resolution}`);
   if (params.ratio !== "adaptive") {
     flags.push(`--ratio ${params.ratio}`);
-  } else if (params.mode === "t2v" || !params.firstFrame) {
-    // `adaptive` means "take the aspect from the start frame". Text-to-video
-    // has no frame at all, and a reference-only run has nothing to adapt to
-    // either, so both fall back to 16:9.
+  } else if (params.mode === "t2v") {
+    // Text-to-video has no source frame to adapt to; fall back to 16:9.
     flags.push("--ratio 16:9");
   } else {
+    // i2v keeps `adaptive` even with no start frame: ModelArk has its own
+    // behaviour for a reference-only run (a probe with square references came
+    // back `ratio: "9:16"`), and overriding it would ignore the user's pick.
     flags.push("--ratio adaptive");
   }
   flags.push(`--duration ${clampSeedanceDuration(params.duration)}`);
