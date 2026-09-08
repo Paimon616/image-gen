@@ -30,7 +30,9 @@ import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/store";
 import type { WorkspaceSummary } from "@/lib/types";
 import {
+  consistencySheetSizeLabel,
   CONSISTENCY_SHEET_MAX_REFERENCES,
+  CONSISTENCY_SHEET_RESOLUTIONS,
   type ConsistencySheetImage,
   type ConsistencySheetMode,
   type ConsistencySheetParams,
@@ -49,8 +51,8 @@ type Lang = "ko" | "en";
 const T = {
   title: { ko: "일관성 시트", en: "Consistency Sheet" },
   subtitle: {
-    ko: "GPT-5.4 Image 2 (OpenRouter) · 캐릭터/배경 일관성 유지용 레퍼런스 시트",
-    en: "GPT-5.4 Image 2 via OpenRouter · Character / background reference sheets",
+    ko: "GPT-Image-2 (fal.ai) · 캐릭터/배경 일관성 유지용 레퍼런스 시트",
+    en: "GPT-Image-2 via fal.ai · Character / background reference sheets",
   },
   modeCharacter: { ko: "캐릭터 시트", en: "Character sheet" },
   modeBackground: { ko: "배경 시트", en: "Background sheet" },
@@ -78,6 +80,7 @@ const T = {
     ko: "공간을 묘사하세요. 예) 해질녘 바닷가 방갈로, 야자수와 나무 데크.",
     en: "Describe the place. e.g. a beach bungalow at sunset.",
   },
+  resolution: { ko: "해상도 (1:1 고정)", en: "Resolution (fixed 1:1)" },
   workspace: { ko: "저장할 워크스페이스", en: "Save to workspace" },
   noWorkspace: { ko: "워크스페이스 없음", en: "No workspace" },
   workspaceHint: {
@@ -86,8 +89,8 @@ const T = {
   },
   generate: { ko: "시트 생성", en: "Generate sheet" },
   costHint: {
-    ko: "생성에 30초~수분 소요. 1024×1024 한 장에 약 $0.22.",
-    en: "Takes 30s–minutes. About $0.22 per 1024×1024 sheet.",
+    ko: "생성에 30초~수분 소요. 1K 한 장에 약 $0.22, 해상도와 레퍼런스 수에 따라 올라갑니다.",
+    en: "Takes 30s–minutes. ~$0.22 per 1K sheet; more with resolution and references.",
   },
   galleryTitle: { ko: "시트 갤러리", en: "Sheet gallery" },
   empty: {
@@ -485,6 +488,33 @@ export default function ConsistencySheetPage() {
             />
           </div>
 
+          {/* Resolution */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">
+              {tr("resolution", language)}
+            </Label>
+            <div className="grid grid-cols-3 gap-1">
+              {CONSISTENCY_SHEET_RESOLUTIONS.map((res) => (
+                <button
+                  key={res}
+                  type="button"
+                  onClick={() => patch({ resolution: res })}
+                  className={cn(
+                    "rounded-md border px-2.5 py-1.5 text-xs font-semibold transition-colors",
+                    params.resolution === res
+                      ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                      : "border-border bg-card/60 text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <span className="uppercase">{res}</span>
+                  <span className="block text-[10px] font-normal opacity-80">
+                    {consistencySheetSizeLabel(res)}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Save target */}
           <div className="space-y-1.5">
             <Label
@@ -598,6 +628,10 @@ export default function ConsistencySheetPage() {
                       patch({
                         mode: image.params.mode,
                         prompt: image.params.prompt,
+                        // Older sheets carry no tier — keep the current one.
+                        ...(image.params.resolution
+                          ? { resolution: image.params.resolution }
+                          : {}),
                       });
                     } else {
                       patch({ prompt: image.prompt });
@@ -774,13 +808,18 @@ function SheetCard({
         <div className="flex items-center justify-between text-[10px] text-muted-foreground">
           <span>
             {image.params
-              ? image.params.mode === "character"
-                ? lang === "ko"
-                  ? "캐릭터"
-                  : "Character"
-                : lang === "ko"
-                  ? "배경"
-                  : "Background"
+              ? [
+                  image.params.mode === "character"
+                    ? lang === "ko"
+                      ? "캐릭터"
+                      : "Character"
+                    : lang === "ko"
+                      ? "배경"
+                      : "Background",
+                  image.params.resolution?.toUpperCase(),
+                ]
+                  .filter(Boolean)
+                  .join(" · ")
               : ""}
           </span>
           <span>

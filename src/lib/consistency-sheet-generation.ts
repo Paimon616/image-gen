@@ -109,14 +109,21 @@ export async function startConsistencySheetGeneration(
         }
 
         if (event === "tick") {
-          // Heartbeat while the OpenRouter request is in flight (30s–2min+).
+          // One tick per queue poll, carrying fal's own queue state.
           tickCount += 1;
           const progress = Math.min(0.9, 0.1 + tickCount * 0.03);
+          const waiting = data.state === "IN_QUEUE";
+          const position =
+            typeof data.queuePosition === "number" ? data.queuePosition : null;
           updatePending(clientId, {
             status: {
               state: "generating",
               progress,
-              message: STATUS_LABEL.running[language],
+              message: waiting
+                ? position && position > 0
+                  ? `${STATUS_LABEL.queued[language]} · ${position}`
+                  : STATUS_LABEL.queued[language]
+                : STATUS_LABEL.running[language],
             },
           });
         } else if (event === "saving") {

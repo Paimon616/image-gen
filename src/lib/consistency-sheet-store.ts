@@ -13,17 +13,17 @@ type ParamsUpdate =
   | ConsistencySheetParams
   | ((prev: ConsistencySheetParams) => ConsistencySheetParams);
 
-const PARAMS_STORAGE_KEY = "consistency-sheet-params-v2";
+const PARAMS_STORAGE_KEY = "consistency-sheet-params-v3";
 
 // Only the light settings are remembered between sessions; the reference
 // images are data URIs and far too large for localStorage.
 function persistParams(params: ConsistencySheetParams) {
   if (typeof window === "undefined") return;
-  const { mode, workspaceId } = params;
+  const { mode, resolution, workspaceId } = params;
   try {
     window.localStorage.setItem(
       PARAMS_STORAGE_KEY,
-      JSON.stringify({ mode, workspaceId })
+      JSON.stringify({ mode, resolution, workspaceId })
     );
   } catch {
     /* ignore */
@@ -93,6 +93,12 @@ export const useConsistencySheetStore = create<ConsistencySheetState>((set) => (
         params: {
           ...s.params,
           mode: saved.mode === "background" ? "background" : s.params.mode,
+          resolution:
+            saved.resolution === "1k" ||
+            saved.resolution === "2k" ||
+            saved.resolution === "4k"
+              ? saved.resolution
+              : s.params.resolution,
           workspaceId:
             typeof saved.workspaceId === "string"
               ? saved.workspaceId

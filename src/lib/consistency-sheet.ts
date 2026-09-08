@@ -2,31 +2,58 @@
 //
 // The consistency sheet screen generates character / background reference
 // sheets so later image/video generations can keep the same identity and the
-// same location. It goes through OpenRouter server-side with the OpenRouter key
-// from Settings (or OPENROUTER_API_KEY), on the chat-completions path:
-//   POST https://openrouter.ai/api/v1/chat/completions
-//        { model, messages, modalities: ["image", "text"] }
-// The reference images ride along as image_url content parts in the single user
-// message, and the render comes back as message.images[].image_url.url.
+// same location. It runs GPT-Image-2 through fal.ai server-side with FAL_KEY,
+// on fal's queue API:
+//   POST https://queue.fal.run/openai/gpt-image-2/edit   (with references)
+//   POST https://queue.fal.run/openai/gpt-image-2        (prompt only)
+// with `Authorization: Key <FAL_KEY>`, then poll the returned status_url and
+// read the render from the returned response_url ({ images: [{ url, … }] }).
 //
-// Why not OpenRouter's dedicated /api/v1/images endpoint (which is where
-// `openai/gpt-image-2` lives): for OpenAI models it routes through the account's
-// own OpenAI integration key, and this account's stored key is rejected. The
-// chat-completions path uses OpenRouter's own OpenAI credentials and works.
+// Why fal and not OpenRouter: OpenRouter's dedicated /api/v1/images endpoint
+// routes OpenAI models through the account's own OpenAI integration key, which
+// this account's key is rejected on, and its chat-completions fallback ignores
+// any size hint (every render comes back 1024x1024). fal exposes the real
+// gpt-image-2 parameters, so the resolution tiers below actually take effect.
 //
-// Neither path exposes a size: the render always comes back 1024x1024, which is
-// the square the sheet layouts want anyway. `image_config` is accepted but
-// ignored here (a 16:9 request still returns 1024x1024), so there is no
-// resolution, aspect-ratio or quality knob to offer.
+// fal's edit schema caps `image_urls` at 16 items, and gpt-image-2 accepts a
+// concrete { width, height } as long as both sides are multiples of 16, the
+// longest edge is ≤ 3840 and the total is 655,360‥8,294,400 pixels.
 
 export type ConsistencySheetMode = "character" | "background";
 
-// The model's input-image limit.
+export type ConsistencySheetResolution = "1k" | "2k" | "4k";
+
+// Exact 1:1 sizes per tier. 2880x2880 (8,294,400 px) is the pixel ceiling —
+// the largest square gpt-image-2 accepts — so it stands in for "4K" here.
+export const CONSISTENCY_SHEET_SIZES: Record<
+  ConsistencySheetResolution,
+  { width: number; height: number }
+> = {
+  "1k": { width: 1024, height: 1024 },
+  "2k": { width: 2048, height: 2048 },
+  "4k": { width: 2880, height: 2880 },
+};
+
+export const CONSISTENCY_SHEET_RESOLUTIONS: ConsistencySheetResolution[] = [
+  "1k",
+  "2k",
+  "4k",
+];
+
+export function consistencySheetSizeLabel(
+  resolution: ConsistencySheetResolution
+): string {
+  const { width, height } = CONSISTENCY_SHEET_SIZES[resolution];
+  return `${width}x${height}`;
+}
+
+// fal's `image_urls` limit for the gpt-image-2 edit endpoint.
 export const CONSISTENCY_SHEET_MAX_REFERENCES = 16;
 
 export interface ConsistencySheetParams {
   mode: ConsistencySheetMode;
   prompt: string;
+  resolution: ConsistencySheetResolution;
   // Data URIs (data:image/...;base64,...) — reference images from the gallery,
   // a file drop, or the clipboard.
   references: string[];
@@ -38,6 +65,7 @@ export interface ConsistencySheetParams {
 export const DEFAULT_CONSISTENCY_SHEET_PARAMS: ConsistencySheetParams = {
   mode: "character",
   prompt: "",
+  resolution: "1k",
   references: [],
   workspaceId: "",
 };
@@ -99,6 +127,9 @@ export interface ConsistencySheetImage {
   params: {
     mode: ConsistencySheetMode;
     prompt: string;
+    // Sheets saved before the resolution tiers existed have no size fields.
+    resolution?: ConsistencySheetResolution;
+    size?: string;
     model: string;
     referenceCount: number;
   } | null;

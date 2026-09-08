@@ -15,6 +15,13 @@ function sanitizeConsistencySheetPatch(
   if (record.mode === "character" || record.mode === "background") {
     patch.mode = record.mode;
   }
+  if (
+    record.resolution === "1k" ||
+    record.resolution === "2k" ||
+    record.resolution === "4k"
+  ) {
+    patch.resolution = record.resolution;
+  }
   return patch;
 }
 
@@ -37,7 +44,7 @@ export const useConsistencySheetPaimonStore = createPaimonConversationStore({
       // Image fields are stripped: multi-MB data URIs must not ride along as
       // params (they are sent as attachments below instead).
       currentParams: {
-        image_model: "openai/gpt-5.4-image-2 (OpenRouter)",
+        image_model: "gpt-image-2 (fal.ai)",
         // What this surface produces, so Paimon writes prompts for a single
         // consistency reference sheet rather than a normal render.
         surface:
@@ -46,6 +53,7 @@ export const useConsistencySheetPaimonStore = createPaimonConversationStore({
             : "background consistency sheet (one image: ONE single location photographed from 4 camera positions in a 2x2 grid — same architecture, furniture, props and lighting in every panel, no people)",
         mode: params.mode,
         prompt: params.prompt,
+        resolution: params.resolution,
       },
       attachments: [
         ...params.references.map((reference, index) =>
