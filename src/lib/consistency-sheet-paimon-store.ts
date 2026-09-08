@@ -43,7 +43,7 @@ export const useConsistencySheetPaimonStore = createPaimonConversationStore({
         surface:
           params.mode === "character"
             ? "character consistency sheet (one image: full-body turnaround front/side/back + 4 face expressions, plain white background)"
-            : "background consistency sheet (one image: the same location from 4 camera angles in a 2x2 grid, no people)",
+            : "background consistency sheet (one image: ONE single location photographed from 4 camera positions in a 2x2 grid — same architecture, furniture, props and lighting in every panel, no people)",
         mode: params.mode,
         prompt: params.prompt,
       },

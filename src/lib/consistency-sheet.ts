@@ -55,14 +55,28 @@ const CHARACTER_SHEET_TEMPLATE = [
   "no text, no labels, no watermark. Even neutral studio lighting.",
 ].join(" ");
 
+// The background mode kept drifting into "four similar rooms" — each panel
+// redesigned the windows, the wall art and the furniture layout. So the
+// template now states the one-location rule first and spells out what must be
+// pixel-identical, before it describes the four viewpoints.
 const BACKGROUND_SHEET_TEMPLATE = [
-  "Background consistency reference sheet: the exact same single location",
-  "shown from four different camera angles, arranged as a clean 2x2 grid on",
-  "one sheet — a wide establishing shot, the reverse opposite angle, and two",
-  "contrasting side or high/low angles.",
-  "Identical layout, lighting, time of day, weather and props in all four",
-  "panels so they clearly read as one place.",
-  "No people, no characters, no text, no labels, no watermark.",
+  "Background consistency reference sheet for ONE single location.",
+  "This is one real place photographed four times: the camera moves around",
+  "inside it, nothing else changes. All four panels must be unmistakably the",
+  "same room, not four similar rooms and not four design variations.",
+  "Keep identical across all four panels: the architecture and floor plan, the",
+  "number, shape and position of every window and door, every piece of",
+  "furniture in the same place, every prop, picture, plant and decoration in",
+  "the same place, the same materials, colours, textures and wear, and the same",
+  "time of day, weather, light direction and colour temperature.",
+  "Do not add, remove, move, resize or redesign anything between panels.",
+  "Layout: a clean 2x2 grid on one sheet, four different camera positions of",
+  "that one place — top-left a wide establishing shot of the whole space,",
+  "top-right the reverse angle from the opposite side of the same room,",
+  "bottom-left a side angle, bottom-right a closer detail view of a corner",
+  "already visible in the wide shot.",
+  "Empty location only: no people, no characters, no animals, no text, no",
+  "labels, no panel borders, no watermark.",
 ].join(" ");
 
 /** User description first, then the mode's sheet-layout instructions. */
