@@ -1,5 +1,5 @@
 import {
-  CONSISTENCY_SHEET_SIZES,
+  CONSISTENCY_SHEET_ASPECT_RATIO,
   type ConsistencySheetImage,
   type ConsistencySheetParams,
 } from "./consistency-sheet";
@@ -68,8 +68,8 @@ export async function startConsistencySheetGeneration(
     params: {
       mode: source.mode,
       prompt: source.prompt,
-      resolution: source.resolution,
-      size: CONSISTENCY_SHEET_SIZES[source.resolution],
+      quality: source.quality,
+      aspectRatio: CONSISTENCY_SHEET_ASPECT_RATIO,
       referenceCount: source.references.length,
     },
     status: {
@@ -114,7 +114,7 @@ export async function startConsistencySheetGeneration(
         }
 
         if (event === "tick") {
-          // Heartbeat while the OpenAI request is in flight (30s–2min+).
+          // Heartbeat while the OpenRouter request is in flight (30s–2min+).
           tickCount += 1;
           const progress = Math.min(0.9, 0.1 + tickCount * 0.03);
           updatePending(clientId, {

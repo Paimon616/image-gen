@@ -4,13 +4,13 @@ import { join } from "path";
 import { NextRequest } from "next/server";
 import {
   buildConsistencySheetPrompt,
+  CONSISTENCY_SHEET_ASPECT_RATIO,
   CONSISTENCY_SHEET_MAX_REFERENCES,
-  CONSISTENCY_SHEET_RESOLUTIONS,
-  CONSISTENCY_SHEET_SIZES,
+  CONSISTENCY_SHEET_QUALITIES,
   DEFAULT_CONSISTENCY_SHEET_PARAMS,
   type ConsistencySheetImage,
   type ConsistencySheetParams,
-  type ConsistencySheetResolution,
+  type ConsistencySheetQuality,
 } from "@/lib/consistency-sheet";
 import { readSettings } from "@/lib/settings";
 import { isValidWorkspaceId, setFileWorkspaces } from "@/lib/workspaces";
@@ -21,11 +21,13 @@ export const maxDuration = 600;
 
 const OUTPUT_DIR = join(process.cwd(), "output", "consistency-sheet");
 
-const OPENAI_BASE_URL = "https://api.openai.com/v1";
-const MODEL = process.env.CONSISTENCY_SHEET_MODEL?.trim() || "gpt-image-2";
+// OpenRouter's dedicated image endpoint — not /chat/completions, and image
+// models are not listed in /api/v1/models either (see /api/v1/images/models).
+const OPENROUTER_IMAGES_URL = "https://openrouter.ai/api/v1/images";
+const MODEL = process.env.CONSISTENCY_SHEET_MODEL?.trim() || "openai/gpt-image-2";
 
-// Heartbeat cadence while the single long OpenAI request is in flight, so the
-// client can show progress and proxies don't kill the idle SSE stream.
+// Heartbeat cadence while the single long OpenRouter request is in flight, so
+// the client can show progress and proxies don't kill the idle SSE stream.
 const TICK_INTERVAL_MS = 3000;
 
 function sse(event: string, data: unknown): string {
@@ -40,11 +42,11 @@ function asDataUrl(value: unknown): string | null {
 
 function normalizeParams(raw: Record<string, unknown>): ConsistencySheetParams {
   const mode = raw.mode === "background" ? "background" : "character";
-  const resolution = CONSISTENCY_SHEET_RESOLUTIONS.includes(
-    raw.resolution as ConsistencySheetResolution
+  const quality = CONSISTENCY_SHEET_QUALITIES.includes(
+    raw.quality as ConsistencySheetQuality
   )
-    ? (raw.resolution as ConsistencySheetResolution)
-    : DEFAULT_CONSISTENCY_SHEET_PARAMS.resolution;
+    ? (raw.quality as ConsistencySheetQuality)
+    : DEFAULT_CONSISTENCY_SHEET_PARAMS.quality;
 
   const references = Array.isArray(raw.references)
     ? raw.references
@@ -56,22 +58,9 @@ function normalizeParams(raw: Record<string, unknown>): ConsistencySheetParams {
   return {
     mode,
     prompt: typeof raw.prompt === "string" ? raw.prompt : "",
-    resolution,
+    quality,
     references,
     workspaceId: isValidWorkspaceId(raw.workspaceId) ? raw.workspaceId : "",
-  };
-}
-
-// data:image/jpeg;base64,… → { blob, filename } for the multipart form.
-function dataUrlToBlob(dataUrl: string, index: number) {
-  const match = /^data:(image\/[a-z+.-]+);base64,(.+)$/i.exec(dataUrl);
-  if (!match) return null;
-  const [, mime, base64] = match;
-  const bytes = Buffer.from(base64, "base64");
-  const ext = mime.includes("png") ? "png" : mime.includes("webp") ? "webp" : "jpg";
-  return {
-    blob: new Blob([new Uint8Array(bytes)], { type: mime }),
-    filename: `reference-${index}.${ext}`,
   };
 }
 
@@ -86,7 +75,9 @@ function openaiErrorMessage(payload: unknown, fallback: string): string {
 export async function POST(req: NextRequest) {
   const settings = await readSettings();
   const apiKey =
-    settings.openaiApiKey?.trim() || process.env.OPENAI_API_KEY?.trim() || "";
+    settings.openrouterApiKey?.trim() ||
+    process.env.OPENROUTER_API_KEY?.trim() ||
+    "";
 
   let rawBody: Record<string, unknown>;
   try {
@@ -130,7 +121,7 @@ export async function POST(req: NextRequest) {
         send("error", {
           id: clientId,
           message:
-            "OpenAI API 키가 없습니다. 설정 화면에서 OpenAI 키를 입력하세요.",
+            "OpenRouter API 키가 없습니다. 설정 화면에서 OpenRouter 키를 입력하세요.",
         });
         close();
         return;
@@ -146,42 +137,35 @@ export async function POST(req: NextRequest) {
 
       send("queued", { id: clientId });
 
-      const size = CONSISTENCY_SHEET_SIZES[params.resolution];
       const prompt = buildConsistencySheetPrompt(params);
 
       // One long request — heartbeat so the client sees liveness.
       const ticker = setInterval(() => send("tick", { id: clientId }), TICK_INTERVAL_MS);
 
       try {
-        let res: Response;
-        if (params.references.length > 0) {
-          // Reference-guided generation: images/edits with image[] parts.
-          const form = new FormData();
-          form.append("model", MODEL);
-          form.append("prompt", prompt);
-          form.append("size", size);
-          form.append("n", "1");
-          for (const [index, reference] of params.references.entries()) {
-            const part = dataUrlToBlob(reference, index);
-            if (part) form.append("image[]", part.blob, part.filename);
-          }
-          res = await fetch(`${OPENAI_BASE_URL}/images/edits`, {
-            method: "POST",
-            headers: { Authorization: `Bearer ${apiKey}` },
-            body: form,
-            signal: abortSignal,
-          });
-        } else {
-          res = await fetch(`${OPENAI_BASE_URL}/images/generations`, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ model: MODEL, prompt, size, n: 1 }),
-            signal: abortSignal,
-          });
-        }
+        // Reference images ride along as data URLs, so one JSON call covers
+        // both the with- and without-references cases.
+        const res = await fetch(OPENROUTER_IMAGES_URL, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": "http://localhost:3000",
+            "X-Title": "Image Gen Consistency Sheet",
+          },
+          body: JSON.stringify({
+            model: MODEL,
+            prompt,
+            n: 1,
+            aspect_ratio: CONSISTENCY_SHEET_ASPECT_RATIO,
+            quality: params.quality,
+            input_references: params.references.map((url) => ({
+              type: "image_url",
+              image_url: { url },
+            })),
+          }),
+          signal: abortSignal,
+        });
 
         const json = (await res.json().catch(() => null)) as {
           data?: { b64_json?: string }[];
@@ -220,8 +204,8 @@ export async function POST(req: NextRequest) {
           params: {
             mode: params.mode,
             prompt: params.prompt,
-            resolution: params.resolution,
-            size,
+            quality: params.quality,
+            aspectRatio: CONSISTENCY_SHEET_ASPECT_RATIO,
             referenceCount: params.references.length,
           },
         };
