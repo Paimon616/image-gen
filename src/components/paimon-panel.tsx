@@ -28,6 +28,114 @@ import {
   EMPTY_MESSAGES,
   type PaimonConversationStore,
 } from "@/lib/paimon-conversation";
+import {
+  PAIMON_QUICK_MODELS,
+  paimonQuickModelKey,
+  type ChatProviderId,
+} from "@/lib/chat-models";
+import { useStore } from "@/lib/store";
+
+/**
+ * Inline model switcher. Paimon's provider/model live in the app settings, so
+ * this reads and writes those two fields — the change applies to every screen's
+ * Paimon, which is what "Paimon runs on X" means everywhere else in the app.
+ * A model the panel doesn't list (picked on the settings screen) is shown as an
+ * extra option so switching away and back never silently rewrites it.
+ */
+function PaimonModelPicker({ ko }: { ko: boolean }) {
+  const [current, setCurrent] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const res = await fetch("/api/settings", { cache: "no-store" });
+        const data = (await res.json()) as {
+          paimonChatProvider?: ChatProviderId;
+          paimonChatModel?: string;
+        };
+        if (!active || !data.paimonChatProvider || !data.paimonChatModel) return;
+        setCurrent(
+          paimonQuickModelKey(data.paimonChatProvider, data.paimonChatModel)
+        );
+      } catch {
+        /* leave the picker on its placeholder */
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const select = useCallback(async (key: string) => {
+    const choice = PAIMON_QUICK_MODELS.find(
+      (option) => paimonQuickModelKey(option.provider, option.model) === key
+    );
+    if (!choice) return;
+    setCurrent(key);
+    setSaving(true);
+    try {
+      await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          paimonChatProvider: choice.provider,
+          paimonChatModel: choice.model,
+        }),
+      });
+    } catch {
+      /* the select still shows the intent; a reload re-reads the truth */
+    } finally {
+      setSaving(false);
+    }
+  }, []);
+
+  const known = PAIMON_QUICK_MODELS.some(
+    (option) => paimonQuickModelKey(option.provider, option.model) === current
+  );
+  const hint = PAIMON_QUICK_MODELS.find(
+    (option) => paimonQuickModelKey(option.provider, option.model) === current
+  );
+
+  return (
+    <div className="border-b border-border px-3 py-2">
+      <div className="flex items-center gap-2">
+        <span className="shrink-0 text-[10px] text-muted-foreground">
+          {ko ? "모델" : "Model"}
+        </span>
+        <select
+          value={current ?? ""}
+          disabled={saving}
+          onChange={(event) => void select(event.target.value)}
+          aria-label={ko ? "파이몬 모델" : "Paimon model"}
+          className="h-7 min-w-0 flex-1 rounded-md border border-input bg-background px-1.5 text-[11px] outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+        >
+          {current === null && <option value="">{ko ? "불러오는 중" : "Loading"}</option>}
+          {current !== null && !known && (
+            <option value={current}>
+              {(ko ? "설정에서 지정: " : "Set in settings: ") + current}
+            </option>
+          )}
+          {PAIMON_QUICK_MODELS.map((option) => (
+            <option
+              key={paimonQuickModelKey(option.provider, option.model)}
+              value={paimonQuickModelKey(option.provider, option.model)}
+            >
+              {option.label}
+            </option>
+          ))}
+        </select>
+        {saving && <Loader2 className="size-3 shrink-0 animate-spin text-muted-foreground" />}
+      </div>
+      {hint && (
+        <p className="mt-1 text-[10px] leading-tight text-muted-foreground">
+          {ko ? hint.hintKo : hint.hintEn}
+        </p>
+      )}
+    </div>
+  );
+}
 
 interface PaimonPanelProps {
   store: PaimonConversationStore;
@@ -87,6 +195,8 @@ export function PaimonPanel({
     store,
     (state) => state.conversations[conversationId]?.error ?? ""
   );
+
+  const ko = useStore((state) => state.language) === "ko";
 
   const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
   const open = controlledOpen ?? uncontrolledOpen;
@@ -188,6 +298,8 @@ export function PaimonPanel({
               </Button>
             </div>
           </header>
+
+          <PaimonModelPicker ko={ko} />
 
           {attachments.length > 0 && (
             <div className="flex gap-2 overflow-x-auto border-b border-border px-3 py-2">
