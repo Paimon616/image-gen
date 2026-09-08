@@ -95,6 +95,14 @@ export const useSeedancePaimonStore = createPaimonConversationStore({
         ...(params.lastFrame
           ? [frameAttachment(params.lastFrame, "끝 이미지")]
           : []),
+        // Named so Paimon writes a prompt that respects which sheet locks the
+        // person and which one locks the location.
+        ...(params.characterReference
+          ? [frameAttachment(params.characterReference, "캐릭터 시트")]
+          : []),
+        ...(params.backgroundReference
+          ? [frameAttachment(params.backgroundReference, "배경 시트")]
+          : []),
         ...attachments.map((attachment, index) => ({
           kind: attachment.kind,
           url: attachment.url,

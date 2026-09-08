@@ -72,7 +72,6 @@ import {
 import {
   SEEDANCE_DURATION_MAX,
   SEEDANCE_DURATION_MIN,
-  SEEDANCE_MAX_REFERENCES,
   SEEDANCE_PROMPT_CHIPS,
   SEEDANCE_RATIOS,
   SEEDANCE_RESOLUTIONS,
@@ -113,10 +112,20 @@ const T = {
     en: "The video starts from this image. Drop the person you generated.",
   },
   lastFrame: { ko: "종료 프레임 (선택)", en: "End frame (optional)" },
-  references: { ko: "인물 참조 이미지 (선택)", en: "Identity references (optional)" },
+  references: { ko: "일관성 참조 이미지 (선택)", en: "Consistency references (optional)" },
   referencesHint: {
-    ko: "동일 인물 유지력을 높이는 추가 참조 이미지 (최대 4장)",
-    en: "Extra references to lock the same identity (up to 4)",
+    ko: "캐릭터와 배경을 각각 고정합니다. 일관성 시트를 넣으면 가장 잘 먹습니다.",
+    en: "Locks the character and the location separately. Consistency sheets work best.",
+  },
+  characterReference: { ko: "캐릭터 참조 (캐릭터 시트)", en: "Character reference (character sheet)" },
+  characterReferenceHint: {
+    ko: "이 인물의 얼굴·머리·의상을 유지합니다.",
+    en: "Keeps this person's face, hair and outfit.",
+  },
+  backgroundReference: { ko: "배경 참조 (배경 시트)", en: "Background reference (background sheet)" },
+  backgroundReferenceHint: {
+    ko: "이 공간의 구조·가구·조명을 유지합니다.",
+    en: "Keeps this location's layout, furniture and lighting.",
   },
   dropHere: { ko: "이미지를 끌어다 놓거나 클릭", en: "Drop an image or click" },
   pickFromGallery: { ko: "내 이미지에서 선택", en: "From my images" },
@@ -209,7 +218,8 @@ const T = {
   fieldMode: { ko: "모드", en: "Mode" },
   fieldSeed: { ko: "시드", en: "Seed" },
   fieldActual: { ko: "실제 해상도", en: "Actual resolution" },
-  fieldReferences: { ko: "참조 이미지", en: "References" },
+  fieldCharacterReference: { ko: "캐릭터 참조", en: "Character ref" },
+  fieldBackgroundReference: { ko: "배경 참조", en: "Background ref" },
   fieldEndFrame: { ko: "종료 프레임", en: "End frame" },
   on: { ko: "켜짐", en: "On" },
   off: { ko: "꺼짐", en: "Off" },
@@ -797,11 +807,6 @@ export default function SeedancePage() {
   const canGenerate =
     params.mode === "t2v" ? params.prompt.trim().length > 0 : Boolean(params.firstFrame);
 
-  const referenceSlots = useMemo(
-    () => [...params.references, ...Array(SEEDANCE_MAX_REFERENCES - params.references.length).fill(null)],
-    [params.references]
-  );
-
   return (
     <div className="flex h-screen bg-background">
       <AppSidebar />
@@ -879,48 +884,34 @@ export default function SeedancePage() {
                   + {tr("references", language)}
                 </button>
               ) : (
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">{tr("references", language)}</Label>
+                <div className="space-y-3">
                   <p className="text-[10.5px] leading-tight text-muted-foreground">
                     {tr("referencesHint", language)}
                   </p>
-                  <div className="grid grid-cols-4 gap-2">
-                    {referenceSlots.map((ref, idx) =>
-                      ref ? (
-                        <div key={idx} className="relative aspect-square overflow-hidden rounded-md border border-border">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={ref} alt="ref" className="h-full w-full object-cover" />
-                          <button
-                            type="button"
-                            onClick={() =>
-                              patch({ references: params.references.filter((_, i) => i !== idx) })
-                            }
-                            className="absolute right-0.5 top-0.5 rounded bg-black/60 p-0.5 text-white hover:bg-destructive"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() =>
-                            setPicker(() => (url: string) =>
-                              void toDataUrl(url).then((d) =>
-                                setParams((p) => ({
-                                  ...p,
-                                  references: [...p.references, d].slice(0, SEEDANCE_MAX_REFERENCES),
-                                }))
-                              )
-                            )
-                          }
-                          className="flex aspect-square items-center justify-center rounded-md border border-dashed border-border text-muted-foreground hover:border-primary/60"
-                        >
-                          <ImagePlus className="h-4 w-4" />
-                        </button>
+                  <DropZone
+                    lang={language}
+                    value={params.characterReference}
+                    onChange={(v) => patch({ characterReference: v })}
+                    onPickGallery={() =>
+                      setPicker(() => (url: string) =>
+                        void toDataUrl(url).then((d) => patch({ characterReference: d }))
                       )
-                    )}
-                  </div>
+                    }
+                    label={tr("characterReference", language)}
+                    hint={tr("characterReferenceHint", language)}
+                  />
+                  <DropZone
+                    lang={language}
+                    value={params.backgroundReference}
+                    onChange={(v) => patch({ backgroundReference: v })}
+                    onPickGallery={() =>
+                      setPicker(() => (url: string) =>
+                        void toDataUrl(url).then((d) => patch({ backgroundReference: d }))
+                      )
+                    }
+                    label={tr("backgroundReference", language)}
+                    hint={tr("backgroundReferenceHint", language)}
+                  />
                 </div>
               )}
             </div>
@@ -2143,8 +2134,20 @@ function VideoDetailModal({
                           value={params.hasLastFrame ? tr("present", lang) : tr("absent", lang)}
                         />
                         <DetailField
-                          label={tr("fieldReferences", lang)}
-                          value={params.referenceCount}
+                          label={tr("fieldCharacterReference", lang)}
+                          value={
+                            params.hasCharacterReference
+                              ? tr("present", lang)
+                              : tr("absent", lang)
+                          }
+                        />
+                        <DetailField
+                          label={tr("fieldBackgroundReference", lang)}
+                          value={
+                            params.hasBackgroundReference
+                              ? tr("present", lang)
+                              : tr("absent", lang)
+                          }
                         />
                       </div>
                     </DetailSection>

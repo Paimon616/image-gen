@@ -89,7 +89,8 @@ export async function startSeedanceGeneration(
       seed: source.seed,
       hasFirstFrame: Boolean(source.firstFrame),
       hasLastFrame: Boolean(source.lastFrame),
-      referenceCount: source.references.length,
+      hasCharacterReference: Boolean(source.characterReference),
+      hasBackgroundReference: Boolean(source.backgroundReference),
     },
     thumbnail: source.firstFrame ?? null,
     status: {

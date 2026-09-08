@@ -40,12 +40,16 @@ export interface SeedanceParams {
   // Data URIs (data:image/...;base64,...) or public https URLs.
   firstFrame: string | null;
   lastFrame: string | null;
-  references: string[]; // extra identity-reference images (role: reference_image)
+  // Consistency-sheet references, one slot per role. ModelArk has no character
+  // / background role — both go on the wire as `reference_image` — so the two
+  // slots exist to fix the send order and to let the prompt say which is which
+  // (see buildSeedanceReferenceClause).
+  characterReference: string | null;
+  backgroundReference: string | null;
 }
 
 export const SEEDANCE_DURATION_MIN = 4;
 export const SEEDANCE_DURATION_MAX = 30;
-export const SEEDANCE_MAX_REFERENCES = 4;
 
 export const SEEDANCE_RESOLUTIONS: SeedanceResolution[] = ["480p", "720p", "1080p"];
 
@@ -71,7 +75,8 @@ export const DEFAULT_SEEDANCE_PARAMS: SeedanceParams = {
   seed: null,
   firstFrame: null,
   lastFrame: null,
-  references: [],
+  characterReference: null,
+  backgroundReference: null,
 };
 
 export function clampSeedanceDuration(value: unknown): number {
@@ -84,6 +89,23 @@ export function clampSeedanceDuration(value: unknown): number {
 // subtitles, logos or watermarks into the frame.
 const CLEAN_FRAME_CLAUSE = "禁止：任何文字、字幕、LOGO或水印";
 
+// Every reference goes on the wire under the same `reference_image` role, so
+// naming them in the prompt is the only way to tell the model which sheet is
+// which. The numbering has to follow the push order in buildSeedanceContent.
+const REFERENCE_LABELS = {
+  character: "角色一致性参考，人物的长相、发型、服装以此为准",
+  background: "场景一致性参考，场地、布局、陈设、光线以此为准",
+} as const;
+
+/** "参考图1为…；参考图2为…" for whichever reference slots are filled. */
+export function buildSeedanceReferenceClause(params: SeedanceParams): string {
+  if (params.mode !== "i2v") return "";
+  const labels: string[] = [];
+  if (params.characterReference) labels.push(REFERENCE_LABELS.character);
+  if (params.backgroundReference) labels.push(REFERENCE_LABELS.background);
+  return labels.map((label, i) => `参考图${i + 1}为${label}`).join("；");
+}
+
 /**
  * Build the ModelArk prompt text: the user's description followed by the
  * `--flag value` command tokens ModelArk parses for generation control.
@@ -94,6 +116,8 @@ export function buildSeedancePromptText(params: SeedanceParams): string {
   const segments: string[] = [];
   const base = params.prompt.trim();
   if (base) segments.push(base);
+  const referenceClause = buildSeedanceReferenceClause(params);
+  if (referenceClause) segments.push(referenceClause);
   if (params.cleanFrame) segments.push(CLEAN_FRAME_CLAUSE);
 
   const flags: string[] = [];
@@ -147,7 +171,9 @@ export function buildSeedanceContent(params: SeedanceParams): SeedanceContentPar
         role: "last_frame",
       });
     }
-    for (const ref of params.references) {
+    // Character before background — buildSeedanceReferenceClause numbers them
+    // in this order.
+    for (const ref of [params.characterReference, params.backgroundReference]) {
       if (!ref) continue;
       content.push({
         type: "image_url",
@@ -167,10 +193,14 @@ export interface SeedanceVideo {
   timestamp: number;
   contentType: string;
   prompt: string;
-  params: Omit<SeedanceParams, "firstFrame" | "lastFrame" | "references"> & {
+  params: Omit<
+    SeedanceParams,
+    "firstFrame" | "lastFrame" | "characterReference" | "backgroundReference"
+  > & {
     hasFirstFrame: boolean;
     hasLastFrame: boolean;
-    referenceCount: number;
+    hasCharacterReference: boolean;
+    hasBackgroundReference: boolean;
   };
   thumbnail?: string | null;
   // Workspace ids this clip belongs to. Shared with the image gallery and the

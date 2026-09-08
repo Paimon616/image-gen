@@ -6,7 +6,6 @@ import {
   buildSeedanceContent,
   clampSeedanceDuration,
   DEFAULT_SEEDANCE_PARAMS,
-  SEEDANCE_MAX_REFERENCES,
   SEEDANCE_RATIOS,
   SEEDANCE_RESOLUTIONS,
   type SeedanceParams,
@@ -54,13 +53,6 @@ function normalizeParams(raw: Record<string, unknown>): SeedanceParams {
     ? Math.trunc(seedRaw)
     : null;
 
-  const references = Array.isArray(raw.references)
-    ? raw.references
-        .map(asImageString)
-        .filter((v): v is string => Boolean(v))
-        .slice(0, SEEDANCE_MAX_REFERENCES)
-    : [];
-
   return {
     mode,
     prompt: typeof raw.prompt === "string" ? raw.prompt : "",
@@ -73,7 +65,10 @@ function normalizeParams(raw: Record<string, unknown>): SeedanceParams {
     seed,
     firstFrame: mode === "i2v" ? asImageString(raw.firstFrame) : null,
     lastFrame: mode === "i2v" ? asImageString(raw.lastFrame) : null,
-    references: mode === "i2v" ? references : [],
+    characterReference:
+      mode === "i2v" ? asImageString(raw.characterReference) : null,
+    backgroundReference:
+      mode === "i2v" ? asImageString(raw.backgroundReference) : null,
   };
 }
 
@@ -315,7 +310,8 @@ export async function POST(req: NextRequest) {
             seed: params.seed,
             hasFirstFrame: Boolean(params.firstFrame),
             hasLastFrame: Boolean(params.lastFrame),
-            referenceCount: params.references.length,
+            hasCharacterReference: Boolean(params.characterReference),
+            hasBackgroundReference: Boolean(params.backgroundReference),
           },
           thumbnail: null,
         };
