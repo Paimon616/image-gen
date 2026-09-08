@@ -19,15 +19,18 @@ import { notifyWorkspaceChanged } from "@/lib/runpod-share";
 import { isValidCharacterId } from "@/lib/characters";
 
 export const runtime = "nodejs";
-// Generation polls ModelArk for up to ~10 minutes; keep the function alive.
-export const maxDuration = 800;
+// Generation polls ModelArk for up to POLL_TIMEOUT_MINUTES, then the finished
+// clip still has to be downloaded — so this has to sit comfortably above the
+// poll budget or the function dies before the poll loop can give up.
+export const maxDuration = 1500;
 
 const SEEDANCE_OUTPUT_DIR = join(process.cwd(), "output", "seedance");
 
 const DEFAULT_BASE_URL = "https://ark.ap-southeast.bytepluses.com/api/v3";
 
 const POLL_INTERVAL_MS = 4000;
-const MAX_POLL_ATTEMPTS = 150; // ~10 minutes
+const POLL_TIMEOUT_MINUTES = 20;
+const MAX_POLL_ATTEMPTS = (POLL_TIMEOUT_MINUTES * 60 * 1000) / POLL_INTERVAL_MS;
 
 function sse(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
@@ -268,7 +271,10 @@ export async function POST(req: NextRequest) {
         }
 
         if (!videoUrl) {
-          send("error", { id: clientId, message: "생성 시간 초과 (10분). 나중에 다시 시도하세요." });
+          send("error", {
+            id: clientId,
+            message: `생성 시간 초과 (${POLL_TIMEOUT_MINUTES}분). 나중에 다시 시도하세요.`,
+          });
           close();
           return;
         }
