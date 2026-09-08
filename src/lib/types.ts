@@ -147,15 +147,28 @@ export const UNGROUPED_WORKSPACE_ID = "__ungrouped__";
 
 // Workspaces are one shared set of folders across the whole app; what differs
 // per screen is only which media the folder is filtered by. Image generation
-// sees its images, video generation its ComfyUI videos, and the SeeDance screen
-// its SeeDance clips — the workspace (and its RunPod share) is the same record.
-export type WorkspaceMedia = "images" | "videos" | "seedance";
+// sees its images, video generation its ComfyUI videos, the SeeDance screen its
+// SeeDance clips and the consistency sheet screen its sheets — the workspace
+// (and its RunPod share) is the same record.
+export type WorkspaceMedia =
+  | "images"
+  | "videos"
+  | "seedance"
+  | "consistencySheet";
 
-export const WORKSPACE_MEDIA: WorkspaceMedia[] = ["images", "videos", "seedance"];
+export const WORKSPACE_MEDIA: WorkspaceMedia[] = [
+  "images",
+  "videos",
+  "seedance",
+  "consistencySheet",
+];
 
 export function isWorkspaceMedia(value: unknown): value is WorkspaceMedia {
   return (
-    value === "images" || value === "videos" || value === "seedance"
+    value === "images" ||
+    value === "videos" ||
+    value === "seedance" ||
+    value === "consistencySheet"
   );
 }
 

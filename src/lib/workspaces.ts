@@ -20,6 +20,7 @@ const ASSIGNMENT_KEYS: Record<WorkspaceMedia, string> = {
   images: "assignments",
   videos: "videoAssignments",
   seedance: "seedanceAssignments",
+  consistencySheet: "consistencySheetAssignments",
 };
 
 type AssignmentMap = Record<string, string[]>;
@@ -54,7 +55,7 @@ export function normalizeWorkspaceName(value: unknown) {
 }
 
 function emptyAssignments(): Record<WorkspaceMedia, AssignmentMap> {
-  return { images: {}, videos: {}, seedance: {} };
+  return { images: {}, videos: {}, seedance: {}, consistencySheet: {} };
 }
 
 function normalizeAssignmentMap(raw: unknown): AssignmentMap {

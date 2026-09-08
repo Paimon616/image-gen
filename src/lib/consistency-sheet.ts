@@ -39,6 +39,9 @@ export interface ConsistencySheetParams {
   // Data URIs (data:image/...;base64,...) — reference images from the gallery,
   // a file drop, or the clipboard.
   references: string[];
+  // Workspace the finished sheet is filed under. Empty means "no workspace",
+  // which is how the sheet gallery treats an unassigned file.
+  workspaceId: string;
 }
 
 export const DEFAULT_CONSISTENCY_SHEET_PARAMS: ConsistencySheetParams = {
@@ -46,6 +49,7 @@ export const DEFAULT_CONSISTENCY_SHEET_PARAMS: ConsistencySheetParams = {
   prompt: "",
   resolution: "1k",
   references: [],
+  workspaceId: "",
 };
 
 // The sheet layout each mode asks for. The user's own description leads the
@@ -95,6 +99,9 @@ export interface ConsistencySheetImage {
     size: string;
     referenceCount: number;
   } | null;
+  // Workspace ids the file belongs to. Membership lives in workspaces.json —
+  // never in the sidecar — so this rides along with the list response.
+  workspaces?: string[];
   // Client-only, present while queued / generating / errored.
   status?: ConsistencySheetStatus;
 }

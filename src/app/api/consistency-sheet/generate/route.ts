@@ -13,6 +13,7 @@ import {
   type ConsistencySheetResolution,
 } from "@/lib/consistency-sheet";
 import { readSettings } from "@/lib/settings";
+import { isValidWorkspaceId, setFileWorkspaces } from "@/lib/workspaces";
 
 export const runtime = "nodejs";
 // A 4K GPT-Image-2 render can take a few minutes; keep the function alive.
@@ -57,6 +58,7 @@ function normalizeParams(raw: Record<string, unknown>): ConsistencySheetParams {
     prompt: typeof raw.prompt === "string" ? raw.prompt : "",
     resolution,
     references,
+    workspaceId: isValidWorkspaceId(raw.workspaceId) ? raw.workspaceId : "",
   };
 }
 
@@ -230,6 +232,17 @@ export async function POST(req: NextRequest) {
           JSON.stringify(image, null, 2),
           "utf-8"
         );
+
+        // File the sheet under the chosen workspace. Membership lives in
+        // workspaces.json, not the sidecar, and an id for a workspace that has
+        // since been deleted is dropped there.
+        if (params.workspaceId) {
+          image.workspaces = await setFileWorkspaces(
+            "consistencySheet",
+            filename,
+            [params.workspaceId]
+          ).catch(() => [] as string[]);
+        }
 
         send("complete", { id: clientId, image });
         close();

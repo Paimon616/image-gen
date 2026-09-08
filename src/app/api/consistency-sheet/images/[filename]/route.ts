@@ -1,8 +1,8 @@
 import { readFile, unlink } from "fs/promises";
 import { join } from "path";
 import { NextRequest, NextResponse } from "next/server";
-
-const OUTPUT_DIR = join(process.cwd(), "output", "consistency-sheet");
+import { removeFileAssignments } from "@/lib/workspaces";
+import { CONSISTENCY_SHEET_OUTPUT_DIR as OUTPUT_DIR } from "@/lib/server-consistency-sheet";
 
 function isSafe(filename: string) {
   return !(
@@ -45,6 +45,7 @@ export async function DELETE(
     const filepath = join(OUTPUT_DIR, filename);
     await unlink(filepath);
     await unlink(filepath.replace(/\.\w+$/, ".json")).catch(() => {});
+    await removeFileAssignments("consistencySheet", filename).catch(() => {});
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "Failed to delete" }, { status: 500 });

@@ -9,6 +9,7 @@ import {
 } from "@/lib/workspaces";
 import { listImageFilenames } from "@/lib/server-images";
 import { isVideoMedia, listVideoFilenames } from "@/lib/server-videos";
+import { listConsistencySheetFilenames } from "@/lib/server-consistency-sheet";
 import { isWorkspaceMedia, type WorkspaceMedia } from "@/lib/types";
 
 // Workspaces themselves are shared by every screen; `media` only selects which
@@ -20,7 +21,9 @@ function parseMedia(request: NextRequest): WorkspaceMedia {
 }
 
 function listFilenames(media: WorkspaceMedia) {
-  return isVideoMedia(media) ? listVideoFilenames(media) : listImageFilenames();
+  if (isVideoMedia(media)) return listVideoFilenames(media);
+  if (media === "consistencySheet") return listConsistencySheetFilenames();
+  return listImageFilenames();
 }
 
 export async function GET(request: NextRequest) {

@@ -28,6 +28,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/store";
+import type { WorkspaceSummary } from "@/lib/types";
 import {
   CONSISTENCY_SHEET_MAX_REFERENCES,
   CONSISTENCY_SHEET_RESOLUTIONS,
@@ -82,6 +83,12 @@ const T = {
   },
   resolution: { ko: "해상도 (1:1 고정)", en: "Resolution (fixed 1:1)" },
   experimental: { ko: "실험적", en: "experimental" },
+  workspace: { ko: "저장할 워크스페이스", en: "Save to workspace" },
+  noWorkspace: { ko: "워크스페이스 없음", en: "No workspace" },
+  workspaceHint: {
+    ko: "생성된 시트를 이 워크스페이스에 저장합니다.",
+    en: "The finished sheet is filed under this workspace.",
+  },
   generate: { ko: "시트 생성", en: "Generate sheet" },
   costHint: {
     ko: "생성에 30초~수분 소요. 해상도가 높을수록 오래 걸립니다.",
@@ -153,6 +160,7 @@ export default function ConsistencySheetPage() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
+  const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -169,6 +177,18 @@ export default function ConsistencySheetPage() {
       })
       .catch(() => {});
   }, [setImages]);
+
+  // Workspaces are shared app-wide; here they are only a save target, so the
+  // list is read once and the chosen id is remembered with the other settings.
+  useEffect(() => {
+    fetch("/api/workspaces?media=consistencySheet")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data?.workspaces))
+          setWorkspaces(data.workspaces as WorkspaceSummary[]);
+      })
+      .catch(() => {});
+  }, []);
 
   const patch = useCallback(
     (update: Partial<ConsistencySheetParams>) => {
@@ -454,6 +474,36 @@ export default function ConsistencySheetPage() {
               ))}
             </div>
           </div>
+
+          {/* Save target */}
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="consistency-sheet-workspace"
+              className="text-xs font-semibold"
+            >
+              {tr("workspace", language)}
+            </Label>
+            <select
+              id="consistency-sheet-workspace"
+              value={
+                workspaces.some((w) => w.id === params.workspaceId)
+                  ? params.workspaceId
+                  : ""
+              }
+              onChange={(e) => patch({ workspaceId: e.target.value })}
+              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+            >
+              <option value="">{tr("noWorkspace", language)}</option>
+              {workspaces.map((workspace) => (
+                <option key={workspace.id} value={workspace.id}>
+                  {workspace.name} ({workspace.count})
+                </option>
+              ))}
+            </select>
+            <p className="text-[10.5px] leading-tight text-muted-foreground">
+              {tr("workspaceHint", language)}
+            </p>
+          </div>
         </div>
 
         {/* Generate footer */}
@@ -529,6 +579,9 @@ export default function ConsistencySheetPage() {
                   key={image.id}
                   lang={language}
                   image={image}
+                  workspaceNames={(image.workspaces ?? [])
+                    .map((id) => workspaces.find((w) => w.id === id)?.name)
+                    .filter((name): name is string => Boolean(name))}
                   onZoom={() => setZoomImage(image.url)}
                   onDelete={() => void deleteImage(image)}
                   onReusePrompt={() => {
@@ -652,12 +705,14 @@ function PendingCard({
 function SheetCard({
   lang,
   image,
+  workspaceNames,
   onZoom,
   onDelete,
   onReusePrompt,
 }: {
   lang: Lang;
   image: ConsistencySheetImage;
+  workspaceNames: string[];
   onZoom: () => void;
   onDelete: () => void;
   onReusePrompt: () => void;
@@ -682,6 +737,18 @@ function SheetCard({
           <p className="text-[11px] leading-snug text-muted-foreground line-clamp-2">
             {image.prompt}
           </p>
+        )}
+        {workspaceNames.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {workspaceNames.map((name) => (
+              <span
+                key={name}
+                className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-secondary-foreground"
+              >
+                {name}
+              </span>
+            ))}
+          </div>
         )}
         <div className="flex items-center justify-between text-[10px] text-muted-foreground">
           <span>

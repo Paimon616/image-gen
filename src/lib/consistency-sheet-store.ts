@@ -19,11 +19,11 @@ const PARAMS_STORAGE_KEY = "consistency-sheet-params-v1";
 // images are data URIs and far too large for localStorage.
 function persistParams(params: ConsistencySheetParams) {
   if (typeof window === "undefined") return;
-  const { mode, resolution } = params;
+  const { mode, resolution, workspaceId } = params;
   try {
     window.localStorage.setItem(
       PARAMS_STORAGE_KEY,
-      JSON.stringify({ mode, resolution })
+      JSON.stringify({ mode, resolution, workspaceId })
     );
   } catch {
     /* ignore */
@@ -99,6 +99,10 @@ export const useConsistencySheetStore = create<ConsistencySheetState>((set) => (
             saved.resolution === "4k"
               ? saved.resolution
               : s.params.resolution,
+          workspaceId:
+            typeof saved.workspaceId === "string"
+              ? saved.workspaceId
+              : s.params.workspaceId,
         },
       }));
     } catch {
