@@ -76,6 +76,7 @@ import {
   SEEDANCE_PROMPT_CHIPS,
   SEEDANCE_RATIOS,
   SEEDANCE_RESOLUTIONS,
+  seedanceRatioFollowsFirstFrame,
   type SeedanceMode,
   type SeedanceParams,
   type SeedanceRatio,
@@ -146,6 +147,10 @@ const T = {
   resolution: { ko: "해상도", en: "Resolution" },
   ratio: { ko: "화면 비율", en: "Aspect ratio" },
   ratioAdaptive: { ko: "이미지 자동", en: "Adaptive" },
+  ratioLockedHint: {
+    ko: "시작 프레임이 있으면 비율은 그 이미지를 따릅니다. 비율을 직접 고르려면 시작 프레임을 비우고 캐릭터·배경 시트만 쓰세요.",
+    en: "With a start frame the ratio follows that image. To pick a ratio, clear the start frame and use the sheets only.",
+  },
   duration: { ko: "길이", en: "Duration" },
   seconds: { ko: "초", en: "s" },
   cameraFixed: { ko: "카메라 고정", en: "Lock camera" },
@@ -812,6 +817,8 @@ export default function SeedancePage() {
       ? params.prompt.trim().length > 0
       : hasSeedanceImage(params);
 
+  const ratioLocked = seedanceRatioFollowsFirstFrame(params);
+
   return (
     <div className="flex h-screen bg-background">
       <AppSidebar />
@@ -975,20 +982,29 @@ export default function SeedancePage() {
               </div>
             </div>
 
-            {/* Ratio */}
+            {/* Ratio. Locked while a start frame is loaded — ModelArk rejects
+                any explicit ratio for a first-frame run. */}
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">{tr("ratio", language)}</Label>
               <div className="flex flex-wrap gap-1">
                 {SEEDANCE_RATIOS.map((r) => (
                   <SegButton
                     key={r}
-                    active={params.ratio === r}
+                    active={
+                      ratioLocked ? r === "adaptive" : params.ratio === r
+                    }
+                    disabled={ratioLocked && r !== "adaptive"}
                     onClick={() => patch({ ratio: r as SeedanceRatio })}
                   >
                     {r === "adaptive" ? tr("ratioAdaptive", language) : r}
                   </SegButton>
                 ))}
               </div>
+              {ratioLocked && (
+                <p className="text-[10.5px] leading-tight text-muted-foreground">
+                  {tr("ratioLockedHint", language)}
+                </p>
+              )}
             </div>
 
             {/* Duration */}
@@ -1378,20 +1394,24 @@ function SegButton({
   active,
   onClick,
   children,
+  disabled = false,
 }: {
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       className={cn(
         "rounded-md border px-2.5 py-1 text-xs font-semibold transition-colors",
         active
           ? "border-primary bg-primary text-primary-foreground shadow-sm"
-          : "border-border bg-card/60 text-muted-foreground hover:text-foreground"
+          : "border-border bg-card/60 text-muted-foreground hover:text-foreground",
+        disabled && "cursor-not-allowed opacity-40 hover:text-muted-foreground"
       )}
     >
       {children}

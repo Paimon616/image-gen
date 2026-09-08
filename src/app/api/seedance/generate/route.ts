@@ -215,6 +215,10 @@ export async function POST(req: NextRequest) {
 
         // 2) Poll until the task completes.
         let videoUrl: string | null = null;
+        // ModelArk echoes the ratio it actually used, which is the only way to
+        // know what `adaptive` resolved to. Recorded so the details panel shows
+        // the real aspect instead of the user's pick.
+        let resolvedRatio: string | null = null;
         for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
           if (abortSignal.aborted) break;
           await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
@@ -245,6 +249,7 @@ export async function POST(req: NextRequest) {
               pollJson.content?.video_url ??
               pollJson.content?.video?.url ??
               null;
+            if (typeof pollJson.ratio === "string") resolvedRatio = pollJson.ratio;
             break;
           }
           if (status === "failed" || status === "cancelled" || status === "canceled") {
@@ -310,7 +315,9 @@ export async function POST(req: NextRequest) {
             mode: params.mode,
             prompt: params.prompt,
             resolution: params.resolution,
-            ratio: params.ratio,
+            ratio: (SEEDANCE_RATIOS as string[]).includes(resolvedRatio ?? "")
+              ? (resolvedRatio as SeedanceRatio)
+              : params.ratio,
             duration: params.duration,
             cameraFixed: params.cameraFixed,
             watermark: params.watermark,

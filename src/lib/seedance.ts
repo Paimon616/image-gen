@@ -91,6 +91,17 @@ export function hasSeedanceImage(params: SeedanceParams): boolean {
   );
 }
 
+/**
+ * ModelArk refuses an explicit ratio once a start frame is in play:
+ *   "For first-frame or first-last-frame generation, the output ratio follows
+ *    the first-frame image. Issues: [0] `ratio` must be `adaptive`."
+ * So the ratio picker only applies to runs without a start frame (text-to-video
+ * or a reference-only run, where an explicit `--ratio 16:9` is accepted).
+ */
+export function seedanceRatioFollowsFirstFrame(params: SeedanceParams): boolean {
+  return params.mode === "i2v" && Boolean(params.firstFrame);
+}
+
 export function clampSeedanceDuration(value: unknown): number {
   const n = Math.round(Number(value));
   if (!Number.isFinite(n)) return DEFAULT_SEEDANCE_PARAMS.duration;
@@ -134,15 +145,18 @@ export function buildSeedancePromptText(params: SeedanceParams): string {
 
   const flags: string[] = [];
   flags.push(`--resolution ${params.resolution}`);
-  if (params.ratio !== "adaptive") {
+  if (seedanceRatioFollowsFirstFrame(params)) {
+    // Sending anything else here is rejected outright — the start frame decides.
+    flags.push("--ratio adaptive");
+  } else if (params.ratio !== "adaptive") {
     flags.push(`--ratio ${params.ratio}`);
   } else if (params.mode === "t2v") {
     // Text-to-video has no source frame to adapt to; fall back to 16:9.
     flags.push("--ratio 16:9");
   } else {
-    // i2v keeps `adaptive` even with no start frame: ModelArk has its own
-    // behaviour for a reference-only run (a probe with square references came
-    // back `ratio: "9:16"`), and overriding it would ignore the user's pick.
+    // Reference-only run: ModelArk has its own behaviour for `adaptive` here (a
+    // probe with square references came back `ratio: "9:16"`), and overriding
+    // it would ignore the user's pick.
     flags.push("--ratio adaptive");
   }
   flags.push(`--duration ${clampSeedanceDuration(params.duration)}`);
