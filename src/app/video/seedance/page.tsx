@@ -847,27 +847,6 @@ export default function SeedancePage() {
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
-          {/* Model. Switching to a shorter model clamps the length for you (the
-              store does it), so the pick can never produce a rejected request. */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">{tr("model", language)}</Label>
-            <div className="grid grid-cols-2 gap-1">
-              {SEEDANCE_MODELS.map((m) => (
-                <SegButton
-                  key={m.id}
-                  active={params.model === m.id}
-                  onClick={() => patch({ model: m.id })}
-                >
-                  {m.label}
-                  <span className="ml-1 font-normal opacity-70">
-                    {m.maxDuration}
-                    {tr("seconds", language)}
-                  </span>
-                </SegButton>
-              ))}
-            </div>
-          </div>
-
           {/* Mode toggle */}
           <div className="grid grid-cols-2 gap-1 rounded-lg border border-border bg-card/60 p-1">
             {(["i2v", "t2v"] as SeedanceMode[]).map((mode) => (
@@ -1012,6 +991,29 @@ export default function SeedancePage() {
                     onClick={() => patch({ ratio: r as SeedanceRatio })}
                   >
                     {r === "adaptive" ? tr("ratioAdaptive", language) : r}
+                  </SegButton>
+                ))}
+              </div>
+            </div>
+
+            {/* Model. Sits right above the length because it is what caps it:
+                switching to a shorter model clamps the length for you (the
+                store does it), so the pick can never produce a rejected
+                request. */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">{tr("model", language)}</Label>
+              <div className="grid grid-cols-2 gap-1">
+                {SEEDANCE_MODELS.map((m) => (
+                  <SegButton
+                    key={m.id}
+                    active={params.model === m.id}
+                    onClick={() => patch({ model: m.id })}
+                  >
+                    {m.label}
+                    <span className="ml-1 font-normal opacity-70">
+                      {m.maxDuration}
+                      {tr("seconds", language)}
+                    </span>
                   </SegButton>
                 ))}
               </div>
