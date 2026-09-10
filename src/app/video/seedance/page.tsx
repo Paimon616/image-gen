@@ -130,7 +130,10 @@ const T = {
     ko: "이 공간의 구조·가구·조명을 유지합니다.",
     en: "Keeps this location's layout, furniture and lighting.",
   },
-  dropHere: { ko: "이미지를 끌어다 놓거나 클릭", en: "Drop an image or click" },
+  dropHere: {
+    ko: "클릭해서 내 이미지에서 선택 · 끌어다 놓아도 됩니다",
+    en: "Click to pick from my images · or drop one here",
+  },
   pickFromGallery: { ko: "내 이미지에서 선택", en: "From my images" },
   chooseFile: { ko: "파일 선택", en: "Choose file" },
   prompt: { ko: "상황 / 연출 프롬프트", en: "Situation prompt" },
@@ -322,8 +325,16 @@ function DropZone({ lang, value, onChange, onPickGallery, label, hint, large }: 
           setDragOver(false);
           void handleFile(e.dataTransfer.files?.[0]);
         }}
-        onClick={() => (value ? setZoomOpen(true) : inputRef.current?.click())}
-        title={value ? (lang === "ko" ? "클릭하면 크게 볼 수 있어요" : "Click to view larger") : undefined}
+        // An empty slot goes straight to the gallery — that is where the
+        // references live. Files still come from the button below, or a drop.
+        onClick={() => (value ? setZoomOpen(true) : onPickGallery())}
+        title={
+          value
+            ? lang === "ko"
+              ? "클릭하면 크게 볼 수 있어요"
+              : "Click to view larger"
+            : tr("pickFromGallery", lang)
+        }
         className={cn(
           "relative flex items-center justify-center overflow-hidden rounded-lg border border-dashed border-border bg-card/50 transition-colors",
           large ? "aspect-video" : "h-24",
