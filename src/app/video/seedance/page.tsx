@@ -70,9 +70,10 @@ import {
   type SituationRunRequest,
 } from "@/components/character-situation-picker";
 import {
-  SEEDANCE_DURATION_MAX,
   hasSeedanceImage,
+  resolveSeedanceModel,
   SEEDANCE_DURATION_MIN,
+  SEEDANCE_MODELS,
   SEEDANCE_PROMPT_CHIPS,
   SEEDANCE_RATIOS,
   SEEDANCE_RESOLUTIONS,
@@ -102,9 +103,10 @@ type Lang = "ko" | "en";
 const T = {
   title: { ko: "SeeDance 생성", en: "SeeDance Generation" },
   subtitle: {
-    ko: "SeeDance 2.0 · 내 이미지의 인물로 원하는 영상 만들기",
-    en: "SeeDance 2.0 · Bring the person in your image to life",
+    ko: "내 이미지의 인물로 원하는 영상 만들기",
+    en: "Bring the person in your image to life",
   },
+  model: { ko: "모델", en: "Model" },
   modeI2v: { ko: "이미지 → 영상", en: "Image → Video" },
   modeT2v: { ko: "텍스트 → 영상", en: "Text → Video" },
   imageReference: {
@@ -221,6 +223,7 @@ const T = {
     ko: "이 영상에 대한 생성 정보가 없습니다.",
     en: "No generation details are available for this video.",
   },
+  fieldModel: { ko: "모델", en: "Model" },
   fieldMode: { ko: "모드", en: "Mode" },
   fieldSeed: { ko: "시드", en: "Seed" },
   fieldActual: { ko: "실제 해상도", en: "Actual resolution" },
@@ -510,6 +513,9 @@ export default function SeedancePage() {
       if (!source) return;
       setParams((p) => ({
         ...p,
+        // Clips saved before the model picker have no model recorded; those
+        // fall back to the default rather than silently switching the pick.
+        model: resolveSeedanceModel(source.model).id,
         mode: source.mode,
         prompt: source.prompt ?? p.prompt,
         resolution: source.resolution,
@@ -815,6 +821,9 @@ export default function SeedancePage() {
     }
   }, [batchActionBusy, batchDownloadBusy, selectedVideos]);
 
+  // The picked model decides how long a clip may be, so the slider and the
+  // situation picker both read their ceiling from it.
+  const modelInfo = resolveSeedanceModel(params.model);
   const isGenerating = pending.some((p) => p.status?.state === "generating" || p.status?.state === "queued");
   const canGenerate =
     params.mode === "t2v"
@@ -838,6 +847,27 @@ export default function SeedancePage() {
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
+          {/* Model. Switching to a shorter model clamps the length for you (the
+              store does it), so the pick can never produce a rejected request. */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">{tr("model", language)}</Label>
+            <div className="grid grid-cols-2 gap-1">
+              {SEEDANCE_MODELS.map((m) => (
+                <SegButton
+                  key={m.id}
+                  active={params.model === m.id}
+                  onClick={() => patch({ model: m.id })}
+                >
+                  {m.label}
+                  <span className="ml-1 font-normal opacity-70">
+                    {m.maxDuration}
+                    {tr("seconds", language)}
+                  </span>
+                </SegButton>
+              ))}
+            </div>
+          </div>
+
           {/* Mode toggle */}
           <div className="grid grid-cols-2 gap-1 rounded-lg border border-border bg-card/60 p-1">
             {(["i2v", "t2v"] as SeedanceMode[]).map((mode) => (
@@ -1000,7 +1030,7 @@ export default function SeedancePage() {
                 value={[params.duration]}
                 onValueChange={(v) => patch({ duration: Array.isArray(v) ? v[0] : (v as number) })}
                 min={SEEDANCE_DURATION_MIN}
-                max={SEEDANCE_DURATION_MAX}
+                max={modelInfo.maxDuration}
                 step={1}
               />
             </div>
@@ -1325,7 +1355,7 @@ export default function SeedancePage() {
             language={language}
             defaultSeconds={params.duration}
             minSeconds={SEEDANCE_DURATION_MIN}
-            maxSeconds={SEEDANCE_DURATION_MAX}
+            maxSeconds={modelInfo.maxDuration}
             disabled={paimonLoading}
             batchRunning={situationBatch !== null}
             onRun={runSituation}
@@ -2085,6 +2115,10 @@ function VideoDetailModal({
                   <>
                     <DetailSection label={tr("sectionGeneration", lang)}>
                       <div className="grid grid-cols-2 gap-2">
+                        <DetailField
+                          label={tr("fieldModel", lang)}
+                          value={resolveSeedanceModel(params.model).label}
+                        />
                         <DetailField
                           label={tr("fieldMode", lang)}
                           value={params.mode.toUpperCase()}

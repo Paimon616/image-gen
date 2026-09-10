@@ -1,8 +1,5 @@
 import { readImageUrlAsJpegDataUrl } from "./image-resize";
-import {
-  SEEDANCE_DURATION_MAX,
-  SEEDANCE_DURATION_MIN,
-} from "./seedance";
+import { clampSeedanceDuration } from "./seedance";
 import { createSituationVideoStore } from "./situation-video-store";
 import { startSeedanceGeneration } from "./seedance-generation";
 import { useSeedancePaimonStore } from "./seedance-paimon-store";
@@ -31,13 +28,10 @@ export const useSeedanceSituationStore = createSituationVideoStore({
   },
 
   applyDuration: (seconds) => {
-    const duration = Math.min(
-      SEEDANCE_DURATION_MAX,
-      Math.max(SEEDANCE_DURATION_MIN, Math.round(seconds))
-    );
-    useSeedanceStore
-      .getState()
-      .setParams((current) => ({ ...current, duration }));
+    useSeedanceStore.getState().setParams((current) => ({
+      ...current,
+      duration: clampSeedanceDuration(seconds, current.model),
+    }));
   },
 
   // Submit through the module-scope runner (not the page) so an auto-generate

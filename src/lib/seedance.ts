@@ -8,12 +8,49 @@
 // See `buildSeedancePromptText` below. Reference images are attached as extra
 // entries in the request `content` array under `role: "reference_image"`.
 //
-// Endpoint + model id are overridable via env so the same screen keeps working
-// if BytePlus renames the model or the account lives in another region:
+// The endpoint is overridable via env so the same screen keeps working if the
+// account lives in another region:
 //   SEEDANCE_BASE_URL  (default https://ark.ap-southeast.bytepluses.com/api/v3)
-//   SEEDANCE_MODEL     (default dreamina-seedance-2-0-260128)
+// The model is picked in the UI — see SEEDANCE_MODELS below.
 
 export type SeedanceMode = "i2v" | "t2v";
+
+export type SeedanceModelId = "seedance-2.5" | "seedance-2.0";
+
+export interface SeedanceModelInfo {
+  id: SeedanceModelId;
+  /** BytePlus ModelArk model id, sent as the request's `model` field. */
+  arkModel: string;
+  label: string;
+  /**
+   * ModelArk's own per-model ceiling. Anything above is rejected outright with
+   * "the specified duration is not supported for model …", so the slider has to
+   * follow whichever model is selected.
+   */
+  maxDuration: number;
+}
+
+// Both take the same content roles and the same `--flag` prompt commands, so
+// the only thing that changes with the pick is the model id and the length cap.
+export const SEEDANCE_MODELS: readonly SeedanceModelInfo[] = [
+  {
+    id: "seedance-2.5",
+    arkModel: "dreamina-seedance-2-5-260628",
+    label: "SeeDance 2.5",
+    maxDuration: 30,
+  },
+  {
+    id: "seedance-2.0",
+    arkModel: "dreamina-seedance-2-0-260128",
+    label: "SeeDance 2.0",
+    maxDuration: 15,
+  },
+];
+
+/** Falls back to the first entry, so clips saved before the picker still load. */
+export function resolveSeedanceModel(id: unknown): SeedanceModelInfo {
+  return SEEDANCE_MODELS.find((m) => m.id === id) ?? SEEDANCE_MODELS[0];
+}
 
 export type SeedanceResolution = "480p" | "720p" | "1080p";
 
@@ -27,6 +64,7 @@ export type SeedanceRatio =
   | "21:9";
 
 export interface SeedanceParams {
+  model: SeedanceModelId;
   mode: SeedanceMode;
   prompt: string;
   resolution: SeedanceResolution;
@@ -49,10 +87,11 @@ export interface SeedanceParams {
 }
 
 export const SEEDANCE_DURATION_MIN = 4;
-// SeeDance 2.0's own limit: ModelArk rejects anything outside 4-15s outright
-// ("the specified duration is not supported for model dreamina-seedance-2-0"),
-// so the slider stops where the model does.
-export const SEEDANCE_DURATION_MAX = 15;
+// The ceiling across every model. The selected model's own, lower cap is what
+// the slider and the wire actually use — see SeedanceModelInfo.maxDuration.
+export const SEEDANCE_DURATION_MAX = Math.max(
+  ...SEEDANCE_MODELS.map((m) => m.maxDuration)
+);
 
 export const SEEDANCE_RESOLUTIONS: SeedanceResolution[] = ["480p", "720p", "1080p"];
 
@@ -67,6 +106,7 @@ export const SEEDANCE_RATIOS: SeedanceRatio[] = [
 ];
 
 export const DEFAULT_SEEDANCE_PARAMS: SeedanceParams = {
+  model: "seedance-2.5",
   mode: "i2v",
   prompt: "",
   resolution: "720p",
@@ -90,10 +130,15 @@ export function hasSeedanceImage(params: SeedanceParams): boolean {
   );
 }
 
-export function clampSeedanceDuration(value: unknown): number {
+/** Clamps to the selected model's range; without one, to the widest range. */
+export function clampSeedanceDuration(
+  value: unknown,
+  modelId?: SeedanceModelId
+): number {
+  const max = modelId ? resolveSeedanceModel(modelId).maxDuration : SEEDANCE_DURATION_MAX;
   const n = Math.round(Number(value));
-  if (!Number.isFinite(n)) return DEFAULT_SEEDANCE_PARAMS.duration;
-  return Math.min(Math.max(n, SEEDANCE_DURATION_MIN), SEEDANCE_DURATION_MAX);
+  if (!Number.isFinite(n)) return Math.min(DEFAULT_SEEDANCE_PARAMS.duration, max);
+  return Math.min(Math.max(n, SEEDANCE_DURATION_MIN), max);
 }
 
 // Clause appended when `cleanFrame` is on, so the model avoids burning captions,
@@ -145,7 +190,7 @@ export function buildSeedancePromptText(params: SeedanceParams): string {
     // it would ignore the user's pick.
     flags.push("--ratio adaptive");
   }
-  flags.push(`--duration ${clampSeedanceDuration(params.duration)}`);
+  flags.push(`--duration ${clampSeedanceDuration(params.duration, params.model)}`);
   if (params.cameraFixed) flags.push("--camerafixed true");
   flags.push(`--watermark ${params.watermark ? "true" : "false"}`);
   if (params.seed != null && Number.isFinite(params.seed)) {

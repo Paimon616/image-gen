@@ -81,6 +81,7 @@ export async function startSeedanceGeneration(
     contentType: "video/mp4",
     prompt: source.prompt,
     params: {
+      model: source.model,
       mode: source.mode,
       prompt: source.prompt,
       resolution: source.resolution,

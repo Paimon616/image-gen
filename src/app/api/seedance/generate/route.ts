@@ -7,6 +7,7 @@ import {
   clampSeedanceDuration,
   DEFAULT_SEEDANCE_PARAMS,
   hasSeedanceImage,
+  resolveSeedanceModel,
   SEEDANCE_RATIOS,
   SEEDANCE_RESOLUTIONS,
   type SeedanceParams,
@@ -46,6 +47,7 @@ function asImageString(value: unknown): string | null {
 
 function normalizeParams(raw: Record<string, unknown>): SeedanceParams {
   const mode = raw.mode === "t2v" ? "t2v" : "i2v";
+  const model = resolveSeedanceModel(raw.model);
   const resolution = SEEDANCE_RESOLUTIONS.includes(raw.resolution as SeedanceResolution)
     ? (raw.resolution as SeedanceResolution)
     : DEFAULT_SEEDANCE_PARAMS.resolution;
@@ -58,11 +60,12 @@ function normalizeParams(raw: Record<string, unknown>): SeedanceParams {
     : null;
 
   return {
+    model: model.id,
     mode,
     prompt: typeof raw.prompt === "string" ? raw.prompt : "",
     resolution,
     ratio,
-    duration: clampSeedanceDuration(raw.duration),
+    duration: clampSeedanceDuration(raw.duration, model.id),
     cameraFixed: Boolean(raw.cameraFixed),
     watermark: Boolean(raw.watermark),
     cleanFrame: raw.cleanFrame === undefined ? true : Boolean(raw.cleanFrame),
@@ -93,11 +96,6 @@ function arkErrorMessage(payload: unknown, fallback: string): string {
 export async function POST(req: NextRequest) {
   const apiKey = process.env.SEEDANCE_API_KEY?.trim();
   const baseUrl = (process.env.SEEDANCE_BASE_URL?.trim() || DEFAULT_BASE_URL).replace(/\/+$/, "");
-  // BytePlus ModelArk model id for SeeDance 2.0 (Dreamina). Same content roles
-  // (first_frame, last_frame, reference_image) and the same `--flag` prompt
-  // commands as 2.5, but duration caps at 15s (see SEEDANCE_DURATION_MAX).
-  // Overridable via env in case the dated version id changes.
-  const model = process.env.SEEDANCE_MODEL?.trim() || "dreamina-seedance-2-0-260128";
 
   let rawBody: Record<string, unknown>;
   try {
@@ -190,7 +188,7 @@ export async function POST(req: NextRequest) {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model,
+            model: resolveSeedanceModel(params.model).arkModel,
             content: buildSeedanceContent(params),
           }),
           signal: abortSignal,
@@ -311,6 +309,7 @@ export async function POST(req: NextRequest) {
           contentType: "video/mp4",
           prompt: params.prompt,
           params: {
+            model: params.model,
             mode: params.mode,
             prompt: params.prompt,
             resolution: params.resolution,
