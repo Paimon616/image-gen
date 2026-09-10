@@ -4,12 +4,14 @@ import { join } from "path";
 import { NextRequest } from "next/server";
 import {
   buildConsistencySheetPrompt,
+  consistencySheetReferences,
+  consistencySheetSize,
   consistencySheetSizeLabel,
   CONSISTENCY_SHEET_MAX_REFERENCES,
   CONSISTENCY_SHEET_RESOLUTIONS,
-  CONSISTENCY_SHEET_SIZES,
   DEFAULT_CONSISTENCY_SHEET_PARAMS,
   type ConsistencySheetImage,
+  type ConsistencySheetMode,
   type ConsistencySheetParams,
   type ConsistencySheetResolution,
 } from "@/lib/consistency-sheet";
@@ -42,8 +44,12 @@ function asDataUrl(value: unknown): string | null {
   return trimmed.startsWith("data:image/") ? trimmed : null;
 }
 
+const MODES: ConsistencySheetMode[] = ["character", "background", "scene"];
+
 function normalizeParams(raw: Record<string, unknown>): ConsistencySheetParams {
-  const mode = raw.mode === "background" ? "background" : "character";
+  const mode = MODES.includes(raw.mode as ConsistencySheetMode)
+    ? (raw.mode as ConsistencySheetMode)
+    : "character";
   const resolution = CONSISTENCY_SHEET_RESOLUTIONS.includes(
     raw.resolution as ConsistencySheetResolution
   )
@@ -62,6 +68,10 @@ function normalizeParams(raw: Record<string, unknown>): ConsistencySheetParams {
     prompt: typeof raw.prompt === "string" ? raw.prompt : "",
     resolution,
     references,
+    characterReference:
+      mode === "scene" ? asDataUrl(raw.characterReference) : null,
+    backgroundReference:
+      mode === "scene" ? asDataUrl(raw.backgroundReference) : null,
     workspaceId: isValidWorkspaceId(raw.workspaceId) ? raw.workspaceId : "",
   };
 }
@@ -153,7 +163,8 @@ export async function POST(req: NextRequest) {
         close();
         return;
       }
-      if (!params.prompt.trim() && params.references.length === 0) {
+      const references = consistencySheetReferences(params);
+      if (!params.prompt.trim() && references.length === 0) {
         send("error", {
           id: clientId,
           message: "프롬프트를 입력하거나 레퍼런스 이미지를 추가하세요.",
@@ -168,9 +179,8 @@ export async function POST(req: NextRequest) {
         Authorization: `Key ${apiKey}`,
         "Content-Type": "application/json",
       };
-      const size = CONSISTENCY_SHEET_SIZES[params.resolution];
-      const endpoint =
-        params.references.length > 0 ? EDIT_MODEL : MODEL;
+      const size = consistencySheetSize(params.mode, params.resolution);
+      const endpoint = references.length > 0 ? EDIT_MODEL : MODEL;
       let cancelUrl: string | null = null;
 
       try {
@@ -185,9 +195,7 @@ export async function POST(req: NextRequest) {
             image_size: size,
             num_images: 1,
             output_format: "png",
-            ...(params.references.length > 0
-              ? { image_urls: params.references }
-              : {}),
+            ...(references.length > 0 ? { image_urls: references } : {}),
           }),
           signal: abortSignal,
         });
@@ -326,9 +334,9 @@ export async function POST(req: NextRequest) {
             mode: params.mode,
             prompt: params.prompt,
             resolution: params.resolution,
-            size: consistencySheetSizeLabel(params.resolution),
+            size: consistencySheetSizeLabel(params.mode, params.resolution),
             model: endpoint,
-            referenceCount: params.references.length,
+            referenceCount: references.length,
           },
         };
 

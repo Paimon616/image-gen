@@ -92,7 +92,10 @@ export const useConsistencySheetStore = create<ConsistencySheetState>((set) => (
       set((s) => ({
         params: {
           ...s.params,
-          mode: saved.mode === "background" ? "background" : s.params.mode,
+          mode:
+            saved.mode === "background" || saved.mode === "scene"
+              ? saved.mode
+              : s.params.mode,
           resolution:
             saved.resolution === "1k" ||
             saved.resolution === "2k" ||

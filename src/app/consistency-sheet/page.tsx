@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Clapperboard,
   Download,
   IdCard,
   ImagePlus,
@@ -35,6 +36,7 @@ import {
 } from "@/lib/media-workspace-store";
 import type { WorkspaceSummary } from "@/lib/types";
 import {
+  consistencySheetReferences,
   consistencySheetSizeLabel,
   CONSISTENCY_SHEET_MAX_REFERENCES,
   CONSISTENCY_SHEET_RESOLUTIONS,
@@ -61,6 +63,7 @@ const T = {
   },
   modeCharacter: { ko: "캐릭터 시트", en: "Character sheet" },
   modeBackground: { ko: "배경 시트", en: "Background sheet" },
+  modeScene: { ko: "장면", en: "Scene" },
   modeCharacterHint: {
     ko: "배경 없이 캐릭터만: 정면·측면·후면 전신 + 무표정·미소·활짝웃음·인상 얼굴 4종을 한 장에",
     en: "Character only, no background: front/side/back full body + 4 face studies in one image",
@@ -69,6 +72,18 @@ const T = {
     ko: "하나의 공간을 네 가지 각도에서 찍은 이미지 한 장",
     en: "One place from four camera angles in a single image",
   },
+  modeSceneHint: {
+    ko: "캐릭터 시트와 배경 시트를 참조해, 프롬프트대로 세로 9:16 장면 한 장",
+    en: "One vertical 9:16 still from your prompt, using the character and background sheets",
+  },
+  sceneReferences: { ko: "참조 시트", en: "Reference sheets" },
+  sceneReferencesHint: {
+    ko: "캐릭터는 인물을, 배경은 공간을 고정합니다. 둘 다 비워도 프롬프트만으로 생성됩니다.",
+    en: "The character locks the person, the background locks the place. Both are optional.",
+  },
+  sceneCharacter: { ko: "캐릭터 시트", en: "Character sheet" },
+  sceneBackground: { ko: "배경 시트", en: "Background sheet" },
+  sceneEmptySlot: { ko: "클릭해서 선택", en: "Click to pick" },
   references: { ko: "레퍼런스 이미지", en: "Reference images" },
   referencesHint: {
     ko: "갤러리·파일·붙여넣기로 추가 (최대 16장). 모델이 이 이미지들의 정체성을 유지합니다.",
@@ -85,7 +100,12 @@ const T = {
     ko: "공간을 묘사하세요. 예) 해질녘 바닷가 방갈로, 야자수와 나무 데크.",
     en: "Describe the place. e.g. a beach bungalow at sunset.",
   },
+  promptPlaceholderScene: {
+    ko: "장면을 묘사하세요. 예) 창가 테이블에 앉아 찻잔을 두 손으로 감싸 쥐고 카메라를 본다.",
+    en: "Describe the scene. e.g. sitting at the window table, holding a teacup, looking at camera.",
+  },
   resolution: { ko: "해상도 (1:1 고정)", en: "Resolution (fixed 1:1)" },
+  resolutionScene: { ko: "해상도 (9:16 고정)", en: "Resolution (fixed 9:16)" },
   workspace: { ko: "저장할 워크스페이스", en: "Save to workspace" },
   noWorkspace: { ko: "워크스페이스 없음", en: "No workspace" },
   workspaceHint: {
@@ -93,6 +113,7 @@ const T = {
     en: "The finished sheet is filed under this workspace.",
   },
   generate: { ko: "시트 생성", en: "Generate sheet" },
+  generateScene: { ko: "장면 생성", en: "Generate scene" },
   costHint: {
     ko: "생성에 30초~수분 소요. 1K 한 장에 약 $0.22, 해상도와 레퍼런스 수에 따라 올라갑니다.",
     en: "Takes 30s–minutes. ~$0.22 per 1K sheet; more with resolution and references.",
@@ -116,6 +137,16 @@ const T = {
 function tr(key: keyof typeof T, lang: Lang): string {
   return T[key][lang];
 }
+
+const MODE_TABS: {
+  mode: ConsistencySheetMode;
+  icon: typeof UserRound;
+  label: keyof typeof T;
+}[] = [
+  { mode: "character", icon: UserRound, label: "modeCharacter" },
+  { mode: "background", icon: Landmark, label: "modeBackground" },
+  { mode: "scene", icon: Clapperboard, label: "modeScene" },
+];
 
 
 /** Load a File or URL into an <img>, downscale to MAX_IMAGE_DIM, return a JPEG data URL. */
@@ -161,7 +192,11 @@ export default function ConsistencySheetPage() {
   const setParams = useConsistencySheetStore((s) => s.setParams);
   const hydrateParams = useConsistencySheetStore((s) => s.hydrateParams);
 
-  const [pickerOpen, setPickerOpen] = useState(false);
+  // Which slot the gallery picker is filling: the shared reference grid (many
+  // at a time) or one of scene mode's two slots.
+  const [picker, setPicker] = useState<
+    null | "references" | "characterReference" | "backgroundReference"
+  >(null);
   const [error, setError] = useState<string | null>(null);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -322,7 +357,8 @@ export default function ConsistencySheetPage() {
   }, [setImages]);
 
   const canGenerate =
-    params.prompt.trim().length > 0 || params.references.length > 0;
+    params.prompt.trim().length > 0 ||
+    consistencySheetReferences(params).length > 0;
 
   return (
     <div className="flex h-screen bg-background">
@@ -345,42 +381,70 @@ export default function ConsistencySheetPage() {
         <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
           {/* Mode toggle */}
           <div className="space-y-1.5">
-            <div className="grid grid-cols-2 gap-1 rounded-lg border border-border bg-card/60 p-1">
-              {(["character", "background"] as ConsistencySheetMode[]).map(
-                (mode) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    onClick={() => patch({ mode })}
-                    className={cn(
-                      "flex items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-semibold transition-colors",
-                      params.mode === mode
-                        ? "bg-primary text-primary-foreground shadow-sm"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    {mode === "character" ? (
-                      <UserRound className="h-3.5 w-3.5" />
-                    ) : (
-                      <Landmark className="h-3.5 w-3.5" />
-                    )}
-                    {mode === "character"
-                      ? tr("modeCharacter", language)
-                      : tr("modeBackground", language)}
-                  </button>
-                )
-              )}
+            <div className="grid grid-cols-3 gap-1 rounded-lg border border-border bg-card/60 p-1">
+              {MODE_TABS.map(({ mode, icon: Icon, label }) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => patch({ mode })}
+                  className={cn(
+                    "flex items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-semibold transition-colors",
+                    params.mode === mode
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {tr(label, language)}
+                </button>
+              ))}
             </div>
             <p className="text-[10.5px] leading-tight text-muted-foreground">
-              {params.mode === "character"
-                ? tr("modeCharacterHint", language)
-                : tr("modeBackgroundHint", language)}
+              {tr(
+                params.mode === "character"
+                  ? "modeCharacterHint"
+                  : params.mode === "background"
+                    ? "modeBackgroundHint"
+                    : "modeSceneHint",
+                language
+              )}
             </p>
           </div>
 
           <Separator />
 
-          {/* References */}
+          {/* Scene mode swaps the shared reference grid for two labeled slots:
+              the prompt names them by position, so which is which has to be
+              fixed by the UI. */}
+          {params.mode === "scene" ? (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">
+                {tr("sceneReferences", language)}
+              </Label>
+              <p className="text-[10.5px] leading-tight text-muted-foreground">
+                {tr("sceneReferencesHint", language)}
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {(
+                  [
+                    ["characterReference", "sceneCharacter"],
+                    ["backgroundReference", "sceneBackground"],
+                  ] as const
+                ).map(([slot, label]) => (
+                  <SceneSlot
+                    key={slot}
+                    lang={language}
+                    label={tr(label, language)}
+                    value={params[slot]}
+                    onPick={() => setPicker(slot)}
+                    onClear={() => patch({ [slot]: null })}
+                    onZoom={() => setZoomImage(params[slot])}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : (
+          /* References */
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <Label className="text-xs font-semibold">
@@ -441,7 +505,7 @@ export default function ConsistencySheetPage() {
               {params.references.length < CONSISTENCY_SHEET_MAX_REFERENCES && (
                 <button
                   type="button"
-                  onClick={() => setPickerOpen(true)}
+                  onClick={() => setPicker("references")}
                   className="flex aspect-square items-center justify-center rounded-md border border-dashed border-border text-muted-foreground hover:border-primary/60"
                 >
                   <ImagePlus className="h-4 w-4" />
@@ -461,7 +525,7 @@ export default function ConsistencySheetPage() {
                 type="button"
                 variant="outline"
                 size="xs"
-                onClick={() => setPickerOpen(true)}
+                onClick={() => setPicker("references")}
               >
                 <ImagesIcon className="h-3 w-3" /> {tr("pickFromGallery", language)}
               </Button>
@@ -478,6 +542,7 @@ export default function ConsistencySheetPage() {
               }}
             />
           </div>
+          )}
 
           <Separator />
 
@@ -487,11 +552,14 @@ export default function ConsistencySheetPage() {
             <Textarea
               value={params.prompt}
               onChange={(e) => patch({ prompt: e.target.value })}
-              placeholder={
+              placeholder={tr(
                 params.mode === "character"
-                  ? tr("promptPlaceholderCharacter", language)
-                  : tr("promptPlaceholderBackground", language)
-              }
+                  ? "promptPlaceholderCharacter"
+                  : params.mode === "background"
+                    ? "promptPlaceholderBackground"
+                    : "promptPlaceholderScene",
+                language
+              )}
               className="min-h-[104px] resize-y text-sm"
             />
           </div>
@@ -499,7 +567,10 @@ export default function ConsistencySheetPage() {
           {/* Resolution */}
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold">
-              {tr("resolution", language)}
+              {tr(
+                params.mode === "scene" ? "resolutionScene" : "resolution",
+                language
+              )}
             </Label>
             <div className="grid grid-cols-3 gap-1">
               {CONSISTENCY_SHEET_RESOLUTIONS.map((res) => (
@@ -516,7 +587,7 @@ export default function ConsistencySheetPage() {
                 >
                   <span className="uppercase">{res}</span>
                   <span className="block text-[10px] font-normal opacity-80">
-                    {consistencySheetSizeLabel(res)}
+                    {consistencySheetSizeLabel(params.mode, res)}
                   </span>
                 </button>
               ))}
@@ -563,7 +634,7 @@ export default function ConsistencySheetPage() {
             onClick={() => void startGeneration(params)}
           >
             <Sparkles className="h-4 w-4" />
-            {tr("generate", language)}
+            {tr(params.mode === "scene" ? "generateScene" : "generate", language)}
           </Button>
           <p className="text-center text-[10.5px] leading-tight text-muted-foreground">
             {tr("costHint", language)}
@@ -655,15 +726,23 @@ export default function ConsistencySheetPage() {
         </div>
       </main>
 
-      {pickerOpen && (
+      {picker && (
         <ImageLibraryPicker
           title={tr("pickFromGallery", language)}
-          multiple
-          onClose={() => setPickerOpen(false)}
-          onPickMany={(picked) => {
-            setPickerOpen(false);
-            void Promise.all(picked.map((image) => toDataUrl(image.url))).then(
+          multiple={picker === "references"}
+          onClose={() => setPicker(null)}
+          onPickMany={(images) => {
+            setPicker(null);
+            void Promise.all(images.map((image) => toDataUrl(image.url))).then(
               (dataUrls) => addReferences(dataUrls)
+            );
+          }}
+          onPick={(image) => {
+            const slot = picker;
+            setPicker(null);
+            if (slot === "references") return;
+            void toDataUrl(image.url).then((dataUrl) =>
+              patch({ [slot]: dataUrl })
             );
           }}
         />
@@ -690,6 +769,59 @@ export default function ConsistencySheetPage() {
 
       {zoomImage && (
         <ImageLightbox src={zoomImage} onClose={() => setZoomImage(null)} />
+      )}
+    </div>
+  );
+}
+
+// One of scene mode's two reference slots. Portrait-ish so it reads as a slot
+// for a whole sheet rather than a thumbnail in the reference grid.
+function SceneSlot({
+  lang,
+  label,
+  value,
+  onPick,
+  onClear,
+  onZoom,
+}: {
+  lang: Lang;
+  label: string;
+  value: string | null;
+  onPick: () => void;
+  onClear: () => void;
+  onZoom: () => void;
+}) {
+  return (
+    <div className="space-y-1">
+      <p className="text-[10.5px] font-medium text-muted-foreground">{label}</p>
+      {value ? (
+        <div
+          className="relative aspect-square cursor-zoom-in overflow-hidden rounded-md border border-border"
+          onClick={onZoom}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={value} alt={label} className="h-full w-full object-cover" />
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onClear();
+            }}
+            className="absolute right-0.5 top-0.5 rounded bg-black/60 p-0.5 text-white hover:bg-destructive"
+            aria-label={tr("delete", lang)}
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={onPick}
+          className="flex aspect-square w-full flex-col items-center justify-center gap-1 rounded-md border border-dashed border-border text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground"
+        >
+          <ImagePlus className="h-4 w-4" />
+          <span className="text-[10px]">{tr("sceneEmptySlot", lang)}</span>
+        </button>
       )}
     </div>
   );

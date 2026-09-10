@@ -12,7 +12,11 @@ function sanitizeConsistencySheetPatch(
   const patch: Partial<ConsistencySheetParams> = {};
 
   if (typeof record.prompt === "string") patch.prompt = record.prompt;
-  if (record.mode === "character" || record.mode === "background") {
+  if (
+    record.mode === "character" ||
+    record.mode === "background" ||
+    record.mode === "scene"
+  ) {
     patch.mode = record.mode;
   }
   if (
@@ -50,15 +54,26 @@ export const useConsistencySheetPaimonStore = createPaimonConversationStore({
         surface:
           params.mode === "character"
             ? "character consistency sheet (one image: full-body turnaround front/side/back + 4 face expressions, plain white background)"
-            : "background consistency sheet (one image: ONE single location photographed from 4 camera positions in a 2x2 grid — same architecture, furniture, props and lighting in every panel, no people)",
+            : params.mode === "background"
+              ? "background consistency sheet (one image: ONE single location photographed from 4 camera positions in a 2x2 grid — same architecture, furniture, props and lighting in every panel, no people)"
+              : "a single vertical 9:16 scene still — not a sheet — placing the character from the character sheet inside the location from the background sheet",
         mode: params.mode,
         prompt: params.prompt,
         resolution: params.resolution,
       },
       attachments: [
-        ...params.references.map((reference, index) =>
-          referenceAttachment(reference, `참조${index + 1}`)
-        ),
+        ...(params.mode === "scene"
+          ? [
+              ...(params.characterReference
+                ? [referenceAttachment(params.characterReference, "캐릭터 시트")]
+                : []),
+              ...(params.backgroundReference
+                ? [referenceAttachment(params.backgroundReference, "배경 시트")]
+                : []),
+            ]
+          : params.references.map((reference, index) =>
+              referenceAttachment(reference, `참조${index + 1}`)
+            )),
         ...attachments.map((attachment, index) => ({
           kind: attachment.kind,
           url: attachment.url,

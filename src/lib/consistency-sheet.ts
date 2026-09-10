@@ -19,19 +19,33 @@
 // concrete { width, height } as long as both sides are multiples of 16, the
 // longest edge is ≤ 3840 and the total is 655,360‥8,294,400 pixels.
 
-export type ConsistencySheetMode = "character" | "background";
+// The two sheet modes lay panels out on one square page; `scene` is not a sheet
+// at all but a single vertical still, composed from a character sheet and a
+// background sheet.
+export type ConsistencySheetMode = "character" | "background" | "scene";
 
 export type ConsistencySheetResolution = "1k" | "2k" | "4k";
 
+export interface ConsistencySheetSize {
+  width: number;
+  height: number;
+}
+
 // Exact 1:1 sizes per tier. 2880x2880 (8,294,400 px) is the pixel ceiling —
 // the largest square gpt-image-2 accepts — so it stands in for "4K" here.
-export const CONSISTENCY_SHEET_SIZES: Record<
-  ConsistencySheetResolution,
-  { width: number; height: number }
-> = {
+const SHEET_SIZES: Record<ConsistencySheetResolution, ConsistencySheetSize> = {
   "1k": { width: 1024, height: 1024 },
   "2k": { width: 2048, height: 2048 },
   "4k": { width: 2880, height: 2880 },
+};
+
+// Exact 9:16 for scene stills. Every side is a multiple of 16 and 2160x3840
+// lands exactly on both ceilings (3840 longest edge, 8,294,400 pixels), so it
+// is the largest 9:16 frame gpt-image-2 will take.
+const SCENE_SIZES: Record<ConsistencySheetResolution, ConsistencySheetSize> = {
+  "1k": { width: 1008, height: 1792 },
+  "2k": { width: 1440, height: 2560 },
+  "4k": { width: 2160, height: 3840 },
 };
 
 export const CONSISTENCY_SHEET_RESOLUTIONS: ConsistencySheetResolution[] = [
@@ -40,10 +54,18 @@ export const CONSISTENCY_SHEET_RESOLUTIONS: ConsistencySheetResolution[] = [
   "4k",
 ];
 
+export function consistencySheetSize(
+  mode: ConsistencySheetMode,
+  resolution: ConsistencySheetResolution
+): ConsistencySheetSize {
+  return mode === "scene" ? SCENE_SIZES[resolution] : SHEET_SIZES[resolution];
+}
+
 export function consistencySheetSizeLabel(
+  mode: ConsistencySheetMode,
   resolution: ConsistencySheetResolution
 ): string {
-  const { width, height } = CONSISTENCY_SHEET_SIZES[resolution];
+  const { width, height } = consistencySheetSize(mode, resolution);
   return `${width}x${height}`;
 }
 
@@ -55,8 +77,13 @@ export interface ConsistencySheetParams {
   prompt: string;
   resolution: ConsistencySheetResolution;
   // Data URIs (data:image/...;base64,...) — reference images from the gallery,
-  // a file drop, or the clipboard.
+  // a file drop, or the clipboard. Used by the two sheet modes.
   references: string[];
+  // Scene mode's two slots. They go on the wire in the same `image_urls` array
+  // as everything else — the model has no per-subject role — so the slots exist
+  // to fix the send order and to let the prompt say which is which.
+  characterReference: string | null;
+  backgroundReference: string | null;
   // Workspace the finished sheet is filed under. Empty means "no workspace",
   // which is how the sheet gallery treats an unassigned file.
   workspaceId: string;
@@ -67,8 +94,20 @@ export const DEFAULT_CONSISTENCY_SHEET_PARAMS: ConsistencySheetParams = {
   prompt: "",
   resolution: "1k",
   references: [],
+  characterReference: null,
+  backgroundReference: null,
   workspaceId: "",
 };
+
+/** The images actually sent, in the order the prompt numbers them. */
+export function consistencySheetReferences(
+  params: ConsistencySheetParams
+): string[] {
+  if (params.mode !== "scene") return params.references;
+  return [params.characterReference, params.backgroundReference].filter(
+    (ref): ref is string => Boolean(ref)
+  );
+}
 
 // The sheet layout each mode asks for. The user's own description leads the
 // final prompt (never truncate the user's words in favor of the template).
@@ -107,12 +146,50 @@ const BACKGROUND_SHEET_TEMPLATE = [
   "labels, no panel borders, no watermark.",
 ].join(" ");
 
-/** User description first, then the mode's sheet-layout instructions. */
+// Scene mode renders the user's prompt as one photograph instead of a sheet.
+// The sheets it is given are reference material, so the template has to say so
+// explicitly — otherwise the model copies the turnaround grid straight through.
+// It names no art style: the look comes from the references.
+const SCENE_TEMPLATE = [
+  "A single vertical 9:16 image of one moment — one photograph, not a",
+  "reference sheet: no grid, no panels, no multiple views, no split frames.",
+  "The reference images are consistency material, not a layout to copy.",
+  "Keep the character exactly as in the character reference — the same face,",
+  "hair, body proportions and outfit — and keep the location exactly as in the",
+  "background reference — the same architecture, furniture, props and lighting.",
+  "Place that character inside that location as the description says, framed",
+  "for a vertical 9:16 composition.",
+  "No text, no captions, no labels, no watermark.",
+].join(" ");
+
+// Every reference goes up in one flat array, so naming them in the prompt is
+// the only way to tell the model which sheet is which. The numbering has to
+// follow the order in consistencySheetReferences.
+const SCENE_REFERENCE_LABELS = {
+  character: "the character to depict (face, hair, body and outfit)",
+  background: "the location to place them in (layout, props and lighting)",
+} as const;
+
+/** "Reference image 1 is …; reference image 2 is …" for the filled slots. */
+function buildSceneReferenceClause(params: ConsistencySheetParams): string {
+  const labels: string[] = [];
+  if (params.characterReference) labels.push(SCENE_REFERENCE_LABELS.character);
+  if (params.backgroundReference) labels.push(SCENE_REFERENCE_LABELS.background);
+  return labels
+    .map((label, i) => `Reference image ${i + 1} is ${label}.`)
+    .join(" ");
+}
+
+/** User description first, then the mode's layout instructions. */
 export function buildConsistencySheetPrompt(params: ConsistencySheetParams): string {
   const template =
     params.mode === "character"
       ? CHARACTER_SHEET_TEMPLATE
-      : BACKGROUND_SHEET_TEMPLATE;
+      : params.mode === "background"
+        ? BACKGROUND_SHEET_TEMPLATE
+        : [buildSceneReferenceClause(params), SCENE_TEMPLATE]
+            .filter(Boolean)
+            .join(" ");
   const base = params.prompt.trim();
   return base ? `${base}\n\n${template}` : template;
 }

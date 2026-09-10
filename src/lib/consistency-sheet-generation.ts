@@ -1,4 +1,5 @@
 import {
+  consistencySheetReferences,
   type ConsistencySheetImage,
   type ConsistencySheetParams,
 } from "./consistency-sheet";
@@ -23,6 +24,11 @@ const NEED_PROMPT = {
   en: "Describe the character or the place for the sheet.",
 } as const;
 
+const NEED_SCENE_PROMPT = {
+  ko: "어떤 장면인지 프롬프트로 설명하세요.",
+  en: "Describe the scene you want.",
+} as const;
+
 function currentLanguage(): Lang {
   return useStore.getState().language === "ko" ? "ko" : "en";
 }
@@ -43,8 +49,8 @@ export async function startConsistencySheetGeneration(
 ): Promise<string | null> {
   const language = currentLanguage();
 
-  if (!source.prompt.trim() && source.references.length === 0) {
-    return NEED_PROMPT[language];
+  if (!source.prompt.trim() && consistencySheetReferences(source).length === 0) {
+    return (source.mode === "scene" ? NEED_SCENE_PROMPT : NEED_PROMPT)[language];
   }
 
   const { addPending, updatePending, removePending, setImages } =
