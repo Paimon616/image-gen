@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Download,
   IdCard,
@@ -22,12 +22,17 @@ import {
   ImageLightbox,
 } from "@/components/image-library-picker";
 import { PaimonPanel } from "@/components/paimon-panel";
+import { WorkspaceBar } from "@/components/workspace-bar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/store";
+import {
+  fileMatchesWorkspace,
+  useMediaWorkspaceStore,
+} from "@/lib/media-workspace-store";
 import type { WorkspaceSummary } from "@/lib/types";
 import {
   consistencySheetSizeLabel,
@@ -159,8 +164,17 @@ export default function ConsistencySheetPage() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
-  const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Workspaces are shared app-wide; the bar owns the list and the active
+  // filter, so the screen only reads them.
+  const workspaces = useMediaWorkspaceStore(
+    (s) => s.byMedia.consistencySheet.workspaces
+  );
+  const activeWorkspaceId = useMediaWorkspaceStore(
+    (s) => s.byMedia.consistencySheet.activeWorkspaceId
+  );
+  const fetchWorkspaces = useMediaWorkspaceStore((s) => s.fetchWorkspaces);
 
   useEffect(() => {
     hydrateParams();
@@ -177,17 +191,15 @@ export default function ConsistencySheetPage() {
       .catch(() => {});
   }, [setImages]);
 
-  // Workspaces are shared app-wide; here they are only a save target, so the
-  // list is read once and the chosen id is remembered with the other settings.
-  useEffect(() => {
-    fetch("/api/workspaces?media=consistencySheet")
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data?.workspaces))
-          setWorkspaces(data.workspaces as WorkspaceSummary[]);
-      })
-      .catch(() => {});
-  }, []);
+  // The gallery shows only the sheets in the active workspace; `null` is
+  // everything and UNGROUPED matches the sheets with no workspace at all.
+  const visibleImages = useMemo(
+    () =>
+      images.filter((image) =>
+        fileMatchesWorkspace(image.workspaces, activeWorkspaceId)
+      ),
+    [images, activeWorkspaceId]
+  );
 
   const patch = useCallback(
     (update: Partial<ConsistencySheetParams>) => {
@@ -280,16 +292,10 @@ export default function ConsistencySheetPage() {
           )
         );
       }
-      // The dropdown shows each workspace's sheet count, so re-read the list.
-      await fetch("/api/workspaces?media=consistencySheet", { cache: "no-store" })
-        .then((r) => r.json())
-        .then((payload) => {
-          if (Array.isArray(payload?.workspaces))
-            setWorkspaces(payload.workspaces as WorkspaceSummary[]);
-        })
-        .catch(() => {});
+      // The chips and the dropdown show each workspace's sheet count.
+      await fetchWorkspaces("consistencySheet");
     },
-    [setImages]
+    [setImages, fetchWorkspaces]
   );
 
   const deleteImage = useCallback(
@@ -299,8 +305,10 @@ export default function ConsistencySheetPage() {
       await fetch(`/api/consistency-sheet/images/${image.filename}`, {
         method: "DELETE",
       }).catch(() => {});
+      // The chip counts include the sheet that just went away.
+      await fetchWorkspaces("consistencySheet");
     },
-    [language, setImages]
+    [language, setImages, fetchWorkspaces]
   );
 
   const refreshImages = useCallback(() => {
@@ -572,7 +580,7 @@ export default function ConsistencySheetPage() {
           </div>
           <div className="flex items-center gap-2">
             <span className="whitespace-nowrap text-xs text-muted-foreground">
-              {images.length}
+              {visibleImages.length}
               {tr("count", language)}
             </span>
             <Button
@@ -587,8 +595,11 @@ export default function ConsistencySheetPage() {
             </Button>
           </div>
         </div>
+
+        <WorkspaceBar media="consistencySheet" onDownloaded={refreshImages} />
+
         <div className="flex-1 overflow-y-auto p-6">
-          {pending.length === 0 && images.length === 0 ? (
+          {pending.length === 0 && visibleImages.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-muted-foreground">
               <IdCard className="h-10 w-10 opacity-40" />
               <p className="max-w-xs text-sm">{tr("empty", language)}</p>
@@ -614,7 +625,7 @@ export default function ConsistencySheetPage() {
                   onDismiss={() => removePending(card.id)}
                 />
               ))}
-              {images.map((image) => (
+              {visibleImages.map((image) => (
                 <SheetCard
                   key={image.id}
                   lang={language}

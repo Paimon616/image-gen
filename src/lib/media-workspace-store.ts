@@ -1,14 +1,14 @@
 import { create } from "zustand";
 import { UNGROUPED_WORKSPACE_ID, type WorkspaceSummary } from "./types";
 
-// The video screens share the image gallery's workspaces — one record, one
-// RunPod share — but each screen counts and filters only its own media. The
-// image page keeps its workspace state inside the main app store (it is wired
-// into paging and generation); this store holds the same state for the two
-// video screens so they never show, or fetch, each other's files.
-export type VideoWorkspaceMedia = "videos" | "seedance";
+// Every screen shares the image gallery's workspaces — one record, one RunPod
+// share — but each counts and filters only its own media. The image page keeps
+// its workspace state inside the main app store (it is wired into paging and
+// generation); this store holds the same state for every other screen so they
+// never show, or fetch, each other's files.
+export type MediaWorkspaceKind = "videos" | "seedance" | "consistencySheet";
 
-const MEDIA: VideoWorkspaceMedia[] = ["videos", "seedance"];
+const MEDIA: MediaWorkspaceKind[] = ["videos", "seedance", "consistencySheet"];
 
 export interface MediaWorkspaceEntry {
   workspaces: WorkspaceSummary[];
@@ -23,41 +23,41 @@ const EMPTY_ENTRY: MediaWorkspaceEntry = {
 };
 
 interface MediaWorkspaceState {
-  byMedia: Record<VideoWorkspaceMedia, MediaWorkspaceEntry>;
+  byMedia: Record<MediaWorkspaceKind, MediaWorkspaceEntry>;
 
-  fetchWorkspaces: (media: VideoWorkspaceMedia) => Promise<void>;
+  fetchWorkspaces: (media: MediaWorkspaceKind) => Promise<void>;
   setActiveWorkspace: (
-    media: VideoWorkspaceMedia,
+    media: MediaWorkspaceKind,
     workspaceId: string | null
   ) => void;
   createWorkspace: (
-    media: VideoWorkspaceMedia,
+    media: MediaWorkspaceKind,
     name: string
   ) => Promise<WorkspaceSummary | null>;
   renameWorkspace: (
-    media: VideoWorkspaceMedia,
+    media: MediaWorkspaceKind,
     workspaceId: string,
     name: string
   ) => Promise<void>;
   reorderWorkspaces: (
-    media: VideoWorkspaceMedia,
+    media: MediaWorkspaceKind,
     orderedIds: string[]
   ) => Promise<void>;
   deleteWorkspace: (
-    media: VideoWorkspaceMedia,
+    media: MediaWorkspaceKind,
     workspaceId: string
   ) => Promise<void>;
   // Toggles one membership and answers with the file's new workspace ids, or
   // null when the request failed (the caller then leaves its list untouched).
   setFileWorkspace: (
-    media: VideoWorkspaceMedia,
+    media: MediaWorkspaceKind,
     filename: string,
     workspaceId: string,
     assigned: boolean
   ) => Promise<string[] | null>;
 }
 
-/** Does a video with these memberships belong in the currently filtered view? */
+/** Does a file with these memberships belong in the currently filtered view? */
 export function fileMatchesWorkspace(
   workspaces: string[] | undefined,
   workspaceId: string | null
@@ -69,7 +69,7 @@ export function fileMatchesWorkspace(
 
 export const useMediaWorkspaceStore = create<MediaWorkspaceState>((set, get) => {
   const patch = (
-    media: VideoWorkspaceMedia,
+    media: MediaWorkspaceKind,
     update: Partial<MediaWorkspaceEntry>
   ) =>
     set((state) => ({
@@ -79,7 +79,7 @@ export const useMediaWorkspaceStore = create<MediaWorkspaceState>((set, get) => 
       },
     }));
 
-  const fetchWorkspaces = async (media: VideoWorkspaceMedia) => {
+  const fetchWorkspaces = async (media: MediaWorkspaceKind) => {
     try {
       const response = await fetch(`/api/workspaces?media=${media}`, {
         cache: "no-store",
@@ -102,7 +102,11 @@ export const useMediaWorkspaceStore = create<MediaWorkspaceState>((set, get) => 
   const refreshAll = () => Promise.all(MEDIA.map(fetchWorkspaces));
 
   return {
-    byMedia: { videos: EMPTY_ENTRY, seedance: EMPTY_ENTRY },
+    byMedia: {
+      videos: EMPTY_ENTRY,
+      seedance: EMPTY_ENTRY,
+      consistencySheet: EMPTY_ENTRY,
+    },
 
     fetchWorkspaces,
 

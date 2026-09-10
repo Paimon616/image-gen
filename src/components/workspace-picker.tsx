@@ -12,7 +12,7 @@ import { Check, FolderPlus, Loader2, Plus } from "lucide-react";
 import { useStore } from "@/lib/store";
 import {
   useMediaWorkspaceStore,
-  type VideoWorkspaceMedia,
+  type MediaWorkspaceKind,
 } from "@/lib/media-workspace-store";
 import type { GeneratedImage, WorkspaceSummary } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -295,7 +295,7 @@ export function MediaWorkspacePicker({
   onChange,
   ...chrome
 }: PickerChromeProps & {
-  media: VideoWorkspaceMedia;
+  media: MediaWorkspaceKind;
   filename: string;
   workspaceIds: string[];
   onChange: (workspaceIds: string[]) => void;
