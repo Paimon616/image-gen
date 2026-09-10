@@ -93,11 +93,11 @@ function arkErrorMessage(payload: unknown, fallback: string): string {
 export async function POST(req: NextRequest) {
   const apiKey = process.env.SEEDANCE_API_KEY?.trim();
   const baseUrl = (process.env.SEEDANCE_BASE_URL?.trim() || DEFAULT_BASE_URL).replace(/\/+$/, "");
-  // BytePlus ModelArk model id for SeeDance 2.5 (Dreamina). The 2.5 series is a
-  // MultimodalToVideo model and uses the same content roles (first_frame,
-  // last_frame, reference_image) as earlier versions. Overridable via env in
-  // case the dated version id changes.
-  const model = process.env.SEEDANCE_MODEL?.trim() || "dreamina-seedance-2-5-260628";
+  // BytePlus ModelArk model id for SeeDance 2.0 (Dreamina). Same content roles
+  // (first_frame, last_frame, reference_image) and the same `--flag` prompt
+  // commands as 2.5, but duration caps at 15s (see SEEDANCE_DURATION_MAX).
+  // Overridable via env in case the dated version id changes.
+  const model = process.env.SEEDANCE_MODEL?.trim() || "dreamina-seedance-2-0-260128";
 
   let rawBody: Record<string, unknown>;
   try {

@@ -102,8 +102,8 @@ type Lang = "ko" | "en";
 const T = {
   title: { ko: "SeeDance 생성", en: "SeeDance Generation" },
   subtitle: {
-    ko: "SeeDance 2.5 · 내 이미지의 인물로 원하는 영상 만들기",
-    en: "SeeDance 2.5 · Bring the person in your image to life",
+    ko: "SeeDance 2.0 · 내 이미지의 인물로 원하는 영상 만들기",
+    en: "SeeDance 2.0 · Bring the person in your image to life",
   },
   modeI2v: { ko: "이미지 → 영상", en: "Image → Video" },
   modeT2v: { ko: "텍스트 → 영상", en: "Text → Video" },

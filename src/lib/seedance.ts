@@ -1,4 +1,4 @@
-// SeeDance 2.5 (BytePlus ModelArk) shared types + helpers.
+// SeeDance 2.0 (BytePlus ModelArk) shared types + helpers.
 //
 // The SeeDance generation screen talks to BytePlus ModelArk directly with the
 // `SEEDANCE_API_KEY` (an `ark-…` key) read server-side from the environment.
@@ -11,7 +11,7 @@
 // Endpoint + model id are overridable via env so the same screen keeps working
 // if BytePlus renames the model or the account lives in another region:
 //   SEEDANCE_BASE_URL  (default https://ark.ap-southeast.bytepluses.com/api/v3)
-//   SEEDANCE_MODEL     (default seedance-2.5)
+//   SEEDANCE_MODEL     (default dreamina-seedance-2-0-260128)
 
 export type SeedanceMode = "i2v" | "t2v";
 
@@ -49,7 +49,10 @@ export interface SeedanceParams {
 }
 
 export const SEEDANCE_DURATION_MIN = 4;
-export const SEEDANCE_DURATION_MAX = 30;
+// SeeDance 2.0's own limit: ModelArk rejects anything outside 4-15s outright
+// ("the specified duration is not supported for model dreamina-seedance-2-0"),
+// so the slider stops where the model does.
+export const SEEDANCE_DURATION_MAX = 15;
 
 export const SEEDANCE_RESOLUTIONS: SeedanceResolution[] = ["480p", "720p", "1080p"];
 

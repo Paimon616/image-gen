@@ -77,7 +77,7 @@ export const useSeedancePaimonStore = createPaimonConversationStore({
       // Image fields are stripped: multi-MB data URIs must not ride along as
       // params (they are sent as attachments below instead).
       currentParams: {
-        video_model: "seedance-2.5",
+        video_model: "seedance-2.0",
         mode: params.mode,
         prompt: params.prompt,
         resolution: params.resolution,

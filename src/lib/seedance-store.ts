@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import {
+  clampSeedanceDuration,
   DEFAULT_SEEDANCE_PARAMS,
   type SeedanceParams,
   type SeedanceVideo,
@@ -104,7 +105,9 @@ export const useSeedanceStore = create<SeedanceState>((set) => ({
           ...s.params,
           resolution: saved.resolution ?? s.params.resolution,
           ratio: saved.ratio ?? s.params.ratio,
-          duration: saved.duration ?? s.params.duration,
+          // A duration remembered from when the cap was higher would show on
+          // the slider but get clamped on the wire, so clamp it on the way in.
+          duration: clampSeedanceDuration(saved.duration ?? s.params.duration),
           cameraFixed: saved.cameraFixed ?? s.params.cameraFixed,
           watermark: saved.watermark ?? s.params.watermark,
           cleanFrame: saved.cleanFrame ?? s.params.cleanFrame,
