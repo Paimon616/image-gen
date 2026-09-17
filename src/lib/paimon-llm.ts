@@ -48,19 +48,25 @@ function reasoningPayload(llm: PaimonLlm) {
 /** A problem the user can fix in Settings (missing key, rejected request). */
 export class PaimonLlmError extends Error {}
 
-const OPENAI_COMPATIBLE_ENDPOINTS: Record<
-  Exclude<ChatProviderId, "anthropic">,
-  string
-> = {
+type OpenAiCompatibleProvider = Exclude<ChatProviderId, "anthropic" | "fal">;
+
+const OPENAI_COMPATIBLE_ENDPOINTS: Record<OpenAiCompatibleProvider, string> = {
   openrouter: "https://openrouter.ai/api/v1/chat/completions",
   openai: "https://api.openai.com/v1/chat/completions",
   google: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
   deepseek: "https://api.deepseek.com/chat/completions",
 };
 
-// Anthropic has no `response_format`, so the JSON contract is stated in the
-// prompt instead. The routes already tolerate fenced JSON when parsing.
-const ANTHROPIC_JSON_INSTRUCTION =
+// fal proxies other vendors' models through its own two endpoints: text on
+// any-llm, images on any-llm/vision. Neither speaks the OpenAI shape — they
+// take a single prompt + system_prompt and answer with `{ output }`.
+const FAL_TEXT_ENDPOINT = "https://fal.run/fal-ai/any-llm";
+const FAL_VISION_ENDPOINT = "https://fal.run/fal-ai/any-llm/vision";
+
+// Neither Anthropic's Messages API nor fal's any-llm has `response_format`, so
+// the JSON contract is stated in the prompt instead. The routes already
+// tolerate fenced JSON when parsing.
+const JSON_ONLY_INSTRUCTION =
   "Respond with a single JSON object only. Do not wrap it in markdown fences and do not write anything before or after it.";
 
 export async function resolvePaimonLlm(): Promise<PaimonLlm> {
@@ -130,7 +136,7 @@ function relaxPayload(payload: ChatPayload, message: string): ChatPayload | null
 }
 
 async function postOpenAiCompatible(
-  provider: Exclude<ChatProviderId, "anthropic">,
+  provider: OpenAiCompatibleProvider,
   apiKey: string,
   payload: ChatPayload,
   signal?: AbortSignal
@@ -157,6 +163,35 @@ async function postOpenAiCompatible(
   throw new PaimonLlmError(
     `${chatProviderMeta(provider).label} rejected the request.`
   );
+}
+
+async function postFal(
+  endpoint: string,
+  apiKey: string,
+  payload: ChatPayload,
+  signal?: AbortSignal
+) {
+  const response = await fetch(endpoint, {
+    method: "POST",
+    signal,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Key ${apiKey}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  if (response.ok) return response;
+
+  // fal reports validation problems as { detail: [{ loc, msg }] } and auth or
+  // billing problems as { detail: "..." }.
+  const error = await response.json().catch(() => null);
+  const detail = error?.detail;
+  const message = Array.isArray(detail)
+    ? detail.map((item: { msg?: string }) => item?.msg).filter(Boolean).join("; ")
+    : typeof detail === "string"
+      ? detail
+      : (error?.error ?? `fal request failed (${response.status}).`);
+  throw new PaimonLlmError(String(message));
 }
 
 function toAnthropicContent(content: ChatContentPart[]): Anthropic.ContentBlockParam[] {
@@ -223,6 +258,31 @@ export async function analyzeWithVision(
         continue;
       }
 
+      if (llm.provider === "fal") {
+        const response = await postFal(
+          FAL_VISION_ENDPOINT,
+          llm.apiKey,
+          {
+            model,
+            prompt: content
+              .filter((part): part is ChatTextPart => part.type === "text")
+              .map((part) => part.text)
+              .join("\n\n"),
+            image_urls: content
+              .filter((part): part is ChatImagePart => part.type === "image_url")
+              .map((part) => part.image_url.url),
+            max_tokens: 900,
+            temperature: 0.1,
+          },
+          AbortSignal.timeout(20_000)
+        );
+        const result = await response.json().catch(() => null);
+        const analysis = String(result?.output ?? "").trim();
+        if (analysis) return { analysis, errors };
+        errors.push(`${model}: ${result?.error ?? "empty analysis"}`);
+        continue;
+      }
+
       const response = await postOpenAiCompatible(
         llm.provider,
         llm.apiKey,
@@ -284,7 +344,7 @@ export async function streamJsonCompletion({
       {
         model: llm.model,
         max_tokens: maxTokens,
-        system: `${system}\n\n${ANTHROPIC_JSON_INSTRUCTION}`,
+        system: `${system}\n\n${JSON_ONLY_INSTRUCTION}`,
         messages: [{ role: "user", content: user }],
       },
       { signal }
@@ -301,6 +361,34 @@ export async function streamJsonCompletion({
     }
 
     return anthropicText(await stream.finalMessage());
+  }
+
+  if (llm.provider === "fal") {
+    // fal's any-llm caps `system_prompt` at 5000 characters, and its /stream
+    // variant caps `prompt` at 5000 too. Paimon's brief is several times that,
+    // so this uses the non-streaming endpoint (no prompt cap) and folds the
+    // system prompt into the user prompt. The answer therefore arrives as one
+    // delta instead of progressively.
+    const response = await postFal(
+      FAL_TEXT_ENDPOINT,
+      llm.apiKey,
+      {
+        model: llm.model,
+        prompt: `${system}\n\n${JSON_ONLY_INSTRUCTION}\n\n${user}`,
+        temperature,
+        max_tokens: maxTokens,
+        reasoning: llm.reasoning,
+      },
+      signal
+    );
+    const result = await response.json().catch(() => null);
+    if (result?.error) throw new PaimonLlmError(String(result.error));
+    const content = typeof result?.output === "string" ? result.output : "";
+    if (!content.trim()) {
+      throw new PaimonLlmError("fal 모델이 빈 답변을 반환했습니다. 다시 시도해 주세요.");
+    }
+    onDelta(content);
+    return content;
   }
 
   // Two silent-failure modes used to end a turn with an empty buffer and the

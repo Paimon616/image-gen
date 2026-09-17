@@ -48,6 +48,28 @@ async function listModels(
     return models;
   }
 
+  if (provider === "fal") {
+    // fal has no model-list API; the usable ids are the `model` enum in the
+    // any-llm endpoint's public OpenAPI schema.
+    const data = await fetchJson(
+      "https://fal.ai/api/openapi/queue/openapi.json?endpoint_id=fal-ai/any-llm",
+      {}
+    );
+    const schemas = data?.components?.schemas ?? {};
+    const ids: string[] =
+      Object.values(schemas)
+        .map(
+          (schema) =>
+            (schema as { properties?: { model?: { enum?: unknown } } })
+              ?.properties?.model?.enum
+        )
+        .find((values): values is string[] => Array.isArray(values)) ?? [];
+    return ids
+      .filter((id) => id)
+      .sort((a, b) => a.localeCompare(b))
+      .map((id) => ({ id, label: id }));
+  }
+
   if (provider === "openrouter") {
     // Public endpoint — works even before a key is stored.
     const data = await fetchJson(
@@ -116,8 +138,8 @@ export async function GET(req: Request) {
   const meta = chatProviderMeta(provider);
   const apiKey = await getChatProviderApiKey(provider);
 
-  // OpenRouter's catalog is public; the others need the key first.
-  if (!apiKey && provider !== "openrouter") {
+  // OpenRouter's and fal's catalogs are public; the others need the key first.
+  if (!apiKey && provider !== "openrouter" && provider !== "fal") {
     return Response.json(
       {
         provider,

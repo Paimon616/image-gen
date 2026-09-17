@@ -30,6 +30,8 @@ export interface AppSettings {
   // Chat (LLM) providers Paimon can run on. One key per vendor; the selected
   // provider/model pair below decides which one Paimon actually uses.
   openrouterApiKey: string;
+  /** Also used by the consistency-sheet image route, which reads FAL_KEY. */
+  falApiKey: string;
   anthropicApiKey: string;
   openaiApiKey: string;
   googleApiKey: string;
@@ -46,6 +48,7 @@ export interface AppSettings {
 
 export const CHAT_PROVIDER_KEY_FIELDS = {
   openrouter: "openrouterApiKey",
+  fal: "falApiKey",
   anthropic: "anthropicApiKey",
   openai: "openaiApiKey",
   google: "googleApiKey",
@@ -63,6 +66,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   runpodApiKey: "",
   runpodPods: [],
   openrouterApiKey: "",
+  falApiKey: "",
   anthropicApiKey: "",
   openaiApiKey: "",
   googleApiKey: "",
@@ -90,6 +94,7 @@ function cleanSettings(value: Partial<AppSettings>): AppSettings {
     huggingfaceApiKey: String(value.huggingfaceApiKey ?? "").trim(),
     runpodApiKey: String(value.runpodApiKey ?? "").trim(),
     openrouterApiKey: String(value.openrouterApiKey ?? "").trim(),
+    falApiKey: String(value.falApiKey ?? "").trim(),
     anthropicApiKey: String(value.anthropicApiKey ?? "").trim(),
     openaiApiKey: String(value.openaiApiKey ?? "").trim(),
     googleApiKey: String(value.googleApiKey ?? "").trim(),
@@ -163,6 +168,8 @@ export async function getChatProviderApiKey(provider: ChatProviderId) {
   switch (provider) {
     case "openrouter":
       return process.env.OPENROUTER_API_KEY?.trim() ?? "";
+    case "fal":
+      return process.env.FAL_KEY?.trim() ?? "";
     case "anthropic":
       return process.env.ANTHROPIC_API_KEY?.trim() ?? "";
     case "openai":
