@@ -4,7 +4,6 @@
 
 export type ChatProviderId =
   | "openrouter"
-  | "fal"
   | "anthropic"
   | "openai"
   | "google"
@@ -62,28 +61,6 @@ export const CHAT_PROVIDERS: ChatProviderMeta[] = [
       "google/gemini-2.5-flash",
       "qwen/qwen3-vl-32b-instruct",
     ],
-  },
-  {
-    id: "fal",
-    label: "fal",
-    keyLabel: "fal API Key",
-    keyPlaceholder: "xxxxxxxx-....:....",
-    keyHintKo:
-      "fal-ai/any-llm으로 Claude·Gemini·GPT를 대신 호출합니다. 이 앱이 일관성 시트에 이미 쓰는 키와 같습니다. 키가 없으면 FAL_KEY 환경변수를 사용합니다.",
-    keyHintEn:
-      "Routes Claude, Gemini and GPT through fal-ai/any-llm — the same key this app already uses for consistency sheets. Falls back to the FAL_KEY environment variable.",
-    keyUrl: "https://fal.ai/dashboard/keys",
-    fallbackModels: [
-      { id: "anthropic/claude-sonnet-4.5", label: "Claude Sonnet 4.5" },
-      { id: "anthropic/claude-haiku-4.5", label: "Claude Haiku 4.5" },
-      { id: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro" },
-      { id: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-      { id: "openai/gpt-5-chat", label: "GPT-5 Chat" },
-      { id: "deepseek/deepseek-v3.1-terminus", label: "DeepSeek V3.1 Terminus" },
-    ],
-    // fal splits text and vision into two endpoints; these ids exist on the
-    // vision one (deepseek and gpt-oss do not).
-    visionModels: ["anthropic/claude-haiku-4.5", "google/gemini-2.5-flash"],
   },
   {
     id: "anthropic",
@@ -147,8 +124,8 @@ export const CHAT_PROVIDERS: ChatProviderMeta[] = [
       "Calls the DeepSeek Chat Completions API directly. DeepSeek models do not support image (vision) input. Falls back to the DEEPSEEK_API_KEY environment variable.",
     keyUrl: "https://platform.deepseek.com/api_keys",
     fallbackModels: [
-      { id: "deepseek-flash", label: "DeepSeek Flash" },
-      { id: "deepseek-v4-pro", label: "DeepSeek V4 Pro" },
+      { id: "deepseek-chat", label: "DeepSeek Chat" },
+      { id: "deepseek-reasoner", label: "DeepSeek Reasoner" },
     ],
     // DeepSeek's own API has no vision-capable models; attachment analysis
     // will report the limitation instead of silently switching vendors.
@@ -166,9 +143,9 @@ export function isChatProviderId(value: unknown): value is ChatProviderId {
   return typeof value === "string" && CHAT_PROVIDER_IDS.includes(value as ChatProviderId);
 }
 
-/** DeepSeek's own API, called directly — no aggregator in the path. */
-export const DEFAULT_PAIMON_CHAT_PROVIDER: ChatProviderId = "deepseek";
-export const DEFAULT_PAIMON_CHAT_MODEL = "deepseek-flash";
+/** Paimon's original model, kept as the default so existing setups behave the same. */
+export const DEFAULT_PAIMON_CHAT_PROVIDER: ChatProviderId = "openrouter";
+export const DEFAULT_PAIMON_CHAT_MODEL = "deepseek/deepseek-v4-flash";
 
 /**
  * The provider/model pairs the Paimon panel switches between inline, so the user
@@ -187,17 +164,17 @@ export interface PaimonQuickModel {
 export const PAIMON_QUICK_MODELS: PaimonQuickModel[] = [
   {
     provider: "deepseek",
-    model: "deepseek-flash",
-    label: "DeepSeek Flash",
+    model: "deepseek-v4-flash",
+    label: "DeepSeek V4 Flash",
     hintKo: "빠르고 저렴합니다. 이미지를 볼 수 없어 레퍼런스 분석은 건너뜁니다.",
     hintEn: "Fast and cheap, but it cannot see images, so reference analysis is skipped.",
   },
   {
-    provider: "fal",
-    model: "anthropic/claude-sonnet-4.5",
-    label: "Claude Sonnet 4.5",
-    hintKo: "프롬프트 품질이 가장 좋고 레퍼런스 이미지도 봅니다. 느리고 비쌉니다.",
-    hintEn: "Best prompt quality and it can read reference images. Slower and pricier.",
+    provider: "openrouter",
+    model: "anthropic/claude-opus-5",
+    label: "Claude Opus 5",
+    hintKo: "프롬프트 품질이 가장 좋습니다. 느리고 비쌉니다.",
+    hintEn: "Best prompt quality. Slower and pricier.",
   },
 ];
 

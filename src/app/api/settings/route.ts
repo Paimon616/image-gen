@@ -61,7 +61,6 @@ export async function PUT(req: Request) {
     runpodApiKey: keepKey(body.runpodApiKey, current.runpodApiKey),
     runpodPods: body.runpodPods ?? current.runpodPods,
     openrouterApiKey: keepKey(body.openrouterApiKey, current.openrouterApiKey),
-    falApiKey: keepKey(body.falApiKey, current.falApiKey),
     anthropicApiKey: keepKey(body.anthropicApiKey, current.anthropicApiKey),
     openaiApiKey: keepKey(body.openaiApiKey, current.openaiApiKey),
     googleApiKey: keepKey(body.googleApiKey, current.googleApiKey),

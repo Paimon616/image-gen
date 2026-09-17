@@ -20,7 +20,6 @@ import {
   Sparkles,
   Trash2,
   Upload,
-  Waypoints,
 } from "lucide-react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Button } from "@/components/ui/button";
@@ -60,7 +59,6 @@ interface ModelListState {
 
 const PROVIDER_ICONS: Record<ChatProviderId, React.ReactNode> = {
   openrouter: <Route className="h-4 w-4" />,
-  fal: <Waypoints className="h-4 w-4" />,
   anthropic: <Sparkles className="h-4 w-4" />,
   openai: <Bot className="h-4 w-4" />,
   google: <Gem className="h-4 w-4" />,
@@ -392,7 +390,6 @@ export default function SettingsPage() {
           runpodApiKey,
           runpodPods,
           openrouterApiKey: chatKeys.openrouter,
-          falApiKey: chatKeys.fal,
           anthropicApiKey: chatKeys.anthropic,
           openaiApiKey: chatKeys.openai,
           googleApiKey: chatKeys.google,
