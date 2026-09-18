@@ -67,6 +67,9 @@ export const useConsistencySheetPaimonStore = createPaimonConversationStore({
               ...(params.characterReference
                 ? [referenceAttachment(params.characterReference, "캐릭터 시트")]
                 : []),
+              ...(params.outfitReference
+                ? [referenceAttachment(params.outfitReference, "복장 참조")]
+                : []),
               ...(params.backgroundReference
                 ? [referenceAttachment(params.backgroundReference, "배경 시트")]
                 : []),

@@ -70,6 +70,7 @@ function normalizeParams(raw: Record<string, unknown>): ConsistencySheetParams {
     references,
     characterReference:
       mode === "scene" ? asDataUrl(raw.characterReference) : null,
+    outfitReference: mode === "scene" ? asDataUrl(raw.outfitReference) : null,
     backgroundReference:
       mode === "scene" ? asDataUrl(raw.backgroundReference) : null,
     workspaceId: isValidWorkspaceId(raw.workspaceId) ? raw.workspaceId : "",

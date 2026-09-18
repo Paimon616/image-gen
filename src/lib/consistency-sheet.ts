@@ -79,10 +79,13 @@ export interface ConsistencySheetParams {
   // Data URIs (data:image/...;base64,...) — reference images from the gallery,
   // a file drop, or the clipboard. Used by the two sheet modes.
   references: string[];
-  // Scene mode's two slots. They go on the wire in the same `image_urls` array
-  // as everything else — the model has no per-subject role — so the slots exist
-  // to fix the send order and to let the prompt say which is which.
+  // Scene mode's three slots. They go on the wire in the same `image_urls`
+  // array as everything else — the model has no per-subject role — so the slots
+  // exist to fix the send order and to let the prompt say which is which.
   characterReference: string | null;
+  // Optional. When filled, the outfit comes from here instead of from whatever
+  // the character reference happens to be wearing.
+  outfitReference: string | null;
   backgroundReference: string | null;
   // Workspace the finished sheet is filed under. Empty means "no workspace",
   // which is how the sheet gallery treats an unassigned file.
@@ -95,6 +98,7 @@ export const DEFAULT_CONSISTENCY_SHEET_PARAMS: ConsistencySheetParams = {
   resolution: "1k",
   references: [],
   characterReference: null,
+  outfitReference: null,
   backgroundReference: null,
   workspaceId: "",
 };
@@ -104,9 +108,11 @@ export function consistencySheetReferences(
   params: ConsistencySheetParams
 ): string[] {
   if (params.mode !== "scene") return params.references;
-  return [params.characterReference, params.backgroundReference].filter(
-    (ref): ref is string => Boolean(ref)
-  );
+  return [
+    params.characterReference,
+    params.outfitReference,
+    params.backgroundReference,
+  ].filter((ref): ref is string => Boolean(ref));
 }
 
 // The sheet layout each mode asks for. The user's own description leads the
@@ -150,15 +156,16 @@ const BACKGROUND_SHEET_TEMPLATE = [
 // The sheets it is given are reference material, so the template has to say so
 // explicitly — otherwise the model copies the turnaround grid straight through.
 // It names no art style: the look comes from the references.
+// What each subject must carry over lives in the per-slot labels below, not
+// here, because an outfit reference moves the clothes out of the character's
+// column — so this only states the format and the placement.
 const SCENE_TEMPLATE = [
   "A single vertical 9:16 image of one moment — one photograph, not a",
   "reference sheet: no grid, no panels, no multiple views, no split frames.",
   "The reference images are consistency material, not a layout to copy.",
-  "Keep the character exactly as in the character reference — the same face,",
-  "hair, body proportions and outfit — and keep the location exactly as in the",
-  "background reference — the same architecture, furniture, props and lighting.",
-  "Place that character inside that location as the description says, framed",
-  "for a vertical 9:16 composition.",
+  "Keep every referenced subject exactly as its reference shows it, and place",
+  "the character inside the location as the description says, framed for a",
+  "vertical 9:16 composition.",
   "No text, no captions, no labels, no watermark.",
 ].join(" ");
 
@@ -166,14 +173,29 @@ const SCENE_TEMPLATE = [
 // the only way to tell the model which sheet is which. The numbering has to
 // follow the order in consistencySheetReferences.
 const SCENE_REFERENCE_LABELS = {
-  character: "the character to depict (face, hair, body and outfit)",
-  background: "the location to place them in (layout, props and lighting)",
+  character:
+    "the character to depict — keep the same face, hair, body proportions and outfit",
+  // Used instead of the line above once an outfit reference is present: the
+  // clothes in the character sheet must be ignored, or the model blends the two.
+  characterWithoutOutfit:
+    "the character to depict — keep the same face, hair and body proportions, but ignore the clothes it is wearing",
+  outfit:
+    "the outfit the character wears — copy the garment shapes, cut, colours, fabric, patterns and accessories exactly, and ignore the person wearing them in this reference",
+  background:
+    "the location to place them in — keep the same architecture, furniture, props and lighting",
 } as const;
 
 /** "Reference image 1 is …; reference image 2 is …" for the filled slots. */
 function buildSceneReferenceClause(params: ConsistencySheetParams): string {
   const labels: string[] = [];
-  if (params.characterReference) labels.push(SCENE_REFERENCE_LABELS.character);
+  if (params.characterReference) {
+    labels.push(
+      params.outfitReference
+        ? SCENE_REFERENCE_LABELS.characterWithoutOutfit
+        : SCENE_REFERENCE_LABELS.character
+    );
+  }
+  if (params.outfitReference) labels.push(SCENE_REFERENCE_LABELS.outfit);
   if (params.backgroundReference) labels.push(SCENE_REFERENCE_LABELS.background);
   return labels
     .map((label, i) => `Reference image ${i + 1} is ${label}.`)

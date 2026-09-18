@@ -78,10 +78,11 @@ const T = {
   },
   sceneReferences: { ko: "참조 시트", en: "Reference sheets" },
   sceneReferencesHint: {
-    ko: "캐릭터는 인물을, 배경은 공간을 고정합니다. 둘 다 비워도 프롬프트만으로 생성됩니다.",
-    en: "The character locks the person, the background locks the place. Both are optional.",
+    ko: "캐릭터는 인물을, 복장은 옷을, 배경은 공간을 고정합니다. 복장을 넣으면 캐릭터 시트의 옷은 무시됩니다. 전부 비워도 프롬프트만으로 생성됩니다.",
+    en: "Character locks the person, outfit locks the clothes, background locks the place. With an outfit, the character sheet's clothes are ignored. All optional.",
   },
   sceneCharacter: { ko: "캐릭터 시트", en: "Character sheet" },
+  sceneOutfit: { ko: "복장 참조", en: "Outfit" },
   sceneBackground: { ko: "배경 시트", en: "Background sheet" },
   sceneEmptySlot: { ko: "클릭해서 선택", en: "Click to pick" },
   references: { ko: "레퍼런스 이미지", en: "Reference images" },
@@ -193,9 +194,13 @@ export default function ConsistencySheetPage() {
   const hydrateParams = useConsistencySheetStore((s) => s.hydrateParams);
 
   // Which slot the gallery picker is filling: the shared reference grid (many
-  // at a time) or one of scene mode's two slots.
+  // at a time) or one of scene mode's three slots.
   const [picker, setPicker] = useState<
-    null | "references" | "characterReference" | "backgroundReference"
+    | null
+    | "references"
+    | "characterReference"
+    | "outfitReference"
+    | "backgroundReference"
   >(null);
   const [error, setError] = useState<string | null>(null);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
@@ -413,7 +418,7 @@ export default function ConsistencySheetPage() {
 
           <Separator />
 
-          {/* Scene mode swaps the shared reference grid for two labeled slots:
+          {/* Scene mode swaps the shared reference grid for three labeled slots:
               the prompt names them by position, so which is which has to be
               fixed by the UI. */}
           {params.mode === "scene" ? (
@@ -424,10 +429,11 @@ export default function ConsistencySheetPage() {
               <p className="text-[10.5px] leading-tight text-muted-foreground">
                 {tr("sceneReferencesHint", language)}
               </p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {(
                   [
                     ["characterReference", "sceneCharacter"],
+                    ["outfitReference", "sceneOutfit"],
                     ["backgroundReference", "sceneBackground"],
                   ] as const
                 ).map(([slot, label]) => (
@@ -774,7 +780,7 @@ export default function ConsistencySheetPage() {
   );
 }
 
-// One of scene mode's two reference slots. Portrait-ish so it reads as a slot
+// One of scene mode's three reference slots. Portrait-ish so it reads as a slot
 // for a whole sheet rather than a thumbnail in the reference grid.
 function SceneSlot({
   lang,
