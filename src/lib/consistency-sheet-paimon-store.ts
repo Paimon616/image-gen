@@ -55,7 +55,7 @@ export const useConsistencySheetPaimonStore = createPaimonConversationStore({
           params.mode === "character"
             ? "character consistency sheet (one image: full-body turnaround front/side/back + 4 face expressions, plain white background)"
             : params.mode === "background"
-              ? "background consistency sheet (one image: ONE single location photographed from 4 camera positions in a 2x2 grid — same architecture, furniture, props and lighting in every panel, no people)"
+              ? "background consistency sheet (one image: ONE single location — interior or exterior, whichever the prompt asks for — photographed from 4 camera positions in a 2x2 grid, with the same structures, objects and lighting in every panel, no people)"
               : "a single vertical 9:16 scene still — not a sheet — placing the character from the character sheet inside the location from the background sheet",
         mode: params.mode,
         prompt: params.prompt,

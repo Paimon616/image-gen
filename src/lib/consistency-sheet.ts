@@ -128,25 +128,33 @@ const CHARACTER_SHEET_TEMPLATE = [
   "no text, no labels, no watermark. Even neutral studio lighting.",
 ].join(" ");
 
-// The background mode kept drifting into "four similar rooms" — each panel
-// redesigned the windows, the wall art and the furniture layout. So the
-// template now states the one-location rule first and spells out what must be
+// The background mode kept drifting into "four similar places" — each panel
+// redesigned the openings, the scenery and the object layout. So the template
+// states the one-location rule first and spells out what must be
 // pixel-identical, before it describes the four viewpoints.
+// It must stay indoor/outdoor agnostic: the description alone decides whether
+// the location is an interior or an exterior. An earlier version said "room",
+// "inside it", "window and door" and "furniture", which pushed every sheet
+// indoors even when the description asked for a street or a beach.
 const BACKGROUND_SHEET_TEMPLATE = [
   "Background consistency reference sheet for ONE single location.",
-  "This is one real place photographed four times: the camera moves around",
-  "inside it, nothing else changes. All four panels must be unmistakably the",
-  "same room, not four similar rooms and not four design variations.",
-  "Keep identical across all four panels: the architecture and floor plan, the",
-  "number, shape and position of every window and door, every piece of",
-  "furniture in the same place, every prop, picture, plant and decoration in",
-  "the same place, the same materials, colours, textures and wear, and the same",
-  "time of day, weather, light direction and colour temperature.",
+  "The description alone decides what kind of place it is — an interior, an",
+  "exterior, or anything in between. Do not turn an outdoor location into an",
+  "indoor one or add walls, a ceiling or a roof that the description does not",
+  "ask for, and do not move an indoor location outside.",
+  "This is one real place photographed four times: only the camera moves,",
+  "nothing else changes. All four panels must be unmistakably the same place,",
+  "not four similar places and not four design variations.",
+  "Keep identical across all four panels: the layout and scale of the place,",
+  "the number, shape and position of every structure, opening and landmark,",
+  "every object, plant and detail in the same place, the same materials,",
+  "colours, textures and wear, and the same time of day, weather, light",
+  "direction and colour temperature.",
   "Do not add, remove, move, resize or redesign anything between panels.",
   "Layout: a clean 2x2 grid on one sheet, four different camera positions of",
-  "that one place — top-left a wide establishing shot of the whole space,",
-  "top-right the reverse angle from the opposite side of the same room,",
-  "bottom-left a side angle, bottom-right a closer detail view of a corner",
+  "that one place — top-left a wide establishing shot of the whole place,",
+  "top-right the reverse angle from the opposite side of that same place,",
+  "bottom-left a side angle, bottom-right a closer detail view of something",
   "already visible in the wide shot.",
   "Empty location only: no people, no characters, no animals, no text, no",
   "labels, no panel borders, no watermark.",
