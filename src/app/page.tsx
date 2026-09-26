@@ -67,6 +67,7 @@ import {
   ScanLine,
   Server,
   Trash2,
+  Upload,
   Wrench,
   X,
 } from "lucide-react";
@@ -137,6 +138,15 @@ function canDownloadRunpodMissingFile(item: RunpodMissingFile) {
   return item.downloadable === true;
 }
 
+// A model with no download source (a self-trained LoRA, or anything fetched by
+// hand that Civitai/HuggingFace cannot serve back) can still be pushed to the pod
+// when this machine's ComfyUI models tree holds the same path — the server
+// reports that as `uploadable` (canUploadRunpodResource in runpod.ts). Downloads
+// win whenever both are possible: the pod pulls faster than this machine pushes.
+function canUploadRunpodMissingFile(item: RunpodMissingFile) {
+  return item.downloadable !== true && item.uploadable === true;
+}
+
 export default function Home() {
   const {
     params,
@@ -205,7 +215,7 @@ export default function Home() {
   const [selectedRunpodPodId, setSelectedRunpodPodId] = useState("");
   const [runpodStatus, setRunpodStatus] = useState("");
   const [runpodBusy, setRunpodBusy] =
-    useState<"" | "status" | "check" | "download" | "setup">("");
+    useState<"" | "status" | "check" | "download" | "setup" | "upload">("");
   const [runpodRunningIds, setRunpodRunningIds] = useState<Set<string>>(new Set());
   const [runpodMissingFiles, setRunpodMissingFiles] = useState<RunpodMissingFile[]>([]);
   // Custom-node packs the selected workflow needs but the pod lacks (e.g. RES4LYF
@@ -1222,11 +1232,11 @@ export default function Home() {
           podId,
           list.length === 0
             ? ko
-              ? "RunPod에 다운로드했습니다. 생성 가능합니다."
-              : "Downloaded to RunPod. Ready to generate."
+              ? "RunPod에 전송했습니다. 생성 가능합니다."
+              : "Transferred to RunPod. Ready to generate."
             : ko
-              ? `다운로드 후에도 누락 파일 ${list.length}개가 있습니다.`
-              : `${list.length} file(s) are still missing after download.`
+              ? `전송 후에도 누락 파일 ${list.length}개가 있습니다.`
+              : `${list.length} file(s) are still missing after the transfer.`
         );
       })
       .catch(() => {});
@@ -1357,8 +1367,35 @@ export default function Home() {
     [runpodPods, selectedRunpodPodId]
   );
 
+  // Pushes local-only models to the pod through the same background queue the
+  // downloads use, so an upload survives leaving this page and shows up in the
+  // Download Manager alongside everything else.
+  const uploadRunpodMissingFiles = useCallback(
+    async (items: RunpodMissingFile[]) => {
+      if (!selectedRunpodPodId || items.length === 0) return;
+
+      setRunpodStatus("");
+      try {
+        await startRunpodDownload(
+          selectedRunpodPodId,
+          items.map((item) => ({
+            path: item.path,
+            resource: item.resource,
+            kind: "upload" as const,
+          })),
+          { ko }
+        );
+      } catch (error) {
+        setRunpodStatus(
+          error instanceof Error ? error.message : "RunPod upload failed"
+        );
+      }
+    },
+    [ko, selectedRunpodPodId, startRunpodDownload]
+  );
+
   const runRunpodAction = useCallback(
-    async (action: "status" | "check" | "download" | "setup") => {
+    async (action: "status" | "check" | "download" | "setup" | "upload") => {
       // Note: a background download no longer blocks these actions. File checks
       // are read-only and safe mid-download, and the download queue appends new
       // files to the running batch, so status/check/download stay usable.
@@ -1422,10 +1459,18 @@ export default function Home() {
 
         if (action === "check") {
           const missing = (await checkRunpodFiles()) ?? [];
+          // Which button to point at depends on what the missing files support:
+          // an upload-only set (self-trained LoRAs) has nothing to download.
+          const onlyUploads =
+            missing.length > 0 &&
+            !missing.some((item) => canDownloadRunpodMissingFile(item)) &&
+            missing.some((item) => canUploadRunpodMissingFile(item));
           setRunpodStatus(
             missing.length === 0
               ? ko ? "필요한 모델 파일이 모두 있습니다. 생성 가능합니다." : "All required files are present. Ready to generate."
-              : ko ? `누락 파일 ${missing.length}개. 다운로드 버튼을 누르세요.` : `${missing.length} missing file(s). Click Download.`
+              : onlyUploads
+                ? ko ? `누락 파일 ${missing.length}개. 업로드 버튼을 누르세요.` : `${missing.length} missing file(s). Click Upload.`
+                : ko ? `누락 파일 ${missing.length}개. 다운로드 버튼을 누르세요.` : `${missing.length} missing file(s). Click Download.`
           );
         }
 
@@ -1454,6 +1499,21 @@ export default function Home() {
             { ko }
           );
         }
+
+        if (action === "upload") {
+          const uploadable = runpodMissingFiles.filter((item) =>
+            canUploadRunpodMissingFile(item)
+          );
+          if (uploadable.length === 0) {
+            setRunpodStatus(
+              ko
+                ? "이 PC에서 업로드할 수 있는 누락 파일이 없습니다."
+                : "No missing files can be uploaded from this machine."
+            );
+            return;
+          }
+          await uploadRunpodMissingFiles(uploadable);
+        }
       } catch (error) {
         setRunpodStatus(error instanceof Error ? error.message : "RunPod action failed");
       } finally {
@@ -1471,6 +1531,7 @@ export default function Home() {
       selectedRunpodPodId,
       startRunpodDownload,
       setRunpodDownloadMessage,
+      uploadRunpodMissingFiles,
     ]
   );
 
@@ -1949,26 +2010,47 @@ export default function Home() {
                       <span className="text-xs font-semibold text-destructive">
                         {ko ? "RunPod 누락 파일" : "Missing on RunPod"}
                       </span>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="h-7 gap-1 px-2 text-[11px]"
-                        disabled={
-                          Boolean(runpodBusy) ||
-                          !runpodMissingFiles.some(
-                            (item) => canDownloadRunpodMissingFile(item)
-                          )
-                        }
-                        onClick={() => void runRunpodAction("download")}
-                      >
-                        {runpodBusy === "download" ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <DownloadCloud className="h-3.5 w-3.5" />
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        {runpodMissingFiles.some((item) =>
+                          canUploadRunpodMissingFile(item)
+                        ) && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-7 gap-1 px-2 text-[11px]"
+                            disabled={Boolean(runpodBusy)}
+                            onClick={() => void runRunpodAction("upload")}
+                          >
+                            {runpodBusy === "upload" ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Upload className="h-3.5 w-3.5" />
+                            )}
+                            {ko ? "업로드" : "Upload"}
+                          </Button>
                         )}
-                        {ko ? "다운로드" : "Download"}
-                      </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1 px-2 text-[11px]"
+                          disabled={
+                            Boolean(runpodBusy) ||
+                            !runpodMissingFiles.some(
+                              (item) => canDownloadRunpodMissingFile(item)
+                            )
+                          }
+                          onClick={() => void runRunpodAction("download")}
+                        >
+                          {runpodBusy === "download" ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <DownloadCloud className="h-3.5 w-3.5" />
+                          )}
+                          {ko ? "다운로드" : "Download"}
+                        </Button>
+                      </div>
                     </div>
                     <div className="space-y-1">
                       {runpodMissingFiles.map((item) => {
@@ -1977,6 +2059,7 @@ export default function Home() {
                               runpodDownloadEntryId(selectedRunpodPodId, item.path)
                             ]
                           : undefined;
+                        const uploadOnly = canUploadRunpodMissingFile(item);
                         return (
                           <div
                             key={item.path}
@@ -1991,9 +2074,13 @@ export default function Home() {
                                   <Loader2 className="h-3 w-3 animate-spin" />
                                   {dl.percent !== null
                                     ? `${Math.round(dl.percent)}%`
-                                    : ko
-                                      ? "받는 중"
-                                      : "downloading"}
+                                    : uploadOnly
+                                      ? ko
+                                        ? "올리는 중"
+                                        : "uploading"
+                                      : ko
+                                        ? "받는 중"
+                                        : "downloading"}
                                 </span>
                               )}
                               {dl?.status === "complete" && (
@@ -2008,13 +2095,38 @@ export default function Home() {
                                 </span>
                               )}
                             </div>
-                            {!canDownloadRunpodMissingFile(item) && (
-                              <div className="text-[11px] text-muted-foreground">
-                                {ko
-                                  ? "다운로드 출처가 없어 자동 다운로드할 수 없습니다."
-                                  : "No download source is available."}
-                              </div>
-                            )}
+                            {!canDownloadRunpodMissingFile(item) &&
+                              (uploadOnly ? (
+                                <div className="mt-1 flex items-center justify-between gap-2">
+                                  <span className="min-w-0 flex-1 text-[11px] text-muted-foreground">
+                                    {ko
+                                      ? "다운로드 출처가 없습니다. 이 PC의 파일을 업로드하세요."
+                                      : "No download source — upload the file from this machine."}
+                                  </span>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-6 shrink-0 gap-1 px-2 text-[11px]"
+                                    disabled={
+                                      !selectedRunpodPodId ||
+                                      dl?.status === "downloading"
+                                    }
+                                    onClick={() =>
+                                      void uploadRunpodMissingFiles([item])
+                                    }
+                                  >
+                                    <Upload className="h-3 w-3" />
+                                    {ko ? "로컬 파일 업로드" : "Upload local file"}
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="text-[11px] text-muted-foreground">
+                                  {ko
+                                    ? "다운로드 출처가 없고 이 PC에도 파일이 없어 자동으로 채울 수 없습니다."
+                                    : "No download source, and the file is not on this machine either."}
+                                </div>
+                              ))}
                           </div>
                         );
                       })}
@@ -2025,8 +2137,8 @@ export default function Home() {
                   <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     {ko
-                      ? "다운로드가 백그라운드에서 진행 중입니다. "
-                      : "Downloading in the background. "}
+                      ? "파일 전송이 백그라운드에서 진행 중입니다. "
+                      : "Transferring files in the background. "}
                     <Link
                       href="/downloads"
                       className="font-semibold text-primary underline-offset-2 hover:underline"
