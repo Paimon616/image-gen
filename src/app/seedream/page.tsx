@@ -1,8 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  Check,
   Download,
+  FolderMinus,
+  FolderPlus,
+  FolderX,
   ImagePlus,
   Images as ImagesIcon,
   Loader2,
@@ -15,6 +26,8 @@ import {
   X,
 } from "lucide-react";
 import { AppSidebar } from "@/components/app-sidebar";
+import { WorkspaceBar } from "@/components/workspace-bar";
+import { WorkspacePicker } from "@/components/workspace-picker";
 import {
   ImageLibraryPicker,
   ImageLightbox,
@@ -23,8 +36,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
-import { useStore } from "@/lib/store";
+import { imageMatchesWorkspace, useStore } from "@/lib/store";
 import {
   resolveSeedreamModel,
   seedreamSizeLabel,
@@ -45,10 +59,13 @@ import type { GeneratedImage } from "@/lib/types";
 // inside one request body.
 const MAX_IMAGE_DIM = 1536;
 
-// How far back the result strip looks through the gallery feed. Seedream
-// renders are ordinary gallery images, so they are filtered out of the newest
-// page rather than listed from a folder of their own.
-const RESULT_SCAN_LIMIT = 72;
+// Seedream renders are ordinary gallery images, so they are listed from the
+// gallery feed narrowed to their `seedream/<id>` model, page by page.
+const SEEDREAM_MODEL_PREFIX = "seedream/";
+const RESULT_PAGE_SIZE = 72;
+
+const THUMBNAIL_MIN_WIDTH = 160;
+const THUMBNAIL_MAX_WIDTH = 480;
 
 type Lang = "ko" | "en";
 
@@ -90,7 +107,7 @@ const T = {
     en: "Renders are saved into the main image gallery and filed under this workspace.",
   },
   generate: { ko: "이미지 생성", en: "Generate" },
-  galleryTitle: { ko: "생성 결과", en: "Results" },
+  galleryTitle: { ko: "갤러리", en: "Gallery" },
   galleryHint: {
     ko: "시드림으로 만든 최근 이미지입니다. 전체는 이미지 생성 갤러리에서 볼 수 있습니다.",
     en: "Recent Seedream renders. All of them also live in the main image gallery.",
@@ -100,6 +117,23 @@ const T = {
     en: "Nothing yet. Write a prompt on the left and generate.",
   },
   refresh: { ko: "새로고침", en: "Refresh" },
+  multiSelect: { ko: "다중선택", en: "Multi-select" },
+  selectionDone: { ko: "선택 종료", en: "Done" },
+  selectAll: { ko: "전체 선택", en: "Select all" },
+  deselectAll: { ko: "전체 해제", en: "Deselect all" },
+  batchWorkspace: { ko: "일괄 작업 워크스페이스", en: "Batch workspace" },
+  wsAdd: { ko: "추가", en: "Add" },
+  wsRemove: { ko: "제거", en: "Remove" },
+  wsClear: { ko: "워크스페이스 비우기", en: "Clear workspaces" },
+  wsClearHint: {
+    ko: "선택한 이미지를 모든 워크스페이스에서 제외합니다",
+    en: "Remove selected images from every workspace",
+  },
+  zipHint: {
+    ko: "선택한 이미지를 zip으로 묶어 다운로드합니다",
+    en: "Bundles the selected images into a zip download",
+  },
+  thumbWidth: { ko: "썸네일 너비", en: "Thumbnail width" },
   delete: { ko: "삭제", en: "Delete" },
   download: { ko: "다운로드", en: "Download" },
   reusePrompt: { ko: "프롬프트 재사용", en: "Reuse prompt" },
@@ -165,6 +199,11 @@ export default function SeedreamPage() {
 
   const workspaces = useStore((s) => s.workspaces);
   const fetchWorkspaces = useStore((s) => s.fetchWorkspaces);
+  // The workspace filter is the image gallery's own: Seedream renders are
+  // ordinary gallery images, so both screens browse the same workspaces.
+  const activeWorkspaceId = useStore((s) => s.activeWorkspaceId);
+  const setImageWorkspace = useStore((s) => s.setImageWorkspace);
+  const setImageWorkspaces = useStore((s) => s.setImageWorkspaces);
 
   // Non-fatal feedback from the last finished run (e.g. references that were
   // too small to send) lives in the store, because the run keeps streaming
@@ -175,6 +214,14 @@ export default function SeedreamPage() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
+  const [thumbnailWidth, setThumbnailWidth] = useState(240);
+  const [gallerySelectionMode, setGallerySelectionMode] = useState(false);
+  const [selectedImageIds, setSelectedImageIds] = useState<Set<string>>(
+    () => new Set()
+  );
+  const [batchWorkspaceId, setBatchWorkspaceId] = useState("");
+  const [batchActionBusy, setBatchActionBusy] = useState(false);
+  const [batchDownloadBusy, setBatchDownloadBusy] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const model = useMemo(() => resolveSeedreamModel(params.model), [params.model]);
@@ -187,20 +234,37 @@ export default function SeedreamPage() {
     void fetchWorkspaces();
   }, [fetchWorkspaces]);
 
-  const loadImages = useCallback(() => {
-    fetch(`/api/images?limit=${RESULT_SCAN_LIMIT}`, { cache: "no-store" })
-      .then((r) => r.json())
-      .then((data) => {
+  const loadImages = useCallback(async () => {
+    const loaded: GeneratedImage[] = [];
+    let cursor: number | null = 0;
+    try {
+      while (cursor !== null) {
+        const query: URLSearchParams = new URLSearchParams({
+          model: SEEDREAM_MODEL_PREFIX,
+          limit: String(RESULT_PAGE_SIZE),
+          cursor: String(cursor),
+        });
+        if (activeWorkspaceId) query.set("workspaceId", activeWorkspaceId);
+        const data: { images?: unknown; nextCursor?: unknown } = await fetch(
+          `/api/images?${query.toString()}`,
+          {
+            cache: "no-store",
+          }
+        ).then((r) => r.json());
         if (!Array.isArray(data?.images)) return;
-        setImages(
-          (data.images as GeneratedImage[]).filter(isSeedreamImage)
-        );
-      })
-      .catch(() => {});
-  }, [setImages]);
+        loaded.push(...(data.images as GeneratedImage[]));
+        cursor = typeof data.nextCursor === "number" ? data.nextCursor : null;
+      }
+    } catch {
+      return;
+    }
+    // A workspace switch while this was in flight makes it stale.
+    if (useStore.getState().activeWorkspaceId !== activeWorkspaceId) return;
+    setImages(loaded.filter(isSeedreamImage));
+  }, [activeWorkspaceId, setImages]);
 
   useEffect(() => {
-    loadImages();
+    void loadImages();
   }, [loadImages]);
 
   const patch = useCallback(
@@ -268,6 +332,234 @@ export default function SeedreamPage() {
     },
     [language, setImages, fetchWorkspaces]
   );
+
+  // Fresh renders are prepended whatever the filter, so the grid re-applies it.
+  const visibleImages = useMemo(
+    () =>
+      images.filter((image) => imageMatchesWorkspace(image, activeWorkspaceId)),
+    [images, activeWorkspaceId]
+  );
+
+  const applyWorkspaces = useCallback(
+    (image: SeedreamImage, workspaceIds: string[]) => {
+      setImages((prev) =>
+        prev.map((v) =>
+          v.id === image.id ? { ...v, workspaces: workspaceIds } : v
+        )
+      );
+    },
+    [setImages]
+  );
+
+  // --- Gallery multi-select (mirrors the image generation screen). Only
+  // finished renders participate: pending cards have no file to act on. ----
+  const selectedImages = useMemo(
+    () => visibleImages.filter((image) => selectedImageIds.has(image.id)),
+    [visibleImages, selectedImageIds]
+  );
+  const selectedImageCount = selectedImages.length;
+  const allImagesSelected =
+    visibleImages.length > 0 && selectedImageCount === visibleImages.length;
+  const selectedBatchWorkspaceId = batchWorkspaceId || workspaces[0]?.id || "";
+
+  const toggleGallerySelectionMode = useCallback(() => {
+    setGallerySelectionMode((enabled) => {
+      if (enabled) {
+        setSelectedImageIds(new Set());
+      }
+      return !enabled;
+    });
+  }, []);
+
+  const toggleImageSelection = useCallback((image: SeedreamImage) => {
+    setSelectedImageIds((current) => {
+      const next = new Set(current);
+      if (next.has(image.id)) {
+        next.delete(image.id);
+      } else {
+        next.add(image.id);
+      }
+      return next;
+    });
+  }, []);
+
+  const selectAllImages = useCallback(() => {
+    setSelectedImageIds(new Set(visibleImages.map((image) => image.id)));
+  }, [visibleImages]);
+
+  const clearImageSelection = useCallback(() => {
+    setSelectedImageIds(new Set());
+  }, []);
+
+  // Drag-to-range selection, same as the image gallery: handlers read from
+  // refs so cards stay cheap to re-render.
+  const visibleImagesRef = useRef(visibleImages);
+  const selectedImageIdsRef = useRef(selectedImageIds);
+  useLayoutEffect(() => {
+    visibleImagesRef.current = visibleImages;
+    selectedImageIdsRef.current = selectedImageIds;
+  }, [visibleImages, selectedImageIds]);
+  const dragRef = useRef<{
+    anchor: number;
+    mode: boolean; // true = select the range, false = deselect it
+    baseline: Set<string>;
+  } | null>(null);
+  const suppressClickRef = useRef(false);
+
+  useEffect(() => {
+    const endDrag = () => {
+      dragRef.current = null;
+    };
+    window.addEventListener("pointerup", endDrag);
+    window.addEventListener("pointercancel", endDrag);
+    return () => {
+      window.removeEventListener("pointerup", endDrag);
+      window.removeEventListener("pointercancel", endDrag);
+    };
+  }, []);
+
+  const handleSelectPointerDown = useCallback((index: number) => {
+    suppressClickRef.current = false;
+    const image = visibleImagesRef.current[index];
+    if (!image) {
+      dragRef.current = null;
+      return;
+    }
+    const baseline = new Set(selectedImageIdsRef.current);
+    const mode = !baseline.has(image.id);
+    dragRef.current = { anchor: index, mode, baseline };
+  }, []);
+
+  const handleSelectPointerEnter = useCallback((index: number) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+    suppressClickRef.current = true;
+    const list = visibleImagesRef.current;
+    const lo = Math.min(drag.anchor, index);
+    const hi = Math.max(drag.anchor, index);
+    const next = new Set(drag.baseline);
+    for (let i = lo; i <= hi; i++) {
+      const id = list[i]?.id;
+      if (!id) continue;
+      if (drag.mode) next.add(id);
+      else next.delete(id);
+    }
+    setSelectedImageIds(next);
+  }, []);
+
+  const handleCardToggle = useCallback(
+    (image: SeedreamImage) => {
+      if (suppressClickRef.current) {
+        suppressClickRef.current = false;
+        return;
+      }
+      toggleImageSelection(image);
+    },
+    [toggleImageSelection]
+  );
+
+  const deleteSelectedImages = useCallback(async () => {
+    if (selectedImages.length === 0 || batchActionBusy) return;
+    if (!window.confirm(tr("deleteConfirm", language))) return;
+
+    setBatchActionBusy(true);
+    try {
+      for (const image of selectedImages) {
+        await fetch(`/api/images/${image.filename}`, { method: "DELETE" }).catch(
+          () => {}
+        );
+      }
+      const deleted = new Set(selectedImages.map((image) => image.id));
+      setImages((prev) => prev.filter((v) => !deleted.has(v.id)));
+      setSelectedImageIds(new Set());
+      await fetchWorkspaces();
+    } finally {
+      setBatchActionBusy(false);
+    }
+  }, [batchActionBusy, fetchWorkspaces, language, selectedImages, setImages]);
+
+  const updateSelectedImageWorkspace = useCallback(
+    async (assigned: boolean) => {
+      if (!selectedBatchWorkspaceId || selectedImages.length === 0) return;
+
+      setBatchActionBusy(true);
+      try {
+        for (const image of selectedImages) {
+          const next = await setImageWorkspace(
+            image,
+            selectedBatchWorkspaceId,
+            assigned
+          );
+          if (next) applyWorkspaces(image, next);
+        }
+        setSelectedImageIds(new Set());
+      } finally {
+        setBatchActionBusy(false);
+      }
+    },
+    [applyWorkspaces, selectedBatchWorkspaceId, selectedImages, setImageWorkspace]
+  );
+
+  const clearSelectedImageWorkspaces = useCallback(async () => {
+    if (selectedImages.length === 0 || batchActionBusy) return;
+
+    setBatchActionBusy(true);
+    try {
+      for (const image of selectedImages) {
+        const next = await setImageWorkspaces(image, []);
+        if (next) applyWorkspaces(image, next);
+      }
+      setSelectedImageIds(new Set());
+    } finally {
+      setBatchActionBusy(false);
+    }
+  }, [applyWorkspaces, batchActionBusy, selectedImages, setImageWorkspaces]);
+
+  const downloadSelectedImages = useCallback(async () => {
+    if (selectedImages.length === 0 || batchActionBusy || batchDownloadBusy) {
+      return;
+    }
+
+    setBatchDownloadBusy(true);
+    try {
+      const filenames = selectedImages.map((image) => image.filename);
+
+      // A single image downloads directly; several are bundled server-side
+      // into one zip.
+      if (filenames.length === 1) {
+        const a = document.createElement("a");
+        a.href = `/api/images/${filenames[0]}`;
+        a.download = filenames[0];
+        a.click();
+        return;
+      }
+
+      const res = await fetch("/api/images/zip", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filenames }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Failed to build zip archive");
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `seedream-${Date.now()}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Download failed");
+    } finally {
+      setBatchDownloadBusy(false);
+    }
+  }, [batchActionBusy, batchDownloadBusy, selectedImages]);
 
   const canGenerate = params.prompt.trim().length > 0;
 
@@ -554,23 +846,167 @@ export default function SeedreamPage() {
 
       {/* Results */}
       <main className="flex flex-1 flex-col overflow-hidden">
-        <div className="flex items-center justify-between gap-3 border-b border-border px-6 py-3">
-          <div className="min-w-0">
-            <h2 className="text-sm font-semibold">{tr("galleryTitle", language)}</h2>
-            <p className="truncate text-[11px] text-muted-foreground">
-              {tr("galleryHint", language)}
-            </p>
+        <div className="flex flex-wrap items-center justify-between gap-3 gap-y-2 border-b border-border px-6 py-3">
+          <div className="flex flex-wrap items-center gap-3 gap-y-2">
+            <h2
+              className="text-sm font-semibold"
+              title={tr("galleryHint", language)}
+            >
+              {tr("galleryTitle", language)}
+            </h2>
+            <Button
+              type="button"
+              size="sm"
+              variant={gallerySelectionMode ? "default" : "outline"}
+              onClick={toggleGallerySelectionMode}
+              className="h-8"
+            >
+              {gallerySelectionMode
+                ? tr("selectionDone", language)
+                : tr("multiSelect", language)}
+            </Button>
+            {gallerySelectionMode && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="whitespace-nowrap rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
+                  {language === "ko"
+                    ? `${selectedImageCount}개 선택`
+                    : `${selectedImageCount} selected`}
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8"
+                  onClick={
+                    allImagesSelected ? clearImageSelection : selectAllImages
+                  }
+                  disabled={visibleImages.length === 0}
+                >
+                  {allImagesSelected
+                    ? tr("deselectAll", language)
+                    : tr("selectAll", language)}
+                </Button>
+                <select
+                  value={selectedBatchWorkspaceId}
+                  onChange={(event) => setBatchWorkspaceId(event.target.value)}
+                  className="h-8 max-w-44 rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
+                  disabled={workspaces.length === 0 || batchActionBusy}
+                  aria-label={tr("batchWorkspace", language)}
+                >
+                  {workspaces.length === 0 ? (
+                    <option value="">{tr("noWorkspace", language)}</option>
+                  ) : (
+                    workspaces.map((workspace) => (
+                      <option key={workspace.id} value={workspace.id}>
+                        {workspace.name}
+                      </option>
+                    ))
+                  )}
+                </select>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5"
+                  onClick={() => void updateSelectedImageWorkspace(true)}
+                  disabled={
+                    batchActionBusy ||
+                    !selectedBatchWorkspaceId ||
+                    selectedImageCount === 0
+                  }
+                >
+                  <FolderPlus className="h-3.5 w-3.5" />
+                  {tr("wsAdd", language)}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5"
+                  onClick={() => void updateSelectedImageWorkspace(false)}
+                  disabled={
+                    batchActionBusy ||
+                    !selectedBatchWorkspaceId ||
+                    selectedImageCount === 0
+                  }
+                >
+                  <FolderMinus className="h-3.5 w-3.5" />
+                  {tr("wsRemove", language)}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5"
+                  onClick={() => void clearSelectedImageWorkspaces()}
+                  disabled={batchActionBusy || selectedImageCount === 0}
+                  title={tr("wsClearHint", language)}
+                >
+                  <FolderX className="h-3.5 w-3.5" />
+                  {tr("wsClear", language)}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5"
+                  onClick={() => void downloadSelectedImages()}
+                  disabled={
+                    batchActionBusy ||
+                    batchDownloadBusy ||
+                    selectedImageCount === 0
+                  }
+                  title={
+                    selectedImageCount > 1 ? tr("zipHint", language) : undefined
+                  }
+                >
+                  {batchDownloadBusy ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Download className="h-3.5 w-3.5" />
+                  )}
+                  {tr("download", language)}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="destructive"
+                  className="h-8 gap-1.5"
+                  onClick={() => void deleteSelectedImages()}
+                  disabled={batchActionBusy || selectedImageCount === 0}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  {tr("delete", language)}
+                </Button>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <span className="whitespace-nowrap text-xs text-muted-foreground">
-              {images.length}
+              {tr("thumbWidth", language)}
+            </span>
+            <Slider
+              value={[thumbnailWidth]}
+              onValueChange={(value) =>
+                setThumbnailWidth(Array.isArray(value) ? value[0] : value)
+              }
+              min={THUMBNAIL_MIN_WIDTH}
+              max={THUMBNAIL_MAX_WIDTH}
+              step={10}
+              style={{ width: "110px" }}
+            />
+            <span className="w-8 text-right font-mono text-xs tabular-nums">
+              {thumbnailWidth}
+            </span>
+            <span className="whitespace-nowrap text-xs text-muted-foreground">
+              {visibleImages.length}
               {tr("count", language)}
             </span>
             <Button
               type="button"
               size="icon-sm"
               variant="outline"
-              onClick={loadImages}
+              onClick={() => void loadImages()}
               aria-label={tr("refresh", language)}
               title={tr("refresh", language)}
             >
@@ -579,8 +1015,9 @@ export default function SeedreamPage() {
           </div>
         </div>
 
+        <WorkspaceBar onDownloaded={() => void loadImages()} />
         <div className="flex-1 overflow-y-auto p-6">
-          {pending.length === 0 && images.length === 0 ? (
+          {pending.length === 0 && visibleImages.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-muted-foreground">
               <Palette className="h-10 w-10 opacity-40" />
               <p className="max-w-xs text-sm">{tr("empty", language)}</p>
@@ -590,7 +1027,9 @@ export default function SeedreamPage() {
               className="grid gap-4"
               style={{
                 gridTemplateColumns:
-                  "repeat(auto-fill, minmax(min(100%, 240px), 1fr))",
+                  "repeat(auto-fill, minmax(min(100%, " +
+                  thumbnailWidth +
+                  "px), 1fr))",
               }}
             >
               {pending.map((card) => (
@@ -606,11 +1045,20 @@ export default function SeedreamPage() {
                   onDismiss={() => removePending(card.id)}
                 />
               ))}
-              {images.map((image) => (
+              {visibleImages.map((image, index) => (
                 <ResultCard
                   key={image.id}
                   lang={language}
                   image={image}
+                  index={index}
+                  selectionMode={gallerySelectionMode}
+                  selected={selectedImageIds.has(image.id)}
+                  onToggleSelect={handleCardToggle}
+                  onSelectPointerDown={handleSelectPointerDown}
+                  onSelectPointerEnter={handleSelectPointerEnter}
+                  onWorkspacesChange={(workspaceIds) =>
+                    applyWorkspaces(image, workspaceIds)
+                  }
                   onZoom={() => setZoomImage(image.url)}
                   onDelete={() => void deleteImage(image)}
                   onReusePrompt={() => {
@@ -718,12 +1166,26 @@ function PendingCard({
 function ResultCard({
   lang,
   image,
+  index,
+  selectionMode,
+  selected,
+  onToggleSelect,
+  onSelectPointerDown,
+  onSelectPointerEnter,
+  onWorkspacesChange,
   onZoom,
   onDelete,
   onReusePrompt,
 }: {
   lang: Lang;
   image: SeedreamImage;
+  index: number;
+  selectionMode: boolean;
+  selected: boolean;
+  onToggleSelect: (image: SeedreamImage) => void;
+  onSelectPointerDown: (index: number) => void;
+  onSelectPointerEnter: (index: number) => void;
+  onWorkspacesChange: (workspaceIds: string[]) => void;
   onZoom: () => void;
   onDelete: () => void;
   onReusePrompt: () => void;
@@ -738,11 +1200,53 @@ function ResultCard({
     .join(" · ");
 
   return (
-    <div className="group overflow-hidden rounded-lg border border-border bg-card/60">
+    <div
+      className={cn(
+        "group relative overflow-hidden rounded-lg border border-border bg-card/60",
+        selected && "border-primary ring-2 ring-primary/50",
+        selectionMode && "cursor-pointer select-none"
+      )}
+      onPointerDown={(event) => {
+        if (!selectionMode) return;
+        if (event.button !== 0) return;
+
+        const target = event.target as HTMLElement;
+        if (target.closest("a,input,select,textarea")) return;
+
+        event.preventDefault();
+        onSelectPointerDown(index);
+      }}
+      onPointerEnter={() => {
+        if (!selectionMode) return;
+        onSelectPointerEnter(index);
+      }}
+      onClick={(event) => {
+        if (!selectionMode) return;
+
+        const target = event.target as HTMLElement;
+        if (target.closest("a,input,select,textarea")) return;
+
+        onToggleSelect(image);
+      }}
+    >
+      {selectionMode && (
+        <div className="pointer-events-none absolute left-2 top-2 z-30 flex h-7 w-7 items-center justify-center rounded-md border border-white/70 bg-black/55 text-white shadow-sm">
+          {selected && <Check className="h-4 w-4" />}
+        </div>
+      )}
+      {/* The same workspaces as the image gallery. */}
+      {!selectionMode && (
+        <div className="absolute right-2 top-2 z-20 shadow-md">
+          <WorkspacePicker image={image} onChange={onWorkspacesChange} />
+        </div>
+      )}
       <button
         type="button"
-        onClick={onZoom}
-        className="block aspect-square w-full cursor-zoom-in overflow-hidden bg-muted"
+        onClick={selectionMode ? undefined : onZoom}
+        className={cn(
+          "block aspect-square w-full overflow-hidden bg-muted",
+          !selectionMode && "cursor-zoom-in"
+        )}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -764,7 +1268,9 @@ function ResultCard({
             {image.timestamp ? new Date(image.timestamp).toLocaleDateString() : ""}
           </span>
         </div>
-        <div className="flex gap-1.5">
+        {/* In selection mode the whole card is the selection surface, so its
+            own actions step aside. */}
+        <div className={cn("flex gap-1.5", selectionMode && "invisible")}>
           <Button
             type="button"
             size="xs"
