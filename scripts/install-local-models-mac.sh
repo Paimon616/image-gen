@@ -6,7 +6,7 @@
 #   image  Hassaku XL (Illustrious) + Detailer IL / Eye Enhancer / HandPatch LoRA,
 #          PuLID + InsightFace antelopev2, ADetailer face bbox
 #   krea2  Krea2 Turbo bf16 + Qwen3-VL 4B bf16 encoder + Identity Edit LoRA +
-#          Refusal-Reduction LoRA, More Dynamic Poses LoRA, Qwen-Image VAE,
+#          Refusal-Reduction / More Dynamic Poses / Camera Angles LoRA, Qwen-Image VAE,
 #          node comfyui-krea2edit
 #
 # Apple Silicon (MPS) cannot load fp8 weights, so Krea2 and its encoder are the
@@ -55,6 +55,7 @@ krea2|vae/qwen_image_vae.safetensors|$HF/Comfy-Org/Krea-2/resolve/main/vae/qwen_
 krea2|loras/krea2_identity_edit_v1_2.safetensors|$CIVITAI/3139172|1828256432
 krea2|loras/Capitan01R_Krea2_TextFusion_Refusal_Reduction_v2_updated.safetensors|$CIVITAI/3416236|30354320
 krea2|loras/More_Dynamic_Poses_Krea2_000002500.safetensors|$CIVITAI/3296632|228587800
+krea2|loras/CameraAngles_Krea2_v2.safetensors|$CIVITAI/3432735|228587224
 "
 
 # group|name|repo|pinned commit
