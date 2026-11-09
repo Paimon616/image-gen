@@ -271,13 +271,45 @@ export function forgetGpuWorkerProbe(workerId: string) {
   pool.probes.delete(workerId);
 }
 
+export interface GpuWorkerDownload {
+  path: string;
+  downloaded: number;
+  total: number | null;
+  percent: number | null;
+  state: "downloading" | "done" | "error" | "paused";
+  bytesPerSec?: number | null;
+  error?: string;
+}
+
+/** The worker kit's model helper runs on :3000 next to ComfyUI :8188. */
+function helperUrlForWorker(worker: GpuWorkerConfig) {
+  return worker.url.replace(/:8188$/, ":3000");
+}
+
+/** Model downloads on the worker, including ones started elsewhere. */
+async function fetchWorkerDownloads(worker: GpuWorkerConfig): Promise<GpuWorkerDownload[] | null> {
+  try {
+    const data = await fetchJson<{ downloads?: GpuWorkerDownload[] }>(
+      `${helperUrlForWorker(worker)}/api/runpod/helper/downloads`
+    );
+    return Array.isArray(data.downloads) ? data.downloads : [];
+  } catch {
+    // Helper down, or an older kit without /downloads.
+    return null;
+  }
+}
+
 export async function getGpuWorkerStatuses() {
   const workers = await getGpuWorkers();
   return Promise.all(
-    workers.map(async (worker) => ({
-      ...worker,
-      reserved: pool.reserved.get(worker.id) ?? 0,
-      probe: worker.enabled ? await probeGpuWorker(worker, { fresh: true }) : null,
-    }))
+    workers.map(async (worker) => {
+      const probe = worker.enabled ? await probeGpuWorker(worker, { fresh: true }) : null;
+      return {
+        ...worker,
+        reserved: pool.reserved.get(worker.id) ?? 0,
+        probe,
+        downloads: probe?.online ? await fetchWorkerDownloads(worker) : null,
+      };
+    })
   );
 }

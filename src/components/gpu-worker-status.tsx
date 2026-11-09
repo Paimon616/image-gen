@@ -26,6 +26,65 @@ interface WorkerStatus {
     vramTotal?: number;
     error?: string;
   } | null;
+  downloads: WorkerDownload[] | null;
+}
+
+interface WorkerDownload {
+  path: string;
+  downloaded: number;
+  total: number | null;
+  percent: number | null;
+  state: "downloading" | "done" | "error" | "paused";
+  bytesPerSec?: number | null;
+  error?: string;
+}
+
+function formatBytes(bytes: number) {
+  if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(2)}GB`;
+  if (bytes >= 1024 ** 2) return `${(bytes / 1024 ** 2).toFixed(0)}MB`;
+  return `${Math.round(bytes / 1024)}KB`;
+}
+
+function DownloadRow({ item, ko }: { item: WorkerDownload; ko: boolean }) {
+  const name = item.path.split("/").pop() ?? item.path;
+  const size = item.total
+    ? `${formatBytes(item.downloaded)} / ${formatBytes(item.total)}`
+    : formatBytes(item.downloaded);
+  const speed =
+    item.state === "downloading" && item.bytesPerSec
+      ? ` · ${formatBytes(item.bytesPerSec)}/s`
+      : "";
+  const label =
+    item.state === "done"
+      ? ko ? "완료" : "done"
+      : item.state === "error"
+        ? ko ? "실패" : "failed"
+        : item.state === "paused"
+          ? ko ? "중단됨 (다시 받으면 이어받기)" : "paused (resumes on next download)"
+          : item.percent != null
+            ? `${item.percent}%`
+            : ko ? "받는 중" : "downloading";
+  return (
+    <li className="space-y-0.5">
+      <div className="flex justify-between gap-2">
+        <span className="truncate" title={item.path}>{name}</span>
+        <span className="shrink-0 text-muted-foreground">{label}</span>
+      </div>
+      {item.state !== "done" && (
+        <div className="h-1 overflow-hidden rounded bg-muted">
+          <div
+            className={`h-full ${item.state === "error" ? "bg-destructive" : "bg-primary"}`}
+            style={{ width: `${item.percent ?? 0}%` }}
+          />
+        </div>
+      )}
+      <div className="text-[10px] text-muted-foreground">
+        {size}
+        {speed}
+        {item.error ? ` · ${item.error}` : ""}
+      </div>
+    </li>
+  );
 }
 
 const POLL_MS = 5_000;
@@ -197,6 +256,24 @@ export function GpuWorkerStatus({
           );
         })}
       </ul>
+
+      {workers.some((worker) => worker.downloads && worker.downloads.length > 0) && (
+        <div className="space-y-1.5 border-t border-border pt-2">
+          <span className="text-muted-foreground">
+            {ko ? "워커 다운로드 (5초마다 갱신)" : "Worker downloads (refreshes every 5s)"}
+          </span>
+          {workers
+            .filter((worker) => worker.downloads && worker.downloads.length > 0)
+            .map((worker) => (
+              <ul key={worker.id} className="space-y-1.5">
+                {workers.length > 1 && <li className="font-medium">{worker.label}</li>}
+                {worker.downloads!.map((item) => (
+                  <DownloadRow key={item.path} item={item} ko={ko} />
+                ))}
+              </ul>
+            ))}
+        </div>
+      )}
 
       {checkWorkerId && (
         <div className="space-y-1.5 border-t border-border pt-2">

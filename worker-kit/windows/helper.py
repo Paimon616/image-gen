@@ -28,6 +28,57 @@ CHUNK = 1024 * 1024
 
 MODELS_DIR = ""
 CATALOG_LOCK = threading.Lock()
+# In-flight downloads, keyed by relative model path, so anyone can see the
+# percent via GET /api/runpod/helper/downloads (not only the caller streaming it).
+DOWNLOADS = {}
+DOWNLOADS_LOCK = threading.Lock()
+
+
+def _relative(target):
+    return os.path.relpath(target, MODELS_DIR).replace("\\", "/")
+
+
+def _track(target, done, total, state="downloading", error=""):
+    with DOWNLOADS_LOCK:
+        entry = DOWNLOADS.setdefault(_relative(target), {"startedAt": time.time()})
+        entry.update({
+            "path": _relative(target),
+            "downloaded": done,
+            "total": total,
+            "percent": min(100, round(done * 100 / total)) if total else None,
+            "state": state,
+            "error": error,
+            "updatedAt": time.time(),
+        })
+        # Forget finished entries after 10 minutes.
+        cutoff = time.time() - 600
+        for key in [k for k, v in DOWNLOADS.items() if v["state"] != "downloading" and v["updatedAt"] < cutoff]:
+            del DOWNLOADS[key]
+
+
+def downloads_snapshot():
+    with DOWNLOADS_LOCK:
+        items = [dict(v) for v in DOWNLOADS.values()]
+    now = time.time()
+    for item in items:
+        elapsed = max(1e-6, now - item["startedAt"])
+        item["bytesPerSec"] = int(item["downloaded"] / elapsed) if item["state"] == "downloading" else None
+    # Partial files left by an interrupted download (sleep, network drop):
+    # these resume from their size on the next download request.
+    known = {item["path"] for item in items}
+    for root, _dirs, files in os.walk(MODELS_DIR):
+        for name in files:
+            if name.endswith(".download"):
+                rel = _relative(os.path.join(root, name[: -len(".download")]))
+                if rel not in known:
+                    items.append({
+                        "path": rel,
+                        "downloaded": os.path.getsize(os.path.join(root, name)),
+                        "total": None,
+                        "percent": None,
+                        "state": "paused",
+                    })
+    return items
 
 
 def model_path(value):
@@ -78,6 +129,24 @@ _opener = urllib.request.build_opener(
 
 
 def download_to_file(target, url, token, on_progress):
+    def report(done, total):
+        _track(target, done, total)
+        on_progress(done, total)
+
+    try:
+        result = _download_to_file(target, url, token, report)
+        size = os.path.getsize(target)
+        _track(target, size, size, state="done")
+        return result
+    except Exception as error:
+        with DOWNLOADS_LOCK:
+            entry = DOWNLOADS.get(_relative(target))
+        _track(target, entry["downloaded"] if entry else 0, entry["total"] if entry else 0,
+               state="error", error=str(error))
+        raise
+
+
+def _download_to_file(target, url, token, on_progress):
     if not url.lower().startswith("https://"):
         raise ValueError("Only https downloads are allowed.")
     os.makedirs(os.path.dirname(target), exist_ok=True)
@@ -182,6 +251,8 @@ class Handler(BaseHTTPRequestHandler):
             })
         if path == "/api/runpod/helper/catalog":
             return self._json(200, {"catalog": read_catalog()})
+        if path == "/api/runpod/helper/downloads":
+            return self._json(200, {"downloads": downloads_snapshot()})
         return self._json(404, {"error": "Not found"})
 
     def do_POST(self):
@@ -241,6 +312,9 @@ class Handler(BaseHTTPRequestHandler):
         url = str(body.get("downloadUrl") or "").strip()
         if not url:
             raise ValueError("Download URL is required.")
+        rel = _relative(target)
+        start_background_download(target, url, str(body.get("token") or ""))
+
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream")
         self.send_header("Cache-Control", "no-store")
@@ -252,26 +326,78 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(("data: %s\n\n" % json.dumps(event)).encode("utf-8"))
             self.wfile.flush()
 
-        last = [0.0]
-
-        def progress(done, total):
-            now = time.time()
-            if now - last[0] < 0.5 and not (total and done >= total):
-                return
-            last[0] = now
-            send({
-                "type": "status" if total and done >= total else "progress",
-                "path": raw_target,
-                "downloaded": done,
-                "total": total,
-                "percent": min(100, round(done * 100 / total)) if total else 0,
-            })
-
+        # Report the background download until it settles. If the caller goes
+        # away (app restarted, Mac asleep), the download keeps going; only
+        # this report loop ends.
         try:
-            download_to_file(target, url, str(body.get("token") or ""), progress)
-            send({"type": "complete", "path": raw_target, "percent": 100})
-        except Exception as error:
-            send({"type": "status", "message": "Download failed: %s" % error})
+            while True:
+                with DOWNLOADS_LOCK:
+                    entry = dict(DOWNLOADS.get(rel) or {})
+                state = entry.get("state", "downloading")
+                if state == "done":
+                    send({"type": "complete", "path": raw_target, "percent": 100})
+                    return
+                if state == "error":
+                    send({"type": "status", "message": "Download failed: %s" % entry.get("error", "")})
+                    return
+                total = entry.get("total") or 0
+                done = entry.get("downloaded") or 0
+                send({
+                    "type": "progress",
+                    "path": raw_target,
+                    "downloaded": done,
+                    "total": total,
+                    "percent": min(100, round(done * 100 / total)) if total else 0,
+                })
+                time.sleep(0.5)
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, OSError):
+            return
+
+
+ACTIVE = set()
+ACTIVE_LOCK = threading.Lock()
+
+
+def start_background_download(target, url, token):
+    """Runs the download in its own thread so it survives the caller leaving.
+    A second request for a file already downloading just attaches to it."""
+    rel = _relative(target)
+    with ACTIVE_LOCK:
+        if rel in ACTIVE:
+            return
+        ACTIVE.add(rel)
+    _track(target, os.path.getsize(target + ".download") if os.path.exists(target + ".download") else 0, 0)
+
+    def run():
+        try:
+            download_to_file(target, url, token, lambda d, t: None)
+        except Exception:
+            pass  # recorded in DOWNLOADS by download_to_file
+        finally:
+            with ACTIVE_LOCK:
+                ACTIVE.discard(rel)
+
+    threading.Thread(target=run, name="download " + rel, daemon=True).start()
+
+
+def keep_awake():
+    """While the worker runs, stop Windows from going to idle sleep.
+
+    A locked screen is fine (processes keep running); sleep/hibernate is not,
+    because the GPU and network go away. This only asks Windows to stay awake
+    while this process lives (no power settings are changed) and it ends when
+    stop-worker.bat closes the helper. The display may still turn off and lock.
+    """
+    if os.name != "nt":
+        return
+    try:
+        import ctypes
+        ES_CONTINUOUS = 0x80000000
+        ES_SYSTEM_REQUIRED = 0x00000001
+        ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED)
+        print("Idle sleep blocked while the worker runs.", flush=True)
+    except Exception as error:
+        print("Could not block idle sleep: %s" % error, flush=True)
 
 
 def main():
@@ -283,6 +409,7 @@ def main():
     args = parser.parse_args()
     MODELS_DIR = os.path.abspath(args.models)
     os.makedirs(MODELS_DIR, exist_ok=True)
+    keep_awake()
     server = ThreadingHTTPServer((args.host, args.port), Handler)
     server.daemon_threads = True
     print("GPU worker helper on %s:%d, models=%s" % (args.host, args.port, MODELS_DIR), flush=True)
