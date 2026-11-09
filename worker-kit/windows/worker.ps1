@@ -219,7 +219,12 @@ function Start-Worker {
   if (-not $NoSync) {
     try { Sync-Worker } catch { Write-Warning "Sync failed: $($_.Exception.Message). Starting with the current setup." }
   }
-  New-Item -ItemType Directory -Force -Path $Data, $Logs | Out-Null
+  # --base-directory does not create its subfolders; ComfyUI crashes at startup
+  # listing a missing custom_nodes folder.
+  foreach ($sub in @("custom_nodes", "models\checkpoints", "models\loras", "models\vae", "input", "output", "user")) {
+    New-Item -ItemType Directory -Force -Path (Join-Path $Data $sub) | Out-Null
+  }
+  New-Item -ItemType Directory -Force -Path $Logs | Out-Null
   # Listen on every interface; firewall.ps1 lets only marc's Mac reach the port.
   $argsList = @(
     "-s", "`"$Core\main.py`"",
