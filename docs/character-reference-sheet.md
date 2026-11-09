@@ -28,11 +28,20 @@ LoRA는 대표 캐릭터에만 별도 학습(기존 캐릭터 LoRA 기능), 시�
 | 후보 생성 | 공용 생성 큐(`useGenerationQueueStore.enqueue`), `situationId = "__sheet__"`로 캐릭터에 연결. 생성 대상은 이미지 생성 화면 설정(로컬 / 워커 풀 / RunPod)을 따름 |
 | 확정 데이터 | `Character.referenceSheet` = `{url, filename, confirmed, enabled, prompt, seed, strength}` (`data/characters.json`) |
 | 참조 주입 | `api/generate/stream`: `characterId`가 붙은 요청에서 베타 ON + 시트 확정 + 캐릭터 스위치 ON + ComfyUI + 시트 후보 아님이면 `character_sheet_image`, `character_sheet_strength` 설정. 클라이언트가 보낸 값은 무시(서버만 결정) |
-| 워크플로 | `src/lib/comfyui.ts` `addIpAdapterSheetNodes` (SDXL 기본 그래프, PuLID 뒤): `IPAdapterModelLoader` + `CLIPVisionLoader` + `LoadImage` → `PrepImageForClipVision(pad)` → `IPAdapterAdvanced(linear, end_at 0.8)`. 네거티브에 `character sheet, reference sheet, multiple views, turnaround, expression chart` 자동 추가(시트 레이아웃 전이 방지) |
+| 워크플로 | `src/lib/comfyui.ts` `addIpAdapterNodes` + `ipAdapterReferences` (SDXL 기본 그래프, PuLID 뒤): `IPAdapterModelLoader` + `CLIPVisionLoader` + `LoadImage` → `PrepImageForClipVision(pad)` → `IPAdapterAdvanced(linear, end_at 0.8)`. 네거티브에 `character sheet, reference sheet, multiple views, turnaround, expression chart` 자동 추가(시트 레이아웃 전이 방지) |
 
 `pad` 크롭: 시트 전체(모든 뷰)를 CLIP Vision에 넣음. center 크롭이면 정면만 남음.
 PuLID(`캐릭터 이미지`)와 동시 사용 가능. 둘 다 MODEL 패치라 체인으로 연결.
 결과 이미지 메타데이터에 `character_sheet_image`가 남음(뷰어 "기준 시트 (BETA)" 썸네일).
+
+## 이미지 생성 화면
+
+- `기준 시트` 배지: Paimon 상황 선택 등으로 프롬프트가 캐릭터에 연결된 동안(큐 `characterContext`, 프롬프트 일치) 참조 이미지 영역 위에 표시. 시트 썸네일, 적용 여부, 미확정/캐릭터에서 꺼짐 상태.
+  - `적용` 스위치: 이번 생성만 끄기(`character_sheet_disabled`).
+  - 강도 슬라이더: 캐릭터 기본값 대신 쓸 값(`character_sheet_strength_override`), `기본값`으로 해제. 다른 캐릭터로 바뀌면 둘 다 초기화.
+- `스타일 참조` 슬롯(기존 `style_image`, 이전엔 워크플로 미연결)을 같은 IP-Adapter로 연결: `style transfer` 가중치 타입, center 크롭, 강도 `style_image_strength`(기본 0.8). 캐릭터 연결 불필요.
+- 둘 다 쓰면 로더(210/211) 공유, `IPAdapterAdvanced` 두 개 체인(시트 → 스타일). 노드 id는 참조마다 212+4n.
+- SDXL/Illustrious 기본 그래프만. Krea 2 / Z-Image / Anima에서는 스타일 이미지도 무시.
 
 ## 노드, 모델 요구사항
 
@@ -45,7 +54,7 @@ PuLID(`캐릭터 이미지`)와 동시 사용 가능. 둘 다 MODEL 패치라 �
 핀 위치(셋 동기 유지): `src/lib/character-sheet.ts`(`IPADAPTER_NODE_REPO`, `IPADAPTER_MODEL`, `IPADAPTER_CLIP_VISION`), `comfyui-config/custom-nodes.json`, `worker-kit/windows/custom-nodes.json`.
 
 누락 감지: 그래프 빌드 전에 `/object_info`로 노드와 파일 콤보를 확인. 없으면 큐에 넣기 전에
-`[기준 시트 BETA] ... 커스텀 노드가 없습니다` / `... 모델 파일이 없습니다: <경로>` 오류로 중단.
+`[IP-Adapter · 기준 시트 BETA] ... 커스텀 노드가 없습니다` / `... 모델 파일이 없습니다: <경로>` 오류로 중단(스타일 참조는 `[IP-Adapter · 스타일 참조]`).
 파일 선택 규칙(`pickIpAdapterFiles`): SDXL, FaceID 제외, `plus_sdxl_vit-h` 우선, ViT-H 어댑터는 ViT-H 인코더, 일반 `ip-adapter_sdxl`은 bigG 인코더.
 
 ## GPU 워커

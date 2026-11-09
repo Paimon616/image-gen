@@ -36,7 +36,9 @@ import { getRunpodCheckpointCapabilities } from "./runpod";
 import { DEFAULT_PARAMS, normalizeGenerationSeed } from "./types";
 import { censorModelFile } from "./censor-assets";
 import {
+  DEFAULT_STYLE_STRENGTH,
   SHEET_RENDER_NEGATIVE,
+  type IpAdapterFeature,
   appendUniqueTags,
   clampSheetStrength,
   ipAdapterMissingMessage,
@@ -1619,16 +1621,29 @@ export async function checkIpAdapterSheetSetup(
     : { reachable, nodeInstalled, ipadapter: picked.ipadapter, clipVision: picked.clipVision, missing: [] };
 }
 
-async function addIpAdapterSheetNodes(
+interface IpAdapterReference {
+  feature: IpAdapterFeature;
+  image: string;
+  weight: number;
+  weightType: string;
+  // "pad" keeps a whole multi-view sheet; "center" suits an ordinary picture.
+  cropPosition: string;
+  endAt: number;
+}
+
+// Wires one IPAdapterAdvanced per reference onto MODEL, sharing one adapter +
+// CLIP Vision loader. Node ids: loaders 210/211, then 212+4n per reference
+// (LoadImage, PrepImageForClipVision, IPAdapterAdvanced). PuLID owns 200–204.
+async function addIpAdapterNodes(
   workflow: Record<string, unknown>,
-  params: GenerationParams,
+  references: IpAdapterReference[],
   modelRef: [string, number],
   options?: ComfyClientOptions
 ): Promise<[string, number]> {
-  const sheet = params.character_sheet_image?.trim();
-  if (!sheet) return modelRef;
+  if (references.length === 0) return modelRef;
 
   const target = comfyTargetLabel(options);
+  const feature = references[0].feature;
   const [applyInfo, loaderInfo, clipInfo, prepInfo] = await Promise.all([
     getComfyObjectInfoEntry("IPAdapterAdvanced", options),
     getComfyObjectInfoEntry("IPAdapterModelLoader", options),
@@ -1637,20 +1652,16 @@ async function addIpAdapterSheetNodes(
   ]);
   const applyRequired = applyInfo?.input?.required;
   if (!applyRequired || !loaderInfo?.input?.required) {
-    throw new Error(ipAdapterMissingMessage("node", target));
+    throw new Error(ipAdapterMissingMessage("node", target, feature));
   }
-
   const picked = pickIpAdapterFiles(
     comfyInputComboOptions(loaderInfo.input.required["ipadapter_file"]),
     comfyInputComboOptions(clipInfo?.input?.required?.["clip_name"])
   );
   if ("missing" in picked) {
-    throw new Error(ipAdapterMissingMessage(picked.missing, target));
+    throw new Error(ipAdapterMissingMessage(picked.missing, target, feature));
   }
 
-  const image = await resolveControlNetImage(sheet, options);
-
-  // Reserved IDs next to PuLID (200–204).
   workflow["210"] = {
     class_type: "IPAdapterModelLoader",
     inputs: { ipadapter_file: picked.ipadapter },
@@ -1659,41 +1670,84 @@ async function addIpAdapterSheetNodes(
     class_type: "CLIPVisionLoader",
     inputs: { clip_name: picked.clipVision },
   };
-  workflow["212"] = { class_type: "LoadImage", inputs: { image } };
-  let imageRef: [string, number] = ["212", 0];
-  if (prepInfo?.input?.required) {
-    workflow["213"] = {
-      class_type: "PrepImageForClipVision",
-      inputs: {
-        image: imageRef,
-        interpolation: pickComfyCombo(prepInfo.input.required["interpolation"], "LANCZOS"),
-        crop_position: pickComfyCombo(prepInfo.input.required["crop_position"], "pad"),
-        sharpening: 0,
-      },
-    };
-    imageRef = ["213", 0];
-  }
 
-  const applyInputs: Record<string, unknown> = {
-    model: modelRef,
-    ipadapter: ["210", 0],
-    clip_vision: ["211", 0],
-    image: imageRef,
-    weight: clampSheetStrength(params.character_sheet_strength),
-    weight_type: pickComfyCombo(applyRequired["weight_type"], "linear"),
-    combine_embeds: pickComfyCombo(applyRequired["combine_embeds"], "concat"),
-    start_at: 0,
-    // Let the last steps run free so the scene's own lighting/detail settles.
-    end_at: 0.8,
-    embeds_scaling: pickComfyCombo(applyRequired["embeds_scaling"], "V only"),
-  };
-  for (const [name, spec] of Object.entries(applyRequired)) {
-    if (name in applyInputs) continue;
-    const fallback = comfyInputDefault(spec);
-    if (fallback !== undefined) applyInputs[name] = fallback;
+  let current = modelRef;
+  for (const [index, reference] of references.entries()) {
+    const base = 212 + index * 4;
+    const loadId = String(base);
+    const prepId = String(base + 1);
+    const applyId = String(base + 2);
+    const image = await resolveControlNetImage(reference.image, options);
+    workflow[loadId] = { class_type: "LoadImage", inputs: { image } };
+    let imageRef: [string, number] = [loadId, 0];
+    if (prepInfo?.input?.required) {
+      workflow[prepId] = {
+        class_type: "PrepImageForClipVision",
+        inputs: {
+          image: imageRef,
+          interpolation: pickComfyCombo(prepInfo.input.required["interpolation"], "LANCZOS"),
+          crop_position: pickComfyCombo(
+            prepInfo.input.required["crop_position"],
+            reference.cropPosition
+          ),
+          sharpening: 0,
+        },
+      };
+      imageRef = [prepId, 0];
+    }
+    const applyInputs: Record<string, unknown> = {
+      model: current,
+      ipadapter: ["210", 0],
+      clip_vision: ["211", 0],
+      image: imageRef,
+      weight: reference.weight,
+      weight_type: pickComfyCombo(applyRequired["weight_type"], reference.weightType),
+      combine_embeds: pickComfyCombo(applyRequired["combine_embeds"], "concat"),
+      start_at: 0,
+      end_at: reference.endAt,
+      embeds_scaling: pickComfyCombo(applyRequired["embeds_scaling"], "V only"),
+    };
+    for (const [name, spec] of Object.entries(applyRequired)) {
+      if (name in applyInputs) continue;
+      const fallback = comfyInputDefault(spec);
+      if (fallback !== undefined) applyInputs[name] = fallback;
+    }
+    workflow[applyId] = { class_type: "IPAdapterAdvanced", inputs: applyInputs };
+    current = [applyId, 0];
   }
-  workflow["214"] = { class_type: "IPAdapterAdvanced", inputs: applyInputs };
-  return ["214", 0];
+  return current;
+}
+
+// The IP-Adapter references a default-graph render carries: the character's
+// confirmed sheet (BETA, set only by the generate route) and the generator's
+// 스타일 이미지. Sheet first so identity is applied before style.
+function ipAdapterReferences(params: GenerationParams): IpAdapterReference[] {
+  const references: IpAdapterReference[] = [];
+  const sheet = params.character_sheet_image?.trim();
+  if (sheet) {
+    references.push({
+      feature: "sheet",
+      image: sheet,
+      weight: clampSheetStrength(params.character_sheet_strength),
+      weightType: "linear",
+      cropPosition: "pad",
+      // Let the last steps run free so the scene's own lighting/detail settles.
+      endAt: 0.8,
+    });
+  }
+  const style = params.style_image?.trim();
+  if (style) {
+    references.push({
+      feature: "style",
+      image: style,
+      weight: clampSheetStrength(params.style_image_strength ?? DEFAULT_STYLE_STRENGTH),
+      // SDXL style-only layers: colour, texture, rendering — not the subject.
+      weightType: "style transfer",
+      cropPosition: "center",
+      endAt: 1,
+    });
+  }
+  return references;
 }
 
 // --- Z-Image (Tongyi-MAI) ---------------------------------------------------
@@ -2225,8 +2279,8 @@ async function buildDefaultWorkflow(params: GenerationParams, options?: ComfyCli
   // Patch the identity into MODEL after LoRAs so PuLID sees the final weights and
   // every downstream consumer (base + hires KSampler, FaceDetailer) inherits it.
   modelRef = await addPulidWorkflowNodes(workflow, params, modelRef, options);
-  // BETA 기준 시트: IP-Adapter on top of PuLID (both patch MODEL; they chain).
-  modelRef = await addIpAdapterSheetNodes(workflow, params, modelRef, options);
+  // IP-Adapter (BETA 기준 시트 + 스타일 참조) on top of PuLID; all patch MODEL.
+  modelRef = await addIpAdapterNodes(workflow, ipAdapterReferences(params), modelRef, options);
 
   if (params.clip_skip > 1) {
     workflow["20"] = {

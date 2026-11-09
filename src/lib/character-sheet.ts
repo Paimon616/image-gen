@@ -176,14 +176,21 @@ export function shouldApplyReferenceSheet(input: {
   return backend === "comfyui";
 }
 
+// Applies the sheet, honouring the generator's per-render overrides
+// (character_sheet_disabled / character_sheet_strength_override). Returns the
+// params unchanged when the render opted out.
 export function applyReferenceSheet(
   params: GenerationParams,
   sheet: CharacterReferenceSheet
 ): GenerationParams {
+  if (params.character_sheet_disabled) return { ...params, character_sheet_image: null };
+  const override = params.character_sheet_strength_override;
   return {
     ...params,
     character_sheet_image: sheet.url,
-    character_sheet_strength: clampSheetStrength(sheet.strength),
+    character_sheet_strength: clampSheetStrength(
+      typeof override === "number" && Number.isFinite(override) ? override : sheet.strength
+    ),
   };
 }
 
@@ -299,28 +306,48 @@ export function pickIpAdapterFiles(
   return { ipadapter, clipVision };
 }
 
+export type IpAdapterFeature = "sheet" | "style";
+
+const FEATURE_LABEL: Record<IpAdapterFeature, { tag: string; skip: string; en: string }> = {
+  sheet: {
+    tag: "[IP-Adapter · 기준 시트 BETA]",
+    skip: "또는 이 캐릭터의 기준 시트를 끄고 생성하세요.",
+    en: "Reference sheet",
+  },
+  style: {
+    tag: "[IP-Adapter · 스타일 참조]",
+    skip: "또는 스타일 이미지를 비우고 생성하세요.",
+    en: "Style reference",
+  },
+};
+
 export function ipAdapterMissingMessage(
   what: "node" | ("ipadapter" | "clip_vision")[],
-  target: string
+  target: string,
+  feature: IpAdapterFeature = "sheet"
 ): string {
+  const label = FEATURE_LABEL[feature];
   if (what === "node") {
     return (
-      `[기준 시트 BETA] ${target}에 IP-Adapter 커스텀 노드(ComfyUI_IPAdapter_plus)가 없습니다. ` +
+      `${label.tag} ${target}에 IP-Adapter 커스텀 노드(ComfyUI_IPAdapter_plus)가 없습니다. ` +
       "로컬: npm run setup:ipadapter / GPU 워커: worker-kit 최신본으로 start-worker.bat 재실행. " +
-      "또는 이 캐릭터의 기준 시트를 끄고 생성하세요. " +
-      "(Reference sheet needs the ComfyUI_IPAdapter_plus custom node on this ComfyUI.)"
+      `${label.skip} ` +
+      `(${label.en} needs the ComfyUI_IPAdapter_plus custom node on this ComfyUI.)`
     );
   }
   const files = what
     .map((kind) => (kind === "ipadapter" ? IPADAPTER_MODEL.targetFile : IPADAPTER_CLIP_VISION.targetFile))
     .join(", ");
   return (
-    `[기준 시트 BETA] ${target}에 IP-Adapter 모델 파일이 없습니다: ${files}. ` +
+    `${label.tag} ${target}에 IP-Adapter 모델 파일이 없습니다: ${files}. ` +
     "캐릭터 스튜디오 > 기준 시트 탭의 '모델 받기'로 내려받거나 npm run setup:ipadapter 를 실행하세요. " +
-    `(Reference sheet is missing model files: ${files}.)`
+    `(${label.en} is missing model files: ${files}.)`
   );
 }
 
 export function isIpAdapterSetupError(message: string): boolean {
-  return /\[기준 시트 BETA\]/.test(message);
+  return /\[IP-Adapter · /.test(message);
 }
+
+// Style reference (generator's 스타일 이미지) IP-Adapter weight.
+export const DEFAULT_STYLE_STRENGTH = 0.8;

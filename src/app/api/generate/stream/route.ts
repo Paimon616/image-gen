@@ -195,6 +195,11 @@ export async function POST(req: NextRequest) {
     // Only this route sets the sheet reference (below); a client-sent value is
     // dropped so the beta toggle and per-character switch stay authoritative.
     character_sheet_image: null,
+    // A gallery pick is an app-relative URL; resolveControlNetImage uploads
+    // only absolute refs to the ComfyUI that runs the job.
+    style_image: rawBody.style_image?.startsWith("/api/")
+      ? new URL(rawBody.style_image, req.nextUrl.origin).toString()
+      : rawBody.style_image,
   };
   // BETA 캐릭터 기준 시트: a render linked to a sheet-confirmed character gets
   // the sheet as IP-Adapter reference. Off (beta or per-character) = unchanged.

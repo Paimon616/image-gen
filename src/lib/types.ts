@@ -27,7 +27,7 @@ export const AVAILABLE_MODELS: ModelConfig[] = [
       lora: true,
       embeddings: true,
       custom_model: true,
-      ip_adapter: false,
+      ip_adapter: true,
       face_id: true,
       negative_prompt: true,
     },
@@ -97,6 +97,13 @@ export interface GenerationParams {
   character_sheet_image?: string | null;
   // IP-Adapter weight for character_sheet_image (0–1.5, default 0.5).
   character_sheet_strength?: number;
+  // Generator-side, per-render overrides of the character's sheet settings
+  // (the route still decides whether a sheet applies at all). disabled = skip
+  // the sheet for this render; strength_override null = use the character's.
+  character_sheet_disabled?: boolean;
+  character_sheet_strength_override?: number | null;
+  // IP-Adapter weight for style_image (0–1.5, default 0.8, "style transfer").
+  style_image_strength?: number;
   source_image: string | null;
   denoise_strength: number;
   pose_reference_image: string | null;
@@ -635,6 +642,9 @@ export const DEFAULT_PARAMS: GenerationParams = {
   character_reference_strength: 0.7,
   character_sheet_image: null,
   character_sheet_strength: 0.5,
+  character_sheet_disabled: false,
+  character_sheet_strength_override: null,
+  style_image_strength: 0.8,
   source_image: null,
   denoise_strength: 0.6,
   pose_reference_image: null,

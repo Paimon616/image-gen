@@ -368,6 +368,8 @@ function normalizeParams(rawParams: Record<string, unknown>) {
     character_sheet_strength:
       numberValue(rawParams.character_sheet_strength) ??
       DEFAULT_PARAMS.character_sheet_strength,
+    style_image_strength:
+      numberValue(rawParams.style_image_strength) ?? DEFAULT_PARAMS.style_image_strength,
     source_image: stringValue(rawParams.source_image) || null,
     denoise_strength:
       numberValue(rawParams.denoise_strength ?? rawParams.denoisingStrength) ??

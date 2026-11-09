@@ -133,6 +133,21 @@ test("applyReferenceSheet sets image and clamped strength without touching the r
   assert.equal(out.character_image, "/api/images/face.png");
 });
 
+test("applyReferenceSheet honours per-render overrides", () => {
+  const off = applyReferenceSheet({ ...baseParams, character_sheet_disabled: true }, sheet);
+  assert.equal(off.character_sheet_image, null);
+  const stronger = applyReferenceSheet(
+    { ...baseParams, character_sheet_strength_override: 0.9 },
+    sheet
+  );
+  assert.equal(stronger.character_sheet_strength, 0.9);
+  const inherit = applyReferenceSheet(
+    { ...baseParams, character_sheet_strength_override: null },
+    sheet
+  );
+  assert.equal(inherit.character_sheet_strength, 0.6);
+});
+
 test("sheetCandidateSeeds are distinct", () => {
   let n = 0;
   const values = [0.1, 0.1, 0.2, 0.3, 0.3, 0.4];
@@ -211,6 +226,10 @@ test("missing messages are recognisable setup errors", () => {
   const node = ipAdapterMissingMessage("node", "로컬 ComfyUI");
   assert.ok(isIpAdapterSetupError(node));
   assert.match(node, /ComfyUI_IPAdapter_plus/);
+  assert.match(node, /기준 시트/);
+  const style = ipAdapterMissingMessage("node", "로컬 ComfyUI", "style");
+  assert.ok(isIpAdapterSetupError(style));
+  assert.match(style, /스타일 이미지를 비우고/);
   const files = ipAdapterMissingMessage(["clip_vision"], "GPU 워커");
   assert.match(files, /clip_vision\/CLIP-ViT-H-14-laion2B-s32B-b79K\.safetensors/);
   assert.equal(isIpAdapterSetupError("Some other error"), false);

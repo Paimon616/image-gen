@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as
 import Link from "next/link";
 import { imageMatchesWorkspace, useStore } from "@/lib/store";
 import { isPulidInstallableError } from "@/lib/pulid-assets";
+import { GeneratorSheetBadge } from "@/components/character-sheet-panel";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -2453,6 +2454,7 @@ export default function Home() {
           {(currentModel.supports.ip_adapter || currentModel.supports.face_id) && (
             <>
               <Separator />
+              <GeneratorSheetBadge />
               <div className="grid gap-3 xl:grid-cols-2">
                 {currentModel.supports.ip_adapter && (
                   <div>
@@ -2463,6 +2465,30 @@ export default function Home() {
                       value={params.style_image}
                       onChange={(url) => setParams({ style_image: url })}
                     />
+                    {params.style_image && (
+                      <div className="mt-2">
+                        <div className="mb-2 flex items-center justify-between">
+                          <FieldHelp
+                            label={ko ? "스타일 강도" : "Style Strength"}
+                            help={ko ? "IP-Adapter 'style transfer' 가중치. SDXL/Illustrious 전용(Krea 2·Z-Image·Anima에서는 무시). ComfyUI_IPAdapter_plus 노드와 IP-Adapter 모델 필요(npm run setup:ipadapter). 권장 0.6–1.0." : "IP-Adapter 'style transfer' weight. SDXL/Illustrious only (ignored on Krea 2, Z-Image, Anima). Needs ComfyUI_IPAdapter_plus and the IP-Adapter models (npm run setup:ipadapter). Sweet spot 0.6–1.0."}
+                          />
+                          <span className="text-xs font-mono">
+                            {(params.style_image_strength ?? 0.8).toFixed(2)}
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min={0}
+                          max={1.5}
+                          step={0.05}
+                          value={params.style_image_strength ?? 0.8}
+                          onChange={(e) =>
+                            setParams({ style_image_strength: parseFloat(e.target.value) })
+                          }
+                          className="w-full accent-primary"
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
 

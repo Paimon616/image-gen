@@ -510,3 +510,128 @@ function SheetSetupCard({
     </section>
   );
 }
+
+// Generator-page strip: shows whether the next render of the linked character
+// gets its reference sheet, with a per-render on/off and strength override.
+// The link is the queue's characterContext (set when a Paimon situation is
+// composed), valid while the prompt still matches — the same rule enqueue uses.
+export function GeneratorSheetBadge() {
+  const context = useGenerationQueueStore((s) => s.characterContext);
+  const prompt = useStore((s) => s.params.prompt);
+  const disabled = useStore((s) => s.params.character_sheet_disabled === true);
+  const override = useStore((s) => s.params.character_sheet_strength_override ?? null);
+  const setParams = useStore((s) => s.setParams);
+  const characterId =
+    context?.characterId && context.prompt === prompt ? context.characterId : null;
+
+  const [beta, setBeta] = useState(false);
+  const [character, setCharacter] = useState<Character | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/settings", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data: { betaCharacterSheet?: boolean }) => {
+        if (active) setBeta(data.betaCharacterSheet === true);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!beta || !characterId) return;
+    let active = true;
+    fetch(`/api/characters/${characterId}`, { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data: { character?: Character }) => {
+        if (active) setCharacter(data.character ?? null);
+      })
+      .catch(() => {
+        if (active) setCharacter(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [beta, characterId]);
+
+  // Overrides belong to one character: a different (or no) character resets them.
+  useEffect(() => {
+    const { params } = useStore.getState();
+    if (params.character_sheet_disabled || params.character_sheet_strength_override != null) {
+      setParams({ character_sheet_disabled: false, character_sheet_strength_override: null });
+    }
+  }, [characterId, setParams]);
+
+  if (!beta || !characterId || !character || character.id !== characterId) return null;
+  const sheet = character.referenceSheet;
+  const usable = Boolean(sheet?.confirmed && sheet.enabled);
+  const strength = override ?? sheet?.strength ?? DEFAULT_SHEET_STRENGTH;
+
+  return (
+    <div className="flex gap-3 rounded-lg border border-border bg-muted/30 p-3 text-xs">
+      {sheet?.confirmed && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={sheet.thumbnailUrl || sheet.url}
+          alt="기준 시트"
+          className="h-14 w-20 shrink-0 rounded border border-border object-cover"
+        />
+      )}
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <div className="flex items-center justify-between gap-2">
+          <span className="truncate font-medium">
+            기준 시트 <span className="text-[10px] text-primary">BETA</span> · {character.name}
+          </span>
+          {usable ? (
+            <label className="flex shrink-0 items-center gap-1.5">
+              <span className={disabled ? "text-muted-foreground" : "text-emerald-600 dark:text-emerald-400"}>
+                {disabled ? "이번 생성 끔" : "적용"}
+              </span>
+              <Switch
+                size="sm"
+                checked={!disabled}
+                onCheckedChange={(checked) => setParams({ character_sheet_disabled: !checked })}
+              />
+            </label>
+          ) : (
+            <span className="shrink-0 text-amber-600 dark:text-amber-400">
+              {sheet?.confirmed ? "캐릭터에서 꺼짐" : "미확정 — 스튜디오에서 확정"}
+            </span>
+          )}
+        </div>
+        {usable && !disabled && (
+          <div className="flex items-center gap-2">
+            <input
+              type="range"
+              min={0}
+              max={MAX_SHEET_STRENGTH}
+              step={0.05}
+              value={strength}
+              onChange={(event) =>
+                setParams({
+                  character_sheet_strength_override: clampSheetStrength(
+                    parseFloat(event.target.value)
+                  ),
+                })
+              }
+              className="w-full accent-primary"
+              aria-label="기준 시트 참조 강도"
+            />
+            <span className="w-9 shrink-0 text-right font-mono">{strength.toFixed(2)}</span>
+            {override != null && (
+              <button
+                type="button"
+                className="shrink-0 text-muted-foreground underline"
+                onClick={() => setParams({ character_sheet_strength_override: null })}
+              >
+                기본값
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
