@@ -6,21 +6,20 @@
   creates ComfyUI/ and ComfyUI/venv.
 
   Usage (from the repo root):
-    powershell -ExecutionPolicy Bypass -File scripts\install-local-models.ps1
-    powershell -ExecutionPolicy Bypass -File scripts\install-local-models.ps1 -Groups image,krea2
-    powershell -ExecutionPolicy Bypass -File scripts\install-local-models.ps1 -List
-    powershell -ExecutionPolicy Bypass -File scripts\install-local-models.ps1 -Only identity_edit
-  Or double-click install-local-models.bat in the repo root.
+    install-local-models.bat                     (double-click: image + krea2, about 28 GB)
+    install-local-models.bat -Groups image,krea2,h3
+    install-local-models.bat -List
+    install-local-models.bat -Only identity_edit
 
-  Groups:
+  Groups (default: image, krea2):
     image  Hassaku XL (Illustrious) + Detailer IL / Eye Enhancer / HandPatch LoRA,
            PuLID (face identity) + InsightFace antelopev2, ADetailer face bbox
     krea2  Krea2 Turbo + Qwen3-VL 4B encoder + Krea2 Identity Edit LoRA +
-           Refusal-Reduction LoRA, Qwen-Image VAE
+           Refusal-Reduction LoRA, Qwen-Image VAE, node comfyui-krea2edit
     anima  One obsession (Anima) checkpoint + Anima LoRAs, Qwen3 0.6B encoder
-    h3     MiniMax H3 (DaSiWa REF2VA hybrid) video + encoder/VAE + turbo LoRAs
+    h3     MiniMax H3 (DaSiWa REF2VA hybrid) video + encoder/VAE + turbo LoRAs,
+           nodes ComfyUI-DaSiWa-Nodes + ComfyUI-KJNodes
     wan    Wan 2.2 i2v 14B (high/low) + UMT5 encoder + Wan 2.1 VAE
-    nodes  comfyui-krea2edit, ComfyUI-DaSiWa-Nodes, ComfyUI-KJNodes
 
   Civitai files need CIVITAI_API_TOKEN (read from .env.local or the environment).
   Downloads resume after a drop and files that already have the right size are
@@ -29,7 +28,8 @@
 param(
   [string]$ComfyUIDir = "",
   [string]$ModelsDir = "",
-  [string[]]$Groups = @("image", "krea2", "anima", "h3", "wan", "nodes"),
+  # Default: image generation only (about 28 GB). Add anima / h3 / wan for more.
+  [string[]]$Groups = @("image", "krea2"),
   # Only files whose path contains this text, e.g. -Only identity_edit
   [string]$Only = "",
   [switch]$List,
@@ -92,11 +92,12 @@ $Models = @(
   @("wan", "vae/wan_2.1_vae.safetensors", "$HF/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors", 253815318)
 )
 
-# name, repo, pinned commit (the versions tested on the original PC)
-$Nodes = @(
-  @("comfyui-krea2edit", "https://github.com/lbouaraba/comfyui-krea2edit.git", "13ef60f"),
-  @("ComfyUI-DaSiWa-Nodes", "https://github.com/darksidewalker/ComfyUI-DaSiWa-Nodes.git", "c52b170"),
-  @("ComfyUI-KJNodes", "https://github.com/kijai/ComfyUI-KJNodes.git", "ab72eda")
+# group, name, repo, pinned commit (the versions tested on the original PC).
+# A node is installed together with the model group that needs it.
+$AllNodes = @(
+  @("krea2", "comfyui-krea2edit", "https://github.com/lbouaraba/comfyui-krea2edit.git", "13ef60f"),
+  @("h3", "ComfyUI-DaSiWa-Nodes", "https://github.com/darksidewalker/ComfyUI-DaSiWa-Nodes.git", "c52b170"),
+  @("h3", "ComfyUI-KJNodes", "https://github.com/kijai/ComfyUI-KJNodes.git", "ab72eda")
 )
 
 function Format-Size([double]$bytes) {
@@ -114,12 +115,13 @@ foreach ($m in $Models) {
   if ($Groups -contains $m[0] -and -not $selected.ContainsKey($m[1])) { $selected[$m[1]] = $m }
 }
 $selectedList = @($selected.Values | Sort-Object { $_[1] })
+$Nodes = @($AllNodes | Where-Object { $Groups -contains $_[0] -and (-not $Only -or $_[1] -like "*$Only*") } | ForEach-Object { , @($_[1], $_[2], $_[3]) })
 [int64]$total = 0
 foreach ($m in $selectedList) { $total += [int64]$m[3] }
 
 if ($List) {
   foreach ($m in $selectedList) { "{0,-6} {1,10}  {2}" -f $m[0], (Format-Size $m[3]), $m[1] }
-  if ($Groups -contains "nodes") { foreach ($n in $Nodes) { "nodes  {0,10}  custom_nodes/{1}" -f "", $n[0] } }
+  foreach ($n in $Nodes) { "node   {0,10}  custom_nodes/{1}" -f "", $n[0] }
   "Total: $(Format-Size $total)"
   exit 0
 }
@@ -193,7 +195,7 @@ foreach ($m in $selectedList) {
   }
 }
 
-if ($Groups -contains "nodes") {
+if ($Nodes.Count -gt 0) {
   $nodesDir = Join-Path $ComfyUIDir "custom_nodes"
   $python = Join-Path $ComfyUIDir "venv\Scripts\python.exe"
   if (-not (Test-Path $python)) { throw "ComfyUI venv not found at $python. Run scripts\setup-comfyui.ps1 first." }
