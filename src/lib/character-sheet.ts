@@ -12,6 +12,7 @@
 
 import type {
   CharacterReferenceSheet,
+  CharacterReferenceSheetCrop,
   GenerationParams,
   LoraConfig,
 } from "./types.ts";
@@ -128,6 +129,52 @@ export function clampSheetStrength(value: unknown): number {
 const SHEET_URL_PATTERN = /^\/api\/images\/[A-Za-z0-9._-]+$/;
 const SHEET_FILENAME_PATTERN = /^[A-Za-z0-9._-]+\.(png|jpe?g|webp)$/i;
 
+function unit(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1
+    ? value
+    : null;
+}
+
+export function normalizeSheetCrop(raw: unknown): CharacterReferenceSheetCrop | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const record = raw as Record<string, unknown>;
+  const url = typeof record.url === "string" ? record.url.trim() : "";
+  const filename = typeof record.filename === "string" ? record.filename.trim() : "";
+  if (!SHEET_URL_PATTERN.test(url) || !SHEET_FILENAME_PATTERN.test(filename)) return null;
+  const [x, y, w, h] = [unit(record.x), unit(record.y), unit(record.w), unit(record.h)];
+  if (x === null || y === null || w === null || h === null || w === 0 || h === 0) return null;
+  return { url, filename, x, y, w, h };
+}
+
+// Default 참조 영역 suggestion: the turnaround prompt lists the front view
+// first and Illustrious models draw it at the left, so a square on the
+// top-left corner (≈ face + shoulders on a 1216x832 sheet) is a good start.
+export const DEFAULT_SHEET_CROP = { x: 0.025, y: 0.012, size: 0.222 } as const;
+
+// Pixel rectangle for a square crop whose side is `size` × image width,
+// clamped inside the image. Returned normalized too, for storage.
+export function squareCropRect(
+  imageWidth: number,
+  imageHeight: number,
+  region: { x: number; y: number; size: number }
+) {
+  const side = Math.max(16, Math.min(Math.round(region.size * imageWidth), imageWidth, imageHeight));
+  const left = Math.min(Math.max(0, Math.round(region.x * imageWidth)), imageWidth - side);
+  const top = Math.min(Math.max(0, Math.round(region.y * imageHeight)), imageHeight - side);
+  return {
+    left,
+    top,
+    width: side,
+    height: side,
+    normalized: {
+      x: left / imageWidth,
+      y: top / imageHeight,
+      w: side / imageWidth,
+      h: side / imageHeight,
+    },
+  };
+}
+
 // Storage normalization: only an app-served gallery image can be a sheet.
 export function normalizeReferenceSheet(raw: unknown): CharacterReferenceSheet | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
@@ -155,6 +202,7 @@ export function normalizeReferenceSheet(raw: unknown): CharacterReferenceSheet |
       typeof record.confirmedAt === "number" && Number.isFinite(record.confirmedAt)
         ? record.confirmedAt
         : undefined,
+    crop: normalizeSheetCrop(record.crop),
   };
 }
 
@@ -187,7 +235,8 @@ export function applyReferenceSheet(
   const override = params.character_sheet_strength_override;
   return {
     ...params,
-    character_sheet_image: sheet.url,
+    // The 참조 영역 crop when set: a single face/upper body, no extra figures.
+    character_sheet_image: sheet.crop?.url ?? sheet.url,
     character_sheet_strength: clampSheetStrength(
       typeof override === "number" && Number.isFinite(override) ? override : sheet.strength
     ),
@@ -256,22 +305,36 @@ export interface IpAdapterModelAsset {
   bytes: number;
 }
 
-// SDXL "PLUS" adapter (ViT-H image encoder). Works on Illustrious/NoobAI/Pony.
+// Default adapter: NOOB-IPA-MARK1 (standard IP-Adapter architecture trained on
+// NoobAI, the Illustrious lineage). Measured 2026-11-09 on hassakuXLIllustrious:
+// clean colours and no duplicated figures where the SDXL-base PLUS adapter
+// overcooked (docs/character-reference-sheet.md). Civitai-hosted, so the
+// download needs the Civitai API key.
 export const IPADAPTER_MODEL: IpAdapterModelAsset = {
+  targetFile: "ipadapter/NOOB-IPA-MARK1.safetensors",
+  fileName: "NOOB-IPA-MARK1.safetensors",
+  downloadUrl: "https://civitai.com/api/download/models/1121145",
+  bytes: 1405172056,
+};
+
+// OpenCLIP ViT-bigG image encoder (h94 sdxl_models), under the name
+// IPAdapter_plus expects. Pairs with NOOB-IPA-MARK1.
+export const IPADAPTER_CLIP_VISION: IpAdapterModelAsset = {
+  targetFile: "clip_vision/CLIP-ViT-bigG-14-laion2B-39B-b160k.safetensors",
+  fileName: "CLIP-ViT-bigG-14-laion2B-39B-b160k.safetensors",
+  downloadUrl:
+    "https://huggingface.co/h94/IP-Adapter/resolve/main/sdxl_models/image_encoder/model.safetensors",
+  bytes: 3689912664,
+};
+
+// Fallback still accepted by pickIpAdapterFiles (not downloaded by default):
+// SDXL-base PLUS adapter + ViT-H encoder. Overcooks Illustrious checkpoints.
+export const IPADAPTER_SDXL_PLUS_MODEL: IpAdapterModelAsset = {
   targetFile: "ipadapter/ip-adapter-plus_sdxl_vit-h.safetensors",
   fileName: "ip-adapter-plus_sdxl_vit-h.safetensors",
   downloadUrl:
     "https://huggingface.co/h94/IP-Adapter/resolve/main/sdxl_models/ip-adapter-plus_sdxl_vit-h.safetensors",
   bytes: 847517512,
-};
-
-// The ViT-H image encoder, saved under the name IPAdapter_plus expects.
-export const IPADAPTER_CLIP_VISION: IpAdapterModelAsset = {
-  targetFile: "clip_vision/CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors",
-  fileName: "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors",
-  downloadUrl:
-    "https://huggingface.co/h94/IP-Adapter/resolve/main/models/image_encoder/model.safetensors",
-  bytes: 2528373448,
 };
 
 export const IPADAPTER_ASSETS = [IPADAPTER_MODEL, IPADAPTER_CLIP_VISION] as const;
@@ -284,6 +347,15 @@ export function pickIpAdapterFiles(
   ipadapterOptions: string[],
   clipVisionOptions: string[]
 ): { ipadapter: string; clipVision: string } | { missing: ("ipadapter" | "clip_vision")[] } {
+  // Anime-family adapters (NoobAI IPA, trained on the Illustrious lineage) first:
+  // the SDXL-base adapters overcook Illustrious/NoobAI checkpoints (washed
+  // colours, duplicated figures) even at low weight. They use the bigG encoder.
+  const bigG = clipVisionOptions.find((name) => /bigg/i.test(name));
+  const anime = ipadapterOptions.find((name) =>
+    /noob.?ipa|illustrious.*ip.?adapter|ip.?adapter.*(illustrious|noob)/i.test(name)
+  );
+  if (anime && bigG) return { ipadapter: anime, clipVision: bigG };
+
   const sdxl = ipadapterOptions.filter(
     (name) => /sdxl/i.test(name) && !/faceid/i.test(name)
   );
@@ -299,6 +371,7 @@ export function pickIpAdapterFiles(
     : clipVisionOptions.find((name) => /vit-?h/i.test(name)) ??
       clipVisionOptions.find((name) => /^model\.safetensors$|image_encoder/i.test(name));
 
+  if (!ipadapter && anime) return { missing: ["clip_vision"] };
   const missing: ("ipadapter" | "clip_vision")[] = [];
   if (!ipadapter) missing.push("ipadapter");
   if (!clipVision) missing.push("clip_vision");

@@ -219,9 +219,12 @@ export async function POST(req: NextRequest) {
     ) {
       // Absolute URL: resolveControlNetImage uploads only http(s) refs to the
       // ComfyUI that runs the job (local, pod or GPU worker), like /api/upload.
+      const sheet = character.referenceSheet;
+      const absolute = (url: string) => new URL(url, req.nextUrl.origin).toString();
       body = applyReferenceSheet(body, {
-        ...character.referenceSheet,
-        url: new URL(character.referenceSheet.url, req.nextUrl.origin).toString(),
+        ...sheet,
+        url: absolute(sheet.url),
+        crop: sheet.crop ? { ...sheet.crop, url: absolute(sheet.crop.url) } : null,
       });
     }
   }

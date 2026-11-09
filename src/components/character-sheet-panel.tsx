@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import {
   CHARACTER_SHEET_SITUATION_ID,
+  DEFAULT_SHEET_CROP,
   DEFAULT_SHEET_STRENGTH,
   MAX_SHEET_STRENGTH,
   SHEET_CANDIDATE_COUNT,
@@ -32,6 +33,7 @@ import { useStore } from "@/lib/store";
 import type {
   Character,
   CharacterReferenceSheet,
+  CharacterReferenceSheetCrop,
   GeneratedImage,
   GenerationParams,
 } from "@/lib/types";
@@ -42,6 +44,7 @@ interface SetupStatus {
   ipadapter: string | null;
   clipVision: string | null;
   missing: ("ipadapter" | "clip_vision")[];
+  recommended?: boolean;
   target?: { kind: string; label: string };
 }
 
@@ -151,8 +154,14 @@ export function CharacterSheetPanel({
         seed: typeof image.params?.seed === "number" ? image.params.seed : null,
         strength: sheet?.strength ?? DEFAULT_SHEET_STRENGTH,
         confirmedAt: Date.now(),
+        crop: null,
       };
       onPatch({ referenceSheet: next });
+      // Start with the default 참조 영역 so renders get one figure, not the
+      // whole sheet; the user can move it in the editor below.
+      void cutSheetCrop(image.filename, DEFAULT_SHEET_CROP).then((crop) => {
+        if (crop) onPatch({ referenceSheet: { ...next, crop } });
+      });
     },
     [onPatch, sheet]
   );
@@ -193,28 +202,12 @@ export function CharacterSheetPanel({
         </div>
 
         {sheet?.confirmed && (
-          <div className="mb-4 grid gap-4 rounded-lg border border-border p-3 sm:grid-cols-[220px_1fr]">
-            <button
-              type="button"
-              className="overflow-hidden rounded-md border border-border bg-muted"
-              onClick={() =>
-                onOpenImage({
-                  id: sheet.filename.replace(/\.[^.]+$/, ""),
-                  url: sheet.url,
-                  thumbnailUrl: sheet.thumbnailUrl,
-                  filename: sheet.filename,
-                  params: null,
-                  timestamp: sheet.confirmedAt ?? 0,
-                })
-              }
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={sheet.thumbnailUrl || sheet.url}
-                alt="확정된 기준 시트"
-                className="aspect-[1216/832] w-full object-cover"
-              />
-            </button>
+          <div className="mb-4 grid gap-4 rounded-lg border border-border p-3 sm:grid-cols-[minmax(0,360px)_1fr]">
+            <SheetCropEditor
+              key={sheet.filename}
+              sheet={sheet}
+              onSaved={(crop) => updateSheet({ crop })}
+            />
             <div className="space-y-3 text-xs">
               <label className="flex items-center justify-between gap-3">
                 <span>이 캐릭터에 시트 참조 사용</span>
@@ -328,6 +321,144 @@ export function CharacterSheetPanel({
         preferWorkers={generationTarget === "workers"}
         preferredPodId={generationTarget === "runpod" ? runpodPodId : ""}
       />
+    </div>
+  );
+}
+
+async function cutSheetCrop(
+  filename: string,
+  region: { x: number; y: number; size: number }
+): Promise<CharacterReferenceSheetCrop | null> {
+  try {
+    const res = await fetch("/api/character-sheet/crop", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename, ...region }),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { crop?: CharacterReferenceSheetCrop };
+    return data.crop ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// 참조 영역 editor: a square on the confirmed sheet (click to move, slider to
+// resize). IP-Adapter gets this crop — one face/upper body — instead of the
+// multi-view sheet, which duplicated the character in scenes during evaluation.
+function SheetCropEditor({
+  sheet,
+  onSaved,
+}: {
+  sheet: CharacterReferenceSheet;
+  onSaved: (crop: CharacterReferenceSheetCrop | null) => void;
+}) {
+  const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
+  const [region, setRegion] = useState(() =>
+    sheet.crop
+      ? { x: sheet.crop.x, y: sheet.crop.y, size: sheet.crop.w }
+      : { ...DEFAULT_SHEET_CROP }
+  );
+  const [saving, setSaving] = useState(false);
+  const aspect = natural ? natural.w / natural.h : 1216 / 832;
+  // Box height as a fraction of the image height (square in pixels).
+  const boxH = region.size * aspect;
+  const savedMatches =
+    sheet.crop &&
+    Math.abs(sheet.crop.x - region.x) < 0.002 &&
+    Math.abs(sheet.crop.y - region.y) < 0.002 &&
+    Math.abs(sheet.crop.w - region.size) < 0.002;
+
+  const clamp = (next: { x: number; y: number; size: number }) => {
+    const size = Math.min(Math.max(next.size, 0.08), Math.min(1, 1 / aspect));
+    return {
+      size,
+      x: Math.min(Math.max(next.x, 0), 1 - size),
+      y: Math.min(Math.max(next.y, 0), 1 - size * aspect),
+    };
+  };
+
+  const save = async () => {
+    setSaving(true);
+    const crop = await cutSheetCrop(sheet.filename, region);
+    setSaving(false);
+    if (crop) {
+      setRegion({ x: crop.x, y: crop.y, size: crop.w });
+      onSaved(crop);
+    }
+  };
+
+  return (
+    <div className="space-y-2 text-xs">
+      <div
+        className="relative cursor-crosshair overflow-hidden rounded-md border border-border bg-muted"
+        onClick={(event) => {
+          const rect = event.currentTarget.getBoundingClientRect();
+          const cx = (event.clientX - rect.left) / rect.width;
+          const cy = (event.clientY - rect.top) / rect.height;
+          setRegion((current) =>
+            clamp({ ...current, x: cx - current.size / 2, y: cy - (current.size * aspect) / 2 })
+          );
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={sheet.url}
+          alt="확정된 기준 시트"
+          className="block w-full select-none"
+          draggable={false}
+          onLoad={(event) =>
+            setNatural({
+              w: event.currentTarget.naturalWidth,
+              h: event.currentTarget.naturalHeight,
+            })
+          }
+        />
+        <div
+          className="pointer-events-none absolute border-2 border-primary shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]"
+          style={{
+            left: `${region.x * 100}%`,
+            top: `${region.y * 100}%`,
+            width: `${region.size * 100}%`,
+            height: `${boxH * 100}%`,
+          }}
+        />
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="shrink-0 text-muted-foreground">영역 크기</span>
+        <input
+          type="range"
+          min={0.08}
+          max={0.6}
+          step={0.01}
+          value={region.size}
+          onChange={(event) =>
+            setRegion((current) => clamp({ ...current, size: parseFloat(event.target.value) }))
+          }
+          className="w-full accent-primary"
+          aria-label="참조 영역 크기"
+        />
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" variant="outline" disabled={saving || Boolean(savedMatches)} onClick={() => void save()}>
+          {saving ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
+          참조 영역 저장
+        </Button>
+        {sheet.crop ? (
+          <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={sheet.crop.url} alt="참조 영역" className="h-8 w-8 rounded border border-border object-cover" />
+            IP-Adapter는 이 영역만 사용
+          </span>
+        ) : (
+          <span className="text-amber-600 dark:text-amber-400">
+            영역 미지정 — 시트 전체 사용(인물 복제 위험)
+          </span>
+        )}
+      </div>
+      <p className="text-muted-foreground">
+        클릭으로 위치 이동. 정면 얼굴~어깨가 들어가게 지정 권장. 무표정에 가까운 얼굴일수록 표정 전이가 적음.
+      </p>
     </div>
   );
 }
@@ -449,7 +580,11 @@ function SheetSetupCard({
     }
   }, [check, targetId]);
 
-  const ready = status?.reachable && status.nodeInstalled && status.missing.length === 0;
+  const ready =
+    status?.reachable &&
+    status.nodeInstalled &&
+    status.missing.length === 0 &&
+    status.recommended === true;
   const isLocal = targetId === "";
 
   return (
@@ -486,11 +621,21 @@ function SheetSetupCard({
                 ? " — 아래 '설치'로 로컬 설치 후 ComfyUI 재시작"
                 : " — GPU 워커는 최신 worker-kit으로 start-worker.bat 재실행 (원격 설치 안 함)")}
           </li>
-          <li className={status.ipadapter ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}>
-            ipadapter 모델: {status.ipadapter ?? "없음 (ipadapter/ip-adapter-plus_sdxl_vit-h.safetensors)"}
+          <li
+            className={
+              status.recommended
+                ? "text-emerald-600 dark:text-emerald-400"
+                : status.ipadapter
+                  ? "text-amber-600 dark:text-amber-400"
+                  : "text-destructive"
+            }
+          >
+            ipadapter 모델: {status.ipadapter ?? "없음"}
+            {!status.recommended &&
+              " — 권장: ipadapter/NOOB-IPA-MARK1.safetensors (Illustrious 계열에서 SDXL 기본 어댑터는 색 번짐·인물 복제)"}
           </li>
           <li className={status.clipVision ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}>
-            clip_vision 모델: {status.clipVision ?? "없음 (clip_vision/CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors)"}
+            clip_vision 모델: {status.clipVision ?? "없음 (clip_vision/CLIP-ViT-bigG-14-laion2B-39B-b160k.safetensors)"}
           </li>
         </ul>
       )}
@@ -502,7 +647,7 @@ function SheetSetupCard({
             ) : (
               <Download className="mr-1 h-3.5 w-3.5" />
             )}
-            {isLocal ? "설치 (노드 + 모델 ~3.4GB)" : "모델 받기 (~3.4GB)"}
+            {isLocal ? "설치 (노드 + 모델 ~5.1GB)" : "모델 받기 (~5.1GB)"}
           </Button>
         </div>
       )}

@@ -88,7 +88,7 @@ function localInstallStream() {
           controller.close();
         }
       };
-      safeSend({ type: "status", message: "IP-Adapter 설치 시작 (노드 + 모델 ~3.4GB)" });
+      safeSend({ type: "status", message: "IP-Adapter 설치 시작 (노드 + 모델 ~5.1GB)" });
       const child = spawn(
         windows ? "powershell.exe" : "bash",
         windows ? ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script] : [script],
@@ -151,12 +151,9 @@ export async function POST(req: NextRequest) {
       try {
         const status = await checkIpAdapterSheetSetup(target.options);
         if (!status.reachable) throw new Error(`${target.label} ComfyUI 응답 없음.`);
-        // Fetch only what is missing; an existing helper file is skipped anyway.
-        const wanted = IPADAPTER_ASSETS.filter((asset) =>
-          asset.targetFile.startsWith("ipadapter/")
-            ? status.missing.includes("ipadapter")
-            : status.missing.includes("clip_vision")
-        );
+        // Fetch the recommended pair; the helper returns at once for a file
+        // that is already there, so nothing is downloaded twice.
+        const wanted = IPADAPTER_ASSETS;
         for (const asset of wanted) {
           send(controller, { type: "status", message: `다운로드: ${asset.targetFile}` });
           await streamRunpodResourceDownload(

@@ -14,6 +14,8 @@ import {
   ipAdapterMissingMessage,
   isIpAdapterSetupError,
   normalizeReferenceSheet,
+  normalizeSheetCrop,
+  squareCropRect,
   pickIpAdapterFiles,
   sheetCandidateSeeds,
   shouldApplyReferenceSheet,
@@ -103,6 +105,7 @@ test("normalizeReferenceSheet accepts only app-served images", () => {
     seed: 12,
     strength: 1.5,
     confirmedAt: undefined,
+    crop: null,
   });
   // Unconfirmed by default, explicit off honoured.
   const off = normalizeReferenceSheet({ url: "/api/images/x.png", filename: "x.png", enabled: false });
@@ -211,6 +214,33 @@ test("pickIpAdapterFiles prefers SDXL plus ViT-H with the ViT-H encoder", () => 
   );
 });
 
+test("pickIpAdapterFiles prefers the NoobAI/Illustrious adapter with bigG", () => {
+  assert.deepEqual(
+    pickIpAdapterFiles(
+      ["ip-adapter-plus_sdxl_vit-h.safetensors", "NOOB-IPA-MARK1.safetensors"],
+      ["CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors", "CLIP-ViT-bigG-14-laion2B-39B-b160k.safetensors"]
+    ),
+    {
+      ipadapter: "NOOB-IPA-MARK1.safetensors",
+      clipVision: "CLIP-ViT-bigG-14-laion2B-39B-b160k.safetensors",
+    }
+  );
+  // Without bigG it falls back to the SDXL plus adapter.
+  assert.deepEqual(
+    pickIpAdapterFiles(
+      ["ip-adapter-plus_sdxl_vit-h.safetensors", "NOOB-IPA-MARK1.safetensors"],
+      ["CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors"]
+    ),
+    {
+      ipadapter: "ip-adapter-plus_sdxl_vit-h.safetensors",
+      clipVision: "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors",
+    }
+  );
+  assert.deepEqual(pickIpAdapterFiles(["NOOB-IPA-MARK1.safetensors"], []), {
+    missing: ["clip_vision"],
+  });
+});
+
 test("pickIpAdapterFiles reports what is missing", () => {
   assert.deepEqual(pickIpAdapterFiles([], []), { missing: ["ipadapter", "clip_vision"] });
   assert.deepEqual(pickIpAdapterFiles(["ip-adapter_sd15.safetensors"], ["CLIP-ViT-H-14.safetensors"]), {
@@ -231,6 +261,43 @@ test("missing messages are recognisable setup errors", () => {
   assert.ok(isIpAdapterSetupError(style));
   assert.match(style, /스타일 이미지를 비우고/);
   const files = ipAdapterMissingMessage(["clip_vision"], "GPU 워커");
-  assert.match(files, /clip_vision\/CLIP-ViT-H-14-laion2B-s32B-b79K\.safetensors/);
+  assert.match(files, /clip_vision\/CLIP-ViT-bigG-14-laion2B-39B-b160k\.safetensors/);
   assert.equal(isIpAdapterSetupError("Some other error"), false);
+});
+
+test("applyReferenceSheet prefers the 참조 영역 crop over the whole sheet", () => {
+  const out = applyReferenceSheet(baseParams, {
+    ...sheet,
+    crop: { url: "/api/images/sheetref-1.png", filename: "sheetref-1.png", x: 0, y: 0, w: 0.2, h: 0.3 },
+  });
+  assert.equal(out.character_sheet_image, "/api/images/sheetref-1.png");
+});
+
+test("normalizeSheetCrop validates url and unit region", () => {
+  assert.equal(normalizeSheetCrop({ url: "/api/images/a.png", filename: "a.png", x: 0, y: 0, w: 2, h: 1 }), null);
+  assert.equal(normalizeSheetCrop({ url: "https://x/a.png", filename: "a.png", x: 0, y: 0, w: 0.2, h: 0.3 }), null);
+  assert.deepEqual(
+    normalizeSheetCrop({ url: "/api/images/a.png", filename: "a.png", x: 0.1, y: 0, w: 0.2, h: 0.3, extra: 1 }),
+    { url: "/api/images/a.png", filename: "a.png", x: 0.1, y: 0, w: 0.2, h: 0.3 }
+  );
+  const kept = normalizeReferenceSheet({
+    url: "/api/images/x.png",
+    filename: "x.png",
+    crop: { url: "/api/images/c.png", filename: "c.png", x: 0, y: 0, w: 0.2, h: 0.3 },
+  });
+  assert.equal(kept?.crop?.filename, "c.png");
+});
+
+test("squareCropRect makes an in-bounds pixel square", () => {
+  const rect = squareCropRect(1216, 832, { x: 0.025, y: 0.012, size: 0.222 });
+  assert.equal(rect.width, rect.height);
+  assert.equal(rect.width, 270);
+  assert.equal(rect.left, 30);
+  assert.equal(rect.top, 10);
+  // Pushed back inside when it would overflow.
+  const edge = squareCropRect(1216, 832, { x: 0.95, y: 0.95, size: 0.3 });
+  assert.equal(edge.left + edge.width, 1216);
+  assert.equal(edge.top + edge.height, 832);
+  // Never larger than the short side.
+  assert.equal(squareCropRect(1216, 832, { x: 0, y: 0, size: 1 }).width, 832);
 });

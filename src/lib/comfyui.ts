@@ -37,6 +37,7 @@ import { DEFAULT_PARAMS, normalizeGenerationSeed } from "./types";
 import { censorModelFile } from "./censor-assets";
 import {
   DEFAULT_STYLE_STRENGTH,
+  IPADAPTER_MODEL,
   SHEET_RENDER_NEGATIVE,
   type IpAdapterFeature,
   appendUniqueTags,
@@ -1592,6 +1593,8 @@ export interface IpAdapterSheetSetupStatus {
   ipadapter: string | null;
   clipVision: string | null;
   missing: ("ipadapter" | "clip_vision")[];
+  // The recommended (NoobAI) adapter is the one in use.
+  recommended: boolean;
 }
 
 export async function checkIpAdapterSheetSetup(
@@ -1604,7 +1607,14 @@ export async function checkIpAdapterSheetSetup(
     reachable = false;
   }
   if (!reachable) {
-    return { reachable, nodeInstalled: false, ipadapter: null, clipVision: null, missing: [] };
+    return {
+      reachable,
+      nodeInstalled: false,
+      ipadapter: null,
+      clipVision: null,
+      missing: [],
+      recommended: false,
+    };
   }
   const [applyInfo, loaderInfo, clipInfo] = await Promise.all([
     getComfyObjectInfoEntry("IPAdapterAdvanced", options),
@@ -1617,8 +1627,22 @@ export async function checkIpAdapterSheetSetup(
     comfyInputComboOptions(clipInfo?.input?.required?.["clip_name"])
   );
   return "missing" in picked
-    ? { reachable, nodeInstalled, ipadapter: null, clipVision: null, missing: picked.missing }
-    : { reachable, nodeInstalled, ipadapter: picked.ipadapter, clipVision: picked.clipVision, missing: [] };
+    ? {
+        reachable,
+        nodeInstalled,
+        ipadapter: null,
+        clipVision: null,
+        missing: picked.missing,
+        recommended: false,
+      }
+    : {
+        reachable,
+        nodeInstalled,
+        ipadapter: picked.ipadapter,
+        clipVision: picked.clipVision,
+        missing: [],
+        recommended: picked.ipadapter === IPADAPTER_MODEL.fileName,
+      };
 }
 
 interface IpAdapterReference {

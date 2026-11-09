@@ -270,6 +270,19 @@ export interface CharacterReferenceSheet {
   // IP-Adapter weight used for this character's renders.
   strength: number;
   confirmedAt?: number;
+  // 참조 영역: a square face/upper-body crop of the sheet. When set it is what
+  // IP-Adapter sees instead of the whole multi-view sheet (which leaks extra
+  // figures into scenes). Region is normalized to the sheet's width/height.
+  crop?: CharacterReferenceSheetCrop | null;
+}
+
+export interface CharacterReferenceSheetCrop {
+  url: string;
+  filename: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
 }
 
 export interface Character {
