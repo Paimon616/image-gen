@@ -836,7 +836,6 @@ async function buildKrea2Workflow(
   checkpoint: string,
   options?: ComfyClientOptions
 ) {
-  assertNoCharacterReference(params, "Krea 2");
   await assertKrea2SupportFiles(checkpoint, "generic", options);
 
   const loras = cleanLoras(params.loras);
@@ -971,6 +970,26 @@ async function buildKrea2Workflow(
     };
   }
 
+  // Character reference on Krea 2 → Krea2 Identity Edit (same graph as the OneStage
+  // platform's identityEditGraph). Only the base pass uses the patched model and the
+  // image-grounded prompt; refine / hires / ADetailer passes keep the plain model and
+  // text conditioning, because the patch is bound to the base canvas size.
+  let baseModelRef: [string, number] = modelRef;
+  let basePositiveRef: [string, number] = ["2", 0];
+  const identity = await addKrea2IdentityEditNodes(
+    workflow,
+    params,
+    modelRef,
+    clipRef,
+    vaeRef,
+    latentRef,
+    options
+  );
+  if (identity) {
+    baseModelRef = identity.modelRef;
+    basePositiveRef = identity.positiveRef;
+  }
+
   workflow["5"] = {
     class_type: "KSampler",
     inputs: {
@@ -980,8 +999,8 @@ async function buildKrea2Workflow(
       sampler_name: samplerName,
       scheduler,
       denoise,
-      model: modelRef,
-      positive: ["2", 0],
+      model: baseModelRef,
+      positive: basePositiveRef,
       negative: ["3", 0],
       latent_image: latentRef,
     },
@@ -1856,6 +1875,96 @@ async function buildZImageWorkflow(
   return workflow;
 }
 
+// --- Krea2 Identity Edit (character reference for Krea 2) -----------------------
+// Needs the comfyui-krea2edit node pack (Krea2EditModelPatch / Krea2EditGroundedEncode)
+// and a Krea2 Identity Edit LoRA. The reference goes in through two paths, as the LoRA
+// was trained: VAE latent tokens (appearance) and Qwen3-VL grounding (semantics).
+// Mirrors OneStage_platform src/pod/onestage-semi.ts identityEditGraph.
+const KREA2_IDENTITY_LORA_PREFERENCE = [
+  /krea2[_-]identity[_-]edit[_-]v2/i,
+  /krea2[_-]identity[_-]edit[_-]v1[_.-]?2/i,
+  /k2[_-]identity[_-]edit/i,
+  /identity[_-]?edit/i,
+];
+// UI identity strength (0–2, default 0.7) → ref_boost. 0.7 ≈ 2.1 keeps pose/expression
+// free (best for references with a strong pose); 1.0 = 3.0 (platform default).
+const KREA2_IDENTITY_BOOST_PER_STRENGTH = 3;
+
+async function addKrea2IdentityEditNodes(
+  workflow: Record<string, unknown>,
+  params: GenerationParams,
+  modelRef: [string, number],
+  clipRef: [string, number],
+  vaeRef: [string, number],
+  targetLatentRef: [string, number],
+  options?: ComfyClientOptions
+): Promise<{ modelRef: [string, number]; positiveRef: [string, number] } | null> {
+  const reference = params.character_image?.trim();
+  if (!reference) return null;
+
+  const [patchInfo, loraInfo] = await Promise.all([
+    getComfyObjectInfoEntry("Krea2EditModelPatch", options),
+    getComfyObjectInfoEntry("LoraLoaderModelOnly", options),
+  ]);
+  if (!patchInfo) {
+    throw new Error(
+      "Krea 2 캐릭터 참조(Identity Edit)에는 comfyui-krea2edit 노드 팩이 필요합니다. ComfyUI/custom_nodes 에 https://github.com/lbouaraba/comfyui-krea2edit 를 설치하고 ComfyUI를 다시 시작하세요. " +
+        "(Krea 2 Character Reference needs the comfyui-krea2edit node pack.)"
+    );
+  }
+  const loraOptions = comfyInputComboOptions(loraInfo?.input?.required?.lora_name);
+  const identityLora = KREA2_IDENTITY_LORA_PREFERENCE.map((pattern) =>
+    loraOptions.find((name) => pattern.test(name))
+  ).find(Boolean);
+  if (!identityLora) {
+    throw new Error(
+      "Krea 2 캐릭터 참조(Identity Edit)에는 Krea2 Identity Edit LoRA(예: krea2_identity_edit_v1_2.safetensors)가 models/loras 에 있어야 합니다. " +
+        "(Krea 2 Character Reference needs a Krea2 Identity Edit LoRA in models/loras.)"
+    );
+  }
+
+  const strength = Number.isFinite(params.character_reference_strength)
+    ? Math.min(Math.max(params.character_reference_strength, 0), 2)
+    : DEFAULT_PARAMS.character_reference_strength;
+  const refBoost = Math.round(strength * KREA2_IDENTITY_BOOST_PER_STRENGTH * 100) / 100;
+  const image = await resolveControlNetImage(reference, options);
+
+  workflow["40"] = {
+    class_type: "LoraLoaderModelOnly",
+    inputs: { model: modelRef, lora_name: identityLora, strength_model: 1 },
+  };
+  workflow["41"] = { class_type: "LoadImage", inputs: { image } };
+  workflow["42"] = {
+    class_type: "VAEEncode",
+    inputs: { pixels: ["41", 0], vae: vaeRef },
+  };
+  workflow["43"] = {
+    class_type: "Krea2EditModelPatch",
+    inputs: {
+      model: ["40", 0],
+      source_latent: ["42", 0],
+      vae: vaeRef,
+      source_image: ["41", 0],
+      target_latent: targetLatentRef,
+      fit_mode: "fit",
+      ref_boost: refBoost,
+    },
+  };
+  workflow["44"] = {
+    class_type: "Krea2EditGroundedEncode",
+    inputs: {
+      clip: clipRef,
+      prompt:
+        `Create an image of this person. ${params.prompt.trim()}. ` +
+        "Keep the exact face, hairstyle, outfit and the illustration style of the person in the reference image.",
+      image: ["41", 0],
+      grounding_px: 768,
+    },
+  };
+
+  return { modelRef: ["43", 0], positiveRef: ["44", 0] };
+}
+
 // PuLID here targets the SDXL/Illustrious node chain. FLUX-based Krea 2 and the
 // Anima stack need the separate PuLID-Flux nodes and a different apply path, so
 // fail loudly rather than silently dropping the reference the user uploaded.
@@ -2190,11 +2299,45 @@ async function comfyFetch(path: string, init?: RequestInit, options?: ComfyClien
   return res;
 }
 
+// Workflows are authored on Linux pods, so model files in subfolders are written
+// as "MiniMaxH3/foo.safetensors". ComfyUI on Windows lists the same file as
+// "MiniMaxH3\\foo.safetensors" and rejects the forward-slash spelling with
+// "Value not in list". Snap such values to whichever separator the live
+// ComfyUI reports; values that already match (or have no subfolder) are untouched.
+async function normalizeModelPathSeparators(
+  prompt: Record<string, unknown>,
+  options?: ComfyClientOptions
+) {
+  const infoCache = new Map<string, Promise<ComfyObjectInfo | null>>();
+  for (const node of Object.values(prompt)) {
+    if (!node || typeof node !== "object") continue;
+    const { class_type: classType, inputs } = node as {
+      class_type?: unknown;
+      inputs?: Record<string, unknown>;
+    };
+    if (typeof classType !== "string" || !inputs) continue;
+    for (const [name, value] of Object.entries(inputs)) {
+      if (typeof value !== "string" || !/[\\/]/.test(value)) continue;
+      if (!/\.(safetensors|ckpt|pt|pth|bin|gguf|onnx)$/i.test(value)) continue;
+      if (!infoCache.has(classType)) {
+        infoCache.set(classType, getComfyObjectInfoEntry(classType, options));
+      }
+      const info = await infoCache.get(classType);
+      const choices = comfyInputComboOptions(info?.input?.required?.[name]);
+      if (choices.length === 0 || choices.includes(value)) continue;
+      const wanted = value.replace(/[\\/]/g, "/");
+      const match = choices.find((choice) => choice.replace(/[\\/]/g, "/") === wanted);
+      if (match) inputs[name] = match;
+    }
+  }
+}
+
 export async function queueComfyWorkflow(
   prompt: Record<string, unknown>,
   clientId = crypto.randomUUID(),
   options?: ComfyClientOptions
 ) {
+  await normalizeModelPathSeparators(prompt, options);
   const res = await comfyFetch("/prompt", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

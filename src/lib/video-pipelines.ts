@@ -1156,6 +1156,29 @@ const minimaxH3MultiRefControls: VideoPipelineControl[] = [
 
 const BUILTIN_VIDEO_PIPELINES: VideoPipelineDefinition[] = [
   {
+    id: "wan22-i2v-base",
+    label: "Wan 2.2 - I2V (14B fp8, local GPU)",
+    description:
+      "공식 Wan 2.2 이미지→비디오 14B fp8 워크플로(high/low noise 2단 샘플링). 로컬 16GB급 GPU에서 480p 정도로 돌릴 수 있습니다. 오디오는 생성하지 않습니다.",
+    traits: {
+      bestFor: "로컬 데스크탑 GPU로 이미지 한 장을 짧은 영상으로 만들 때",
+      strengths: [
+        "커스텀 LoRA 없이 공식 모델만으로 동작",
+        "가로·세로·프레임 수·FPS를 캔버스에서 직접 지정",
+      ],
+      weaknesses: [
+        "오디오 없음",
+        "16GB VRAM에서는 고해상도·긴 길이에서 느리거나 메모리 부족",
+      ],
+    },
+    workflowPath: "workflows/wan22-i2v-base-api.json",
+    mode: "i2v",
+    embedsAudio: false,
+    canvas: { resolution: true, frames: true, fps: true },
+    defaults: {},
+    controls: [],
+  },
+  {
     id: "dasiwa-minimax-h3-i2va",
     label: "MiniMax H3 (DaSiWa) - I2V + audio",
     description:

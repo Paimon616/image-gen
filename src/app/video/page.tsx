@@ -817,12 +817,29 @@ function VideoGalleryCard({
           )}
         </div>
         <div className="space-y-1 border-t border-border p-3">
-          <p className="line-clamp-2 text-sm font-medium">
-            {video.params?.prompt || "Generated video"}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {new Date(video.timestamp).toLocaleString()}
-          </p>
+          {/* Same as the image cards: clicking the prompt area opens the
+              detail modal. In selection mode the card toggles selection instead. */}
+          <button
+            type="button"
+            className={`block w-full space-y-1 rounded-sm text-left ${
+              selectionMode
+                ? "pointer-events-none"
+                : "cursor-pointer transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            }`}
+            onClick={() => {
+              if (!selectionMode) onOpenDetail(video);
+            }}
+            tabIndex={selectionMode ? -1 : 0}
+            aria-label={language === "ko" ? "상세 정보 보기" : "View details"}
+            title={language === "ko" ? "클릭하면 상세 정보를 봅니다" : "Click to view details"}
+          >
+            <p className="line-clamp-2 text-sm font-medium">
+              {video.params?.prompt || "Generated video"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {new Date(video.timestamp).toLocaleString()}
+            </p>
+          </button>
           {video.audios && video.audios.length > 0 && (
             <div className="space-y-2 pt-2">
               {video.audios.map((audio) => (

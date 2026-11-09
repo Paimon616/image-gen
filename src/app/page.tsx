@@ -2346,7 +2346,7 @@ export default function Home() {
                         <div className="mb-2 flex items-center justify-between">
                           <FieldHelp
                             label={ko ? "아이덴티티 강도" : "Identity Strength"}
-                            help={ko ? "참조 인물의 얼굴을 얼마나 강하게 유지할지 조절합니다(PuLID). 높을수록 얼굴이 더 정확히 재현되지만 프롬프트·포즈 반영이 줄 수 있습니다. 권장 0.7–1.0. SDXL/Illustrious 계열에서만 적용됩니다." : "How strongly to preserve the reference face (PuLID). Higher reproduces the face more faithfully but follows the prompt/pose less. Sweet spot 0.7–1.0. SDXL/Illustrious checkpoints only."}
+                            help={ko ? "참조 인물을 얼마나 강하게 유지할지 조절합니다. 높을수록 참조가 더 정확히 재현되지만 프롬프트·포즈 반영이 줄 수 있습니다. 권장 0.7–1.0. SDXL/Illustrious는 PuLID(얼굴), Krea 2는 Identity Edit(얼굴·머리·의상·화풍, 강도 × 3 = ref_boost)로 적용됩니다. Krea 2는 참조의 포즈·표정이 강하면 0.7, 정면 시트면 1.0이 좋습니다." : "How strongly to keep the reference. Higher reproduces it more faithfully but follows the prompt/pose less. Sweet spot 0.7–1.0. SDXL/Illustrious uses PuLID (face); Krea 2 uses Identity Edit (face, hair, outfit and style; strength × 3 = ref_boost). On Krea 2 use ~0.7 for references with a strong pose/expression, 1.0 for a neutral sheet."}
                           />
                           <span className="text-xs font-mono">
                             {params.character_reference_strength.toFixed(2)}

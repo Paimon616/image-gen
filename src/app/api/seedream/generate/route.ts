@@ -172,6 +172,8 @@ export async function POST(req: NextRequest) {
           result,
           params: {
             ...DEFAULT_PARAMS,
+            // Seedream is a hosted model — never record the local default LoRA on it.
+            loras: [],
             ...(width && height ? { width, height } : {}),
             prompt: params.prompt,
             model: `seedream/${model.id}`,
