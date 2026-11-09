@@ -436,7 +436,19 @@ export async function uploadImageToComfyUI(
 
 async function resolveControlNetImage(image: string, options?: ComfyClientOptions) {
   if (!isRemoteImageRef(image)) return image;
-  return uploadImageToComfyUI(image, options);
+  // Uploads also hit the RunPod proxy's ~100s limit while ComfyUI is blocked in
+  // a model load — retry a couple of times before failing the generation. Safe:
+  // each attempt writes a fresh uuid filename.
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 15_000));
+    try {
+      return await uploadImageToComfyUI(image, options);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
 }
 
 function clampDenoiseStrength(value: unknown) {
@@ -2293,7 +2305,17 @@ async function comfyFetch(path: string, init?: RequestInit, options?: ComfyClien
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`ComfyUI ${res.status}: ${text || res.statusText}`);
+    // The RunPod proxy (Cloudflare) answers with a full HTML page when the pod's
+    // ComfyUI can't respond — 524 when its event loop is blocked past the ~100s
+    // proxy limit (large MiniMax model loads/offloads block it for minutes),
+    // 404/502 when the pod is down. Keep the status, drop the HTML noise.
+    const isHtmlPage = /^\s*(<!DOCTYPE|<html)/i.test(text);
+    const detail = isHtmlPage
+      ? res.status === 524
+        ? "RunPod proxy timeout (~100s) — ComfyUI was busy (likely a long model load/offload). The request may still have been processed on the pod."
+        : "proxy/origin error page (pod down or unreachable)"
+      : text;
+    throw new Error(`ComfyUI ${res.status}: ${detail || res.statusText}`);
   }
 
   return res;
@@ -2338,17 +2360,66 @@ export async function queueComfyWorkflow(
   options?: ComfyClientOptions
 ) {
   await normalizeModelPathSeparators(prompt, options);
-  const res = await comfyFetch("/prompt", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      client_id: clientId,
-      prompt,
-    }),
-  }, options);
+  try {
+    const res = await comfyFetch("/prompt", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        client_id: clientId,
+        prompt,
+      }),
+    }, options);
 
-  const queued = (await res.json()) as Omit<ComfyQueuedPrompt, "client_id">;
-  return { ...queued, client_id: clientId };
+    const queued = (await res.json()) as Omit<ComfyQueuedPrompt, "client_id">;
+    return { ...queued, client_id: clientId };
+  } catch (error) {
+    if (!(error instanceof Error) || !error.message.startsWith("ComfyUI 524")) {
+      throw error;
+    }
+    // The proxy gave up waiting, but ComfyUI usually still receives and queues
+    // the prompt once its event loop unblocks — resubmitting duplicates the
+    // generation (observed as identical back-to-back runs on the pod). Find our
+    // submission in the queue by client_id instead of retrying the POST.
+    for (let attempt = 0; attempt < 24; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 10_000));
+      try {
+        const promptId = await findQueuedPromptByClientId(clientId, options);
+        if (promptId) return { prompt_id: promptId, client_id: clientId };
+      } catch {
+        // Queue endpoint blocked behind the same stall — keep waiting.
+      }
+    }
+    throw error;
+  }
+}
+
+function clientIdFromQueueItem(item: unknown) {
+  // Queue entries are [number, prompt_id, prompt, extra_data, outputs]; the
+  // client_id we submitted rides inside extra_data.
+  if (!Array.isArray(item)) return "";
+  const extra = item[3];
+  if (extra && typeof extra === "object" && "client_id" in extra) {
+    const clientId = (extra as { client_id?: unknown }).client_id;
+    return typeof clientId === "string" ? clientId : "";
+  }
+  return "";
+}
+
+async function findQueuedPromptByClientId(
+  clientId: string,
+  options?: ComfyClientOptions
+) {
+  const queue = await getQueue(options);
+  const queuedItems = [
+    ...(queue.queue_running ?? []),
+    ...(queue.queue_pending ?? []),
+  ];
+  for (const item of queuedItems) {
+    if (clientIdFromQueueItem(item) === clientId) {
+      return promptIdFromQueueItem(item);
+    }
+  }
+  return "";
 }
 
 async function releaseWebUiMemory() {
@@ -2647,7 +2718,19 @@ export async function waitForComfyImageRefs(
   let lastActivityAt = Date.now();
 
   while (!options.signal?.aborted) {
-    const history = await getHistory(promptId, options);
+    let history: Record<string, ComfyHistoryItem>;
+    try {
+      history = await getHistory(promptId, options);
+    } catch {
+      // Transient proxy failure (e.g. RunPod 524 while ComfyUI's event loop is
+      // blocked in a long model load/offload). The generation usually survives
+      // on the pod, so keep polling; the idle timeout still bounds a dead server.
+      if (Date.now() - lastActivityAt >= idleTimeoutMs) {
+        throw new Error("ComfyUI generation timed out");
+      }
+      await wait(5000, options.signal);
+      continue;
+    }
     const promptHistory = history[promptId];
     const images = imageRefsFromHistory(promptHistory);
 
@@ -2697,7 +2780,19 @@ export async function waitForComfyVideoRefs(
   let lastActivityAt = Date.now();
 
   while (!options.signal?.aborted) {
-    const history = await getHistory(promptId, options);
+    let history: Record<string, ComfyHistoryItem>;
+    try {
+      history = await getHistory(promptId, options);
+    } catch {
+      // Transient proxy failure (e.g. RunPod 524 while ComfyUI's event loop is
+      // blocked in a long model load/offload). The generation usually survives
+      // on the pod, so keep polling; the idle timeout still bounds a dead server.
+      if (Date.now() - lastActivityAt >= idleTimeoutMs) {
+        throw new Error("ComfyUI generation timed out");
+      }
+      await wait(5000, options.signal);
+      continue;
+    }
     const promptHistory = history[promptId];
     const videos = videoRefsFromHistory(promptHistory);
 
@@ -2747,7 +2842,19 @@ export async function waitForComfyAudioRefs(
   let lastActivityAt = Date.now();
 
   while (!options.signal?.aborted) {
-    const history = await getHistory(promptId, options);
+    let history: Record<string, ComfyHistoryItem>;
+    try {
+      history = await getHistory(promptId, options);
+    } catch {
+      // Transient proxy failure (e.g. RunPod 524 while ComfyUI's event loop is
+      // blocked in a long model load/offload). The generation usually survives
+      // on the pod, so keep polling; the idle timeout still bounds a dead server.
+      if (Date.now() - lastActivityAt >= idleTimeoutMs) {
+        throw new Error("ComfyUI generation timed out");
+      }
+      await wait(5000, options.signal);
+      continue;
+    }
     const promptHistory = history[promptId];
     const audios = audioRefsFromHistory(promptHistory);
 

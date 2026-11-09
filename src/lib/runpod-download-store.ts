@@ -30,6 +30,10 @@ export interface RunpodDownloadResource {
 export interface RunpodDownloadItem {
   path: string;
   resource: RunpodDownloadResource;
+  // "upload" pushes the file from this machine's ComfyUI models tree to the pod
+  // instead of having the pod fetch it. That is the only way to fill a pod with
+  // a model that has no download source (self-trained LoRAs, hand-placed files).
+  kind?: "download" | "upload";
 }
 
 // Fired on the window when a pod's download queue drains (success or error),
@@ -69,6 +73,9 @@ interface PodRuntime {
   completed: number;
   failed: number;
   lastError: string;
+  // True once an upload item joins the batch, so the shared status lines say
+  // "transfer" instead of claiming everything was downloaded.
+  hasUpload: boolean;
 }
 
 const podRuntimes: Record<string, PodRuntime> = {};
@@ -89,33 +96,52 @@ export const useRunpodDownloadStore = create<RunpodDownloadState>((set) => {
     const left = rt.queue.length + rt.inFlight.size;
     setMsg(
       podId,
-      rt.ko
-        ? `RunPod 다운로드 중 · 남은 ${left}개`
-        : `Downloading to RunPod · ${left} left`
+      rt.hasUpload
+        ? rt.ko
+          ? `RunPod 전송 중 · 남은 ${left}개`
+          : `Transferring to RunPod · ${left} left`
+        : rt.ko
+          ? `RunPod 다운로드 중 · 남은 ${left}개`
+          : `Downloading to RunPod · ${left} left`
     );
   };
 
   // Transfer a single file to the pod, mirroring progress into the Download
-  // Manager. Throws on failure so the worker can mark it errored.
-  const downloadOne = async (podId: string, item: RunpodDownloadItem) => {
+  // Manager. Throws on failure so the worker can mark it errored. Both
+  // directions speak the same SSE shape, so only the endpoint, the request body
+  // and the progress field differ.
+  const transferOne = async (podId: string, item: RunpodDownloadItem) => {
     const ko = podRuntimes[podId]?.ko ?? false;
+    const upload = item.kind === "upload";
+    const failLabel = upload ? "RunPod upload failed" : "RunPod download failed";
     const entryId = runpodDownloadEntryId(podId, item.path);
     reportDownload(entryId, {
       status: "downloading",
-      message: ko ? "다운로드 중..." : "Downloading...",
+      message: upload
+        ? ko ? "업로드 중..." : "Uploading..."
+        : ko ? "다운로드 중..." : "Downloading...",
       downloadedBytes: 0,
       totalBytes: null,
       percent: 0,
     });
 
-    const response = await fetch(`/api/runpod/pods/${podId}/download/stream`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ resource: item.resource, targetPath: item.path }),
-    });
+    const response = await fetch(
+      upload
+        ? `/api/runpod/pods/${podId}/upload/stream`
+        : `/api/runpod/pods/${podId}/download/stream`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          upload
+            ? { path: item.path }
+            : { resource: item.resource, targetPath: item.path }
+        ),
+      }
+    );
     if (!response.ok || !response.body) {
       const data = await response.json().catch(() => ({}));
-      throw new Error(data.error || "RunPod download failed");
+      throw new Error(data.error || failLabel);
     }
 
     const reader = response.body.getReader();
@@ -137,17 +163,18 @@ export const useRunpodDownloadStore = create<RunpodDownloadState>((set) => {
           type?: string;
           path?: string;
           downloaded?: number;
+          uploaded?: number;
           total?: number;
           percent?: number;
           message?: string;
         };
         if (payload.type === "error") {
-          streamError = payload.message || "RunPod download failed";
+          streamError = payload.message || failLabel;
         }
         if (payload.type === "progress" || payload.type === "status") {
           const total = Number(payload.total ?? 0);
           reportDownload(entryId, {
-            downloadedBytes: Number(payload.downloaded ?? 0),
+            downloadedBytes: Number(payload.downloaded ?? payload.uploaded ?? 0),
             totalBytes: total > 0 ? total : null,
             percent: Number(payload.percent ?? 0),
             status: "downloading",
@@ -179,9 +206,13 @@ export const useRunpodDownloadStore = create<RunpodDownloadState>((set) => {
           : `${rt.completed} done, ${rt.failed} failed${
               rt.lastError ? ` · ${rt.lastError}` : ""
             }`
-        : rt.ko
-          ? `${rt.completed}개 파일을 RunPod에 다운로드했습니다.`
-          : `Downloaded ${rt.completed} file(s) to RunPod.`;
+        : rt.hasUpload
+          ? rt.ko
+            ? `${rt.completed}개 파일을 RunPod에 전송했습니다.`
+            : `Transferred ${rt.completed} file(s) to RunPod.`
+          : rt.ko
+            ? `${rt.completed}개 파일을 RunPod에 다운로드했습니다.`
+            : `Downloaded ${rt.completed} file(s) to RunPod.`;
 
     set((state) => ({
       downloadingByPod: { ...state.downloadingByPod, [podId]: false },
@@ -208,12 +239,16 @@ export const useRunpodDownloadStore = create<RunpodDownloadState>((set) => {
         rt.inFlight.add(item.path);
         runningMsg(podId);
         try {
-          await downloadOne(podId, item);
+          await transferOne(podId, item);
           rt.completed += 1;
         } catch (error) {
           rt.failed += 1;
           rt.lastError =
-            error instanceof Error ? error.message : "RunPod download failed";
+            error instanceof Error
+              ? error.message
+              : item.kind === "upload"
+                ? "RunPod upload failed"
+                : "RunPod download failed";
           reportDownload(runpodDownloadEntryId(podId, item.path), {
             status: "error",
             message: rt.lastError,
@@ -286,6 +321,7 @@ export const useRunpodDownloadStore = create<RunpodDownloadState>((set) => {
         completed: 0,
         failed: 0,
         lastError: "",
+        hasUpload: false,
       });
       rt.ko = ko;
 
@@ -297,6 +333,18 @@ export const useRunpodDownloadStore = create<RunpodDownloadState>((set) => {
       ]);
       const fresh = items.filter((item) => !known.has(item.path));
       if (fresh.length === 0) return;
+
+      // Starting fresh (no workers running): reset the batch counters. If a
+      // batch is already draining, the newly appended files just join it and
+      // keep its tallies. Done before the queue grows so `hasUpload` below
+      // describes this batch rather than the previous one.
+      if (!rt.running) {
+        rt.running = true;
+        rt.completed = 0;
+        rt.failed = 0;
+        rt.lastError = "";
+        rt.hasUpload = false;
+      }
 
       for (const item of fresh) {
         reportDownload(runpodDownloadEntryId(podId, item.path), {
@@ -312,26 +360,23 @@ export const useRunpodDownloadStore = create<RunpodDownloadState>((set) => {
         });
       }
       rt.queue.push(...fresh);
+      if (fresh.some((item) => item.kind === "upload")) rt.hasUpload = true;
 
       set((state) => ({
         downloadingByPod: { ...state.downloadingByPod, [podId]: true },
         pendingRecheckByPod: { ...state.pendingRecheckByPod, [podId]: false },
         messageByPod: {
           ...state.messageByPod,
-          [podId]: ko
-            ? "RunPod 다운로드를 시작합니다..."
-            : "Starting RunPod download...",
+          [podId]: rt.hasUpload
+            ? ko
+              ? "RunPod 전송을 시작합니다..."
+              : "Starting RunPod transfer..."
+            : ko
+              ? "RunPod 다운로드를 시작합니다..."
+              : "Starting RunPod download...",
         },
       }));
 
-      // Starting fresh (no workers running): reset the batch counters. If a
-      // batch is already draining, the newly appended files just join it.
-      if (!rt.running) {
-        rt.running = true;
-        rt.completed = 0;
-        rt.failed = 0;
-        rt.lastError = "";
-      }
       // Fire-and-forget: spawn/top-up workers and return immediately so callers
       // never stay "busy" for the whole transfer and the UI stays usable.
       spawnWorkers(podId);
