@@ -10,13 +10,17 @@ import {
   type ImportedCivitaiResource,
 } from "./types";
 
+// "workers" = the LAN GPU worker pool (colleague PCs); the server picks the
+// worker per job, so several jobs run at once — see docs/gpu-workers.md.
+export type GenerationTarget = "local" | "runpod" | "workers";
+
 export interface GenerationQueueItem {
   id: string;
   params: GenerationParams;
   resources?: ImportedCivitaiResource[];
   civitaiOrigin?: CivitaiOrigin;
   workspaceId?: string;
-  generationTarget: "local" | "runpod";
+  generationTarget: GenerationTarget;
   runpodPodId?: string;
   // Links the generated image back to the saved character/situation it was
   // composed from (set when generation is triggered from the Paimon picker).
@@ -57,8 +61,11 @@ export interface CharacterContext {
 // page) so a background enqueue — a Paimon batch that outlives the page — still
 // knows where to generate and what to pre-check.
 export interface GenerationRuntimeConfig {
-  generationTarget: "local" | "runpod";
+  generationTarget: GenerationTarget;
   runpodPodId: string;
+  // How many "workers" jobs may stream at once (sum of online workers' slots,
+  // published by the generator page). Local and RunPod stay one at a time.
+  workerSlots: number;
   ko: boolean;
   // Why the current params can't generate at all (missing source image, etc.).
   modeError: string;
@@ -74,7 +81,10 @@ export interface EnqueueHooks {
 
 interface GenerationQueueState {
   queue: GenerationQueueItem[];
+  // First running job (kept for the single-job UI). `running` holds all of
+  // them when the worker pool runs several in parallel.
   active: GenerationQueueItem | null;
+  running: GenerationQueueItem[];
   config: GenerationRuntimeConfig;
   characterContext: CharacterContext | null;
 
@@ -91,9 +101,13 @@ interface GenerationQueueState {
 // The in-flight job's runtime. Kept at module scope (outside both React and
 // zustand) so the running generation and the queue pump survive navigating away
 // from the generator page, and so touching them never triggers a render.
+interface RunningJobRuntime {
+  promptId: string;
+  abortController: AbortController;
+}
+
 const runtime = {
-  activePromptId: "",
-  abortController: null as AbortController | null,
+  jobs: new Map<string, RunningJobRuntime>(),
   pumping: false,
 };
 
@@ -167,8 +181,8 @@ async function runGenerationJob(job: GenerationQueueItem) {
   const { addImages, setStatus, updateImage } = useStore.getState();
 
   const abortController = new AbortController();
-  runtime.activePromptId = "";
-  runtime.abortController = abortController;
+  const jobRuntime: RunningJobRuntime = { promptId: "", abortController };
+  runtime.jobs.set(id, jobRuntime);
   updateImage(id, {
     generation: {
       state: "waiting",
@@ -221,12 +235,22 @@ async function runGenerationJob(job: GenerationQueueItem) {
         const { event, data } = parseSseEvent(rawEvent);
 
         if (event === "queued") {
-          runtime.activePromptId = String(data?.prompt_id ?? "");
+          jobRuntime.promptId = String(data?.prompt_id ?? "");
           updateImage(id, {
             generation: {
               state: "waiting",
               progress: 1,
               message: "Waiting for ComfyUI...",
+            },
+          });
+        }
+
+        if (event === "worker") {
+          updateImage(id, {
+            generation: {
+              state: "waiting",
+              progress: 1,
+              message: `GPU worker: ${String(data?.label ?? "")}`,
             },
           });
         }
@@ -318,28 +342,48 @@ async function runGenerationJob(job: GenerationQueueItem) {
     });
     setStatus({ state: "error", progress: 0, message });
   } finally {
-    runtime.abortController = null;
-    runtime.activePromptId = "";
+    runtime.jobs.delete(id);
   }
 }
 
-// Drains the queue one job at a time. Driven imperatively (not by a React
-// effect) so an enqueue keeps the queue moving even with no page mounted.
-async function pump() {
+function syncRunning(running: GenerationQueueItem[]) {
+  useGenerationQueueStore.setState({ running, active: running[0] ?? null });
+}
+
+// Whether `next` may start alongside the jobs already running. Local and
+// RunPod jobs run strictly one at a time (one ComfyUI); worker-pool jobs run in
+// parallel up to the pool's slot count, but never mixed with a local/RunPod job.
+function canStart(next: GenerationQueueItem, running: GenerationQueueItem[]) {
+  if (running.length === 0) return true;
+  if (next.generationTarget !== "workers") return false;
+  if (running.some((job) => job.generationTarget !== "workers")) return false;
+  const slots = Math.max(1, useGenerationQueueStore.getState().config.workerSlots);
+  return running.length < slots;
+}
+
+// Drains the queue, starting as many jobs as canStart allows. Driven
+// imperatively (not by a React effect) so an enqueue keeps the queue moving
+// even with no page mounted. Each finished job re-enters pump().
+function pump() {
   if (runtime.pumping) return;
   runtime.pumping = true;
 
   try {
     for (;;) {
-      const [next] = useGenerationQueueStore.getState().queue;
-      if (!next) break;
+      const state = useGenerationQueueStore.getState();
+      const [next] = state.queue;
+      if (!next || !canStart(next, state.running)) break;
 
-      useGenerationQueueStore.setState((state) => ({
-        queue: state.queue.filter((job) => job.id !== next.id),
-        active: next,
+      useGenerationQueueStore.setState((current) => ({
+        queue: current.queue.filter((job) => job.id !== next.id),
       }));
-      await runGenerationJob(next);
-      useGenerationQueueStore.setState({ active: null });
+      syncRunning([...state.running, next]);
+      void runGenerationJob(next).finally(() => {
+        syncRunning(
+          useGenerationQueueStore.getState().running.filter((job) => job.id !== next.id)
+        );
+        pump();
+      });
     }
   } finally {
     runtime.pumping = false;
@@ -350,9 +394,11 @@ export const useGenerationQueueStore = create<GenerationQueueState>(
   (set, get) => ({
     queue: [],
     active: null,
+    running: [],
     config: {
       generationTarget: "local",
       runpodPodId: "",
+      workerSlots: 2,
       ko: true,
       modeError: "",
     },
@@ -374,6 +420,7 @@ export const useGenerationQueueStore = create<GenerationQueueState>(
       // outlives the page) doesn't fail the API's backend check.
       const needsComfy =
         config.generationTarget === "runpod" ||
+        config.generationTarget === "workers" ||
         requiresComfyUiBackend(rawSourceParams.model_name);
       const sourceParams =
         needsComfy && rawSourceParams.backend !== "comfyui"
@@ -499,11 +546,11 @@ export const useGenerationQueueStore = create<GenerationQueueState>(
         ],
       }));
       setStatus({ state: "idle", progress: 0, message: "" });
-      void pump();
+      pump();
     },
 
     cancel: (imageId) => {
-      const { queue, active } = get();
+      const { queue, active, running } = get();
       const { setStatus, updateImage } = useStore.getState();
       const targetId = imageId ?? active?.id;
 
@@ -528,10 +575,11 @@ export const useGenerationQueueStore = create<GenerationQueueState>(
         return;
       }
 
-      if (active?.id !== targetId) return;
+      if (!running.some((job) => job.id === targetId)) return;
 
-      const promptId = runtime.activePromptId;
-      runtime.abortController?.abort();
+      const jobRuntime = runtime.jobs.get(targetId);
+      const promptId = jobRuntime?.promptId ?? "";
+      jobRuntime?.abortController.abort();
 
       if (promptId) {
         void fetch("/api/generate/cancel", {

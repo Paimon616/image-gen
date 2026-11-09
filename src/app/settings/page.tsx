@@ -47,7 +47,7 @@ interface RunpodPodForm {
 }
 
 type SettingsGroup = "basic" | "pods" | "llm";
-type SaveScope = "keys" | "image" | "video" | ChatProviderId;
+type SaveScope = "keys" | "image" | "video" | "workers" | ChatProviderId;
 type ImportMode = "replace" | "append";
 
 interface ModelListState {
@@ -146,6 +146,9 @@ export default function SettingsPage() {
   const [podTransferError, setPodTransferError] = useState("");
   const [podTransferNotice, setPodTransferNotice] = useState("");
   const podFileInput = useRef<HTMLInputElement>(null);
+  // LAN GPU workers (colleague PCs), edited as JSON — see docs/gpu-workers.md.
+  const [gpuWorkersDraft, setGpuWorkersDraft] = useState("[]");
+  const [gpuWorkersError, setGpuWorkersError] = useState("");
   // Chat providers: one key draft per provider, plus where its key comes from
   // (saved in settings, or only present as an environment variable).
   const [chatKeys, setChatKeys] = useState(() => emptyProviderRecord(""));
@@ -172,6 +175,7 @@ export default function SettingsPage() {
     setHuggingfaceApiKeyConfigured(Boolean(data.huggingfaceApiKeyConfigured));
     setRunpodApiKeyConfigured(Boolean(data.runpodApiKeyConfigured));
     setRunpodPods(normalizePods(data.runpodPods));
+    setGpuWorkersDraft(JSON.stringify(data.gpuWorkers ?? [], null, 2));
     const readFlags = (value: unknown) => {
       const flags = (value ?? {}) as Record<string, unknown>;
       return Object.fromEntries(
@@ -377,6 +381,18 @@ export default function SettingsPage() {
   // values server-side); the scope only decides which button shows feedback so
   // image/video pod lists can be saved independently without losing the other.
   const save = async (scope: SaveScope) => {
+    let gpuWorkers: unknown;
+    try {
+      gpuWorkers = JSON.parse(gpuWorkersDraft);
+      if (!Array.isArray(gpuWorkers)) throw new Error("not an array");
+      setGpuWorkersError("");
+    } catch {
+      setGpuWorkersError(
+        ko ? "GPU 워커 JSON이 배열 형식이 아님" : "GPU workers must be a JSON array."
+      );
+      if (scope === "workers") return;
+      gpuWorkers = undefined;
+    }
     setSavingScope(scope);
     setSavedScope(null);
     setLoadError("");
@@ -389,6 +405,7 @@ export default function SettingsPage() {
           huggingfaceApiKey,
           runpodApiKey,
           runpodPods,
+          gpuWorkers,
           openrouterApiKey: chatKeys.openrouter,
           anthropicApiKey: chatKeys.anthropic,
           openaiApiKey: chatKeys.openai,
@@ -734,6 +751,43 @@ export default function SettingsPage() {
                   onPickFile={() => podFileInput.current?.click()}
                   onFileChange={(file) => void importPodsFile(file)}
                 />
+
+                <section className="rounded-xl border border-border bg-background shadow-sm">
+                  <header className="flex items-start gap-3 border-b border-border px-6 py-4">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <Cpu className="h-4 w-4" />
+                    </span>
+                    <div>
+                      <h2 className="text-sm font-semibold">
+                        {ko ? "GPU 워커 (사내망 ComfyUI)" : "GPU workers (LAN ComfyUI)"}
+                      </h2>
+                      <p className="text-xs text-muted-foreground">
+                        {ko
+                          ? "생성 대상 'GPU 워커'가 이 목록에 나눠 보냄. role: primary(주력)/light(미리보기·업스케일·대기열 넘침), speed: 4080 기준 상대 속도, maxQueue: 최대 대기 작업 수."
+                          : "The 'Workers' target dispatches across these. role: primary/light, speed: relative to a 4080, maxQueue: max jobs held."}
+                      </p>
+                    </div>
+                  </header>
+                  <div className="space-y-3 px-6 py-5">
+                    <Textarea
+                      value={gpuWorkersDraft}
+                      onChange={(event) => setGpuWorkersDraft(event.target.value)}
+                      rows={10}
+                      spellCheck={false}
+                      className="font-mono text-xs"
+                      placeholder={`[\n  { "id": "rtx4080", "label": "4080 (동료A)", "url": "http://10.0.0.80:8188", "role": "primary", "speed": 1, "maxQueue": 3, "enabled": true },\n  { "id": "rtx3060", "label": "3060 (동료B)", "url": "http://10.0.0.60:8188", "role": "light", "speed": 0.4, "maxQueue": 2, "enabled": true }\n]`}
+                    />
+                    {gpuWorkersError && (
+                      <p className="text-xs text-destructive">{gpuWorkersError}</p>
+                    )}
+                    <SectionSaveBar
+                      onSave={() => void save("workers")}
+                      saving={savingScope === "workers"}
+                      saved={savedScope === "workers"}
+                      ko={ko}
+                    />
+                  </div>
+                </section>
               </div>
             </TabsContent>
 

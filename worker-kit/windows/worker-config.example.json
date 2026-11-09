@@ -1,0 +1,9 @@
+{
+  "$comment": "Required: allowFrom = the Mac IPs allowed to use this GPU (everyone generating with image-gen). Optional: depotUrl/token to auto-sync models and custom nodes from marc's Mac; without them, put model files into data\\models\\<folder> by hand.",
+  "allowFrom": ["10.0.0.10", "10.0.0.11"],
+  "port": 8188,
+  "depotUrl": "",
+  "token": "",
+  "portableRelease": "latest",
+  "extraArgs": []
+}

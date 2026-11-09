@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { cancelComfyPrompt } from "@/lib/comfyui";
+import { gpuWorkerUrlForPrompt } from "@/lib/gpu-workers";
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,7 +14,12 @@ export async function POST(req: NextRequest) {
       return Response.json({ error: "prompt_id is required" }, { status: 400 });
     }
 
-    await cancelComfyPrompt(promptId);
+    // Prompts dispatched to a GPU worker live on that worker's ComfyUI.
+    const workerUrl = gpuWorkerUrlForPrompt(promptId);
+    await cancelComfyPrompt(
+      promptId,
+      workerUrl ? { baseUrl: workerUrl, remoteKind: "gpu-worker" } : undefined
+    );
 
     return Response.json({ canceled: true });
   } catch (error) {

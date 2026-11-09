@@ -1,0 +1,6 @@
+windows/runtime/
+windows/data/
+windows/logs/
+windows/worker-config.json
+windows/manifest.json
+windows/comfyui.pid

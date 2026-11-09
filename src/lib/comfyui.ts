@@ -122,6 +122,11 @@ export interface ComfyGeneratedMedia {
 
 export interface ComfyClientOptions {
   baseUrl?: string;
+  // Which kind of remote ComfyUI baseUrl points at. RunPod pods run the
+  // image-gen helper on :3000 next to ComfyUI; LAN GPU workers (colleague PCs)
+  // run plain ComfyUI only, so pod-helper probes must be skipped for them
+  // (a firewalled :3000 would stall every job until the probe times out).
+  remoteKind?: "runpod" | "gpu-worker";
 }
 
 type WorkflowControlNetConfig = ControlNetConfig & {
@@ -2010,7 +2015,9 @@ async function buildDefaultWorkflow(params: GenerationParams, options?: ComfyCli
   // the local disk (it returns null for a remote file, silently skipping this
   // guard). Falls back to the local read for local generation.
   const checkpointCapabilities = options?.baseUrl
-    ? await getRunpodCheckpointCapabilities(options.baseUrl, checkpoint)
+    ? options.remoteKind === "gpu-worker"
+      ? null
+      : await getRunpodCheckpointCapabilities(options.baseUrl, checkpoint)
     : await getCheckpointCapabilities(checkpoint);
 
   // Z-Image is checked before the diffusion-only guard because the weights may live in
@@ -2909,7 +2916,20 @@ export async function cancelComfyPrompt(promptId?: string, options?: ComfyClient
   }
 
   try {
-    await comfyFetch("/interrupt", { method: "POST" }, options);
+    // With a prompt id, ComfyUI only interrupts if THAT prompt is the one
+    // running. A bare /interrupt stops whatever runs — on a GPU worker or pod
+    // shared by several people that would kill someone else's render.
+    await comfyFetch(
+      "/interrupt",
+      promptId?.trim()
+        ? {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt_id: promptId }),
+          }
+        : { method: "POST" },
+      options
+    );
     canceled = true;
   } catch (error) {
     errors.push(error instanceof Error ? error.message : "Failed to interrupt ComfyUI");
