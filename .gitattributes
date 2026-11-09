@@ -1,1 +1,5 @@
 data/model-catalog.json merge=model-catalog-json
+
+# Shell scripts must keep LF endings or bash on macOS/Linux fails on \r
+*.sh text eol=lf
+*.command text eol=lf
