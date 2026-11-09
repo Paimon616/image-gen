@@ -27,9 +27,10 @@ export const SHEET_CANDIDATE_COUNT = 4;
 export const SHEET_WIDTH = 1216;
 export const SHEET_HEIGHT = 832;
 
-// IP-Adapter weight applied to renders of a sheet-confirmed character. 0.5 keeps
-// identity/outfit without dragging the sheet's multi-view layout into the scene.
-export const DEFAULT_SHEET_STRENGTH = 0.5;
+// IP-Adapter weight applied to renders of a sheet-confirmed character. Evaluated
+// 2026-11-09 (NoobAI adapter + face crop): 0.45 keeps face/hair/outfit while
+// leaving outfit changes and expressions to the prompt; 0.65 over-locks.
+export const DEFAULT_SHEET_STRENGTH = 0.45;
 export const MAX_SHEET_STRENGTH = 1.5;
 
 // Illustrious-friendly turnaround + expression chart tags.

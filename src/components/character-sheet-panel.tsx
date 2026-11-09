@@ -233,7 +233,7 @@ export function CharacterSheetPanel({
                   className="w-full"
                 />
                 <p className="text-muted-foreground">
-                  0.4–0.6 권장. 높을수록 얼굴·의상 고정, 너무 높으면 시트 구도가 장면에 섞임.
+                  0.4–0.5 권장(기본 0.45). 높을수록 얼굴·의상 고정, 0.6 이상은 의상 변경 무시·표정 고정.
                 </p>
               </div>
               <p className="text-muted-foreground">
@@ -457,7 +457,7 @@ function SheetCropEditor({
         )}
       </div>
       <p className="text-muted-foreground">
-        클릭으로 위치 이동. 정면 얼굴~어깨가 들어가게 지정 권장. 무표정에 가까운 얼굴일수록 표정 전이가 적음.
+        클릭으로 위치 이동. 얼굴이 가장 크게 나온 정면 머리(가슴 위) 뷰 하나를 감싸게 지정 권장 — 시트와 가장 닮게 나옴. 다른 인물·여백이 섞이면 복제·색 번짐 위험. 표정이 강한 얼굴은 그 표정이 렌더에 전이됨.
       </p>
     </div>
   );

@@ -95,7 +95,7 @@ export interface GenerationParams {
   // when the beta is on; applied as IP-Adapter conditioning on the SDXL workflow.
   // Optional so older saved params stay valid.
   character_sheet_image?: string | null;
-  // IP-Adapter weight for character_sheet_image (0–1.5, default 0.5).
+  // IP-Adapter weight for character_sheet_image (0–1.5, default 0.45).
   character_sheet_strength?: number;
   // Generator-side, per-render overrides of the character's sheet settings
   // (the route still decides whether a sheet applies at all). disabled = skip
@@ -654,7 +654,7 @@ export const DEFAULT_PARAMS: GenerationParams = {
   character_image: null,
   character_reference_strength: 0.7,
   character_sheet_image: null,
-  character_sheet_strength: 0.5,
+  character_sheet_strength: 0.45,
   character_sheet_disabled: false,
   character_sheet_strength_override: null,
   style_image_strength: 0.8,

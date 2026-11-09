@@ -12,8 +12,8 @@ LoRA는 대표 캐릭터에만 별도 학습(기존 캐릭터 LoRA 기능), 시�
 2. 캐릭터 스튜디오 > 캐릭터 선택 > `기준 시트` 탭.
 3. `IP-Adapter 준비 상태`에서 대상(로컬 / GPU 워커 / RunPod) 확인. 빨간 항목이 있으면:
    - 로컬: `설치` 버튼(= `npm run setup:ipadapter`, Windows `npm run setup:ipadapter:win`) 후 ComfyUI 재시작.
-   - GPU 워커: `모델 받기` 버튼(헬퍼 다운로드 경로). 노드는 워커 PC에서 최신 worker-kit으로 `start-worker.bat` 재실행.
-4. `후보 4장 생성` → 결과 중 하나 `이걸로 확정`.
+   - GPU 워커: `모델 받기` 버튼(헬퍼 다운로드 경로, Civitai 키 필요). 노드는 워커 PC에서 최신 worker-kit으로 `start-worker.bat` 재실행.
+4. `후보 4장 생성` → 결과 중 하나 `이걸로 확정`. 확정 시 참조 영역(정면 얼굴)이 자동 지정됨. 필요하면 위치 조정.
 5. 이후 그 캐릭터의 상황 렌더(Paimon 상황 선택, 배치 포함)는 자동으로 시트 참조 적용.
 
 캐릭터별 스위치(`이 캐릭터에 시트 참조 사용`)와 참조 강도(기본 0.5, 권장 0.4~0.6)는 탭에서 조절.
@@ -48,14 +48,47 @@ PuLID(`캐릭터 이미지`)와 동시 사용 가능. 둘 다 MODEL 패치라 �
 | 종류 | 이름 | 위치 | 크기 |
 | --- | --- | --- | --- |
 | 커스텀 노드 | `ComfyUI_IPAdapter_plus` @ `a0f451a5113cf9becb0847b92884cb10cbdec0ef` | `custom_nodes/` | - |
-| IP-Adapter | `ip-adapter-plus_sdxl_vit-h.safetensors` (h94/IP-Adapter `sdxl_models/`) | `models/ipadapter/` | 848MB |
-| CLIP Vision | `CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors` (h94/IP-Adapter `models/image_encoder/model.safetensors`를 이 이름으로 저장) | `models/clip_vision/` | 2.5GB |
+| IP-Adapter (기본) | `NOOB-IPA-MARK1.safetensors` (Civitai 모델 버전 1121145, Civitai 키 필요) | `models/ipadapter/` | 1.4GB |
+| CLIP Vision (기본) | `CLIP-ViT-bigG-14-laion2B-39B-b160k.safetensors` (h94/IP-Adapter `sdxl_models/image_encoder/model.safetensors`를 이 이름으로 저장) | `models/clip_vision/` | 3.7GB |
+| (대체) | `ip-adapter-plus_sdxl_vit-h` + `CLIP-ViT-H-14-laion2B-s32B-b79K` | 같은 폴더 | 0.8 + 2.5GB |
+
+대체 쌍은 Illustrious 계열에서 색 번짐, 인물 복제가 심해 권장하지 않음(아래 평가). 둘 다 있으면 NoobAI 쌍이 우선.
 
 핀 위치(셋 동기 유지): `src/lib/character-sheet.ts`(`IPADAPTER_NODE_REPO`, `IPADAPTER_MODEL`, `IPADAPTER_CLIP_VISION`), `comfyui-config/custom-nodes.json`, `worker-kit/windows/custom-nodes.json`.
 
 누락 감지: 그래프 빌드 전에 `/object_info`로 노드와 파일 콤보를 확인. 없으면 큐에 넣기 전에
 `[IP-Adapter · 기준 시트 BETA] ... 커스텀 노드가 없습니다` / `... 모델 파일이 없습니다: <경로>` 오류로 중단(스타일 참조는 `[IP-Adapter · 스타일 참조]`).
-파일 선택 규칙(`pickIpAdapterFiles`): SDXL, FaceID 제외, `plus_sdxl_vit-h` 우선, ViT-H 어댑터는 ViT-H 인코더, 일반 `ip-adapter_sdxl`은 bigG 인코더.
+파일 선택 규칙(`pickIpAdapterFiles`): NoobAI/Illustrious 어댑터 + bigG가 있으면 그 쌍. 없으면 SDXL(FaceID 제외), `plus_sdxl_vit-h` 우선, ViT-H 어댑터는 ViT-H 인코더, 일반 `ip-adapter_sdxl`은 bigG 인코더.
+
+## 참조 영역 (얼굴 크롭)
+
+여러 뷰가 담긴 시트를 통째로 IP-Adapter에 넣으면 장면에 캐릭터가 2명 그려지는 일이 생김. 그래서 시트 확정 시
+왼쪽 위 정사각 영역(정면 얼굴~어깨, `DEFAULT_SHEET_CROP`)을 자동으로 잘라 `referenceSheet.crop`에 저장하고,
+렌더에는 이 크롭만 넣음. 스튜디오 기준 시트 탭에서 클릭으로 위치, 슬라이더로 크기 조정 후 `참조 영역 저장`.
+크롭 파일은 `output/sheetref-*.png`(갤러리 목록 제외), `POST /api/character-sheet/crop`.
+무표정에 가까운 얼굴을 고르면 표정 전이가 줄어듦.
+
+## 평가 결과 (2026-11-09)
+
+조건: hassakuXLIllustrious_v22, LoRA 없음, 704x1024, 20 steps, 5개 상황(카페, 밤거리, 교실, 해변 원피스 = 의상 변경, 비), 같은 시드. Mac M5(MPS)에서 실행.
+
+| 라운드 | 설정 | 결과 |
+| --- | --- | --- |
+| R1-off | 시트 없음 | 화질 깨끗. 은발·적안은 태그만으로 유지. 교복 상의 색(흰/검), 리본 색이 이미지마다 다름 |
+| R1 | SDXL PLUS, 시트 전체, 0.5 | 의상은 시트 쪽으로 수렴. 인물 복제(비), 구도 붕괴, 채도 과다 |
+| R2/R3 | SDXL PLUS, 정면 크롭, 0.5 / 0.35 | 복제는 사라짐. 파스텔로 씻긴 색, 피부 붉어짐. 강도를 낮춰도 그대로 |
+| R5 | 같은 그래프, 강도 0 | 깨끗 → 색 문제는 IP-Adapter 주입 자체(SDXL base 어댑터 × Illustrious) |
+| R7 | NoobAI + 정면 크롭, 0.5 | 색 정상. 교복, 리본, 얼굴 일관. 해변 원피스에 교복 칼라 침범 |
+| R8 | NoobAI + 시트 전체, 0.5 | 색 정상, 의상 변경 정상. 교실에서 인물 복제 1건 |
+| R9 | NoobAI + 얼굴/상반신 크롭, 0.5 | 최선. 복제 없음, 의상 변경 정상, 교복·얼굴·머리 일관. 시트 표정(씩 웃음) 일부 전이 |
+| R10 | NoobAI + 얼굴 크롭, 0.65 | 과고정. 해변 원피스까지 교복화, 표정 전이 심함, 포즈 반영 약화 |
+| R11 / R12 | 다른 시드: 얼굴 크롭 0.5 / 시트 없음 | 교복 상의 일치 3/4 vs 1/4. 시트 쪽 웃는 표정 전이, 해변 칼라 약간 |
+| R13 | 제품 경로(확정 → 자동 참조 영역) | R11과 동일 결과 → 자동 크롭 경로 정상 |
+| R14 | 얼굴 크롭 0.45 | 표정 전이 감소, 해변 칼라 침범 사라짐, 교복 일치 유지 |
+| R15 | 정면 머리 뷰 영역 0.5 | 시트 일치 최고: 한쪽 사이드 리본, 눈매, 부드러운 미소. 해변 정상 |
+
+결론: NoobAI 어댑터 + 정면 머리(얼굴~가슴) 참조 영역 + 강도 0.45가 기본값. 영역은 시트에서 얼굴이 가장 크게 나온 정면 뷰 하나만 감쌀 것.
+남은 한계: 시트 자체가 외형 프롬프트와 다르면(예: "black sailor uniform"인데 시트는 흰 상의) 프롬프트와 시트가 충돌함. 후보 중 외형과 맞는 것을 확정할 것.
 
 ## GPU 워커
 
