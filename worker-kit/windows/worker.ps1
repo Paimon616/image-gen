@@ -32,6 +32,7 @@ $Core = Join-Path $Runtime "ComfyUI"
 $Data = Join-Path $Kit "data"                  # --base-directory: models, custom_nodes, input, output, user
 $Logs = Join-Path $Kit "logs"
 $PidFile = Join-Path $Kit "comfyui.pid"
+$HelperPidFile = Join-Path $Kit "helper.pid"
 $ManifestCache = Join-Path $Kit "manifest.json"
 
 function Read-Config {
@@ -81,14 +82,16 @@ function Expand-GithubZip($repoUrl, $ref, $dest) {
   }
 }
 
-function Get-WorkerPid {
-  if (-not (Test-Path $PidFile)) { return $null }
-  $id = [int](Get-Content $PidFile -Raw)
+function Get-KitPid($file) {
+  if (-not (Test-Path $file)) { return $null }
+  $id = [int](Get-Content $file -Raw)
   $proc = Get-Process -Id $id -ErrorAction SilentlyContinue
   if ($proc -and $proc.Path -and ($proc.Path -like "$Runtime*")) { return $id }
-  Remove-Item -Force -ErrorAction SilentlyContinue $PidFile
+  Remove-Item -Force -ErrorAction SilentlyContinue $file
   return $null
 }
+
+function Get-WorkerPid { Get-KitPid $PidFile }
 
 function Install-Runtime {
   $cfg = Read-Config
@@ -203,7 +206,7 @@ function Sync-Worker {
 function Test-FirewallOk($cfg) {
   $port = if ($cfg.port) { $cfg.port } else { 8188 }
   $rule = Get-NetFirewallRule -DisplayName "onechat GPU worker (ComfyUI $port)" -ErrorAction SilentlyContinue
-  if (-not $rule -or $rule.Description -ne "onechat-gpu-worker v2") { return $false }
+  if (-not $rule -or $rule.Description -ne "onechat-gpu-worker v3") { return $false }
   # A rule Windows created from the "allow python.exe?" prompt (open to all,
   # or a block that overrides ours) means firewall.ps1 must clean up again.
   $others = Get-NetFirewallApplicationFilter -Program $Python -ErrorAction SilentlyContinue |
@@ -252,6 +255,17 @@ function Start-Worker {
   $proc = Start-Process -FilePath $Python -ArgumentList $argsList -WorkingDirectory $Runtime `
     -WindowStyle Hidden -PassThru -RedirectStandardOutput $log -RedirectStandardError "$log.err"
   Set-Content -Path $PidFile -Value $proc.Id
+  # Model helper: lets image-gen check and download model files (Civitai/HF)
+  # into data\models, the same way it does for RunPod pods.
+  if (-not (Get-KitPid $HelperPidFile)) {
+    $helperPort = if ($cfg.helperPort) { $cfg.helperPort } else { 3000 }
+    $helperLog = Join-Path $Logs ("helper-" + (Get-Date -Format "yyyyMMdd") + ".log")
+    $helper = Start-Process -FilePath $Python `
+      -ArgumentList @("-s", "`"$Kit\helper.py`"", "--models", "`"$Data\models`"", "--port", "$helperPort") `
+      -WorkingDirectory $Kit -WindowStyle Hidden -PassThru `
+      -RedirectStandardOutput $helperLog -RedirectStandardError "$helperLog.err"
+    Set-Content -Path $HelperPidFile -Value $helper.Id
+  }
   Write-Host "Starting ComfyUI on port $($cfg.port) (pid $($proc.Id))..."
   for ($i = 0; $i -lt 90; $i++) {
     Start-Sleep -Seconds 2
@@ -266,11 +280,11 @@ function Start-Worker {
 }
 
 function Stop-Worker {
-  $id = Get-WorkerPid
-  if (-not $id) { Write-Host "Not running."; return }
+  $ids = @((Get-WorkerPid), (Get-KitPid $HelperPidFile)) | Where-Object { $_ }
+  if ($ids.Count -eq 0) { Write-Host "Not running."; return }
   # /T kills the process tree (ComfyUI may spawn helpers).
-  & taskkill.exe /PID $id /T /F | Out-Null
-  Remove-Item -Force -ErrorAction SilentlyContinue $PidFile
+  foreach ($id in $ids) { & taskkill.exe /PID $id /T /F | Out-Null }
+  Remove-Item -Force -ErrorAction SilentlyContinue $PidFile, $HelperPidFile
   Write-Host "GPU worker is OFF." -ForegroundColor Yellow
 }
 

@@ -158,9 +158,23 @@ export async function writeSettings(settings: AppSettings) {
   return clean;
 }
 
-export async function getRunpodPod(id: string) {
+export async function getRunpodPod(id: string): Promise<RunpodPodSettings | undefined> {
   const settings = await readSettings();
-  return settings.runpodPods.find((pod) => pod.id === id || pod.podId === id);
+  const pod = settings.runpodPods.find((pod) => pod.id === id || pod.podId === id);
+  if (pod) return pod;
+  // A LAN GPU worker runs the same helper API (worker-kit/windows/helper.py on
+  // :3000 next to ComfyUI :8188), so the pod file check / download flow works
+  // on it unchanged. It has no RunPod pod id or SSH.
+  const worker = settings.gpuWorkers.find((worker) => worker.id === id);
+  if (!worker) return undefined;
+  return {
+    id: worker.id,
+    kind: "image",
+    label: worker.label,
+    podId: "",
+    ssh: "",
+    comfyUrl: worker.url,
+  };
 }
 
 export async function getCivitaiApiKey() {

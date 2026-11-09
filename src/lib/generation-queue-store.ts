@@ -66,6 +66,9 @@ export interface GenerationRuntimeConfig {
   // How many "workers" jobs may stream at once (sum of online workers' slots,
   // published by the generator page). Local and RunPod stay one at a time.
   workerSlots: number;
+  // GPU worker whose helper answers the pre-generation file check (and takes
+  // "Download missing files"), chosen by the generator page.
+  workerCheckId: string;
   ko: boolean;
   // Why the current params can't generate at all (missing source image, etc.).
   modeError: string;
@@ -399,6 +402,7 @@ export const useGenerationQueueStore = create<GenerationQueueState>(
       generationTarget: "local",
       runpodPodId: "",
       workerSlots: 2,
+      workerCheckId: "",
       ko: true,
       modeError: "",
     },
@@ -452,43 +456,54 @@ export const useGenerationQueueStore = create<GenerationQueueState>(
         });
         return;
       }
-      if (config.generationTarget === "runpod") {
+      // RunPod pods and LAN GPU workers share the helper file-check API. For
+      // workers the check is advisory: an unreachable helper (older worker
+      // kit) must not block generation, since the dispatcher also skips
+      // workers that lack a model.
+      const isWorkers = config.generationTarget === "workers";
+      const checkPodId =
+        config.generationTarget === "runpod"
+          ? config.runpodPodId
+          : isWorkers
+            ? config.workerCheckId
+            : "";
+      const targetLabel = isWorkers ? (config.ko ? "GPU 워커" : "GPU worker") : "RunPod";
+      if (checkPodId) {
         hooks?.onRunpodBusy?.("check");
         hooks?.onRunpodStatus?.(
           config.ko
-            ? "RunPod 파일을 확인 중입니다..."
-            : "Checking RunPod files..."
+            ? `${targetLabel} 파일을 확인 중입니다...`
+            : `Checking ${targetLabel} files...`
         );
         try {
-          const missing = await checkRunpodFiles(
-            config.runpodPodId,
-            sourceParams
-          );
+          const missing = await checkRunpodFiles(checkPodId, sourceParams);
           hooks?.onMissingFiles?.(missing);
           if (missing.length > 0) {
             hooks?.onRunpodStatus?.(
               config.ko
-                ? `RunPod에 누락 파일 ${missing.length}개가 있어 생성하지 않았습니다. 다운로드 후 다시 생성하세요.`
-                : `${missing.length} file(s) are missing on RunPod. Download them before generating.`
+                ? `${targetLabel}에 누락 파일 ${missing.length}개가 있어 생성하지 않았습니다. 다운로드 후 다시 생성하세요.`
+                : `${missing.length} file(s) are missing on the ${targetLabel}. Download them before generating.`
             );
             setStatus({
               state: "error",
               progress: 0,
               message: config.ko
-                ? `RunPod 누락 파일 ${missing.length}개`
-                : `${missing.length} RunPod file(s) missing`,
+                ? `${targetLabel} 누락 파일 ${missing.length}개`
+                : `${missing.length} ${targetLabel} file(s) missing`,
             });
             return;
           }
           hooks?.onRunpodStatus?.(
-            config.ko ? "RunPod 파일 준비 완료." : "RunPod files are ready."
+            config.ko ? `${targetLabel} 파일 준비 완료.` : `${targetLabel} files are ready.`
           );
         } catch (error) {
           const message =
-            error instanceof Error ? error.message : "RunPod file check failed";
+            error instanceof Error ? error.message : `${targetLabel} file check failed`;
           hooks?.onRunpodStatus?.(message);
-          setStatus({ state: "error", progress: 0, message });
-          return;
+          if (!isWorkers) {
+            setStatus({ state: "error", progress: 0, message });
+            return;
+          }
         } finally {
           hooks?.onRunpodBusy?.("");
         }

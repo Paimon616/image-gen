@@ -117,7 +117,15 @@
 ComfyUI 실행 인자: `--listen 0.0.0.0 --port 8188 --base-directory <kit>\data --disable-auto-launch --disable-api-nodes`.
 모델, 커스텀 노드, 입출력이 전부 키트 폴더 안 `data\`에 있음.
 
-### 모델, 노드 맞추기
+### 모델 받기 (앱에서 버튼으로)
+
+- 키트의 `helper.py`가 ComfyUI 옆에서 3000번 포트로 함께 뜸. RunPod 헬퍼와 같은 API(`/api/runpod/helper/status|files|download|download/stream|catalog|model-capabilities`) 중 모델 확인, 다운로드에 필요한 부분만 구현(파이썬 표준 라이브러리, 포터블 내장 파이썬으로 실행).
+- 앱은 워커 id를 팟처럼 취급(`getRunpodPod`가 `gpuWorkers`도 찾음). 그래서 RunPod와 같은 확인과 다운로드 경로를 그대로 탐.
+- 생성 화면에서 `GPU 워커`를 선택하면 워커 목록 아래 "모델 파일" 확인 버튼, 누락 목록, "다운로드 N개" 버튼이 보임. 생성 버튼을 눌러도 먼저 확인함(헬퍼가 응답하지 않으면 확인을 건너뛰고 생성 진행).
+- 다운로드는 Civitai, HF에서 워커 PC로 바로 받음. 토큰은 요청마다 맥에서 전달(RunPod 팟과 같은 방식). 쓰기는 `data\models` 안으로만 제한, https만 허용, 다른 호스트로 리다이렉트될 때는 토큰을 떼고 보냄.
+- 회사망 TLS 검사 인증서 대응: 파이썬 3.13+의 엄격 X.509 검증만 끄고 체인과 호스트명 검증은 유지.
+
+### 모델, 노드 맞추기 (depot, 선택)
 
 - 방법 A(권장): depot. 맥에서
   ```bash
@@ -128,7 +136,7 @@ ComfyUI 실행 인자: `--listen 0.0.0.0 --port 8188 --base-directory <kit>\data
   - 맥에 파일이 있으면 맥에서 직접, 없으면 `model-catalog.json`의 source_url에서 맥이 대신 받아 전달. Civitai와 HF 토큰은 맥에만 있음.
   - 프로필 밖 파일은 내려주지 않음. 경로 우회(`..`) 차단, 토큰과 허용 IP 확인.
   - 워커는 manifest에 없는 커스텀 노드를 `custom_nodes_disabled`로 옮김. ComfyUI-Manager는 설치하지 않음(원격 임의 설치 경로 차단).
-- 방법 B: 모델 파일을 `data\models\checkpoints`, `data\models\loras`에 직접 복사.
+- 방법 B: 앱의 다운로드 버튼(위). 방법 C: 모델 파일을 `data\models\checkpoints`, `data\models\loras`에 직접 복사.
 - 동기화 뒤에는 앱의 모델 캐시가 30초 안에 갱신됨. 바로 반영하려면 `POST /api/gpu-workers {"action":"refresh-models"}`.
 
 ## 네트워크와 보안

@@ -1,0 +1,293 @@
+"""GPU worker model helper.
+
+Speaks the subset of the image-gen RunPod helper API (/api/runpod/helper/*)
+that image-gen uses to check and download model files, so a LAN GPU worker
+gets the same "missing files -> Download" flow as a RunPod pod. Runs on the
+ComfyUI portable's embedded Python (stdlib only), next to ComfyUI.
+
+Only writes inside the models folder it is given. Downloads only over https.
+Reachable only from the addresses firewall.ps1 allows.
+"""
+
+import argparse
+import json
+import os
+import ssl
+import sys
+import threading
+import time
+import urllib.parse
+import urllib.request
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+# Must match RUNPOD_HELPER_VERSION in src/lib/runpod.ts, or the app shows
+# "helper update needed" (cosmetic only).
+HELPER_VERSION = "7"
+POD_PREFIX = "/workspace/ComfyUI/models/"
+CHUNK = 1024 * 1024
+
+MODELS_DIR = ""
+CATALOG_LOCK = threading.Lock()
+
+
+def model_path(value):
+    """'/workspace/ComfyUI/models/loras/x.safetensors' or 'loras/x' -> absolute path in MODELS_DIR."""
+    raw = str(value or "").strip().replace("\\", "/")
+    if raw.startswith(POD_PREFIX):
+        raw = raw[len(POD_PREFIX):]
+    raw = raw.lstrip("/")
+    if not raw or ".." in raw.split("/") or ":" in raw:
+        raise ValueError("Invalid model path: %s" % value)
+    full = os.path.normpath(os.path.join(MODELS_DIR, raw))
+    root = os.path.normpath(MODELS_DIR)
+    if os.path.commonpath([full, root]) != root:
+        raise ValueError("Path escapes the models folder: %s" % value)
+    return full
+
+
+class _StripAuthOnHostChange(urllib.request.HTTPRedirectHandler):
+    # Civitai/HF redirect to signed CDN URLs; like fetch(), don't forward the
+    # bearer token to a different host.
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        new = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if new is not None:
+            old_host = urllib.parse.urlparse(req.full_url).hostname
+            new_host = urllib.parse.urlparse(newurl).hostname
+            if old_host != new_host:
+                for name in list(new.headers):
+                    if name.lower() == "authorization":
+                        del new.headers[name]
+                new.unredirected_hdrs.pop("Authorization", None)
+        return new
+
+
+def _tls_context():
+    # Python 3.13+ enables VERIFY_X509_STRICT, which rejects certificates
+    # re-signed by corporate TLS inspection proxies ("Missing Authority Key
+    # Identifier"). Keep full chain and hostname verification; drop only the
+    # strict RFC 5280 profile check. Windows' certificate store (where the
+    # company root CA lives) is loaded by create_default_context().
+    ctx = ssl.create_default_context()
+    ctx.verify_flags &= ~getattr(ssl, "VERIFY_X509_STRICT", 0)
+    return ctx
+
+
+_opener = urllib.request.build_opener(
+    _StripAuthOnHostChange, urllib.request.HTTPSHandler(context=_tls_context())
+)
+
+
+def download_to_file(target, url, token, on_progress):
+    if not url.lower().startswith("https://"):
+        raise ValueError("Only https downloads are allowed.")
+    os.makedirs(os.path.dirname(target), exist_ok=True)
+    if os.path.exists(target):
+        size = os.path.getsize(target)
+        on_progress(size, size)
+        return target
+    tmp = target + ".download"
+    existing = os.path.getsize(tmp) if os.path.exists(tmp) else 0
+    headers = {"User-Agent": "image-gen-gpu-worker-helper/1.0"}
+    if token:
+        headers["Authorization"] = "Bearer " + token
+    if existing:
+        headers["Range"] = "bytes=%d-" % existing
+    req = urllib.request.Request(url, headers=headers)
+    on_progress(existing, 0)
+    with _opener.open(req, timeout=60) as res:
+        if existing and res.status != 206:
+            existing = 0  # server ignored the range; start over
+        length = int(res.headers.get("Content-Length") or 0)
+        total = existing + length if length else 0
+        done = existing
+        with open(tmp, "ab" if existing else "wb") as out:
+            while True:
+                chunk = res.read(CHUNK)
+                if not chunk:
+                    break
+                out.write(chunk)
+                done += len(chunk)
+                on_progress(done, total)
+    if total and done < total:
+        raise IOError("Download ended early (%d of %d bytes)." % (done, total))
+    os.replace(tmp, target)
+    on_progress(done, done)
+    return target
+
+
+def safetensors_capabilities(path):
+    """Whether a checkpoint bundles a text encoder (clip) and a VAE."""
+    try:
+        with open(path, "rb") as f:
+            size = int.from_bytes(f.read(8), "little")
+            if size <= 0 or size > 100 * 1024 * 1024:
+                return None
+            keys = json.loads(f.read(size)).keys()
+    except Exception:
+        return None
+    clip_prefixes = ("conditioner.", "cond_stage_model.", "text_encoders.", "clip_l.", "clip_g.", "te.")
+    vae_prefixes = ("first_stage_model.", "vae.")
+    return {
+        "clip": any(k.startswith(clip_prefixes) for k in keys),
+        "vae": any(k.startswith(vae_prefixes) for k in keys),
+    }
+
+
+def catalog_file():
+    return os.path.join(MODELS_DIR, ".image-gen-catalog.json")
+
+
+def read_catalog():
+    try:
+        with open(catalog_file(), "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+class Handler(BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
+    server_version = "gpu-worker-helper"
+
+    def log_message(self, fmt, *args):
+        sys.stdout.write("%s %s\n" % (self.address_string(), fmt % args))
+        sys.stdout.flush()
+
+    def _json(self, status, body):
+        data = json.dumps(body).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def _body(self):
+        length = int(self.headers.get("Content-Length") or 0)
+        if length <= 0:
+            return {}
+        if length > 10 * 1024 * 1024:
+            raise ValueError("Request too large.")
+        return json.loads(self.rfile.read(length) or b"{}")
+
+    def do_GET(self):
+        path = urllib.parse.urlparse(self.path).path
+        if path == "/api/runpod/helper/status":
+            return self._json(200, {
+                "ok": True,
+                "version": HELPER_VERSION,
+                "message": "GPU worker helper ready",
+                "comfyModelsDir": MODELS_DIR,
+            })
+        if path == "/api/runpod/helper/catalog":
+            return self._json(200, {"catalog": read_catalog()})
+        return self._json(404, {"error": "Not found"})
+
+    def do_POST(self):
+        path = urllib.parse.urlparse(self.path).path
+        try:
+            body = self._body()
+        except Exception as error:
+            return self._json(400, {"error": str(error)})
+        try:
+            if path == "/api/runpod/helper/files":
+                files = [str(f) for f in body.get("files") or []]
+                result = []
+                for f in files:
+                    try:
+                        exists = os.path.isfile(model_path(f))
+                    except ValueError:
+                        exists = False
+                    result.append({"path": f, "exists": exists})
+                return self._json(200, {"files": result})
+
+            if path == "/api/runpod/helper/download":
+                target = model_path(body.get("targetFile"))
+                download_to_file(target, str(body.get("downloadUrl") or "").strip(),
+                                 str(body.get("token") or ""), lambda d, t: None)
+                return self._json(200, {"path": body.get("targetFile")})
+
+            if path == "/api/runpod/helper/download/stream":
+                return self._download_stream(body)
+
+            if path == "/api/runpod/helper/catalog":
+                entries = body.get("entries") or {}
+                if not isinstance(entries, dict):
+                    raise ValueError("entries must be an object")
+                with CATALOG_LOCK:
+                    catalog = read_catalog()
+                    catalog.update(entries)
+                    with open(catalog_file(), "w", encoding="utf-8") as f:
+                        json.dump(catalog, f, ensure_ascii=False, indent=2)
+                return self._json(200, {"ok": True, "count": len(catalog)})
+
+            if path == "/api/runpod/helper/model-capabilities":
+                target = model_path(body.get("file"))
+                caps = safetensors_capabilities(target) if os.path.isfile(target) else None
+                return self._json(200, {"capabilities": caps})
+
+            if path == "/api/runpod/helper/restart-comfy":
+                # ComfyUI rescans model folders on its own; nothing to restart.
+                return self._json(200, {"ok": True, "restarted": False})
+
+            return self._json(404, {"error": "Not supported on a GPU worker: %s" % path})
+        except Exception as error:
+            return self._json(400, {"error": str(error)})
+
+    def _download_stream(self, body):
+        raw_target = body.get("targetFile")
+        target = model_path(raw_target)
+        url = str(body.get("downloadUrl") or "").strip()
+        if not url:
+            raise ValueError("Download URL is required.")
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Connection", "close")
+        self.end_headers()
+        self.close_connection = True
+
+        def send(event):
+            self.wfile.write(("data: %s\n\n" % json.dumps(event)).encode("utf-8"))
+            self.wfile.flush()
+
+        last = [0.0]
+
+        def progress(done, total):
+            now = time.time()
+            if now - last[0] < 0.5 and not (total and done >= total):
+                return
+            last[0] = now
+            send({
+                "type": "status" if total and done >= total else "progress",
+                "path": raw_target,
+                "downloaded": done,
+                "total": total,
+                "percent": min(100, round(done * 100 / total)) if total else 0,
+            })
+
+        try:
+            download_to_file(target, url, str(body.get("token") or ""), progress)
+            send({"type": "complete", "path": raw_target, "percent": 100})
+        except Exception as error:
+            send({"type": "status", "message": "Download failed: %s" % error})
+
+
+def main():
+    global MODELS_DIR
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--models", required=True)
+    parser.add_argument("--host", default="0.0.0.0")
+    parser.add_argument("--port", type=int, default=3000)
+    args = parser.parse_args()
+    MODELS_DIR = os.path.abspath(args.models)
+    os.makedirs(MODELS_DIR, exist_ok=True)
+    server = ThreadingHTTPServer((args.host, args.port), Handler)
+    server.daemon_threads = True
+    print("GPU worker helper on %s:%d, models=%s" % (args.host, args.port, MODELS_DIR), flush=True)
+    server.serve_forever()
+
+
+if __name__ == "__main__":
+    main()

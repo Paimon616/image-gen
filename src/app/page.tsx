@@ -205,6 +205,7 @@ export default function Home() {
   // (see the useEffect below) to avoid a hydration mismatch.
   const [generationTarget, setGenerationTarget] = useState<GenerationTarget>("local");
   const [workerSlots, setWorkerSlots] = useState(2);
+  const [workerCheckId, setWorkerCheckId] = useState("");
   // Local ComfyUI backend state. The launcher no longer starts ComfyUI; the app
   // offers to start it on demand via a banner when in local mode (see below).
   const [comfy, setComfy] = useState<{
@@ -1325,6 +1326,7 @@ export default function Home() {
       generationTarget,
       runpodPodId: selectedRunpodPodId,
       workerSlots,
+      workerCheckId,
       ko,
       modeError: generationModeError,
     });
@@ -1334,6 +1336,7 @@ export default function Home() {
     ko,
     selectedRunpodPodId,
     setGenerationConfig,
+    workerCheckId,
     workerSlots,
   ]);
 
@@ -1695,7 +1698,14 @@ export default function Home() {
 
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
           {generationTarget === "workers" && (
-            <GpuWorkerStatus ko={ko} onSlotsChange={setWorkerSlots} />
+            <GpuWorkerStatus
+              ko={ko}
+              params={params}
+              missing={runpodMissingFiles}
+              onSlotsChange={setWorkerSlots}
+              onCheckWorkerChange={setWorkerCheckId}
+              onMissingChange={setRunpodMissingFiles}
+            />
           )}
           {generationTarget === "local" && comfy.local && !comfy.running && (
             <div className="space-y-2 rounded-md border border-sky-500/40 bg-sky-500/10 p-3">
