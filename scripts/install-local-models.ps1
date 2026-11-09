@@ -15,7 +15,8 @@
     image  Hassaku XL (Illustrious) + Detailer IL / Eye Enhancer / HandPatch LoRA,
            PuLID (face identity) + InsightFace antelopev2, ADetailer face bbox
     krea2  Krea2 Turbo + Qwen3-VL 4B encoder + Krea2 Identity Edit LoRA +
-           Refusal-Reduction LoRA, Qwen-Image VAE, node comfyui-krea2edit
+           Refusal-Reduction LoRA, More Dynamic Poses LoRA, Qwen-Image VAE,
+           node comfyui-krea2edit
     anima  One obsession (Anima) checkpoint + Anima LoRAs, Qwen3 0.6B encoder
     h3     MiniMax H3 (DaSiWa REF2VA hybrid) video + encoder/VAE + turbo LoRAs,
            nodes ComfyUI-DaSiWa-Nodes + ComfyUI-KJNodes
@@ -66,6 +67,7 @@ $Models = @(
   @("krea2", "vae/qwen_image_vae.safetensors", "$HF/circlestone-labs/Anima/resolve/main/split_files/vae/qwen_image_vae.safetensors", 253806246),
   @("krea2", "loras/krea2_identity_edit_v1_2.safetensors", "$CIVITAI/3139172", 1828256432),
   @("krea2", "loras/Capitan01R_Krea2_TextFusion_Refusal_Reduction_v2_updated.safetensors", "$CIVITAI/3416236", 30354320),
+  @("krea2", "loras/More_Dynamic_Poses_Krea2_000002500.safetensors", "$CIVITAI/3296632", 228587800),
 
   # ---- anima ----
   @("anima", "checkpoints/One obsession_animaV5turbo.safetensors", "$CIVITAI/3443487", 4182229969),

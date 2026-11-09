@@ -13,6 +13,8 @@ export interface ModelPreset {
 }
 
 const KREA2_REFUSAL_LORA = "Capitan01R_Krea2_TextFusion_Refusal_Reduction_v2_updated.safetensors";
+// civitai.com/models/2914130 (Krea2 v1.0) - trigger word "PoseDaal".
+const KREA2_DYNAMIC_POSE_LORA = "More_Dynamic_Poses_Krea2_000002500.safetensors";
 
 export const MODEL_PRESETS: ModelPreset[] = [
   {
@@ -50,6 +52,28 @@ export const MODEL_PRESETS: ModelPreset[] = [
       clip_skip: 1,
       krea2_workflow: "generic",
       character_reference_strength: 0.75,
+    },
+  },
+  {
+    id: "krea2-identity-adult-dynamic",
+    label: { ko: "Krea2 성인 · 다이내믹 포즈", en: "Krea2 adult · dynamic pose" },
+    description: {
+      ko: "Krea2 Turbo + Identity Edit(참조 강도 0.7) + Refusal-Reduction 1.0 + More Dynamic Poses 1.0 · 10스텝 · CFG 1. 레퍼런스와 다른 포즈 · 표정이 잘 나옵니다. 프롬프트 맨 앞에 트리거 PoseDaal 을 넣으세요.",
+      en: "Krea2 Turbo + Identity Edit (reference 0.7) + Refusal-Reduction 1.0 + More Dynamic Poses 1.0 · 10 steps · CFG 1. Breaks away from the reference pose and expression. Start the prompt with the trigger PoseDaal.",
+    },
+    modelCandidates: ["krea2_turbo_fp8_scaled.safetensors", "krea2_turbo_bf16.safetensors"],
+    params: {
+      loras: [
+        { path: KREA2_REFUSAL_LORA, scale: 1 },
+        { path: KREA2_DYNAMIC_POSE_LORA, scale: 1 },
+      ],
+      num_inference_steps: 10,
+      guidance_scale: 1,
+      sampler_name: "euler",
+      scheduler: "simple",
+      clip_skip: 1,
+      krea2_workflow: "generic",
+      character_reference_strength: 0.7,
     },
   },
 ];
