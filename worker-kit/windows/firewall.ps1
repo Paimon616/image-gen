@@ -1,7 +1,8 @@
-# One-time, run as administrator (install-worker.bat elevates for you).
-# Lets ONLY marc's Mac reach this PC's ComfyUI port. ComfyUI has no login, so
-# the port must never be reachable from anywhere else, and never from the
-# internet. Re-run after marc's Mac IP changes.
+# Run as administrator (start-worker.bat elevates for you when needed).
+# Opens this PC's ComfyUI port only to the addresses in worker-config.json
+# allowFrom (IPs or CIDR, e.g. 10.202.0.0/16). ComfyUI has no login, so the
+# port must never be reachable from anywhere else, and never from the internet.
+# Re-run after allowFrom changes.
 
 param([switch]$Remove)
 
@@ -10,14 +11,17 @@ $Kit = $PSScriptRoot
 $cfg = Get-Content (Join-Path $Kit "worker-config.json") -Raw | ConvertFrom-Json
 $port = if ($cfg.port) { $cfg.port } else { 8188 }
 $ruleName = "onechat GPU worker (ComfyUI $port)"
+$ruleVersion = "onechat-gpu-worker v2"
 $python = Join-Path $Kit "runtime\python_embeded\python.exe"
 
-Get-NetFirewallRule -DisplayName $ruleName -ErrorAction SilentlyContinue | Remove-NetFirewallRule
-# Windows asks "allow python.exe?" the first time ComfyUI listens. If someone
-# clicked Allow, that rule opens the port to everyone on the network; remove it.
+# Our rules from any earlier kit version (v1 also added a Public block rule,
+# which overrode the allow rule on networks Windows classifies as Public).
+Get-NetFirewallRule -DisplayName "$ruleName*" -ErrorAction SilentlyContinue | Remove-NetFirewallRule
+# Windows asks "allow python.exe?" the first time a program listens. Clicking
+# Allow creates a rule open to everyone; clicking Cancel creates a block rule
+# that overrides ours. Remove both kinds for this kit's python.exe.
 Get-NetFirewallApplicationFilter -Program $python -ErrorAction SilentlyContinue |
   Get-NetFirewallRule -ErrorAction SilentlyContinue |
-  Where-Object { $_.DisplayName -ne $ruleName } |
   Remove-NetFirewallRule
 
 if ($Remove) {
@@ -26,15 +30,13 @@ if ($Remove) {
 }
 
 $allow = @($cfg.allowFrom) | Where-Object { $_ }
-if ($allow.Count -eq 0) { throw "worker-config.json allowFrom is empty (marc's Mac IP)." }
+if ($allow.Count -eq 0) { throw "worker-config.json allowFrom is empty." }
 
-New-NetFirewallRule -DisplayName $ruleName `
+# All profiles: office networks are often classified as Public on PCs that
+# are not domain-joined. The address filter is what limits access; inbound
+# traffic not matching an allow rule stays blocked by Windows' default.
+New-NetFirewallRule -DisplayName $ruleName -Description $ruleVersion `
   -Direction Inbound -Action Allow -Protocol TCP -LocalPort $port `
-  -RemoteAddress $allow -Program $python `
-  -Profile Domain,Private | Out-Null
-# Explicit block for everyone else on this port, including the Public profile.
-New-NetFirewallRule -DisplayName "$ruleName - block others" `
-  -Direction Inbound -Action Block -Protocol TCP -LocalPort $port `
-  -RemoteAddress Any -Profile Public | Out-Null
+  -RemoteAddress $allow -Program $python -Profile Any | Out-Null
 
-Write-Host "Firewall: port $port open only to $($allow -join ', ') (Domain/Private networks)." -ForegroundColor Green
+Write-Host "Firewall: port $port open only to $($allow -join ', ')." -ForegroundColor Green

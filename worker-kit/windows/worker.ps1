@@ -200,15 +200,27 @@ function Sync-Worker {
   Write-Host "Sync done." -ForegroundColor Green
 }
 
-function Ensure-Firewall($cfg) {
+function Test-FirewallOk($cfg) {
   $port = if ($cfg.port) { $cfg.port } else { 8188 }
   $rule = Get-NetFirewallRule -DisplayName "onechat GPU worker (ComfyUI $port)" -ErrorAction SilentlyContinue
-  if ($rule) { return }
-  Write-Step "Adding firewall rule (Windows will ask for admin once)"
+  if (-not $rule -or $rule.Description -ne "onechat-gpu-worker v2") { return $false }
+  # A rule Windows created from the "allow python.exe?" prompt (open to all,
+  # or a block that overrides ours) means firewall.ps1 must clean up again.
+  $others = Get-NetFirewallApplicationFilter -Program $Python -ErrorAction SilentlyContinue |
+    Get-NetFirewallRule -ErrorAction SilentlyContinue |
+    Where-Object { $_.DisplayName -ne $rule.DisplayName }
+  return -not $others
+}
+
+function Ensure-Firewall($cfg) {
+  if (Test-FirewallOk $cfg) { return }
+  Write-Step "Setting up the firewall rule (Windows will ask for admin permission)"
   $fw = Join-Path $Kit "firewall.ps1"
-  $p = Start-Process powershell -Verb RunAs -Wait -PassThru `
+  Start-Process powershell -Verb RunAs -Wait `
     -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$fw`""
-  if ($p.ExitCode -ne 0) { throw "Firewall rule was not added; not starting (the port must stay closed to others)." }
+  if (-not (Test-FirewallOk $cfg)) {
+    throw "Firewall rule was not added; not starting (the port must stay closed to others)."
+  }
 }
 
 function Start-Worker {

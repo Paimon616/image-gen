@@ -134,8 +134,8 @@ ComfyUI 실행 인자: `--listen 0.0.0.0 --port 8188 --base-directory <kit>\data
 ## 네트워크와 보안
 
 - 사내망 직접 접속. ComfyUI에는 로그인이 없으므로 포트 접근 제한이 유일한 보호막.
-  - `firewall.ps1`: 8188 인바운드를 `allowFrom` IP + 키트의 python.exe + Domain/Private 프로필로만 허용. Public 프로필은 명시적으로 차단.
-  - 처음 실행 때 뜨는 "python.exe 허용" 창은 취소. 누군가 허용을 눌러 생긴 규칙은 스크립트가 지움.
+  - `firewall.ps1`: 8188 인바운드를 `allowFrom` 주소 + 키트의 python.exe로만 허용. 모든 프로필에 적용(도메인 미가입 PC는 사내망도 Public으로 잡히는 경우가 많아서). 제한은 주소 필터가 담당하고, 나머지 인바운드는 Windows 기본값으로 차단.
+  - "python.exe 허용" 창에서 허용이나 취소를 눌러 생긴 규칙(전체 허용, 또는 우리 규칙을 덮는 차단)은 `start-worker.bat`이 감지해서 다시 정리함.
   - 공유기나 회사 방화벽에서 포트를 열지 않음. 외부에서 접근하는 경로 없음.
   - marc 맥 IP가 DHCP로 바뀌면 `worker-config.json`의 `allowFrom`을 고친 뒤 `firewall.ps1`을 다시 실행. 맥 IP를 사내 DHCP 예약으로 고정하는 편이 편함.
 - 동료 파일 접근
