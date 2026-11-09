@@ -1599,7 +1599,7 @@ export async function checkIpAdapterSheetSetup(
 ): Promise<IpAdapterSheetSetupStatus> {
   let reachable = true;
   try {
-    await comfyFetch("/system_stats", { signal: AbortSignal.timeout(5_000) }, options);
+    await comfyFetch("/system_stats", { signal: AbortSignal.timeout(15_000) }, options);
   } catch {
     reachable = false;
   }

@@ -9,3 +9,6 @@ metadata:
 - IP-Adapter pins in 3 places: `src/lib/character-sheet.ts`, `comfyui-config/custom-nodes.json`, `worker-kit/windows/custom-nodes.json`.
 - CLIP Vision file is h94 `models/image_encoder/model.safetensors` saved as `CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors`.
 - Human doc: `docs/character-reference-sheet.md`.
+- Verified 2026-11-09: the IP-Adapter graph executes on real ComfyUI (Mac, ComfyUI_IPAdapter_plus @ a0f451a). A 16GB Mac with SDXL + ViT-H + IP-Adapter swaps hard (~45–60 s/step even with `--lowvram`); use a CUDA worker for real use.
+- LAN worker reachability: a dev server launched from the Claude desktop preview pane got EHOSTUNREACH to the LAN worker while the same `node` from a shell reached it (macOS Local Network permission per process tree). Run the dev server from a terminal when testing GPU workers.
+- Long helper downloads (2.5GB CLIP Vision) can end with "terminated" on older worker helpers (no background downloads); re-POSTing resumes from the `.download` partial.
