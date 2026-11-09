@@ -8989,5 +8989,50 @@
     "civitai_url": "https://civitai.red/models/503815/nova-furry-xl?modelVersionId=2792241",
     "source_url": "https://civitai.red/models/503815/nova-furry-xl?modelVersionId=2792241",
     "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/251bc5bd-bdb4-4676-a791-6366c40307e4/original=true/124939697.jpeg"
+  },
+  "loras/Fox burrow style 1 (Anima) v1.safetensors": {
+    "name": "Fox Burrow's Styles",
+    "version": "Fox Burrow Style 1",
+    "base_model": "Anima",
+    "civitai_url": "https://civitai.red/models/2779451/fox-burrow-s-styles?modelVersionId=3130169",
+    "source_url": "https://civitai.red/models/2779451/fox-burrow-s-styles?modelVersionId=3130169",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/27dad494-04f8-4124-9d9d-af3f75279d6b/original=true/136720716.jpeg",
+    "tags": [
+      "@foxburrow"
+    ]
+  },
+  "checkpoints/ramthrustsNSFWPINK_v31RAMSDelicious.safetensors": {
+    "name": "RAMTHRUST'S-NSFW-PINK-ALCHEMY-ANIMA 🩷",
+    "version": "v3.1-RAMS-Delicious-Mango",
+    "base_model": "Anima",
+    "civitai_url": "https://civitai.red/models/2578175/ramthrust-s-nsfw-pink-alchemy-anima?modelVersionId=3278527",
+    "source_url": "https://civitai.red/models/2578175/ramthrust-s-nsfw-pink-alchemy-anima?modelVersionId=3278527",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/80b60e1c-d43a-46b6-8d15-04ec8b20fa6d/original=true/141306274.mp4"
+  },
+  "loras/sable_anima_3283137_epoch_10.safetensors": {
+    "name": "Sable - Time's oc",
+    "version": "Sable v1",
+    "base_model": "Anima",
+    "civitai_url": "https://civitai.red/models/2903749/sable-time-s-oc?modelVersionId=3283640",
+    "source_url": "https://civitai.red/models/2903749/sable-time-s-oc?modelVersionId=3283640",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/25ae39dd-372c-4668-b8a0-a01b99d37ded/original=true/141393391.jpeg",
+    "tags": [
+      "flame bra",
+      "white skin, colored skin"
+    ]
+  },
+  "loras/Hand Milking (Anima) v1.safetensors": {
+    "name": "Hand milking",
+    "version": "Anima - v1.0",
+    "base_model": "Anima",
+    "civitai_url": "https://civitai.red/models/2480423/hand-milking?modelVersionId=3332509",
+    "source_url": "https://civitai.red/models/2480423/hand-milking?modelVersionId=3332509",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/210eaa03-7caa-4da2-a955-fefbc878e0ed/original=true/142981374.jpeg",
+    "tags": [
+      "hand milking",
+      "grabbing another's breast",
+      "lactation",
+      "projectile lactation"
+    ]
   }
 }
