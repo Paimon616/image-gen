@@ -19,6 +19,7 @@ import { GenerationParams } from "@/components/generation-params";
 import { ModelSelector } from "@/components/model-selector";
 import { CivitaiImport } from "@/components/civitai-import";
 import { MetadataImport } from "@/components/metadata-import";
+import { UrlReferenceImport } from "@/components/url-reference-import";
 import { Gallery } from "@/components/gallery";
 import { WorkspaceBar } from "@/components/workspace-bar";
 import { ImageViewer } from "@/components/image-viewer";
@@ -2157,7 +2158,8 @@ export default function Home() {
             </EditorSection>
           )}
 
-          <EditorSection title={ko ? "가져오기" : "Import"} description={ko ? "Civitai URL이나 이미지 메타데이터에서 프롬프트와 설정을 가져옵니다." : "Import prompts and settings from Civitai or image metadata."}>
+          <EditorSection title={ko ? "가져오기" : "Import"} description={ko ? "이미지 URL, Civitai URL, 이미지 메타데이터에서 레퍼런스 · 프롬프트 · 설정을 가져옵니다." : "Import prompts and settings from Civitai or image metadata."}>
+          <UrlReferenceImport onGenerate={(next) => enqueueGeneration(next)} />
           <CivitaiImport generationTarget={generationTarget} />
           <MetadataImport generationTarget={generationTarget} />
           </EditorSection>
