@@ -277,10 +277,36 @@ export function PaimonChat({
     setScope((current) => ({ ...current, [key]: !current[key] }));
   }, []);
 
+  // BETA 기준 시트: warn once per render request when the beta is on and the
+  // character has no confirmed sheet (its faces/outfit will drift).
+  const [betaCharacterSheet, setBetaCharacterSheet] = useState(false);
+  useEffect(() => {
+    let active = true;
+    fetch("/api/settings", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data: { betaCharacterSheet?: boolean }) => {
+        if (active) setBetaCharacterSheet(data.betaCharacterSheet === true);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+  const confirmWithoutSheet = useCallback(
+    (character: PaimonCharacter) =>
+      !betaCharacterSheet ||
+      character.referenceSheetConfirmed === true ||
+      window.confirm(
+        `'${character.name}'의 기준 시트(BETA)가 확정되지 않음. 시트 없이 생성하면 얼굴·의상이 이미지마다 달라질 수 있음.\n\n캐릭터 스튜디오 > 기준 시트 탭에서 먼저 확정 권장. 그래도 생성?`
+      ),
+    [betaCharacterSheet]
+  );
+
   // Single pick (multi-select off): compose the situation, generate if the
   // auto-generate box is checked. Closes the picker.
   const applyCharacterSituation = useCallback(
     (character: PaimonCharacter, situationId?: string) => {
+      if (autoGenerate && !confirmWithoutSheet(character)) return;
       setPickerOpen(false);
       setPickerActiveName(null);
       void usePaimonChatStore
@@ -293,7 +319,7 @@ export function PaimonChat({
           composeOptions
         );
     },
-    [attachments, autoGenerate, composeOptions]
+    [attachments, autoGenerate, composeOptions, confirmWithoutSheet]
   );
 
   const runBatch = useCallback(
@@ -302,6 +328,7 @@ export function PaimonChat({
         .filter((situation) => selectedSituationIds.has(situation.id))
         .map((situation) => situation.id);
       if (chosen.length === 0) return;
+      if (!confirmWithoutSheet(character)) return;
 
       setPickerOpen(false);
       setPickerActiveName(null);
@@ -310,7 +337,7 @@ export function PaimonChat({
         .getState()
         .runBatch(character, chosen, attachments, composeOptions);
     },
-    [attachments, composeOptions, selectedSituationIds]
+    [attachments, composeOptions, confirmWithoutSheet, selectedSituationIds]
   );
 
   const toggleSituationSelected = useCallback((situationId: string) => {

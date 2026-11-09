@@ -34,6 +34,7 @@ async function publicSettings(settings: AppSettings) {
     paimonChatProvider: settings.paimonChatProvider,
     paimonChatModel: settings.paimonChatModel,
     paimonChatReasoning: settings.paimonChatReasoning,
+    betaCharacterSheet: settings.betaCharacterSheet,
     // Host platform, so the client can hide backends that aren't supported
     // here (AUTOMATIC1111 / Forge are not set up on macOS).
     platform: process.platform,
@@ -71,6 +72,10 @@ export async function PUT(req: Request) {
     paimonChatModel: body.paimonChatModel ?? current.paimonChatModel,
     paimonChatReasoning:
       body.paimonChatReasoning ?? current.paimonChatReasoning,
+    betaCharacterSheet:
+      typeof body.betaCharacterSheet === "boolean"
+        ? body.betaCharacterSheet
+        : current.betaCharacterSheet,
   });
 
   return Response.json(await publicSettings(settings), {

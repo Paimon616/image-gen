@@ -36,6 +36,8 @@
     "setup:itp-nodes:win": "powershell -ExecutionPolicy Bypass -File scripts/setup-comfyui-itp-nodes.ps1",
     "setup:pulid": "bash scripts/setup-comfyui-pulid.sh",
     "setup:pulid:win": "powershell -ExecutionPolicy Bypass -File scripts/setup-comfyui-pulid.ps1",
+    "setup:ipadapter": "bash scripts/setup-comfyui-ipadapter.sh",
+    "setup:ipadapter:win": "powershell -ExecutionPolicy Bypass -File scripts/setup-comfyui-ipadapter.ps1",
     "setup:comfyui-censor": "bash scripts/setup-comfyui-censor.sh"
   },
   "dependencies": {

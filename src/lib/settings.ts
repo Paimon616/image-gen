@@ -46,6 +46,10 @@ export interface AppSettings {
   // ~60s+ before anything could be queued. Turn it on when prompt-editing
   // quality matters more than how fast the render starts.
   paimonChatReasoning: boolean;
+  // BETA 캐릭터 기준 시트: confirmed reference sheet + IP-Adapter conditioning on
+  // every render of that character. Off = generation is unchanged.
+  // See docs/character-reference-sheet.md.
+  betaCharacterSheet: boolean;
 }
 
 export const CHAT_PROVIDER_KEY_FIELDS = {
@@ -79,6 +83,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   paimonChatProvider: DEFAULT_PAIMON_CHAT_PROVIDER,
   paimonChatModel: DEFAULT_PAIMON_CHAT_MODEL,
   paimonChatReasoning: false,
+  betaCharacterSheet: false,
 };
 
 async function readDefaultPods(): Promise<RunpodPodSettings[]> {
@@ -109,6 +114,7 @@ function cleanSettings(value: Partial<AppSettings>): AppSettings {
     paimonChatModel:
       String(value.paimonChatModel ?? "").trim() || DEFAULT_PAIMON_CHAT_MODEL,
     paimonChatReasoning: Boolean(value.paimonChatReasoning),
+    betaCharacterSheet: value.betaCharacterSheet === true,
     gpuWorkers: normalizeGpuWorkers(value.gpuWorkers),
     runpodPods: Array.isArray(value.runpodPods)
       ? value.runpodPods.map((pod) => ({

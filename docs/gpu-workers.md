@@ -136,6 +136,7 @@ ComfyUI 실행 인자: `--listen 0.0.0.0 --port 8188 --base-directory <kit>\data
   - 맥에 파일이 있으면 맥에서 직접, 없으면 `model-catalog.json`의 source_url에서 맥이 대신 받아 전달. Civitai와 HF 토큰은 맥에만 있음.
   - 프로필 밖 파일은 내려주지 않음. 경로 우회(`..`) 차단, 토큰과 허용 IP 확인.
   - 워커는 manifest에 없는 커스텀 노드를 `custom_nodes_disabled`로 옮김. ComfyUI-Manager는 설치하지 않음(원격 임의 설치 경로 차단).
+- 키트 고정 노드: `worker-kit/windows/custom-nodes.json`. marc가 키트 안에 커밋으로 고정한 목록(현재 `ComfyUI_IPAdapter_plus` 하나, 기준 시트 BETA용). `start-worker.bat`(또는 `worker.ps1 nodes`) 실행 시 그 PC에서만 설치. github.com https + 40자리 커밋 해시만 허용, 원격에서 추가, 변경 불가. depot 동기화도 이 목록은 비활성화하지 않음. 자세한 내용은 [character-reference-sheet.md](character-reference-sheet.md).
 - 방법 B: 앱의 다운로드 버튼(위). 방법 C: 모델 파일을 `data\models\checkpoints`, `data\models\loras`에 직접 복사.
 - 동기화 뒤에는 앱의 모델 캐시가 30초 안에 갱신됨. 바로 반영하려면 `POST /api/gpu-workers {"action":"refresh-models"}`.
 

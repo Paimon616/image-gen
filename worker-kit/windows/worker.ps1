@@ -6,6 +6,7 @@
 #   worker.ps1 install   only the runtime download
 #   worker.ps1 sync      only the depot sync (optional; models can also be copied
 #                        into data\models by hand)
+#   worker.ps1 nodes     only the kit's pinned custom nodes (custom-nodes.json)
 #   worker.ps1 stop      stop ComfyUI
 #   worker.ps1 status    show whether it is running
 #
@@ -16,7 +17,7 @@
 
 param(
   [Parameter(Position = 0)]
-  [ValidateSet("install", "sync", "start", "stop", "status")]
+  [ValidateSet("install", "sync", "nodes", "start", "stop", "status")]
   [string]$Action = "status",
   [switch]$NoSync
 )
@@ -34,6 +35,7 @@ $Logs = Join-Path $Kit "logs"
 $PidFile = Join-Path $Kit "comfyui.pid"
 $HelperPidFile = Join-Path $Kit "helper.pid"
 $ManifestCache = Join-Path $Kit "manifest.json"
+$KitNodesPath = Join-Path $Kit "custom-nodes.json"   # marc-pinned node list shipped with the kit
 
 function Read-Config {
   if (-not (Test-Path $ConfigPath)) {
@@ -127,6 +129,46 @@ function Install-Runtime {
   Write-Host "Runtime installed. Next: start-worker.bat" -ForegroundColor Green
 }
 
+# The kit's own pinned custom nodes (custom-nodes.json, shipped and versioned
+# with the kit). Installed locally on start; nothing remote can add to or change
+# this list. Each entry must be a github.com https repo at a full 40-hex commit.
+function Get-KitNodes {
+  if (-not (Test-Path $KitNodesPath)) { return @() }
+  $list = (Get-Content $KitNodesPath -Raw | ConvertFrom-Json).customNodes
+  $valid = @()
+  foreach ($node in $list) {
+    if ($node.name -notmatch '^[A-Za-z0-9._-]+$') { Write-Warning "Skipping node with invalid name: $($node.name)"; continue }
+    if ($node.repo -notmatch '^https://github\.com/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+(\.git)?$') { Write-Warning "Skipping $($node.name): repo must be https://github.com/owner/name"; continue }
+    if ($node.ref -notmatch '^[0-9a-f]{40}$') { Write-Warning "Skipping $($node.name): ref must be a full commit hash"; continue }
+    $valid += $node
+  }
+  return $valid
+}
+
+function Install-NodeAtRef($node) {
+  $nodesDir = Join-Path $Data "custom_nodes"
+  New-Item -ItemType Directory -Force -Path $nodesDir | Out-Null
+  $dest = Join-Path $nodesDir $node.name
+  $refFile = Join-Path $dest ".worker-ref"
+  $have = if (Test-Path $refFile) { (Get-Content $refFile -Raw).Trim() } else { "" }
+  if ($have -eq $node.ref) { return }
+  Write-Step "custom node $($node.name) -> $($node.ref.Substring(0, 10))"
+  Expand-GithubZip $node.repo $node.ref $dest
+  $req = Join-Path $dest "requirements.txt"
+  if (Test-Path $req) {
+    & $Python -s -m pip install --disable-pip-version-check -q -r $req
+    if ($LASTEXITCODE -ne 0) { throw "pip install for $($node.name) failed." }
+  }
+  $installPy = Join-Path $dest "install.py"
+  if (Test-Path $installPy) { & $Python -s $installPy }
+}
+
+function Install-KitNodes {
+  if (-not (Test-Path $Python)) { throw "Runtime missing. Run start-worker.bat (installs it)." }
+  if (Get-WorkerPid) { throw "ComfyUI is running. Stop it before installing nodes." }
+  foreach ($node in Get-KitNodes) { Install-NodeAtRef $node }
+}
+
 function Get-Manifest($cfg) {
   try {
     $res = Invoke-WebRequest -UseBasicParsing -TimeoutSec 10 `
@@ -167,22 +209,11 @@ function Sync-Worker {
   $disabledDir = Join-Path $Data "custom_nodes_disabled"
   New-Item -ItemType Directory -Force -Path $nodesDir | Out-Null
   $wanted = @{}
+  # The kit's pinned nodes are always wanted (installed by Install-KitNodes).
+  foreach ($node in Get-KitNodes) { $wanted[$node.name] = $true }
   foreach ($node in $manifest.customNodes) {
     $wanted[$node.name] = $true
-    $dest = Join-Path $nodesDir $node.name
-    $refFile = Join-Path $dest ".worker-ref"
-    $have = if (Test-Path $refFile) { (Get-Content $refFile -Raw).Trim() } else { "" }
-    if ($have -ne $node.ref) {
-      Write-Step "custom node $($node.name) -> $($node.ref.Substring(0, 10))"
-      Expand-GithubZip $node.repo $node.ref $dest
-      $req = Join-Path $dest "requirements.txt"
-      if (Test-Path $req) {
-        & $Python -s -m pip install --disable-pip-version-check -q -r $req
-        if ($LASTEXITCODE -ne 0) { throw "pip install for $($node.name) failed." }
-      }
-      $installPy = Join-Path $dest "install.py"
-      if (Test-Path $installPy) { & $Python -s $installPy }
-    }
+    Install-NodeAtRef $node
   }
   Get-ChildItem $nodesDir -Directory | Where-Object { -not $wanted.ContainsKey($_.Name) } | ForEach-Object {
     New-Item -ItemType Directory -Force -Path $disabledDir | Out-Null
@@ -234,6 +265,7 @@ function Start-Worker {
   if (-not $NoSync) {
     try { Sync-Worker } catch { Write-Warning "Sync failed: $($_.Exception.Message). Starting with the current setup." }
   }
+  try { Install-KitNodes } catch { Write-Warning "Kit custom nodes failed: $($_.Exception.Message). Starting without them." }
   # --base-directory does not create its subfolders; ComfyUI crashes at startup
   # listing a missing custom_nodes folder.
   foreach ($sub in @("custom_nodes", "models\checkpoints", "models\loras", "models\vae", "input", "output", "user")) {
@@ -296,6 +328,7 @@ function Show-Status {
 switch ($Action) {
   "install" { Install-Runtime }
   "sync" { Sync-Worker }
+  "nodes" { Install-KitNodes }
   "start" { Start-Worker }
   "stop" { Stop-Worker }
   "status" { Show-Status }

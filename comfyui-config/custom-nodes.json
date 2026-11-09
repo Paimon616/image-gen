@@ -33,6 +33,12 @@
       "ref": "93e0c4c226b87b23c0009d671978bad0e77289ff"
     },
     {
+      "$comment": "IP-Adapter (SDXL) — BETA character reference sheet (docs/character-reference-sheet.md). Provides IPAdapterModelLoader / IPAdapterAdvanced / PrepImageForClipVision. No extra pip deps for the PLUS adapter. Models (ipadapter/ip-adapter-plus_sdxl_vit-h + clip_vision/CLIP-ViT-H-14) come from: npm run setup:ipadapter. Keep in sync with IPADAPTER_NODE_REPO in src/lib/character-sheet.ts and worker-kit/windows/custom-nodes.json.",
+      "name": "ComfyUI_IPAdapter_plus",
+      "repo": "https://github.com/cubiq/ComfyUI_IPAdapter_plus.git",
+      "ref": "a0f451a5113cf9becb0847b92884cb10cbdec0ef"
+    },
+    {
       "$comment": "NSFW auto-censor. Provides ApplyNudenet / NudenetModelLoader / FilterdLabel used by the video censoring feature (injectCensorNodes in src/lib/comfyui.ts). Detects targeted regions per frame and obscures them (pixelate/blur). Needs an ONNX detector under ComfyUI/models/Nudenet — fetch it with: npm run setup:comfyui-censor",
       "name": "ComfyUI-Nudenet",
       "repo": "https://github.com/phuvinh010701/ComfyUI-Nudenet.git",

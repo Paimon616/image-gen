@@ -90,6 +90,13 @@ export interface GenerationParams {
   // face more faithfully; lower lets the prompt/pose lead. Only consulted on the
   // SDXL/Illustrious workflow when character_image is set. Sweet spot ~0.7–1.0.
   character_reference_strength: number;
+  // BETA 캐릭터 기준 시트: the character's confirmed reference sheet image. Set
+  // server-side (api/generate/stream) for renders of a sheet-confirmed character
+  // when the beta is on; applied as IP-Adapter conditioning on the SDXL workflow.
+  // Optional so older saved params stay valid.
+  character_sheet_image?: string | null;
+  // IP-Adapter weight for character_sheet_image (0–1.5, default 0.5).
+  character_sheet_strength?: number;
   source_image: string | null;
   denoise_strength: number;
   pose_reference_image: string | null;
@@ -238,6 +245,26 @@ export interface CharacterMainImage {
   params: GenerationParams | null;
 }
 
+// BETA 캐릭터 기준 시트 — a turnaround/expression sheet picked from generated
+// candidates. Once confirmed (and the beta is on), every render of the character
+// is IP-Adapter-conditioned on it. See docs/character-reference-sheet.md.
+export interface CharacterReferenceSheet {
+  // App-served image URL, e.g. "/api/images/<file>".
+  url: string;
+  filename: string;
+  thumbnailUrl?: string;
+  // Locked as this character's reference. Unconfirmed = picked but not locked.
+  confirmed: boolean;
+  // Per-character switch; off = renders ignore the sheet even when confirmed.
+  enabled: boolean;
+  // The sheet's generation prompt and seed, for regeneration/reproduction.
+  prompt: string;
+  seed: number | null;
+  // IP-Adapter weight used for this character's renders.
+  strength: number;
+  confirmedAt?: number;
+}
+
 export interface Character {
   id: string;
   name: string;
@@ -263,6 +290,8 @@ export interface Character {
   backgrounds: CharacterBackground[];
   // 상황.
   situations: CharacterSituation[];
+  // BETA 기준 시트. Absent/null until a candidate is picked.
+  referenceSheet?: CharacterReferenceSheet | null;
   // Manual position in the character list (ascending). Legacy records without
   // this fall back to createdAt so their relative order is preserved on read.
   order: number;
@@ -604,6 +633,8 @@ export const DEFAULT_PARAMS: GenerationParams = {
   style_image: null,
   character_image: null,
   character_reference_strength: 0.7,
+  character_sheet_image: null,
+  character_sheet_strength: 0.5,
   source_image: null,
   denoise_strength: 0.6,
   pose_reference_image: null,

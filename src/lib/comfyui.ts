@@ -35,6 +35,13 @@ import {
 import { getRunpodCheckpointCapabilities } from "./runpod";
 import { DEFAULT_PARAMS, normalizeGenerationSeed } from "./types";
 import { censorModelFile } from "./censor-assets";
+import {
+  SHEET_RENDER_NEGATIVE,
+  appendUniqueTags,
+  clampSheetStrength,
+  ipAdapterMissingMessage,
+  pickIpAdapterFiles,
+} from "./character-sheet";
 import type {
   VideoPipelineLoraSlot,
   VideoPipelineStackLoraToggle,
@@ -1557,6 +1564,138 @@ async function addPulidWorkflowNodes(
   return ["204", 0];
 }
 
+// --- BETA 캐릭터 기준 시트: IP-Adapter reference conditioning ----------------
+// A sheet-confirmed character's renders carry character_sheet_image (set by the
+// generate route, never by the client). The sheet is fed through cubiq
+// ComfyUI_IPAdapter_plus on the SDXL graph:
+//   IPAdapterModelLoader ┐
+//   CLIPVisionLoader     ┤→ IPAdapterAdvanced(model) → patched MODEL → KSampler
+//   LoadImage → PrepImageForClipVision(pad) ┘
+// Explicit loaders (not IPAdapterUnifiedLoader) so missing nodes/files are
+// detected from /object_info here and reported clearly, instead of failing deep
+// inside the graph at execution time. "pad" keeps every view of the sheet
+// instead of center-cropping to the front view.
+function comfyTargetLabel(options?: ComfyClientOptions) {
+  if (options?.remoteKind === "gpu-worker") return `GPU 워커(${options.baseUrl ?? ""})`;
+  if (options?.remoteKind === "runpod") return "RunPod";
+  return "로컬 ComfyUI";
+}
+
+// Setup probe for the studio's 기준 시트 tab: is the node there, and which model
+// files does the target list? `reachable` false = ComfyUI did not answer, so the
+// caller must not claim "not installed".
+export interface IpAdapterSheetSetupStatus {
+  reachable: boolean;
+  nodeInstalled: boolean;
+  ipadapter: string | null;
+  clipVision: string | null;
+  missing: ("ipadapter" | "clip_vision")[];
+}
+
+export async function checkIpAdapterSheetSetup(
+  options?: ComfyClientOptions
+): Promise<IpAdapterSheetSetupStatus> {
+  let reachable = true;
+  try {
+    await comfyFetch("/system_stats", { signal: AbortSignal.timeout(5_000) }, options);
+  } catch {
+    reachable = false;
+  }
+  if (!reachable) {
+    return { reachable, nodeInstalled: false, ipadapter: null, clipVision: null, missing: [] };
+  }
+  const [applyInfo, loaderInfo, clipInfo] = await Promise.all([
+    getComfyObjectInfoEntry("IPAdapterAdvanced", options),
+    getComfyObjectInfoEntry("IPAdapterModelLoader", options),
+    getComfyObjectInfoEntry("CLIPVisionLoader", options),
+  ]);
+  const nodeInstalled = Boolean(applyInfo && loaderInfo);
+  const picked = pickIpAdapterFiles(
+    comfyInputComboOptions(loaderInfo?.input?.required?.["ipadapter_file"]),
+    comfyInputComboOptions(clipInfo?.input?.required?.["clip_name"])
+  );
+  return "missing" in picked
+    ? { reachable, nodeInstalled, ipadapter: null, clipVision: null, missing: picked.missing }
+    : { reachable, nodeInstalled, ipadapter: picked.ipadapter, clipVision: picked.clipVision, missing: [] };
+}
+
+async function addIpAdapterSheetNodes(
+  workflow: Record<string, unknown>,
+  params: GenerationParams,
+  modelRef: [string, number],
+  options?: ComfyClientOptions
+): Promise<[string, number]> {
+  const sheet = params.character_sheet_image?.trim();
+  if (!sheet) return modelRef;
+
+  const target = comfyTargetLabel(options);
+  const [applyInfo, loaderInfo, clipInfo, prepInfo] = await Promise.all([
+    getComfyObjectInfoEntry("IPAdapterAdvanced", options),
+    getComfyObjectInfoEntry("IPAdapterModelLoader", options),
+    getComfyObjectInfoEntry("CLIPVisionLoader", options),
+    getComfyObjectInfoEntry("PrepImageForClipVision", options),
+  ]);
+  const applyRequired = applyInfo?.input?.required;
+  if (!applyRequired || !loaderInfo?.input?.required) {
+    throw new Error(ipAdapterMissingMessage("node", target));
+  }
+
+  const picked = pickIpAdapterFiles(
+    comfyInputComboOptions(loaderInfo.input.required["ipadapter_file"]),
+    comfyInputComboOptions(clipInfo?.input?.required?.["clip_name"])
+  );
+  if ("missing" in picked) {
+    throw new Error(ipAdapterMissingMessage(picked.missing, target));
+  }
+
+  const image = await resolveControlNetImage(sheet, options);
+
+  // Reserved IDs next to PuLID (200–204).
+  workflow["210"] = {
+    class_type: "IPAdapterModelLoader",
+    inputs: { ipadapter_file: picked.ipadapter },
+  };
+  workflow["211"] = {
+    class_type: "CLIPVisionLoader",
+    inputs: { clip_name: picked.clipVision },
+  };
+  workflow["212"] = { class_type: "LoadImage", inputs: { image } };
+  let imageRef: [string, number] = ["212", 0];
+  if (prepInfo?.input?.required) {
+    workflow["213"] = {
+      class_type: "PrepImageForClipVision",
+      inputs: {
+        image: imageRef,
+        interpolation: pickComfyCombo(prepInfo.input.required["interpolation"], "LANCZOS"),
+        crop_position: pickComfyCombo(prepInfo.input.required["crop_position"], "pad"),
+        sharpening: 0,
+      },
+    };
+    imageRef = ["213", 0];
+  }
+
+  const applyInputs: Record<string, unknown> = {
+    model: modelRef,
+    ipadapter: ["210", 0],
+    clip_vision: ["211", 0],
+    image: imageRef,
+    weight: clampSheetStrength(params.character_sheet_strength),
+    weight_type: pickComfyCombo(applyRequired["weight_type"], "linear"),
+    combine_embeds: pickComfyCombo(applyRequired["combine_embeds"], "concat"),
+    start_at: 0,
+    // Let the last steps run free so the scene's own lighting/detail settles.
+    end_at: 0.8,
+    embeds_scaling: pickComfyCombo(applyRequired["embeds_scaling"], "V only"),
+  };
+  for (const [name, spec] of Object.entries(applyRequired)) {
+    if (name in applyInputs) continue;
+    const fallback = comfyInputDefault(spec);
+    if (fallback !== undefined) applyInputs[name] = fallback;
+  }
+  workflow["214"] = { class_type: "IPAdapterAdvanced", inputs: applyInputs };
+  return ["214", 0];
+}
+
 // --- Z-Image (Tongyi-MAI) ---------------------------------------------------
 // Z-Image is a Lumina2-architecture DiT that ships as diffusion weights only: it
 // carries no CLIP and no VAE, so the standard CheckpointLoaderSimple graph dies with
@@ -2086,6 +2225,8 @@ async function buildDefaultWorkflow(params: GenerationParams, options?: ComfyCli
   // Patch the identity into MODEL after LoRAs so PuLID sees the final weights and
   // every downstream consumer (base + hires KSampler, FaceDetailer) inherits it.
   modelRef = await addPulidWorkflowNodes(workflow, params, modelRef, options);
+  // BETA 기준 시트: IP-Adapter on top of PuLID (both patch MODEL; they chain).
+  modelRef = await addIpAdapterSheetNodes(workflow, params, modelRef, options);
 
   if (params.clip_skip > 1) {
     workflow["20"] = {
@@ -2118,7 +2259,13 @@ async function buildDefaultWorkflow(params: GenerationParams, options?: ComfyCli
   workflow["3"] = {
     class_type: "CLIPTextEncode",
     inputs: {
-      text: withEmbeddingTokens(params.negative_prompt, []),
+      // A sheet-conditioned render must not copy the sheet's multi-view layout.
+      text: withEmbeddingTokens(
+        params.character_sheet_image?.trim()
+          ? appendUniqueTags(params.negative_prompt, SHEET_RENDER_NEGATIVE)
+          : params.negative_prompt,
+        []
+      ),
       clip: clipRef,
     },
   };

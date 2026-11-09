@@ -27,7 +27,9 @@ import { buildGenerationResources } from "@/lib/generation-resource-links";
 import { generateWithA1111, interruptA1111 } from "@/lib/a1111";
 import { toggleImageWorkspace, workspaceExists } from "@/lib/workspaces";
 import { notifyWorkspaceChanged } from "@/lib/runpod-share";
-import { getRunpodPod } from "@/lib/settings";
+import { getRunpodPod, readSettings } from "@/lib/settings";
+import { getCharacter, isValidCharacterId } from "@/lib/characters";
+import { applyReferenceSheet, shouldApplyReferenceSheet } from "@/lib/character-sheet";
 import {
   checkRunpodGenerationFiles,
   ensureRunpodComfyCatalogReady,
@@ -185,12 +187,39 @@ export async function POST(req: NextRequest) {
     characterId?: string;
     situationId?: string;
   };
-  const body: GenerationParams = {
+  let body: GenerationParams = {
     ...rawBody,
     width: normalizeImageDimension(rawBody.width),
     height: normalizeImageDimension(rawBody.height),
     seed: normalizeGenerationSeed(rawBody.seed),
+    // Only this route sets the sheet reference (below); a client-sent value is
+    // dropped so the beta toggle and per-character switch stay authoritative.
+    character_sheet_image: null,
   };
+  // BETA 캐릭터 기준 시트: a render linked to a sheet-confirmed character gets
+  // the sheet as IP-Adapter reference. Off (beta or per-character) = unchanged.
+  if (characterId && isValidCharacterId(characterId) && body.backend === "comfyui") {
+    const [settings, character] = await Promise.all([
+      readSettings(),
+      getCharacter(characterId),
+    ]);
+    if (
+      character?.referenceSheet &&
+      shouldApplyReferenceSheet({
+        betaEnabled: settings.betaCharacterSheet,
+        sheet: character.referenceSheet,
+        situationId,
+        backend: body.backend,
+      })
+    ) {
+      // Absolute URL: resolveControlNetImage uploads only http(s) refs to the
+      // ComfyUI that runs the job (local, pod or GPU worker), like /api/upload.
+      body = applyReferenceSheet(body, {
+        ...character.referenceSheet,
+        url: new URL(character.referenceSheet.url, req.nextUrl.origin).toString(),
+      });
+    }
+  }
   const modelConfig = getModelConfig(body.model);
   const runpodPod =
     generationTarget === "runpod" && runpodPodId
