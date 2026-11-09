@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useStore } from "@/lib/store";
 import { getModelConfig } from "@/lib/types";
+import { MODEL_PRESETS, activePresetId, presetToParams } from "@/lib/model-presets";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -661,8 +662,60 @@ export function ModelSelector({
     setPickerTarget(null);
   };
 
+  const currentPresetId = activePresetId(params);
+  const currentPreset = MODEL_PRESETS.find((preset) => preset.id === currentPresetId);
+
   return (
     <div className="space-y-3">
+      {isLocal && (
+        <div>
+          <div className="mb-1.5">
+            <FieldHelp
+              label={ko ? "프리셋" : "Preset"}
+              help={
+                ko
+                  ? "누르면 모델, LoRA, 스텝 · CFG · 샘플러, 참조 강도를 한 번에 설정합니다. 프롬프트와 참조 이미지, 크기는 그대로 둡니다."
+                  : "Sets the model, LoRAs, steps · CFG · sampler and reference strength at once. The prompt, reference images and size are kept."
+              }
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-1.5" role="group" aria-label={ko ? "모델 프리셋" : "Model presets"}>
+            {MODEL_PRESETS.map((preset) => {
+              const active = preset.id === currentPresetId;
+              return (
+                <Button
+                  key={preset.id}
+                  type="button"
+                  size="sm"
+                  variant={active ? "default" : "outline"}
+                  aria-pressed={active}
+                  className="h-auto min-h-8 whitespace-normal px-2 py-1.5 text-xs leading-4"
+                  title={ko ? preset.description.ko : preset.description.en}
+                  onClick={() =>
+                    setParams(
+                      presetToParams(
+                        preset,
+                        checkpointAssets.map((asset) => asset.path)
+                      )
+                    )
+                  }
+                >
+                  {ko ? preset.label.ko : preset.label.en}
+                </Button>
+              );
+            })}
+          </div>
+          <p className="mt-1.5 text-[11px] leading-4 text-muted-foreground">
+            {currentPreset
+              ? ko
+                ? currentPreset.description.ko
+                : currentPreset.description.en
+              : ko
+                ? "직접 설정 중 — 프리셋을 누르면 해당 조합으로 바뀝니다."
+                : "Custom setup — pick a preset to switch to that combination."}
+          </p>
+        </div>
+      )}
       <div>
         <div className="mb-1.5 flex items-center justify-between gap-2">
           <FieldHelp label={ko ? "기본 모델" : "Base Model"} help={ko ? "이미지의 기본 화풍과 표현 능력을 결정하는 체크포인트입니다." : "The checkpoint that determines the image's base style and capabilities."} />
