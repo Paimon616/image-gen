@@ -240,8 +240,31 @@ build_image_gen() {
   )
 }
 
+# This machine runs a TLS-intercepting agent (its root CA, "ONEstore", is in the
+# System keychain). macOS tools follow the keychain; Node ships its own CA list
+# and does not, so every outbound https call from the server dies with
+# "self-signed certificate in certificate chain". Export the keychain roots as a
+# PEM once and point Node at it.
+ensure_ca_bundle() {
+  local bundle="$ROOT_DIR/.local/certs/ca-bundle.pem"
+
+  if [ ! -s "$bundle" ]; then
+    mkdir -p "$(dirname "$bundle")"
+    {
+      security find-certificate -a -p /Library/Keychains/System.keychain
+      security find-certificate -a -p /System/Library/Keychains/SystemRootCertificates.keychain
+    } >"$bundle" 2>/dev/null || true
+  fi
+
+  if [ -s "$bundle" ]; then
+    export NODE_EXTRA_CA_CERTS="$bundle"
+  fi
+}
+
 start_image_gen() {
   local log_file="$LOG_DIR/image-gen.log"
+
+  ensure_ca_bundle
 
   # Make sure nothing is squatting the Image Gen port before launch.
   kill_port "$IMAGE_GEN_PORT" "Image Gen" || exit 1

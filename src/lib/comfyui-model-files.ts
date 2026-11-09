@@ -9,7 +9,10 @@ export const COMFYUI_MODELS_DIR =
   join(Buffer.from("Q29tZnlVSQ==", "base64").toString("utf8"), "models");
 export const ANIMA_CLIP_NAME = "qwen_3_06b_base.safetensors";
 export const ANIMA_VAE_NAME = "qwen_image_vae.safetensors";
-export const KREA2_CLIP_NAME = "qwen3vl_4b_fp8_scaled.safetensors";
+// Apple Silicon (MPS) cannot load fp8 weights, so a Mac install uses the bf16
+// encoder and sets KREA2_CLIP_NAME=qwen3vl_4b_bf16.safetensors in .env.local.
+export const KREA2_CLIP_NAME =
+  process.env.KREA2_CLIP_NAME?.trim() || "qwen3vl_4b_fp8_scaled.safetensors";
 export const KREA2_VAE_NAME = "qwen_image_vae.safetensors";
 // The PornMaster Krea2 workflow ships its own stack: an abliterated ("heretic")
 // int8 Qwen3-VL text encoder and the Wan 2.1 VAE. Kept separate from the official

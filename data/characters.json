@@ -12569,6 +12569,23 @@
       "createdAt": 1788488231384,
       "updatedAt": 1788489570068,
       "thumbnail": null
+    },
+    {
+      "id": "9c13f0cb-631b-496f-afeb-f99868011424",
+      "name": "새 캐릭터",
+      "summary": "",
+      "synopsis": "",
+      "mainImage": null,
+      "appearanceDescription": "",
+      "appearancePrompt": "",
+      "loras": [],
+      "outfits": [],
+      "backgrounds": [],
+      "situations": [],
+      "order": 15,
+      "createdAt": 1793597080874,
+      "updatedAt": 1793597080874,
+      "thumbnail": null
     }
   ]
 }

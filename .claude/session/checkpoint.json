@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "type": "auto",
+  "timestamp": "2026-11-02T15:16:19.611386+09:00",
+  "cli_type": "claude",
+  "task": {
+    "description": "auto: session work 2026-11-02 15:09",
+    "status": "in_progress",
+    "progress": ""
+  },
+  "context": {
+    "current_files": [
+      "rc/app/seedream/page.tsx",
+      "src/components/workspace-picker.tsx",
+      "src/lib/server-images.ts",
+      "src/lib/store.ts"
+    ],
+    "recent_changes": [
+      "src/app/seedream/page.tsx           | 572 +++++++++++++++++++++++++++++++++---",
+      "src/components/workspace-picker.tsx |  22 +-",
+      "src/lib/server-images.ts            |  26 +-",
+      "src/lib/store.ts                    |  24 +-"
+    ],
+    "next_steps": [],
+    "decisions": []
+  },
+  "workflow": {},
+  "pipeline": null
+}

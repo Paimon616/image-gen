@@ -61,3 +61,4 @@ stable-diffusion-webui-forge/
 /tmp/
 /*-metadata.json
 .claude/*.local-backup
+.playwright-mcp/

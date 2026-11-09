@@ -12,6 +12,7 @@ import {
 import { Loader2, Maximize2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
+import type { ConsistencySheetImage } from "@/lib/consistency-sheet";
 import {
   UNGROUPED_WORKSPACE_ID,
   type GeneratedImage,
@@ -31,6 +32,23 @@ const ROW_HEIGHT = 8;
 const GRID_GAP = 8;
 
 const PAGE_SIZE = 60;
+
+// The picker can browse either of two libraries. They are separate media in
+// workspaces.json, so a workspace holds its images and its sheets in different
+// buckets and the two can't be listed by one request.
+type PickerSource = "images" | "consistencySheet";
+
+// Sheets carry their own metadata shape; the grid only needs these fields.
+function sheetAsImage(sheet: ConsistencySheetImage): GeneratedImage {
+  return {
+    id: sheet.id,
+    url: sheet.url,
+    params: null,
+    timestamp: sheet.timestamp,
+    filename: sheet.filename,
+    workspaces: sheet.workspaces,
+  };
+}
 
 function readStoredTileSize() {
   if (typeof window === "undefined") return TILE_DEFAULT;
@@ -227,6 +245,7 @@ export function ImageLibraryPicker({
   // Selected filenames, in click order, so the confirm button can attach a batch.
   const [picked, setPicked] = useState<string[]>([]);
   const [tileSize, setTileSize] = useState(readStoredTileSize);
+  const [source, setSource] = useState<PickerSource>("images");
   // "" = every image; UNGROUPED_WORKSPACE_ID = only images in no workspace.
   const [workspaceId, setWorkspaceId] = useState("");
   const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
@@ -250,12 +269,13 @@ export function ImageLibraryPicker({
   }, [onClose, zoomed]);
 
   // The gallery's workspaces, so the picker can narrow a large library the same
-  // way the gallery itself does.
+  // way the gallery itself does. Counts are per media, so this re-reads when the
+  // browsed library changes.
   useEffect(() => {
     let active = true;
     void (async () => {
       try {
-        const res = await fetch("/api/workspaces?media=images", {
+        const res = await fetch(`/api/workspaces?media=${source}`, {
           cache: "no-store",
         });
         const data = (await res.json()) as {
@@ -272,7 +292,7 @@ export function ImageLibraryPicker({
     return () => {
       active = false;
     };
-  }, []);
+  }, [source]);
 
   const listUrl = useCallback(
     (nextCursor: number) => {
@@ -286,11 +306,34 @@ export function ImageLibraryPicker({
     [workspaceId]
   );
 
-  // Reloads page one on open and whenever the workspace changes.
+  // Reloads page one on open and whenever the library or workspace changes.
   useEffect(() => {
     let active = true;
     void (async () => {
       try {
+        if (source === "consistencySheet") {
+          // The sheet feed is small and unpaginated, and it has no workspace
+          // query, so narrowing happens here off each sheet's membership list.
+          const res = await fetch("/api/consistency-sheet/images", {
+            cache: "no-store",
+          });
+          const data = (await res.json()) as { images?: ConsistencySheetImage[] };
+          const sheets = (data.images ?? [])
+            .filter((sheet) => sheet.url)
+            .filter((sheet) => {
+              const ids = sheet.workspaces ?? [];
+              if (workspaceId === UNGROUPED_WORKSPACE_ID) return ids.length === 0;
+              return workspaceId ? ids.includes(workspaceId) : true;
+            })
+            .map(sheetAsImage);
+          if (active) {
+            setImages(sheets);
+            setCursor(null);
+            setTotal(sheets.length);
+          }
+          return;
+        }
+
         const res = await fetch(listUrl(0), { cache: "no-store" });
         const data = (await res.json()) as {
           images?: GeneratedImage[];
@@ -314,7 +357,7 @@ export function ImageLibraryPicker({
     return () => {
       active = false;
     };
-  }, [listUrl]);
+  }, [listUrl, source, workspaceId]);
 
   const loadMore = useCallback(async () => {
     if (cursor === null || loadingMore) return;
@@ -411,6 +454,33 @@ export function ImageLibraryPicker({
           {/* Workspace filter + tile size. Both only change how the grid is
               browsed, so neither touches the current selection. */}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border px-4 py-2">
+            <div className="flex items-center gap-1 rounded-md border border-border bg-card/60 p-0.5">
+              {(["images", "consistencySheet"] as PickerSource[]).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => {
+                    if (option === source) return;
+                    setLoading(true);
+                    setPicked([]);
+                    setSource(option);
+                  }}
+                  className={`rounded px-2 py-1 text-xs font-semibold transition-colors ${
+                    source === option
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {option === "images"
+                    ? ko
+                      ? "이미지"
+                      : "Images"
+                    : ko
+                      ? "일관성 시트"
+                      : "Sheets"}
+                </button>
+              ))}
+            </div>
             <label className="flex min-w-0 items-center gap-2 whitespace-nowrap text-xs text-muted-foreground">
               {ko ? "워크스페이스" : "Workspace"}
               <select
@@ -463,13 +533,21 @@ export function ImageLibraryPicker({
               </div>
             ) : images.length === 0 ? (
               <p className="py-10 text-center text-sm text-muted-foreground">
-                {workspaceId
-                  ? ko
-                    ? "이 워크스페이스에는 이미지가 없어요."
-                    : "This workspace has no images."
-                  : ko
-                    ? "생성된 이미지가 없어요."
-                    : "No generated images yet."}
+                {source === "consistencySheet"
+                  ? workspaceId
+                    ? ko
+                      ? "이 워크스페이스에는 일관성 시트가 없어요."
+                      : "This workspace has no consistency sheets."
+                    : ko
+                      ? "생성한 일관성 시트가 없어요."
+                      : "No consistency sheets yet."
+                  : workspaceId
+                    ? ko
+                      ? "이 워크스페이스에는 이미지가 없어요."
+                      : "This workspace has no images."
+                    : ko
+                      ? "생성된 이미지가 없어요."
+                      : "No generated images yet."}
               </p>
             ) : (
               <>

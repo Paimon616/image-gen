@@ -12,13 +12,18 @@ import { Check, FolderPlus, Loader2, Plus } from "lucide-react";
 import { useStore } from "@/lib/store";
 import {
   useMediaWorkspaceStore,
-  type VideoWorkspaceMedia,
+  type MediaWorkspaceKind,
 } from "@/lib/media-workspace-store";
 import type { GeneratedImage, WorkspaceSummary } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 
 interface WorkspacePickerProps {
   image: GeneratedImage;
+  /**
+   * Hands back the image's new membership, for screens that keep their own
+   * list of images outside the main store (e.g. Seedream).
+   */
+  onChange?: (workspaceIds: string[]) => void;
   align?: "left" | "right";
   triggerClassName?: string;
   triggerVariant?: "overlay" | "outline";
@@ -264,22 +269,29 @@ function WorkspacePickerBase({
   );
 }
 
-export function WorkspacePicker({ image, ...chrome }: WorkspacePickerProps) {
+export function WorkspacePicker({
+  image,
+  onChange,
+  ...chrome
+}: WorkspacePickerProps) {
   const workspaces = useStore((state) => state.workspaces);
   const setImageWorkspace = useStore((state) => state.setImageWorkspace);
   const createWorkspace = useStore((state) => state.createWorkspace);
+
+  const assign = async (workspaceId: string, assigned: boolean) => {
+    const next = await setImageWorkspace(image, workspaceId, assigned);
+    if (next) onChange?.(next);
+  };
 
   return (
     <WorkspacePickerBase
       {...chrome}
       workspaces={workspaces}
       assignedIds={image.workspaces ?? []}
-      onToggle={(workspaceId, assigned) =>
-        setImageWorkspace(image, workspaceId, assigned)
-      }
+      onToggle={assign}
       onCreate={async (name) => {
         const workspace = await createWorkspace(name);
-        if (workspace) await setImageWorkspace(image, workspace.id, true);
+        if (workspace) await assign(workspace.id, true);
       }}
     />
   );
@@ -295,7 +307,7 @@ export function MediaWorkspacePicker({
   onChange,
   ...chrome
 }: PickerChromeProps & {
-  media: VideoWorkspaceMedia;
+  media: MediaWorkspaceKind;
   filename: string;
   workspaceIds: string[];
   onChange: (workspaceIds: string[]) => void;

@@ -30,7 +30,7 @@ import {
 import { useStore } from "@/lib/store";
 import {
   useMediaWorkspaceStore,
-  type VideoWorkspaceMedia,
+  type MediaWorkspaceKind,
 } from "@/lib/media-workspace-store";
 import {
   UNGROUPED_WORKSPACE_ID,
@@ -52,6 +52,7 @@ function WorkspaceChip({
   active,
   ko,
   dragging,
+  canShare,
   shared,
   sharing,
   shareError,
@@ -70,6 +71,8 @@ function WorkspaceChip({
   active: boolean;
   ko: boolean;
   dragging: boolean;
+  /** RunPod sync only covers images and videos, so some screens can't offer it. */
+  canShare: boolean;
   /** Already pushed to RunPod — its images stay in sync from here on. */
   shared: boolean;
   sharing: boolean;
@@ -269,11 +272,15 @@ function WorkspaceChip({
           }`}
           aria-label={
             ko
-              ? "워크스페이스 관리 (이름 변경·삭제·공유)"
-              : "Manage workspace (rename / delete / share)"
+              ? `워크스페이스 관리 (이름 변경·삭제${canShare ? "·공유" : ""})`
+              : `Manage workspace (rename / delete${canShare ? " / share" : ""})`
           }
           aria-expanded={menuOpen}
-          title={ko ? "이름 변경·삭제·공유" : "Rename / delete / share"}
+          title={
+            ko
+              ? `이름 변경·삭제${canShare ? "·공유" : ""}`
+              : `Rename / delete${canShare ? " / share" : ""}`
+          }
         >
           <MoreHorizontal className="h-3.5 w-3.5" />
         </button>
@@ -363,32 +370,34 @@ function WorkspaceChip({
                 <Pencil className="h-3.5 w-3.5" />
                 {ko ? "이름 변경" : "Rename"}
               </button>
-              <button
-                type="button"
-                disabled={sharing}
-                onClick={() => {
-                  if (shared) onUnshare();
-                  else onShare();
-                  closeMenu();
-                }}
-                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent disabled:opacity-50"
-              >
-                {sharing ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : shared ? (
-                  <CloudOff className="h-3.5 w-3.5" />
-                ) : (
-                  <Cloud className="h-3.5 w-3.5" />
-                )}
-                {shared
-                  ? ko
-                    ? "공유 해제"
-                    : "Stop sharing"
-                  : ko
-                    ? "공유하기"
-                    : "Share to RunPod"}
-              </button>
-              {shared && (
+              {canShare && (
+                <button
+                  type="button"
+                  disabled={sharing}
+                  onClick={() => {
+                    if (shared) onUnshare();
+                    else onShare();
+                    closeMenu();
+                  }}
+                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent disabled:opacity-50"
+                >
+                  {sharing ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : shared ? (
+                    <CloudOff className="h-3.5 w-3.5" />
+                  ) : (
+                    <Cloud className="h-3.5 w-3.5" />
+                  )}
+                  {shared
+                    ? ko
+                      ? "공유 해제"
+                      : "Stop sharing"
+                    : ko
+                      ? "공유하기"
+                      : "Share to RunPod"}
+                </button>
+              )}
+              {canShare && shared && (
                 <p className="px-2 pb-1 text-[10px] text-muted-foreground">
                   {shareError
                     ? shareError
@@ -435,7 +444,7 @@ function WorkspaceChip({
 // its chip was closed from the strip, brings the chip back.
 function WorkspaceDropdown({
   ko,
-  isImages,
+  allLabel,
   workspaces,
   activeWorkspaceId,
   ungroupedCount,
@@ -445,7 +454,8 @@ function WorkspaceDropdown({
   onSelectUngrouped,
 }: {
   ko: boolean;
-  isImages: boolean;
+  /** "전체 보기" / "All images" — worded for the media this bar filters. */
+  allLabel: string;
   workspaces: WorkspaceSummary[];
   activeWorkspaceId: string | null;
   ungroupedCount: number;
@@ -537,11 +547,7 @@ function WorkspaceDropdown({
               ? ko
                 ? "그룹없음"
                 : "Ungrouped"
-              : ko
-                ? "전체 보기"
-                : isImages
-                  ? "All images"
-                  : "All videos"}
+              : allLabel}
         </span>
         <span className="rounded-full bg-muted px-1.5 text-[10px] tabular-nums text-muted-foreground">
           {workspaces.length}
@@ -573,9 +579,7 @@ function WorkspaceDropdown({
               }}
               className={rowClass(activeWorkspaceId === null)}
             >
-              <span className="flex-1 truncate">
-                {ko ? "전체 보기" : isImages ? "All images" : "All videos"}
-              </span>
+              <span className="flex-1 truncate">{allLabel}</span>
               {activeWorkspaceId === null && (
                 <Check className="h-3.5 w-3.5 shrink-0 text-primary" />
               )}
@@ -669,12 +673,16 @@ export function WorkspaceBar({
   onDownloaded?: (workspaceId: string) => void;
 } = {}) {
   const isImages = media === "images";
-  const videoMedia: VideoWorkspaceMedia =
-    media === "seedance" ? "seedance" : "videos";
+  const storeMedia: MediaWorkspaceKind =
+    media === "seedance" || media === "consistencySheet" ? media : "videos";
+  // RunPod share/download moves a workspace's images and videos; consistency
+  // sheets are not part of that payload, so the screen that shows them doesn't
+  // offer a sync that would quietly leave them behind.
+  const canShare = media !== "consistencySheet";
 
   // Both sources are read unconditionally (hooks can't be conditional) and the
   // one matching `media` is used: the image screen's workspace state lives in
-  // the main app store, the video screens' in the media store.
+  // the main app store, every other screen's in the media store.
   const imageWorkspaces = useStore((state) => state.workspaces);
   const imageUngroupedCount = useStore((state) => state.ungroupedCount);
   const imageActiveWorkspaceId = useStore((state) => state.activeWorkspaceId);
@@ -685,7 +693,7 @@ export function WorkspaceBar({
   const reorderImageWorkspaces = useStore((state) => state.reorderWorkspaces);
   const deleteImageWorkspace = useStore((state) => state.deleteWorkspace);
 
-  const mediaEntry = useMediaWorkspaceStore((state) => state.byMedia[videoMedia]);
+  const mediaEntry = useMediaWorkspaceStore((state) => state.byMedia[storeMedia]);
   const fetchMediaWorkspaces = useMediaWorkspaceStore(
     (state) => state.fetchWorkspaces
   );
@@ -715,43 +723,43 @@ export function WorkspaceBar({
 
   const fetchWorkspaces = useCallback(
     () =>
-      isImages ? fetchImageWorkspaces() : fetchMediaWorkspaces(videoMedia),
-    [isImages, fetchImageWorkspaces, fetchMediaWorkspaces, videoMedia]
+      isImages ? fetchImageWorkspaces() : fetchMediaWorkspaces(storeMedia),
+    [isImages, fetchImageWorkspaces, fetchMediaWorkspaces, storeMedia]
   );
   const setActiveWorkspace = useCallback(
     (workspaceId: string | null) =>
       isImages
         ? setActiveImageWorkspace(workspaceId)
-        : setActiveMediaWorkspace(videoMedia, workspaceId),
-    [isImages, setActiveImageWorkspace, setActiveMediaWorkspace, videoMedia]
+        : setActiveMediaWorkspace(storeMedia, workspaceId),
+    [isImages, setActiveImageWorkspace, setActiveMediaWorkspace, storeMedia]
   );
   const createWorkspace = useCallback(
     (name: string) =>
       isImages
         ? createImageWorkspace(name)
-        : createMediaWorkspace(videoMedia, name),
-    [isImages, createImageWorkspace, createMediaWorkspace, videoMedia]
+        : createMediaWorkspace(storeMedia, name),
+    [isImages, createImageWorkspace, createMediaWorkspace, storeMedia]
   );
   const renameWorkspace = useCallback(
     (workspaceId: string, name: string) =>
       isImages
         ? renameImageWorkspace(workspaceId, name)
-        : renameMediaWorkspace(videoMedia, workspaceId, name),
-    [isImages, renameImageWorkspace, renameMediaWorkspace, videoMedia]
+        : renameMediaWorkspace(storeMedia, workspaceId, name),
+    [isImages, renameImageWorkspace, renameMediaWorkspace, storeMedia]
   );
   const reorderWorkspaces = useCallback(
     (orderedIds: string[]) =>
       isImages
         ? reorderImageWorkspaces(orderedIds)
-        : reorderMediaWorkspaces(videoMedia, orderedIds),
-    [isImages, reorderImageWorkspaces, reorderMediaWorkspaces, videoMedia]
+        : reorderMediaWorkspaces(storeMedia, orderedIds),
+    [isImages, reorderImageWorkspaces, reorderMediaWorkspaces, storeMedia]
   );
   const deleteWorkspace = useCallback(
     (workspaceId: string) =>
       isImages
         ? deleteImageWorkspace(workspaceId)
-        : deleteMediaWorkspace(videoMedia, workspaceId),
-    [isImages, deleteImageWorkspace, deleteMediaWorkspace, videoMedia]
+        : deleteMediaWorkspace(storeMedia, workspaceId),
+    [isImages, deleteImageWorkspace, deleteMediaWorkspace, storeMedia]
   );
 
   const language = useStore((state) => state.language);
@@ -762,9 +770,15 @@ export function WorkspaceBar({
     ? ko
       ? "이미지"
       : "images"
-    : ko
-      ? "영상"
-      : "videos";
+    : media === "consistencySheet"
+      ? ko
+        ? "시트"
+        : "sheets"
+      : ko
+        ? "영상"
+        : "videos";
+  // Korean says "전체 보기" whatever the media; English names the media.
+  const allLabel = ko ? "전체 보기" : `All ${mediaNoun}`;
 
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
@@ -1020,7 +1034,7 @@ export function WorkspaceBar({
           workspace list is always one click away, however long the strip is. */}
       <WorkspaceDropdown
         ko={ko}
-        isImages={isImages}
+        allLabel={allLabel}
         workspaces={orderedWorkspaces}
         activeWorkspaceId={activeWorkspaceId}
         ungroupedCount={ungroupedCount}
@@ -1094,19 +1108,21 @@ export function WorkspaceBar({
         )}
       </div>
 
-      <button
-        type="button"
-        onClick={() => setDownloadOpen(true)}
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-dashed border-border text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
-        aria-label={ko ? `공유 ${mediaNoun} 다운로드` : "Download shared"}
-        title={
-          ko
-            ? `RunPod에 공유된 워크스페이스를 내려받습니다 (공유 ${mediaNoun} 다운로드)`
-            : "Download a workspace shared on RunPod"
-        }
-      >
-        <CloudDownload className="h-3.5 w-3.5" />
-      </button>
+      {canShare && (
+        <button
+          type="button"
+          onClick={() => setDownloadOpen(true)}
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-dashed border-border text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+          aria-label={ko ? `공유 ${mediaNoun} 다운로드` : "Download shared"}
+          title={
+            ko
+              ? `RunPod에 공유된 워크스페이스를 내려받습니다 (공유 ${mediaNoun} 다운로드)`
+              : "Download a workspace shared on RunPod"
+          }
+        >
+          <CloudDownload className="h-3.5 w-3.5" />
+        </button>
+      )}
 
       <div
         className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto"
@@ -1126,7 +1142,7 @@ export function WorkspaceBar({
             : "border-border bg-card text-foreground hover:border-primary/50"
         }`}
       >
-        {ko ? "전체 보기" : isImages ? "All images" : "All videos"}
+        {allLabel}
       </button>
 
       <button
@@ -1140,9 +1156,7 @@ export function WorkspaceBar({
         title={
           ko
             ? `어떤 워크스페이스에도 속하지 않은 ${mediaNoun}`
-            : isImages
-              ? "Images not in any workspace"
-              : "Videos not in any workspace"
+            : `Files not in any workspace (${mediaNoun})`
         }
       >
         <FolderX className="h-3.5 w-3.5" />
@@ -1165,8 +1179,9 @@ export function WorkspaceBar({
           active={workspace.id === activeWorkspaceId}
           ko={ko}
           dragging={workspace.id === draggingId}
-          shared={Boolean(shares[workspace.id])}
-          sharing={sharingId === workspace.id}
+          canShare={canShare}
+          shared={canShare && Boolean(shares[workspace.id])}
+          sharing={canShare && sharingId === workspace.id}
           shareError={shares[workspace.id]?.error ?? ""}
           onSelect={() => setActiveWorkspace(workspace.id)}
           onRename={(name) => void renameWorkspace(workspace.id, name)}

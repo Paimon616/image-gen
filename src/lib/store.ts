@@ -66,11 +66,11 @@ interface AppState {
     image: GeneratedImage,
     workspaceId: string,
     assigned: boolean
-  ) => Promise<void>;
+  ) => Promise<string[] | null>;
   setImageWorkspaces: (
     image: GeneratedImage,
     workspaceIds: string[]
-  ) => Promise<void>;
+  ) => Promise<string[] | null>;
   setLanguage: (language: AppLanguage) => void;
   setCivitaiReference: (origin: CivitaiOrigin | null) => void;
   clearCivitaiReference: () => void;
@@ -519,8 +519,9 @@ const createAppState: StateCreator<AppState> = (set) => ({
   },
 
   setImageWorkspace: async (image, workspaceId, assigned) => {
-    if (!image.filename) return;
+    if (!image.filename) return null;
 
+    let workspaces: string[];
     try {
       const response = await fetch(
         `/api/images/${image.filename}/workspaces`,
@@ -530,10 +531,10 @@ const createAppState: StateCreator<AppState> = (set) => ({
           body: JSON.stringify({ workspaceId, assigned }),
         }
       );
-      if (!response.ok) return;
+      if (!response.ok) return null;
 
       const data = await response.json();
-      const workspaces = Array.isArray(data.workspaces)
+      workspaces = Array.isArray(data.workspaces)
         ? (data.workspaces as string[])
         : [];
 
@@ -558,15 +559,17 @@ const createAppState: StateCreator<AppState> = (set) => ({
         };
       });
     } catch {
-      return;
+      return null;
     }
 
     void useStore.getState().fetchWorkspaces();
+    return workspaces;
   },
 
   setImageWorkspaces: async (image, workspaceIds) => {
-    if (!image.filename) return;
+    if (!image.filename) return null;
 
+    let workspaces: string[];
     try {
       const response = await fetch(
         `/api/images/${image.filename}/workspaces`,
@@ -576,10 +579,10 @@ const createAppState: StateCreator<AppState> = (set) => ({
           body: JSON.stringify({ workspaceIds }),
         }
       );
-      if (!response.ok) return;
+      if (!response.ok) return null;
 
       const data = await response.json();
-      const workspaces = Array.isArray(data.workspaces)
+      workspaces = Array.isArray(data.workspaces)
         ? (data.workspaces as string[])
         : [];
 
@@ -601,10 +604,11 @@ const createAppState: StateCreator<AppState> = (set) => ({
         };
       });
     } catch {
-      return;
+      return null;
     }
 
     void useStore.getState().fetchWorkspaces();
+    return workspaces;
   },
 });
 

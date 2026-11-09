@@ -57,8 +57,20 @@ export function parseImageListQuery(searchParams: URLSearchParams) {
   const cursor = Math.max(0, parsePositiveInt(searchParams.get("cursor"), 0));
   const workspaceIdParam = searchParams.get("workspaceId");
   const workspaceId = workspaceIdParam?.trim() ? workspaceIdParam.trim() : null;
+  const modelPrefix = searchParams.get("model")?.trim() || null;
 
-  return { cursor, limit, workspaceId };
+  return { cursor, limit, workspaceId, modelPrefix };
+}
+
+// Reads only `params.model` from a sidecar, for the model filter below.
+async function readImageModel(filename: string): Promise<string | null> {
+  const metaPath = join(OUTPUT_DIR, filename.replace(/\.\w+$/, ".json"));
+  try {
+    const meta = JSON.parse(await readFile(metaPath, "utf-8"));
+    return typeof meta?.params?.model === "string" ? meta.params.model : null;
+  } catch {
+    return null;
+  }
 }
 
 async function readImageFileInfo(filename: string): Promise<ImageFileInfo | null> {
@@ -125,10 +137,13 @@ export async function listGeneratedImages({
   cursor,
   limit,
   workspaceId = null,
+  modelPrefix = null,
 }: {
   cursor: number;
   limit: number;
   workspaceId?: string | null;
+  /** Keep only images whose `params.model` starts with this (e.g. `seedream/`). */
+  modelPrefix?: string | null;
 }) {
   const files = await readdir(OUTPUT_DIR).catch(() => [] as string[]);
   let imageFiles = files.filter(isValidImageFilename);
@@ -143,6 +158,15 @@ export async function listGeneratedImages({
   } else if (workspaceId) {
     const members = await getWorkspaceFilenames(workspaceId);
     imageFiles = imageFiles.filter((filename) => members.has(filename));
+  }
+
+  // Unlike workspaces, the model lives in each image's sidecar, so this costs
+  // one small JSON read per remaining file.
+  if (modelPrefix) {
+    const models = await Promise.all(imageFiles.map(readImageModel));
+    imageFiles = imageFiles.filter((_, i) =>
+      Boolean(models[i]?.startsWith(modelPrefix))
+    );
   }
 
   const fileInfos = (await Promise.all(imageFiles.map(readImageFileInfo)))

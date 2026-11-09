@@ -1,4 +1,4 @@
-// SeeDance 2.5 (BytePlus ModelArk) shared types + helpers.
+// SeeDance 2.0 (BytePlus ModelArk) shared types + helpers.
 //
 // The SeeDance generation screen talks to BytePlus ModelArk directly with the
 // `SEEDANCE_API_KEY` (an `ark-…` key) read server-side from the environment.
@@ -6,15 +6,51 @@
 // (ratio / resolution / duration / seed / camera lock / watermark) are appended
 // to the prompt text as `--flag value` tokens rather than sent as JSON fields.
 // See `buildSeedancePromptText` below. Reference images are attached as extra
-// entries in the request `content` array with a `role` (first_frame /
-// last_frame / reference_image).
+// entries in the request `content` array under `role: "reference_image"`.
 //
-// Endpoint + model id are overridable via env so the same screen keeps working
-// if BytePlus renames the model or the account lives in another region:
+// The endpoint is overridable via env so the same screen keeps working if the
+// account lives in another region:
 //   SEEDANCE_BASE_URL  (default https://ark.ap-southeast.bytepluses.com/api/v3)
-//   SEEDANCE_MODEL     (default seedance-2.5)
+// The model is picked in the UI — see SEEDANCE_MODELS below.
 
 export type SeedanceMode = "i2v" | "t2v";
+
+export type SeedanceModelId = "seedance-2.5" | "seedance-2.0";
+
+export interface SeedanceModelInfo {
+  id: SeedanceModelId;
+  /** BytePlus ModelArk model id, sent as the request's `model` field. */
+  arkModel: string;
+  label: string;
+  /**
+   * ModelArk's own per-model ceiling. Anything above is rejected outright with
+   * "the specified duration is not supported for model …", so the slider has to
+   * follow whichever model is selected.
+   */
+  maxDuration: number;
+}
+
+// Both take the same content roles and the same `--flag` prompt commands, so
+// the only thing that changes with the pick is the model id and the length cap.
+export const SEEDANCE_MODELS: readonly SeedanceModelInfo[] = [
+  {
+    id: "seedance-2.5",
+    arkModel: "dreamina-seedance-2-5-260628",
+    label: "SeeDance 2.5",
+    maxDuration: 30,
+  },
+  {
+    id: "seedance-2.0",
+    arkModel: "dreamina-seedance-2-0-260128",
+    label: "SeeDance 2.0",
+    maxDuration: 15,
+  },
+];
+
+/** Falls back to the first entry, so clips saved before the picker still load. */
+export function resolveSeedanceModel(id: unknown): SeedanceModelInfo {
+  return SEEDANCE_MODELS.find((m) => m.id === id) ?? SEEDANCE_MODELS[0];
+}
 
 export type SeedanceResolution = "480p" | "720p" | "1080p";
 
@@ -28,6 +64,7 @@ export type SeedanceRatio =
   | "21:9";
 
 export interface SeedanceParams {
+  model: SeedanceModelId;
   mode: SeedanceMode;
   prompt: string;
   resolution: SeedanceResolution;
@@ -38,14 +75,23 @@ export interface SeedanceParams {
   cleanFrame: boolean; // append a "no on-screen text/subtitles/logo" clause
   seed: number | null;
   // Data URIs (data:image/...;base64,...) or public https URLs.
-  firstFrame: string | null;
-  lastFrame: string | null;
-  references: string[]; // extra identity-reference images (role: reference_image)
+  //
+  // All three slots go on the wire under the same `reference_image` role —
+  // ModelArk has no per-subject role — so they exist to fix the send order and
+  // to let the prompt say which is which (see buildSeedanceReferenceClause).
+  // Deliberately no first/last frame slot: ModelArk forces `--ratio adaptive`
+  // whenever one is present, which would take the ratio picker away.
+  imageReference: string | null;
+  characterReference: string | null;
+  backgroundReference: string | null;
 }
 
 export const SEEDANCE_DURATION_MIN = 4;
-export const SEEDANCE_DURATION_MAX = 30;
-export const SEEDANCE_MAX_REFERENCES = 4;
+// The ceiling across every model. The selected model's own, lower cap is what
+// the slider and the wire actually use — see SeedanceModelInfo.maxDuration.
+export const SEEDANCE_DURATION_MAX = Math.max(
+  ...SEEDANCE_MODELS.map((m) => m.maxDuration)
+);
 
 export const SEEDANCE_RESOLUTIONS: SeedanceResolution[] = ["480p", "720p", "1080p"];
 
@@ -60,6 +106,7 @@ export const SEEDANCE_RATIOS: SeedanceRatio[] = [
 ];
 
 export const DEFAULT_SEEDANCE_PARAMS: SeedanceParams = {
+  model: "seedance-2.5",
   mode: "i2v",
   prompt: "",
   resolution: "720p",
@@ -69,44 +116,81 @@ export const DEFAULT_SEEDANCE_PARAMS: SeedanceParams = {
   watermark: false,
   cleanFrame: true,
   seed: null,
-  firstFrame: null,
-  lastFrame: null,
-  references: [],
+  imageReference: null,
+  characterReference: null,
+  backgroundReference: null,
 };
 
-export function clampSeedanceDuration(value: unknown): number {
+/** i2v needs at least one of the reference slots filled. */
+export function hasSeedanceImage(params: SeedanceParams): boolean {
+  return Boolean(
+    params.imageReference ||
+      params.characterReference ||
+      params.backgroundReference
+  );
+}
+
+/** Clamps to the selected model's range; without one, to the widest range. */
+export function clampSeedanceDuration(
+  value: unknown,
+  modelId?: SeedanceModelId
+): number {
+  const max = modelId ? resolveSeedanceModel(modelId).maxDuration : SEEDANCE_DURATION_MAX;
   const n = Math.round(Number(value));
-  if (!Number.isFinite(n)) return DEFAULT_SEEDANCE_PARAMS.duration;
-  return Math.min(Math.max(n, SEEDANCE_DURATION_MIN), SEEDANCE_DURATION_MAX);
+  if (!Number.isFinite(n)) return Math.min(DEFAULT_SEEDANCE_PARAMS.duration, max);
+  return Math.min(Math.max(n, SEEDANCE_DURATION_MIN), max);
 }
 
 // Clause appended when `cleanFrame` is on, so the model avoids burning captions,
 // subtitles, logos or watermarks into the frame.
 const CLEAN_FRAME_CLAUSE = "禁止：任何文字、字幕、LOGO或水印";
 
+// Every reference goes on the wire under the same `reference_image` role, so
+// naming them in the prompt is the only way to tell the model which sheet is
+// which. The numbering has to follow the push order in buildSeedanceContent.
+const REFERENCE_LABELS = {
+  image: "整体参考，画面内容与构图以此为准",
+  character: "角色一致性参考，人物的长相、发型、服装以此为准",
+  background: "场景一致性参考，场地、布局、陈设、光线以此为准",
+} as const;
+
+/** "参考图1为…；参考图2为…" for whichever reference slots are filled. */
+export function buildSeedanceReferenceClause(params: SeedanceParams): string {
+  if (params.mode !== "i2v") return "";
+  const labels: string[] = [];
+  if (params.imageReference) labels.push(REFERENCE_LABELS.image);
+  if (params.characterReference) labels.push(REFERENCE_LABELS.character);
+  if (params.backgroundReference) labels.push(REFERENCE_LABELS.background);
+  return labels.map((label, i) => `参考图${i + 1}为${label}`).join("；");
+}
+
 /**
  * Build the ModelArk prompt text: the user's description followed by the
  * `--flag value` command tokens ModelArk parses for generation control.
- * `adaptive` ratio is omitted so the model derives the aspect from the first
- * frame image (its intended meaning); an explicit ratio is always sent.
  */
 export function buildSeedancePromptText(params: SeedanceParams): string {
   const segments: string[] = [];
   const base = params.prompt.trim();
   if (base) segments.push(base);
+  const referenceClause = buildSeedanceReferenceClause(params);
+  if (referenceClause) segments.push(referenceClause);
   if (params.cleanFrame) segments.push(CLEAN_FRAME_CLAUSE);
 
   const flags: string[] = [];
   flags.push(`--resolution ${params.resolution}`);
   if (params.ratio !== "adaptive") {
+    // Always accepted: there is no first/last frame to conflict with.
     flags.push(`--ratio ${params.ratio}`);
   } else if (params.mode === "t2v") {
-    // Text-to-video has no source frame to adapt to; fall back to 16:9.
+    // Text-to-video has no source image to adapt to; fall back to 16:9.
     flags.push("--ratio 16:9");
   } else {
+    // ModelArk has its own behaviour for `adaptive` on a reference-only run (a
+    // probe with square references came back `ratio: "9:16"`), and overriding
+    // it would ignore the user's pick.
     flags.push("--ratio adaptive");
   }
-  flags.push(`--duration ${clampSeedanceDuration(params.duration)}`);
+  flags.push(`--duration ${clampSeedanceDuration(params.duration, params.model)}`);
   if (params.cameraFixed) flags.push("--camerafixed true");
   flags.push(`--watermark ${params.watermark ? "true" : "false"}`);
   if (params.seed != null && Number.isFinite(params.seed)) {
@@ -120,7 +204,7 @@ export interface SeedanceContentPart {
   type: "text" | "image_url";
   text?: string;
   image_url?: { url: string };
-  role?: "first_frame" | "last_frame" | "reference_image";
+  role?: "reference_image";
 }
 
 /**
@@ -133,21 +217,12 @@ export function buildSeedanceContent(params: SeedanceParams): SeedanceContentPar
   ];
 
   if (params.mode === "i2v") {
-    if (params.firstFrame) {
-      content.push({
-        type: "image_url",
-        image_url: { url: params.firstFrame },
-        role: "first_frame",
-      });
-    }
-    if (params.lastFrame) {
-      content.push({
-        type: "image_url",
-        image_url: { url: params.lastFrame },
-        role: "last_frame",
-      });
-    }
-    for (const ref of params.references) {
+    // buildSeedanceReferenceClause numbers the references in this same order.
+    for (const ref of [
+      params.imageReference,
+      params.characterReference,
+      params.backgroundReference,
+    ]) {
       if (!ref) continue;
       content.push({
         type: "image_url",
@@ -167,10 +242,13 @@ export interface SeedanceVideo {
   timestamp: number;
   contentType: string;
   prompt: string;
-  params: Omit<SeedanceParams, "firstFrame" | "lastFrame" | "references"> & {
-    hasFirstFrame: boolean;
-    hasLastFrame: boolean;
-    referenceCount: number;
+  params: Omit<
+    SeedanceParams,
+    "imageReference" | "characterReference" | "backgroundReference"
+  > & {
+    hasImageReference: boolean;
+    hasCharacterReference: boolean;
+    hasBackgroundReference: boolean;
   };
   thumbnail?: string | null;
   // Workspace ids this clip belongs to. Shared with the image gallery and the

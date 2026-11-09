@@ -1,8 +1,5 @@
 import { readImageUrlAsJpegDataUrl } from "./image-resize";
-import {
-  SEEDANCE_DURATION_MAX,
-  SEEDANCE_DURATION_MIN,
-} from "./seedance";
+import { clampSeedanceDuration } from "./seedance";
 import { createSituationVideoStore } from "./situation-video-store";
 import { startSeedanceGeneration } from "./seedance-generation";
 import { useSeedancePaimonStore } from "./seedance-paimon-store";
@@ -17,29 +14,24 @@ export const useSeedanceSituationStore = createSituationVideoStore({
   // prompt itself.
   withNegativePrompt: false,
 
-  hasStartFrame: () => Boolean(useSeedanceStore.getState().params.firstFrame),
+  hasStartFrame: () => Boolean(useSeedanceStore.getState().params.imageReference),
 
   applyStartFrame: async (imageUrl) => {
     const dataUrl = await readImageUrlAsJpegDataUrl(imageUrl);
     useSeedanceStore.getState().setParams((current) => ({
       ...current,
-      // A start frame only means anything in image-to-video mode.
+      // A reference image only means anything in image-to-video mode.
       mode: "i2v",
-      firstFrame: dataUrl,
-      // The old clip's end frame would fight the new situation's start frame.
-      lastFrame: null,
+      imageReference: dataUrl,
     }));
     return true;
   },
 
   applyDuration: (seconds) => {
-    const duration = Math.min(
-      SEEDANCE_DURATION_MAX,
-      Math.max(SEEDANCE_DURATION_MIN, Math.round(seconds))
-    );
-    useSeedanceStore
-      .getState()
-      .setParams((current) => ({ ...current, duration }));
+    useSeedanceStore.getState().setParams((current) => ({
+      ...current,
+      duration: clampSeedanceDuration(seconds, current.model),
+    }));
   },
 
   // Submit through the module-scope runner (not the page) so an auto-generate

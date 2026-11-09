@@ -6,7 +6,8 @@ import {
   buildSeedanceContent,
   clampSeedanceDuration,
   DEFAULT_SEEDANCE_PARAMS,
-  SEEDANCE_MAX_REFERENCES,
+  hasSeedanceImage,
+  resolveSeedanceModel,
   SEEDANCE_RATIOS,
   SEEDANCE_RESOLUTIONS,
   type SeedanceParams,
@@ -19,15 +20,18 @@ import { notifyWorkspaceChanged } from "@/lib/runpod-share";
 import { isValidCharacterId } from "@/lib/characters";
 
 export const runtime = "nodejs";
-// Generation polls ModelArk for up to ~10 minutes; keep the function alive.
-export const maxDuration = 800;
+// Generation polls ModelArk for up to POLL_TIMEOUT_MINUTES, then the finished
+// clip still has to be downloaded — so this has to sit comfortably above the
+// poll budget or the function dies before the poll loop can give up.
+export const maxDuration = 1500;
 
 const SEEDANCE_OUTPUT_DIR = join(process.cwd(), "output", "seedance");
 
 const DEFAULT_BASE_URL = "https://ark.ap-southeast.bytepluses.com/api/v3";
 
 const POLL_INTERVAL_MS = 4000;
-const MAX_POLL_ATTEMPTS = 150; // ~10 minutes
+const POLL_TIMEOUT_MINUTES = 20;
+const MAX_POLL_ATTEMPTS = (POLL_TIMEOUT_MINUTES * 60 * 1000) / POLL_INTERVAL_MS;
 
 function sse(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
@@ -43,6 +47,7 @@ function asImageString(value: unknown): string | null {
 
 function normalizeParams(raw: Record<string, unknown>): SeedanceParams {
   const mode = raw.mode === "t2v" ? "t2v" : "i2v";
+  const model = resolveSeedanceModel(raw.model);
   const resolution = SEEDANCE_RESOLUTIONS.includes(raw.resolution as SeedanceResolution)
     ? (raw.resolution as SeedanceResolution)
     : DEFAULT_SEEDANCE_PARAMS.resolution;
@@ -54,26 +59,22 @@ function normalizeParams(raw: Record<string, unknown>): SeedanceParams {
     ? Math.trunc(seedRaw)
     : null;
 
-  const references = Array.isArray(raw.references)
-    ? raw.references
-        .map(asImageString)
-        .filter((v): v is string => Boolean(v))
-        .slice(0, SEEDANCE_MAX_REFERENCES)
-    : [];
-
   return {
+    model: model.id,
     mode,
     prompt: typeof raw.prompt === "string" ? raw.prompt : "",
     resolution,
     ratio,
-    duration: clampSeedanceDuration(raw.duration),
+    duration: clampSeedanceDuration(raw.duration, model.id),
     cameraFixed: Boolean(raw.cameraFixed),
     watermark: Boolean(raw.watermark),
     cleanFrame: raw.cleanFrame === undefined ? true : Boolean(raw.cleanFrame),
     seed,
-    firstFrame: mode === "i2v" ? asImageString(raw.firstFrame) : null,
-    lastFrame: mode === "i2v" ? asImageString(raw.lastFrame) : null,
-    references: mode === "i2v" ? references : [],
+    imageReference: mode === "i2v" ? asImageString(raw.imageReference) : null,
+    characterReference:
+      mode === "i2v" ? asImageString(raw.characterReference) : null,
+    backgroundReference:
+      mode === "i2v" ? asImageString(raw.backgroundReference) : null,
   };
 }
 
@@ -95,11 +96,6 @@ function arkErrorMessage(payload: unknown, fallback: string): string {
 export async function POST(req: NextRequest) {
   const apiKey = process.env.SEEDANCE_API_KEY?.trim();
   const baseUrl = (process.env.SEEDANCE_BASE_URL?.trim() || DEFAULT_BASE_URL).replace(/\/+$/, "");
-  // BytePlus ModelArk model id for SeeDance 2.5 (Dreamina). The 2.5 series is a
-  // MultimodalToVideo model and uses the same content roles (first_frame,
-  // last_frame, reference_image) as earlier versions. Overridable via env in
-  // case the dated version id changes.
-  const model = process.env.SEEDANCE_MODEL?.trim() || "dreamina-seedance-2-5-260628";
 
   let rawBody: Record<string, unknown>;
   try {
@@ -165,10 +161,11 @@ export async function POST(req: NextRequest) {
         return;
       }
 
-      if (params.mode === "i2v" && !params.firstFrame) {
+      if (params.mode === "i2v" && !hasSeedanceImage(params)) {
         send("error", {
           id: clientId,
-          message: "이미지 → 영상 모드에는 시작 이미지가 필요합니다.",
+          message:
+            "이미지 → 영상 모드에는 참조 이미지가 최소 한 장 필요합니다.",
         });
         close();
         return;
@@ -191,7 +188,7 @@ export async function POST(req: NextRequest) {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model,
+            model: resolveSeedanceModel(params.model).arkModel,
             content: buildSeedanceContent(params),
           }),
           signal: abortSignal,
@@ -215,6 +212,10 @@ export async function POST(req: NextRequest) {
 
         // 2) Poll until the task completes.
         let videoUrl: string | null = null;
+        // ModelArk echoes the ratio it actually used, which is the only way to
+        // know what `adaptive` resolved to. Recorded so the details panel shows
+        // the real aspect instead of the user's pick.
+        let resolvedRatio: string | null = null;
         for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
           if (abortSignal.aborted) break;
           await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
@@ -245,6 +246,7 @@ export async function POST(req: NextRequest) {
               pollJson.content?.video_url ??
               pollJson.content?.video?.url ??
               null;
+            if (typeof pollJson.ratio === "string") resolvedRatio = pollJson.ratio;
             break;
           }
           if (status === "failed" || status === "cancelled" || status === "canceled") {
@@ -271,7 +273,10 @@ export async function POST(req: NextRequest) {
         }
 
         if (!videoUrl) {
-          send("error", { id: clientId, message: "생성 시간 초과 (10분). 나중에 다시 시도하세요." });
+          send("error", {
+            id: clientId,
+            message: `생성 시간 초과 (${POLL_TIMEOUT_MINUTES}분). 나중에 다시 시도하세요.`,
+          });
           close();
           return;
         }
@@ -304,18 +309,21 @@ export async function POST(req: NextRequest) {
           contentType: "video/mp4",
           prompt: params.prompt,
           params: {
+            model: params.model,
             mode: params.mode,
             prompt: params.prompt,
             resolution: params.resolution,
-            ratio: params.ratio,
+            ratio: (SEEDANCE_RATIOS as string[]).includes(resolvedRatio ?? "")
+              ? (resolvedRatio as SeedanceRatio)
+              : params.ratio,
             duration: params.duration,
             cameraFixed: params.cameraFixed,
             watermark: params.watermark,
             cleanFrame: params.cleanFrame,
             seed: params.seed,
-            hasFirstFrame: Boolean(params.firstFrame),
-            hasLastFrame: Boolean(params.lastFrame),
-            referenceCount: params.references.length,
+            hasImageReference: Boolean(params.imageReference),
+            hasCharacterReference: Boolean(params.characterReference),
+            hasBackgroundReference: Boolean(params.backgroundReference),
           },
           thumbnail: null,
         };

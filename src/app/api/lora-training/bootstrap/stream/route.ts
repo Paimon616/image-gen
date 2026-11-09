@@ -116,6 +116,9 @@ export async function POST(req: NextRequest) {
           const variation = VARIATIONS[i % VARIATIONS.length];
           const params: GenerationParams = {
             ...DEFAULT_PARAMS,
+            // The editor's default LoRA is Illustrious-only; the bootstrap base model
+            // is user-chosen, so start it LoRA-free.
+            loras: [],
             backend: "comfyui",
             model: "comfyui/local-sdxl",
             model_name: baseModel,

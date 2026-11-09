@@ -146,3 +146,38 @@ export function isChatProviderId(value: unknown): value is ChatProviderId {
 /** Paimon's original model, kept as the default so existing setups behave the same. */
 export const DEFAULT_PAIMON_CHAT_PROVIDER: ChatProviderId = "openrouter";
 export const DEFAULT_PAIMON_CHAT_MODEL = "deepseek/deepseek-v4-flash";
+
+/**
+ * The provider/model pairs the Paimon panel switches between inline, so the user
+ * doesn't have to leave the screen. Settings still offers every model a provider
+ * lists; this is only the short list.
+ */
+export interface PaimonQuickModel {
+  provider: ChatProviderId;
+  model: string;
+  label: string;
+  /** Why you'd pick this one — shown under the panel's picker. */
+  hintKo: string;
+  hintEn: string;
+}
+
+export const PAIMON_QUICK_MODELS: PaimonQuickModel[] = [
+  {
+    provider: "deepseek",
+    model: "deepseek-v4-flash",
+    label: "DeepSeek V4 Flash",
+    hintKo: "빠르고 저렴합니다. 이미지를 볼 수 없어 레퍼런스 분석은 건너뜁니다.",
+    hintEn: "Fast and cheap, but it cannot see images, so reference analysis is skipped.",
+  },
+  {
+    provider: "openrouter",
+    model: "anthropic/claude-opus-5",
+    label: "Claude Opus 5",
+    hintKo: "프롬프트 품질이 가장 좋습니다. 느리고 비쌉니다.",
+    hintEn: "Best prompt quality. Slower and pricier.",
+  },
+];
+
+export function paimonQuickModelKey(provider: ChatProviderId, model: string) {
+  return `${provider}:${model}`;
+}

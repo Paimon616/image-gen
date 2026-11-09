@@ -147,15 +147,28 @@ export const UNGROUPED_WORKSPACE_ID = "__ungrouped__";
 
 // Workspaces are one shared set of folders across the whole app; what differs
 // per screen is only which media the folder is filtered by. Image generation
-// sees its images, video generation its ComfyUI videos, and the SeeDance screen
-// its SeeDance clips — the workspace (and its RunPod share) is the same record.
-export type WorkspaceMedia = "images" | "videos" | "seedance";
+// sees its images, video generation its ComfyUI videos, the SeeDance screen its
+// SeeDance clips and the consistency sheet screen its sheets — the workspace
+// (and its RunPod share) is the same record.
+export type WorkspaceMedia =
+  | "images"
+  | "videos"
+  | "seedance"
+  | "consistencySheet";
 
-export const WORKSPACE_MEDIA: WorkspaceMedia[] = ["images", "videos", "seedance"];
+export const WORKSPACE_MEDIA: WorkspaceMedia[] = [
+  "images",
+  "videos",
+  "seedance",
+  "consistencySheet",
+];
 
 export function isWorkspaceMedia(value: unknown): value is WorkspaceMedia {
   return (
-    value === "images" || value === "videos" || value === "seedance"
+    value === "images" ||
+    value === "videos" ||
+    value === "seedance" ||
+    value === "consistencySheet"
   );
 }
 
@@ -542,7 +555,8 @@ export interface HistoryEntry {
 export const DEFAULT_PARAMS: GenerationParams = {
   backend: "comfyui",
   model: "comfyui/local-sdxl",
-  model_name: "sd_xl_base_1.0.safetensors",
+  // Default local stack: Hassaku XL (Illustrious) + Detailer IL 0.5 · Eye Enhancer 0.6 · HandPatch 0.6.
+  model_name: "hassakuXLIllustrious_v22.safetensors",
   prompt: "",
   negative_prompt: "low quality, blurry, deformed, ugly, bad anatomy, bad hands, missing fingers",
   num_inference_steps: 30,
@@ -577,7 +591,13 @@ export const DEFAULT_PARAMS: GenerationParams = {
   adetailer_inpaint_only_masked: true,
   adetailer_loras: [],
   adetailer_denoise: 0.4,
-  loras: [],
+  // Illustrious-only LoRAs: comfyui.ts drops nothing automatically, so switching to a
+  // Krea 2 / Anima base needs these removed (the editor shows them in the LoRA list).
+  loras: [
+    { path: "DetailerILv2-000008.safetensors", scale: 0.5 },
+    { path: "Eye_Enhancer.safetensors", scale: 0.6 },
+    { path: "handPatchUnet4Merge.safetensors", scale: 0.6 },
+  ],
   embeddings: [],
   controlnets: [],
   prompt_weighting: true,

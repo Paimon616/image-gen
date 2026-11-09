@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import {
+  clampSeedanceDuration,
   DEFAULT_SEEDANCE_PARAMS,
+  resolveSeedanceModel,
   type SeedanceParams,
   type SeedanceVideo,
 } from "./seedance";
@@ -19,12 +21,21 @@ const PARAMS_STORAGE_KEY = "seedance-params-v1";
 // frames themselves are data URIs and far too large for localStorage.
 function persistParams(params: SeedanceParams) {
   if (typeof window === "undefined") return;
-  const { resolution, ratio, duration, cameraFixed, watermark, cleanFrame, mode } =
-    params;
+  const {
+    model,
+    resolution,
+    ratio,
+    duration,
+    cameraFixed,
+    watermark,
+    cleanFrame,
+    mode,
+  } = params;
   try {
     window.localStorage.setItem(
       PARAMS_STORAGE_KEY,
       JSON.stringify({
+        model,
         resolution,
         ratio,
         duration,
@@ -87,7 +98,14 @@ export const useSeedanceStore = create<SeedanceState>((set) => ({
 
   setParams: (update) =>
     set((s) => {
-      const params = typeof update === "function" ? update(s.params) : update;
+      const next = typeof update === "function" ? update(s.params) : update;
+      // Every writer goes through here (the form, Paimon, the situation runner),
+      // so clamping once here is what keeps a 30s length from surviving a switch
+      // to a 15s model and getting rejected on the wire.
+      const params = {
+        ...next,
+        duration: clampSeedanceDuration(next.duration, next.model),
+      };
       persistParams(params);
       return { params };
     }),
@@ -99,12 +117,16 @@ export const useSeedanceStore = create<SeedanceState>((set) => ({
       const raw = window.localStorage.getItem(PARAMS_STORAGE_KEY);
       if (!raw) return;
       const saved = JSON.parse(raw) as Partial<SeedanceParams>;
+      const model = resolveSeedanceModel(saved.model).id;
       set((s) => ({
         params: {
           ...s.params,
+          model,
           resolution: saved.resolution ?? s.params.resolution,
           ratio: saved.ratio ?? s.params.ratio,
-          duration: saved.duration ?? s.params.duration,
+          // A duration remembered from a longer model would show on the slider
+          // but get clamped on the wire, so clamp it on the way in.
+          duration: clampSeedanceDuration(saved.duration ?? s.params.duration, model),
           cameraFixed: saved.cameraFixed ?? s.params.cameraFixed,
           watermark: saved.watermark ?? s.params.watermark,
           cleanFrame: saved.cleanFrame ?? s.params.cleanFrame,

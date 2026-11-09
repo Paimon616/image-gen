@@ -70,9 +70,10 @@ import {
   type SituationRunRequest,
 } from "@/components/character-situation-picker";
 import {
-  SEEDANCE_DURATION_MAX,
+  hasSeedanceImage,
+  resolveSeedanceModel,
   SEEDANCE_DURATION_MIN,
-  SEEDANCE_MAX_REFERENCES,
+  SEEDANCE_MODELS,
   SEEDANCE_PROMPT_CHIPS,
   SEEDANCE_RATIOS,
   SEEDANCE_RESOLUTIONS,
@@ -102,23 +103,39 @@ type Lang = "ko" | "en";
 const T = {
   title: { ko: "SeeDance 생성", en: "SeeDance Generation" },
   subtitle: {
-    ko: "SeeDance 2.5 · 내 이미지의 인물로 원하는 영상 만들기",
-    en: "SeeDance 2.5 · Bring the person in your image to life",
+    ko: "내 이미지의 인물로 원하는 영상 만들기",
+    en: "Bring the person in your image to life",
   },
+  model: { ko: "모델", en: "Model" },
   modeI2v: { ko: "이미지 → 영상", en: "Image → Video" },
   modeT2v: { ko: "텍스트 → 영상", en: "Text → Video" },
-  firstFrame: { ko: "인물 이미지 (시작 프레임)", en: "Person image (start frame)" },
-  firstFrameHint: {
-    ko: "영상이 이 이미지에서 시작합니다. 내가 만든 인물 이미지를 넣으세요.",
-    en: "The video starts from this image. Drop the person you generated.",
+  imageReference: {
+    ko: "이미지 참조",
+    en: "Image reference",
   },
-  lastFrame: { ko: "종료 프레임 (선택)", en: "End frame (optional)" },
-  references: { ko: "인물 참조 이미지 (선택)", en: "Identity references (optional)" },
+  imageReferenceHint: {
+    ko: "인물·구도 등 참고할 이미지를 넣습니다. 시작 프레임이 아니라 참조라서 화면 비율은 그대로 고를 수 있습니다.",
+    en: "A general reference for the subject or framing. It is a reference, not a start frame, so the aspect ratio stays selectable.",
+  },
+  references: { ko: "일관성 참조 이미지 (선택)", en: "Consistency references (optional)" },
   referencesHint: {
-    ko: "동일 인물 유지력을 높이는 추가 참조 이미지 (최대 4장)",
-    en: "Extra references to lock the same identity (up to 4)",
+    ko: "캐릭터와 배경을 각각 고정합니다. 일관성 시트를 넣으면 가장 잘 먹습니다.",
+    en: "Locks the character and the location separately. Consistency sheets work best.",
   },
-  dropHere: { ko: "이미지를 끌어다 놓거나 클릭", en: "Drop an image or click" },
+  characterReference: { ko: "캐릭터 참조 (캐릭터 시트)", en: "Character reference (character sheet)" },
+  characterReferenceHint: {
+    ko: "이 인물의 얼굴·머리·의상을 유지합니다.",
+    en: "Keeps this person's face, hair and outfit.",
+  },
+  backgroundReference: { ko: "배경 참조 (배경 시트)", en: "Background reference (background sheet)" },
+  backgroundReferenceHint: {
+    ko: "이 공간의 구조·가구·조명을 유지합니다.",
+    en: "Keeps this location's layout, furniture and lighting.",
+  },
+  dropHere: {
+    ko: "클릭해서 내 이미지에서 선택 · 끌어다 놓아도 됩니다",
+    en: "Click to pick from my images · or drop one here",
+  },
   pickFromGallery: { ko: "내 이미지에서 선택", en: "From my images" },
   chooseFile: { ko: "파일 선택", en: "Choose file" },
   prompt: { ko: "상황 / 연출 프롬프트", en: "Situation prompt" },
@@ -200,17 +217,19 @@ const T = {
   nextVideo: { ko: "다음 영상", en: "Next video" },
   sectionPrompt: { ko: "프롬프트", en: "Prompt" },
   sectionGeneration: { ko: "생성 정보", en: "Generation" },
-  sectionStartFrame: { ko: "시작 프레임", en: "Start frame" },
+  sectionStartFrame: { ko: "참조 이미지", en: "Reference image" },
   noPrompt: { ko: "프롬프트 없음", en: "No prompt" },
   noParams: {
     ko: "이 영상에 대한 생성 정보가 없습니다.",
     en: "No generation details are available for this video.",
   },
+  fieldModel: { ko: "모델", en: "Model" },
   fieldMode: { ko: "모드", en: "Mode" },
   fieldSeed: { ko: "시드", en: "Seed" },
   fieldActual: { ko: "실제 해상도", en: "Actual resolution" },
-  fieldReferences: { ko: "참조 이미지", en: "References" },
-  fieldEndFrame: { ko: "종료 프레임", en: "End frame" },
+  fieldImageReference: { ko: "이미지 참조", en: "Image ref" },
+  fieldCharacterReference: { ko: "캐릭터 참조", en: "Character ref" },
+  fieldBackgroundReference: { ko: "배경 참조", en: "Background ref" },
   on: { ko: "켜짐", en: "On" },
   off: { ko: "꺼짐", en: "Off" },
   present: { ko: "있음", en: "Yes" },
@@ -309,8 +328,16 @@ function DropZone({ lang, value, onChange, onPickGallery, label, hint, large }: 
           setDragOver(false);
           void handleFile(e.dataTransfer.files?.[0]);
         }}
-        onClick={() => (value ? setZoomOpen(true) : inputRef.current?.click())}
-        title={value ? (lang === "ko" ? "클릭하면 크게 볼 수 있어요" : "Click to view larger") : undefined}
+        // An empty slot goes straight to the gallery — that is where the
+        // references live. Files still come from the button below, or a drop.
+        onClick={() => (value ? setZoomOpen(true) : onPickGallery())}
+        title={
+          value
+            ? lang === "ko"
+              ? "클릭하면 크게 볼 수 있어요"
+              : "Click to view larger"
+            : tr("pickFromGallery", lang)
+        }
         className={cn(
           "relative flex items-center justify-center overflow-hidden rounded-lg border border-dashed border-border bg-card/50 transition-colors",
           large ? "aspect-video" : "h-24",
@@ -371,8 +398,6 @@ export default function SeedancePage() {
   const params = useSeedanceStore((s) => s.params);
   const setParams = useSeedanceStore((s) => s.setParams);
   const hydrateParams = useSeedanceStore((s) => s.hydrateParams);
-  const [showLastFrame, setShowLastFrame] = useState(false);
-  const [showReferences, setShowReferences] = useState(false);
   const [picker, setPicker] = useState<null | ((url: string) => void)>(null);
   const [error, setError] = useState<string | null>(null);
   const [thumbnailWidth, setThumbnailWidth] = useState(320);
@@ -429,7 +454,7 @@ export default function SeedancePage() {
       if (!file) return;
       const dataUrl = await toDataUrl(file);
       setParams((p) => {
-        if (!p.firstFrame) return { ...p, firstFrame: dataUrl };
+        if (!p.imageReference) return { ...p, imageReference: dataUrl };
         return p;
       });
     };
@@ -488,6 +513,9 @@ export default function SeedancePage() {
       if (!source) return;
       setParams((p) => ({
         ...p,
+        // Clips saved before the model picker have no model recorded; those
+        // fall back to the default rather than silently switching the pick.
+        model: resolveSeedanceModel(source.model).id,
         mode: source.mode,
         prompt: source.prompt ?? p.prompt,
         resolution: source.resolution,
@@ -793,14 +821,14 @@ export default function SeedancePage() {
     }
   }, [batchActionBusy, batchDownloadBusy, selectedVideos]);
 
+  // The picked model decides how long a clip may be, so the slider and the
+  // situation picker both read their ceiling from it.
+  const modelInfo = resolveSeedanceModel(params.model);
   const isGenerating = pending.some((p) => p.status?.state === "generating" || p.status?.state === "queued");
   const canGenerate =
-    params.mode === "t2v" ? params.prompt.trim().length > 0 : Boolean(params.firstFrame);
-
-  const referenceSlots = useMemo(
-    () => [...params.references, ...Array(SEEDANCE_MAX_REFERENCES - params.references.length).fill(null)],
-    [params.references]
-  );
+    params.mode === "t2v"
+      ? params.prompt.trim().length > 0
+      : hasSeedanceImage(params);
 
   return (
     <div className="flex h-screen bg-background">
@@ -844,85 +872,54 @@ export default function SeedancePage() {
             <div className="space-y-3">
               <DropZone
                 lang={language}
-                value={params.firstFrame}
-                onChange={(v) => patch({ firstFrame: v })}
-                onPickGallery={() => setPicker(() => (url: string) => void toDataUrl(url).then((d) => patch({ firstFrame: d })))}
-                label={tr("firstFrame", language)}
-                hint={tr("firstFrameHint", language)}
+                value={params.imageReference}
+                onChange={(v) => patch({ imageReference: v })}
+                onPickGallery={() =>
+                  setPicker(() => (url: string) =>
+                    void toDataUrl(url).then((d) => patch({ imageReference: d }))
+                  )
+                }
+                label={tr("imageReference", language)}
+                hint={tr("imageReferenceHint", language)}
                 large
               />
 
-              {!showLastFrame ? (
-                <button
-                  type="button"
-                  onClick={() => setShowLastFrame(true)}
-                  className="text-[11px] font-medium text-primary hover:underline"
-                >
-                  + {tr("lastFrame", language)}
-                </button>
-              ) : (
-                <DropZone
-                  lang={language}
-                  value={params.lastFrame}
-                  onChange={(v) => patch({ lastFrame: v })}
-                  onPickGallery={() => setPicker(() => (url: string) => void toDataUrl(url).then((d) => patch({ lastFrame: d })))}
-                  label={tr("lastFrame", language)}
-                />
-              )}
-
-              {!showReferences ? (
-                <button
-                  type="button"
-                  onClick={() => setShowReferences(true)}
-                  className="block text-[11px] font-medium text-primary hover:underline"
-                >
-                  + {tr("references", language)}
-                </button>
-              ) : (
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">{tr("references", language)}</Label>
+              {/* Always visible: one character slot and one background slot. */}
+              <Separator />
+              <div className="space-y-3">
+                <div className="space-y-0.5">
+                  <Label className="text-xs font-semibold">
+                    {tr("references", language)}
+                  </Label>
                   <p className="text-[10.5px] leading-tight text-muted-foreground">
                     {tr("referencesHint", language)}
                   </p>
-                  <div className="grid grid-cols-4 gap-2">
-                    {referenceSlots.map((ref, idx) =>
-                      ref ? (
-                        <div key={idx} className="relative aspect-square overflow-hidden rounded-md border border-border">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={ref} alt="ref" className="h-full w-full object-cover" />
-                          <button
-                            type="button"
-                            onClick={() =>
-                              patch({ references: params.references.filter((_, i) => i !== idx) })
-                            }
-                            className="absolute right-0.5 top-0.5 rounded bg-black/60 p-0.5 text-white hover:bg-destructive"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() =>
-                            setPicker(() => (url: string) =>
-                              void toDataUrl(url).then((d) =>
-                                setParams((p) => ({
-                                  ...p,
-                                  references: [...p.references, d].slice(0, SEEDANCE_MAX_REFERENCES),
-                                }))
-                              )
-                            )
-                          }
-                          className="flex aspect-square items-center justify-center rounded-md border border-dashed border-border text-muted-foreground hover:border-primary/60"
-                        >
-                          <ImagePlus className="h-4 w-4" />
-                        </button>
-                      )
-                    )}
-                  </div>
                 </div>
-              )}
+                <DropZone
+                  lang={language}
+                  value={params.characterReference}
+                  onChange={(v) => patch({ characterReference: v })}
+                  onPickGallery={() =>
+                    setPicker(() => (url: string) =>
+                      void toDataUrl(url).then((d) => patch({ characterReference: d }))
+                    )
+                  }
+                  label={tr("characterReference", language)}
+                  hint={tr("characterReferenceHint", language)}
+                />
+                <DropZone
+                  lang={language}
+                  value={params.backgroundReference}
+                  onChange={(v) => patch({ backgroundReference: v })}
+                  onPickGallery={() =>
+                    setPicker(() => (url: string) =>
+                      void toDataUrl(url).then((d) => patch({ backgroundReference: d }))
+                    )
+                  }
+                  label={tr("backgroundReference", language)}
+                  hint={tr("backgroundReferenceHint", language)}
+                />
+              </div>
             </div>
           )}
 
@@ -982,7 +979,8 @@ export default function SeedancePage() {
               </div>
             </div>
 
-            {/* Ratio */}
+            {/* Ratio. Always selectable: every image goes on the wire as a
+                reference, and only a first/last frame would force `adaptive`. */}
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">{tr("ratio", language)}</Label>
               <div className="flex flex-wrap gap-1">
@@ -993,6 +991,29 @@ export default function SeedancePage() {
                     onClick={() => patch({ ratio: r as SeedanceRatio })}
                   >
                     {r === "adaptive" ? tr("ratioAdaptive", language) : r}
+                  </SegButton>
+                ))}
+              </div>
+            </div>
+
+            {/* Model. Sits right above the length because it is what caps it:
+                switching to a shorter model clamps the length for you (the
+                store does it), so the pick can never produce a rejected
+                request. */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">{tr("model", language)}</Label>
+              <div className="grid grid-cols-2 gap-1">
+                {SEEDANCE_MODELS.map((m) => (
+                  <SegButton
+                    key={m.id}
+                    active={params.model === m.id}
+                    onClick={() => patch({ model: m.id })}
+                  >
+                    {m.label}
+                    <span className="ml-1 font-normal opacity-70">
+                      {m.maxDuration}
+                      {tr("seconds", language)}
+                    </span>
                   </SegButton>
                 ))}
               </div>
@@ -1011,7 +1032,7 @@ export default function SeedancePage() {
                 value={[params.duration]}
                 onValueChange={(v) => patch({ duration: Array.isArray(v) ? v[0] : (v as number) })}
                 min={SEEDANCE_DURATION_MIN}
-                max={SEEDANCE_DURATION_MAX}
+                max={modelInfo.maxDuration}
                 step={1}
               />
             </div>
@@ -1336,7 +1357,7 @@ export default function SeedancePage() {
             language={language}
             defaultSeconds={params.duration}
             minSeconds={SEEDANCE_DURATION_MIN}
-            maxSeconds={SEEDANCE_DURATION_MAX}
+            maxSeconds={modelInfo.maxDuration}
             disabled={paimonLoading}
             batchRunning={situationBatch !== null}
             onRun={runSituation}
@@ -2097,6 +2118,10 @@ function VideoDetailModal({
                     <DetailSection label={tr("sectionGeneration", lang)}>
                       <div className="grid grid-cols-2 gap-2">
                         <DetailField
+                          label={tr("fieldModel", lang)}
+                          value={resolveSeedanceModel(params.model).label}
+                        />
+                        <DetailField
                           label={tr("fieldMode", lang)}
                           value={params.mode.toUpperCase()}
                         />
@@ -2139,12 +2164,28 @@ function VideoDetailModal({
                           value={params.cleanFrame ? tr("on", lang) : tr("off", lang)}
                         />
                         <DetailField
-                          label={tr("fieldEndFrame", lang)}
-                          value={params.hasLastFrame ? tr("present", lang) : tr("absent", lang)}
+                          label={tr("fieldImageReference", lang)}
+                          value={
+                            params.hasImageReference
+                              ? tr("present", lang)
+                              : tr("absent", lang)
+                          }
                         />
                         <DetailField
-                          label={tr("fieldReferences", lang)}
-                          value={params.referenceCount}
+                          label={tr("fieldCharacterReference", lang)}
+                          value={
+                            params.hasCharacterReference
+                              ? tr("present", lang)
+                              : tr("absent", lang)
+                          }
+                        />
+                        <DetailField
+                          label={tr("fieldBackgroundReference", lang)}
+                          value={
+                            params.hasBackgroundReference
+                              ? tr("present", lang)
+                              : tr("absent", lang)
+                          }
                         />
                       </div>
                     </DetailSection>

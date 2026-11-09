@@ -5,8 +5,8 @@ import {
 import { createPaimonConversationStore } from "./paimon-conversation";
 import { useSeedanceStore } from "./seedance-store";
 import {
-  SEEDANCE_DURATION_MAX,
-  SEEDANCE_DURATION_MIN,
+  clampSeedanceDuration,
+  SEEDANCE_MODELS,
   SEEDANCE_RATIOS,
   SEEDANCE_RESOLUTIONS,
   type SeedanceParams,
@@ -21,6 +21,8 @@ function sanitizeSeedancePatch(value: unknown): Partial<SeedanceParams> {
 
   if (typeof record.prompt === "string") patch.prompt = record.prompt;
   if (record.mode === "i2v" || record.mode === "t2v") patch.mode = record.mode;
+  const model = SEEDANCE_MODELS.find((m) => m.id === record.video_model);
+  if (model) patch.model = model.id;
   if (
     typeof record.resolution === "string" &&
     (SEEDANCE_RESOLUTIONS as string[]).includes(record.resolution)
@@ -33,11 +35,10 @@ function sanitizeSeedancePatch(value: unknown): Partial<SeedanceParams> {
   ) {
     patch.ratio = record.ratio as SeedanceParams["ratio"];
   }
+  // Clamped against the widest range here; the store re-clamps to whichever
+  // model ends up selected once the patch is merged.
   if (typeof record.duration === "number" && Number.isFinite(record.duration)) {
-    patch.duration = Math.min(
-      SEEDANCE_DURATION_MAX,
-      Math.max(SEEDANCE_DURATION_MIN, Math.round(record.duration))
-    );
+    patch.duration = clampSeedanceDuration(record.duration);
   }
   for (const key of ["cameraFixed", "watermark", "cleanFrame"] as const) {
     if (typeof record[key] === "boolean") patch[key] = record[key];
@@ -77,7 +78,7 @@ export const useSeedancePaimonStore = createPaimonConversationStore({
       // Image fields are stripped: multi-MB data URIs must not ride along as
       // params (they are sent as attachments below instead).
       currentParams: {
-        video_model: "seedance-2.5",
+        video_model: params.model,
         mode: params.mode,
         prompt: params.prompt,
         resolution: params.resolution,
@@ -89,11 +90,16 @@ export const useSeedancePaimonStore = createPaimonConversationStore({
         seed: params.seed,
       },
       attachments: [
-        ...(params.firstFrame
-          ? [frameAttachment(params.firstFrame, "시작 이미지")]
+        ...(params.imageReference
+          ? [frameAttachment(params.imageReference, "참조 이미지")]
           : []),
-        ...(params.lastFrame
-          ? [frameAttachment(params.lastFrame, "끝 이미지")]
+        // Named so Paimon writes a prompt that respects which sheet locks the
+        // person and which one locks the location.
+        ...(params.characterReference
+          ? [frameAttachment(params.characterReference, "캐릭터 시트")]
+          : []),
+        ...(params.backgroundReference
+          ? [frameAttachment(params.backgroundReference, "배경 시트")]
           : []),
         ...attachments.map((attachment, index) => ({
           kind: attachment.kind,
