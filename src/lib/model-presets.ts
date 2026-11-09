@@ -18,6 +18,8 @@ const KREA2_DYNAMIC_POSE_LORA = "More_Dynamic_Poses_Krea2_000002500.safetensors"
 // civitai.com/models/3022787 (v2) - no trigger word; the angle phrase at the start of
 // the prompt is the trigger ("high angle shot", "low angle shot from behind", ...).
 const KREA2_CAMERA_ANGLES_LORA = "CameraAngles_Krea2_v2.safetensors";
+// civitai.com/models/3193133 version (Krea2 v1) - trigger "detailed expression and emotion".
+const KREA2_EMOTIONS_LORA = "Detailed_Emotions_Expressions_Krea2_V1.safetensors";
 
 export const MODEL_PRESETS: ModelPreset[] = [
   {
@@ -42,8 +44,8 @@ export const MODEL_PRESETS: ModelPreset[] = [
     id: "krea2-identity-adult",
     label: { ko: "Krea2 일관성 · 성인", en: "Krea2 consistency · adult" },
     description: {
-      ko: "Krea2 Turbo + Identity Edit(참조 강도 0.7) + Refusal-Reduction 1.0 + More Dynamic Poses 1.0 + Camera Angles 1.0 · 10스텝 · CFG 1. 참조 이미지의 인물과 화풍을 유지하면서 노출 묘사와 다양한 포즈 · 표정 · 카메라 각도를 따릅니다. 프롬프트는 영어 문장으로: 각도 문구(high angle shot / low angle shot / low angle shot from behind / high angle shot from behind / worm's eye view / eye level shot) → 'an illustration of ...' → 트리거 PoseDaal 순서로 쓰세요.",
-      en: "Krea2 Turbo + Identity Edit (reference 0.7) + Refusal-Reduction 1.0 + More Dynamic Poses 1.0 + Camera Angles 1.0 · 10 steps · CFG 1. Keeps the reference character and art style while following nudity prompts and varied poses / expressions / camera angles. Write English sentences: an angle phrase (high angle shot, low angle shot, low angle shot from behind, high angle shot from behind, worm's eye view, eye level shot), then 'an illustration of ...', then the trigger PoseDaal.",
+      ko: "Krea2 Turbo + Identity Edit(참조 강도 0.7) + Refusal-Reduction 1.0 + More Dynamic Poses 1.0 + Camera Angles 1.0 + Detailed Emotions 0.8 · 10스텝 · CFG 1. 참조 이미지의 인물과 화풍을 유지하면서 노출 묘사와 다양한 포즈 · 표정 · 카메라 각도를 따릅니다. 프롬프트는 영어 문장으로: 각도 문구(high angle shot / low angle shot / low angle shot from behind / high angle shot from behind / worm's eye view / eye level shot) → 'an illustration of ...' → 트리거 PoseDaal · 'detailed expression and emotion' 순서로 쓰세요. 얼굴 좌우는 인물 기준(her left)이 아니라 화면 기준으로: 'side profile facing the LEFT edge of the picture: her nose points toward the left side of the frame, the back of her head is on the right side of the frame'. 얼굴 각도는 포즈 · 표정 문장이 많으면 밀리니 앞쪽에 쓰세요.",
+      en: "Krea2 Turbo + Identity Edit (reference 0.7) + Refusal-Reduction 1.0 + More Dynamic Poses 1.0 + Camera Angles 1.0 + Detailed Emotions 0.8 · 10 steps · CFG 1. Keeps the reference character and art style while following nudity prompts and varied poses / expressions / camera angles. Write English sentences: an angle phrase (high angle shot, low angle shot, low angle shot from behind, high angle shot from behind, worm's eye view, eye level shot), then 'an illustration of ...', then the triggers PoseDaal and 'detailed expression and emotion'. Give face left/right relative to the picture, not to her: 'side profile facing the LEFT edge of the picture: her nose points toward the left side of the frame, the back of her head is on the right side of the frame'. Put the face direction early; long pose / expression text drowns it.",
     },
     modelCandidates: ["krea2_turbo_fp8_scaled.safetensors", "krea2_turbo_bf16.safetensors"],
     params: {
@@ -51,6 +53,7 @@ export const MODEL_PRESETS: ModelPreset[] = [
         { path: KREA2_REFUSAL_LORA, scale: 1 },
         { path: KREA2_DYNAMIC_POSE_LORA, scale: 1 },
         { path: KREA2_CAMERA_ANGLES_LORA, scale: 1 },
+        { path: KREA2_EMOTIONS_LORA, scale: 0.8 },
       ],
       num_inference_steps: 10,
       guidance_scale: 1,
