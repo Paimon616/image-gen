@@ -13,17 +13,19 @@
 #                        depot: new models download without a restart; changed
 #                        ComfyUI ref, nodes or kit files are applied by restarting
 #                        once the queue is empty. It never polls on its own.
-#   worker.ps1 stop      stop ComfyUI (and the auto-update loop)
+#   worker.ps1 stop      stop ComfyUI (and the update watcher)
+#   worker.ps1 autostart-off   remove the Windows logon autostart shortcut
 #   worker.ps1 status    show whether it is running
 #
 # Everything lives inside this folder. Nothing outside it is read or written,
-# except the Windows Firewall rule that firewall.ps1 adds (admin, once).
+# except the Windows Firewall rule that firewall.ps1 adds (admin, once) and,
+# with "startAtLogon": true, one shortcut in the user's Startup folder.
 # marc decides what runs (ComfyUI version, nodes, models) through the depot
 # manifest; the owner of this PC decides when it runs (start/stop).
 
 param(
   [Parameter(Position = 0)]
-  [ValidateSet("install", "sync", "nodes", "start", "watch", "stop", "status")]
+  [ValidateSet("install", "sync", "nodes", "start", "watch", "stop", "status", "autostart-off")]
   [string]$Action = "status",
   [switch]$NoSync,
   [switch]$FromWatcher   # start launched by the update watcher (no .bat is running)
@@ -52,6 +54,8 @@ $UpdateState = Join-Path $Kit "update-state.json"      # read by helper.py (GET 
 # admin) and worker-config.json are never replaced remotely.
 $KitAutoFiles = @("worker.ps1", "helper.py", "custom-nodes.json")
 $KitLauncherFiles = @("start-worker.bat", "stop-worker.bat", "uninstall-worker.bat")
+
+$StartupLink = Join-Path ([Environment]::GetFolderPath("Startup")) "onechat GPU worker.lnk"
 
 function Read-Config {
   if (-not (Test-Path $ConfigPath)) {
@@ -319,8 +323,27 @@ function Ensure-Firewall($cfg) {
   }
 }
 
+# "startAtLogon": true -> a shortcut in the user's Startup folder runs
+# "worker.ps1 start" hidden at every Windows logon (no admin, no scheduled task).
+# false or missing -> the shortcut is removed. uninstall-worker.bat removes it too.
+function Set-Autostart($cfg) {
+  if ($cfg.startAtLogon -eq $true) {
+    $shell = New-Object -ComObject WScript.Shell
+    $link = $shell.CreateShortcut($StartupLink)
+    $link.TargetPath = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
+    $link.Arguments = "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$Kit\worker.ps1`" start"
+    $link.WorkingDirectory = $Kit
+    $link.WindowStyle = 7
+    $link.Description = "Starts the onechat GPU worker at logon (remove: uninstall-worker.bat or startAtLogon=false)"
+    $link.Save()
+  } elseif (Test-Path $StartupLink) {
+    Remove-Item -Force $StartupLink
+  }
+}
+
 function Start-Worker {
   $cfg = Read-Config
+  try { Set-Autostart $cfg } catch { Write-Warning "Logon autostart not set: $($_.Exception.Message)" }
   if (Get-WorkerPid) { Write-Host "Already running."; return }
   if (-not (Test-Path $Python)) { Install-Runtime }
   Ensure-Firewall $cfg
@@ -492,6 +515,7 @@ function Show-Status {
   $id = Get-WorkerPid
   if ($id) { Write-Host "Running (pid $id)." -ForegroundColor Green } else { Write-Host "Stopped." }
   if (Get-WatcherPid) { Write-Host "Update watcher: on, waiting for requests (logs\watch-*.log)." }
+  if (Test-Path $StartupLink) { Write-Host "Starts at Windows logon: yes." }
 }
 
 switch ($Action) {
@@ -502,4 +526,5 @@ switch ($Action) {
   "watch" { Watch-Worker }
   "stop" { Stop-Worker }
   "status" { Show-Status }
+  "autostart-off" { Remove-Item -Force -ErrorAction SilentlyContinue $StartupLink; Write-Host "Logon autostart removed." }
 }
