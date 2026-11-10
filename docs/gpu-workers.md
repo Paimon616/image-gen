@@ -41,7 +41,7 @@
  └──────────────────────────────┘    pull (토큰)   └─────────────────────────────┘
 ```
 
-- 앱 → 워커: ComfyUI 표준 API(`/prompt`, `/ws`, `/history`, `/view`, `/upload/image`, `/queue`, `/system_stats`, `/models/{folder}`). RunPod와 같은 코드 경로를 쓰고 `remoteKind: "gpu-worker"`로 구분함. RunPod 전용 헬퍼 조회는 건너뜀.
+- 앱 → 워커: ComfyUI 표준 API(`/prompt`, `/ws`, `/history`, `/view`, `/upload/image`, `/queue`, `/system_stats`, `/models/{folder}`). RunPod와 같은 코드 경로를 쓰고 `remoteKind: "gpu-worker"`로 구분함. RunPod 전용 헬퍼 조회는 건너뜀. 워커 키트 헬퍼는 :8189(ComfyUI :8188 옆).
 - 워커 → depot(선택): 워커가 켜질 때, 그리고 앱에서 업데이트를 요청했을 때 manifest와 모델을 끌어감. 요청은 신호뿐이고 내용은 항상 depot manifest에서 옴. 워커가 스스로 주기적으로 묻지 않음.
 
 ## 앱 쪽 구현
