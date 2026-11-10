@@ -20,7 +20,9 @@ import type { GenerationParams } from "@/lib/types";
 // in-flight reservations, and prompt → worker bookkeeping for cancel. The
 // scheduling rule itself is the pure chooseGpuWorker().
 
-const PROBE_TIMEOUT_MS = Number(process.env.GPU_WORKER_PROBE_TIMEOUT_MS ?? 2_000);
+// 5s, not 2s: a worker busy downloading a model (its uplink saturated) answers
+// /system_stats in 1–3s and was shown as offline.
+const PROBE_TIMEOUT_MS = Number(process.env.GPU_WORKER_PROBE_TIMEOUT_MS ?? 5_000);
 const PROBE_CACHE_MS = 2_000;
 const MODEL_LIST_CACHE_MS = 30_000;
 

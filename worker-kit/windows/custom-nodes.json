@@ -6,6 +6,12 @@
       "name": "ComfyUI_IPAdapter_plus",
       "repo": "https://github.com/cubiq/ComfyUI_IPAdapter_plus.git",
       "ref": "a0f451a5113cf9becb0847b92884cb10cbdec0ef"
+    },
+    {
+      "$comment": "Krea 2 character reference (Identity Edit: Krea2EditModelPatch / Krea2EditGroundedEncode). Same pin as scripts/install-local-models*.",
+      "name": "comfyui-krea2edit",
+      "repo": "https://github.com/lbouaraba/comfyui-krea2edit.git",
+      "ref": "13ef60f20828949becada815d3cbc371eb5ccaab"
     }
   ]
 }
