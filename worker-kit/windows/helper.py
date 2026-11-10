@@ -53,7 +53,19 @@ def _relative(target):
 
 def _track(target, done, total, state="downloading", error=""):
     with DOWNLOADS_LOCK:
-        entry = DOWNLOADS.setdefault(_relative(target), {"startedAt": time.time()})
+        now = time.time()
+        entry = DOWNLOADS.setdefault(_relative(target), {"startedAt": now})
+        # Current speed, not the lifetime average: a resumed download (network
+        # switch, sleep) would otherwise keep showing its old, slow rate.
+        if state == "downloading":
+            last_at = entry.get("rateAt")
+            if last_at is None or done < entry.get("rateDone", 0):
+                entry.update({"rateAt": now, "rateDone": done, "rate": None})
+            elif now - last_at >= 2:
+                instant = (done - entry["rateDone"]) / (now - last_at)
+                previous = entry.get("rate")
+                entry["rate"] = instant if previous is None else previous * 0.5 + instant * 0.5
+                entry.update({"rateAt": now, "rateDone": done})
         entry.update({
             "path": _relative(target),
             "downloaded": done,
@@ -75,7 +87,17 @@ def downloads_snapshot():
     now = time.time()
     for item in items:
         elapsed = max(1e-6, now - item["startedAt"])
-        item["bytesPerSec"] = int(item["downloaded"] / elapsed) if item["state"] == "downloading" else None
+        rate = item.pop("rate", None)
+        rate_at = item.pop("rateAt", None)
+        item.pop("rateDone", None)
+        if item["state"] != "downloading":
+            item["bytesPerSec"] = None
+        elif rate is not None and rate_at is not None and now - rate_at < 10:
+            item["bytesPerSec"] = int(rate)
+        elif rate is not None:
+            item["bytesPerSec"] = 0  # no progress for 10s+: stalled
+        else:
+            item["bytesPerSec"] = int(item["downloaded"] / elapsed)
     # Partial files left by an interrupted download (sleep, network drop):
     # these resume from their size on the next download request.
     known = {item["path"] for item in items}
