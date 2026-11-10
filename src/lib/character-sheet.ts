@@ -13,8 +13,10 @@
 import type {
   CharacterReferenceSheet,
   CharacterReferenceSheetCrop,
+  CharacterReferenceSheetRegion,
   GenerationParams,
   LoraConfig,
+  SheetRegionKind,
 } from "./types.ts";
 
 // Situation id the sheet candidates are linked under (images API), so they stay
@@ -177,6 +179,58 @@ export function squareCropRect(
 }
 
 // Storage normalization: only an app-served gallery image can be a sheet.
+const SHEET_REGION_KINDS: SheetRegionKind[] = ["front_upper", "front_full", "side", "back"];
+
+export function normalizeSheetRegions(raw: unknown): CharacterReferenceSheetRegion[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<SheetRegionKind>();
+  const out: CharacterReferenceSheetRegion[] = [];
+  for (const item of raw) {
+    const kind = (item as { kind?: unknown })?.kind as SheetRegionKind;
+    if (!SHEET_REGION_KINDS.includes(kind) || seen.has(kind)) continue;
+    const crop = normalizeSheetCrop(item);
+    if (!crop) continue;
+    seen.add(kind);
+    out.push({ ...crop, kind });
+  }
+  return out;
+}
+
+// Which sheet view a scene needs, from its prompt (English tags or sentences,
+// Korean). Order matters: an explicit back/side view wins over framing words.
+const REGION_RULES: { kind: SheetRegionKind; pattern: RegExp }[] = [
+  { kind: "back", pattern: /\b(from behind|back view|rear view|seen from behind|from the back|facing away)\b|뒷모습|뒤에서/i },
+  { kind: "side", pattern: /\b(from (the )?side|side view|profile|seen from the side|side-on)\b|옆모습|측면|옆에서/i },
+  {
+    kind: "front_upper",
+    pattern: /\b(upper[- ]?body|close[- ]?up|portrait|bust|headshot|cowboy shot|face focus)\b|상반신|클로즈업|얼굴/i,
+  },
+  {
+    kind: "front_full",
+    pattern: /\b(full[- ]?body|full shot|wide shot|whole body|head to (toe|feet)|standing|walking|running)\b|전신/i,
+  },
+];
+
+/**
+ * The sheet view for this scene: the first rule its prompt matches that the
+ * sheet actually has, else the default 참조 영역 (front head-to-chest crop).
+ */
+export function pickSheetRegion(
+  prompt: string,
+  sheet: Pick<CharacterReferenceSheet, "crop" | "regions" | "url">
+): { kind: SheetRegionKind | null; url: string } {
+  const regions = sheet.regions ?? [];
+  for (const rule of REGION_RULES) {
+    if (!rule.pattern.test(prompt)) continue;
+    // The 참조 영역 the user set (or moved) is the front head-to-chest view.
+    if (rule.kind === "front_upper" && sheet.crop) return { kind: "front_upper", url: sheet.crop.url };
+    const region = regions.find((r) => r.kind === rule.kind);
+    if (region) return { kind: region.kind, url: region.url };
+  }
+  if (sheet.crop) return { kind: "front_upper", url: sheet.crop.url };
+  return { kind: null, url: sheet.url };
+}
+
 export function normalizeReferenceSheet(raw: unknown): CharacterReferenceSheet | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const record = raw as Record<string, unknown>;
@@ -204,6 +258,7 @@ export function normalizeReferenceSheet(raw: unknown): CharacterReferenceSheet |
         ? record.confirmedAt
         : undefined,
     crop: normalizeSheetCrop(record.crop),
+    regions: normalizeSheetRegions(record.regions),
   };
 }
 
@@ -234,10 +289,13 @@ export function applyReferenceSheet(
 ): GenerationParams {
   if (params.character_sheet_disabled) return { ...params, character_sheet_image: null };
   const override = params.character_sheet_strength_override;
+  // The view this scene needs (full body, side, back...) when the sheet has
+  // it, else the 참조 영역 crop: a single figure, never the whole sheet.
+  const region = pickSheetRegion(params.prompt ?? "", sheet);
   return {
     ...params,
-    // The 참조 영역 crop when set: a single face/upper body, no extra figures.
-    character_sheet_image: sheet.crop?.url ?? sheet.url,
+    character_sheet_image: region.url,
+    character_sheet_region: region.kind,
     character_sheet_strength: clampSheetStrength(
       typeof override === "number" && Number.isFinite(override) ? override : sheet.strength
     ),

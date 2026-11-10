@@ -30,6 +30,7 @@ import { notifyWorkspaceChanged } from "@/lib/runpod-share";
 import { getRunpodPod, readSettings } from "@/lib/settings";
 import { getCharacter, isValidCharacterId } from "@/lib/characters";
 import { applyReferenceSheet, shouldApplyReferenceSheet } from "@/lib/character-sheet";
+import { resolveCheckpointFamily } from "@/lib/comfyui-model-files";
 import {
   checkRunpodGenerationFiles,
   ensureRunpodComfyCatalogReady,
@@ -225,7 +226,17 @@ export async function POST(req: NextRequest) {
         ...sheet,
         url: absolute(sheet.url),
         crop: sheet.crop ? { ...sheet.crop, url: absolute(sheet.crop.url) } : null,
+        regions: (sheet.regions ?? []).map((region) => ({ ...region, url: absolute(region.url) })),
       });
+      // Krea 2 has no IP-Adapter path: the chosen sheet view becomes its
+      // character reference (Identity Edit) unless the user set one already.
+      if (
+        body.character_sheet_image &&
+        !body.character_image?.trim() &&
+        (await resolveCheckpointFamily(body.model_name ?? "")) === "krea2"
+      ) {
+        body = { ...body, character_image: body.character_sheet_image };
+      }
     }
   }
   const modelConfig = getModelConfig(body.model);
