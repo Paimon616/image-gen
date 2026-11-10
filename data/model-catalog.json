@@ -9034,5 +9034,77 @@
       "lactation",
       "projectile lactation"
     ]
+  },
+  "pulid/ip-adapter_pulid_sdxl_fp16.safetensors": {
+    "name": "PuLID SDXL (IPAdapter layout)",
+    "version": "fp16",
+    "base_model": "SDXL",
+    "thumbnail_url": null,
+    "source_url": "https://huggingface.co/huchenlei/ipadapter_pulid/resolve/main/ip-adapter_pulid_sdxl_fp16.safetensors?download=true",
+    "tags": [
+      "pulid",
+      "character-reference"
+    ],
+    "note": "PuLID_ComfyUI(cubiq) IDEncoder용. src/lib/pulid-assets.ts PULID_WEIGHT와 동일"
+  },
+  "insightface/models/antelopev2/1k3d68.onnx": {
+    "name": "InsightFace antelopev2 1k3d68",
+    "version": "antelopev2",
+    "base_model": "InsightFace",
+    "thumbnail_url": null,
+    "source_url": "https://huggingface.co/DIAMONIK7777/antelopev2/resolve/main/1k3d68.onnx",
+    "tags": [
+      "pulid",
+      "insightface"
+    ],
+    "note": "PulidInsightFaceLoader용. src/lib/pulid-assets.ts PULID_INSIGHTFACE와 동일"
+  },
+  "insightface/models/antelopev2/2d106det.onnx": {
+    "name": "InsightFace antelopev2 2d106det",
+    "version": "antelopev2",
+    "base_model": "InsightFace",
+    "thumbnail_url": null,
+    "source_url": "https://huggingface.co/DIAMONIK7777/antelopev2/resolve/main/2d106det.onnx",
+    "tags": [
+      "pulid",
+      "insightface"
+    ],
+    "note": "PulidInsightFaceLoader용. src/lib/pulid-assets.ts PULID_INSIGHTFACE와 동일"
+  },
+  "insightface/models/antelopev2/genderage.onnx": {
+    "name": "InsightFace antelopev2 genderage",
+    "version": "antelopev2",
+    "base_model": "InsightFace",
+    "thumbnail_url": null,
+    "source_url": "https://huggingface.co/DIAMONIK7777/antelopev2/resolve/main/genderage.onnx",
+    "tags": [
+      "pulid",
+      "insightface"
+    ],
+    "note": "PulidInsightFaceLoader용. src/lib/pulid-assets.ts PULID_INSIGHTFACE와 동일"
+  },
+  "insightface/models/antelopev2/glintr100.onnx": {
+    "name": "InsightFace antelopev2 glintr100",
+    "version": "antelopev2",
+    "base_model": "InsightFace",
+    "thumbnail_url": null,
+    "source_url": "https://huggingface.co/DIAMONIK7777/antelopev2/resolve/main/glintr100.onnx",
+    "tags": [
+      "pulid",
+      "insightface"
+    ],
+    "note": "PulidInsightFaceLoader용. src/lib/pulid-assets.ts PULID_INSIGHTFACE와 동일"
+  },
+  "insightface/models/antelopev2/scrfd_10g_bnkps.onnx": {
+    "name": "InsightFace antelopev2 scrfd_10g_bnkps",
+    "version": "antelopev2",
+    "base_model": "InsightFace",
+    "thumbnail_url": null,
+    "source_url": "https://huggingface.co/DIAMONIK7777/antelopev2/resolve/main/scrfd_10g_bnkps.onnx",
+    "tags": [
+      "pulid",
+      "insightface"
+    ],
+    "note": "PulidInsightFaceLoader용. src/lib/pulid-assets.ts PULID_INSIGHTFACE와 동일"
   }
 }
