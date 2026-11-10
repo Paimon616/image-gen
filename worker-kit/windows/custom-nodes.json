@@ -2,7 +2,7 @@
   "$comment": "Custom ComfyUI nodes this GPU worker installs on start-worker.bat. Pinned by marc in the kit (version-controlled), never pushed remotely: the worker only installs what this file lists, at these exact commits, from github.com over https. Bump a ref here and ship the kit to change it. Keep refs in sync with comfyui-config/custom-nodes.json.",
   "customNodes": [
     {
-      "$comment": "IP-Adapter for the BETA character reference sheet (docs/character-reference-sheet.md). Models: ipadapter/ip-adapter-plus_sdxl_vit-h.safetensors + clip_vision/CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors, downloaded through helper.py from the character studio.",
+      "$comment": "IP-Adapter for the BETA character reference sheet (docs/character-reference-sheet.md). Models: ipadapter/NOOB-IPA-MARK1.safetensors + clip_vision/CLIP-ViT-bigG-14-laion2B-39B-b160k.safetensors (SDXL plus vit-h pair as fallback), downloaded through helper.py from the character studio.",
       "name": "ComfyUI_IPAdapter_plus",
       "repo": "https://github.com/cubiq/ComfyUI_IPAdapter_plus.git",
       "ref": "a0f451a5113cf9becb0847b92884cb10cbdec0ef"
