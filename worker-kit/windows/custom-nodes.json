@@ -12,6 +12,12 @@
       "name": "comfyui-krea2edit",
       "repo": "https://github.com/lbouaraba/comfyui-krea2edit.git",
       "ref": "13ef60f20828949becada815d3cbc371eb5ccaab"
+    },
+    {
+      "$comment": "GGUF-quantized diffusion models (UnetLoaderGGUF): Krea 2 Q5/Q4 fit a 12GB card. pip: gguf.",
+      "name": "ComfyUI-GGUF",
+      "repo": "https://github.com/city96/ComfyUI-GGUF.git",
+      "ref": "6ea2651e7df66d7585f6ffee804b20e92fb38b8a"
     }
   ]
 }

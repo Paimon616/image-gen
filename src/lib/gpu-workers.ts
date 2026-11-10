@@ -130,7 +130,9 @@ function listWorkerModels(worker: GpuWorkerConfig, folder: string) {
   if (cached && Date.now() - cached.at < MODEL_LIST_CACHE_MS) return cached.value;
   const value = fetchJson<unknown>(`${worker.url}/models/${encodeURIComponent(folder)}`, 5_000)
     .then((list) => (Array.isArray(list) ? list.map(String) : undefined))
-    .catch(() => undefined);
+    // 404 = ComfyUI has no such folder (e.g. unet_gguf without ComfyUI-GGUF):
+    // an empty list, not an unknown one, so it doesn't mask a missing file.
+    .catch((error: unknown) => (error instanceof Error && error.message === "HTTP 404" ? [] : undefined));
   pool.modelLists.set(key, { at: Date.now(), value });
   return value;
 }

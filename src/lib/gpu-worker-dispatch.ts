@@ -206,9 +206,10 @@ export function requiredModelFiles(params: {
 
 /**
  * Folders a "checkpoints/<name>" requirement may be satisfied from: diffusion-only
- * families (Krea 2, Z-Image, Anima) ship as diffusion_models / unet files.
+ * families (Krea 2, Z-Image, Anima) ship as diffusion_models / unet files, and
+ * GGUF builds show up under ComfyUI-GGUF's unet_gguf listing.
  */
-export const CHECKPOINT_FOLDERS = ["checkpoints", "diffusion_models", "unet"] as const;
+export const CHECKPOINT_FOLDERS = ["checkpoints", "diffusion_models", "unet", "unet_gguf"] as const;
 
 /** Given ComfyUI's per-folder file lists, the required files that are absent. */
 export function missingModelFiles(

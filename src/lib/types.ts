@@ -90,6 +90,14 @@ export interface GenerationParams {
   // face more faithfully; lower lets the prompt/pose lead. Only consulted on the
   // SDXL/Illustrious workflow when character_image is set. Sweet spot ~0.7–1.0.
   character_reference_strength: number;
+  /**
+   * Krea 2 character reference placement. "aligned" (default) pins the reference
+   * onto the output layout, so scenes inherit its pose/framing; "beside" keeps
+   * identity but lets the person be restaged (comfyui-krea2edit ref_position).
+   */
+  character_reference_layout?: "aligned" | "beside";
+  /** Krea 2: ask to keep face/hair/outfit only and follow the prompt for pose, expression, camera. */
+  character_reference_restage?: boolean;
   // BETA 캐릭터 기준 시트: the character's confirmed reference sheet image. Set
   // server-side (api/generate/stream) for renders of a sheet-confirmed character
   // when the beta is on; applied as IP-Adapter conditioning on the SDXL workflow.

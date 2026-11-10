@@ -900,13 +900,17 @@ async function buildKrea2Workflow(
     Number(params.hires_upscale)
   );
   const workflow: Record<string, unknown> = {
-    "1": {
-      class_type: "UNETLoader",
-      inputs: {
-        unet_name: checkpoint,
-        weight_dtype: "default",
-      },
-    },
+    // GGUF-quantized Krea 2 (e.g. Q5_K_M, 8.9 GB) fits a 12 GB card whole instead
+    // of offloading part of the fp8 weights every step; needs ComfyUI-GGUF.
+    "1": /\.gguf$/i.test(checkpoint)
+      ? { class_type: "UnetLoaderGGUF", inputs: { unet_name: checkpoint } }
+      : {
+          class_type: "UNETLoader",
+          inputs: {
+            unet_name: checkpoint,
+            weight_dtype: "default",
+          },
+        },
     "8": {
       class_type: "CLIPLoader",
       inputs: {
@@ -2182,15 +2186,20 @@ async function addKrea2IdentityEditNodes(
       target_latent: targetLatentRef,
       fit_mode: "fit",
       ref_boost: refBoost,
+      ref_position:
+        params.character_reference_layout === "beside" ? "beside (right of target)" : "aligned (trained)",
     },
   };
   workflow["44"] = {
     class_type: "Krea2EditGroundedEncode",
     inputs: {
       clip: clipRef,
-      prompt:
-        `Create an image of this person. ${params.prompt.trim()}. ` +
-        "Keep the exact face, hairstyle, outfit and the illustration style of the person in the reference image.",
+      prompt: params.character_reference_restage
+        ? `Create an image of this person. ${params.prompt.trim()}. ` +
+          "Keep the person's face, hairstyle and outfit from the reference image, but take the pose, " +
+          "facial expression, camera angle, framing and lighting from this description, not from the reference."
+        : `Create an image of this person. ${params.prompt.trim()}. ` +
+          "Keep the exact face, hairstyle, outfit and the illustration style of the person in the reference image.",
       image: ["41", 0],
       grounding_px: 768,
     },
