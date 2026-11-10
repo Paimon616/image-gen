@@ -126,9 +126,23 @@ test("requiredModelFiles and missingModelFiles", () => {
     []
   );
   assert.deepEqual(
-    missingModelFiles(required, { checkpoints: [], loras: undefined }),
+    missingModelFiles(required, { checkpoints: [], diffusion_models: [], unet: [], loras: undefined }),
     ["checkpoints/waiIllustrious_v150.safetensors"]
   );
+});
+
+test("a checkpoint requirement is met by a diffusion_models file (Krea 2)", () => {
+  const required = requiredModelFiles({ model_name: "krea2_turbo_fp8_scaled.safetensors" });
+  assert.deepEqual(
+    missingModelFiles(required, {
+      checkpoints: ["hassaku.safetensors"],
+      diffusion_models: ["krea2_turbo_fp8_scaled.safetensors"],
+      unet: [],
+    }),
+    []
+  );
+  // diffusion_models list unknown (probe failed): don't block on it.
+  assert.deepEqual(missingModelFiles(required, { checkpoints: [], unet: [] }), []);
 });
 
 test("normalizeGpuWorkers drops bad entries and fills defaults", () => {

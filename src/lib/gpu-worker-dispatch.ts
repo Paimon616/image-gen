@@ -204,6 +204,12 @@ export function requiredModelFiles(params: {
   return [...files];
 }
 
+/**
+ * Folders a "checkpoints/<name>" requirement may be satisfied from: diffusion-only
+ * families (Krea 2, Z-Image, Anima) ship as diffusion_models / unet files.
+ */
+export const CHECKPOINT_FOLDERS = ["checkpoints", "diffusion_models", "unet"] as const;
+
 /** Given ComfyUI's per-folder file lists, the required files that are absent. */
 export function missingModelFiles(
   required: string[],
@@ -213,12 +219,15 @@ export function missingModelFiles(
     const slash = file.indexOf("/");
     const folder = file.slice(0, slash);
     const name = file.slice(slash + 1);
-    const list = available[folder];
+    const normalized = name.replace(/\\/g, "/");
+    const folders = folder === "checkpoints" ? CHECKPOINT_FOLDERS : [folder];
+    const lists = folders.map((f) => available[f]);
+    if (lists.some((list) => list?.some((entry) => entry.replace(/\\/g, "/") === normalized))) {
+      return false;
+    }
     // Unknown folder list (probe failed for that folder) → don't block on it;
     // ComfyUI will report a real missing file when the prompt is validated.
-    if (!list) return false;
-    const normalized = name.replace(/\\/g, "/");
-    return !list.some((entry) => entry.replace(/\\/g, "/") === normalized);
+    return lists.every((list) => Array.isArray(list));
   });
 }
 

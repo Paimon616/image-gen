@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   chooseGpuWorker,
+  CHECKPOINT_FOLDERS,
   classifyWorkload,
   gpuWorkerHelperUrl,
   missingModelFiles,
@@ -131,7 +132,14 @@ export function invalidateGpuWorkerModels(workerId?: string) {
 
 async function workerMissingFiles(worker: GpuWorkerConfig, required: string[]) {
   if (required.length === 0) return [];
-  const folders = [...new Set(required.map((file) => file.slice(0, file.indexOf("/"))))];
+  const folders = [
+    ...new Set(
+      required.flatMap((file) => {
+        const folder = file.slice(0, file.indexOf("/"));
+        return folder === "checkpoints" ? [...CHECKPOINT_FOLDERS] : [folder];
+      })
+    ),
+  ];
   const lists = await Promise.all(folders.map((folder) => listWorkerModels(worker, folder)));
   return missingModelFiles(
     required,
