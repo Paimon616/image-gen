@@ -11,8 +11,8 @@ $Kit = $PSScriptRoot
 $cfg = Get-Content (Join-Path $Kit "worker-config.json") -Raw | ConvertFrom-Json
 $port = if ($cfg.port) { $cfg.port } else { 8188 }
 $ruleName = "onechat GPU worker (ComfyUI $port)"
-$ruleVersion = "onechat-gpu-worker v3"
-$helperPort = if ($cfg.helperPort) { $cfg.helperPort } else { 3000 }
+$ruleVersion = "onechat-gpu-worker v4"
+$helperPort = if ($cfg.helperPort) { $cfg.helperPort } else { 8189 }
 $python = Join-Path $Kit "runtime\python_embeded\python.exe"
 
 # Our rules from any earlier kit version (v1 also added a Public block rule,

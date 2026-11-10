@@ -74,7 +74,7 @@ function helperUrlFromComfyUrl(comfyUrl: string) {
 }
 
 function deriveHelperUrl(pod: RunpodPodSettings) {
-  return helperUrlFromComfyUrl(pod.comfyUrl);
+  return pod.helperUrl || helperUrlFromComfyUrl(pod.comfyUrl);
 }
 
 // Read a checkpoint's baked-in CLIP / VAE presence FROM THE POD rather than the

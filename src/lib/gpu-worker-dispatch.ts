@@ -9,6 +9,23 @@
 export type GpuWorkerRole = "primary" | "light";
 export type GpuWorkload = "full" | "light";
 
+/**
+ * The worker kit's helper port. 8189 (next to ComfyUI 8188), not 3000: a
+ * colleague's own dev server commonly sits on 3000.
+ */
+export const GPU_WORKER_HELPER_PORT = 8189;
+
+/** Helper origin for a worker: ComfyUI origin with the port swapped. */
+export function gpuWorkerHelperUrl(worker: { url: string }) {
+  try {
+    const url = new URL(worker.url);
+    url.port = String(GPU_WORKER_HELPER_PORT);
+    return url.origin;
+  } catch {
+    return "";
+  }
+}
+
 export interface GpuWorkerConfig {
   id: string;
   label: string;

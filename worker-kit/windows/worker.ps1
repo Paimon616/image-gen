@@ -206,7 +206,7 @@ function Sync-Worker {
 function Test-FirewallOk($cfg) {
   $port = if ($cfg.port) { $cfg.port } else { 8188 }
   $rule = Get-NetFirewallRule -DisplayName "onechat GPU worker (ComfyUI $port)" -ErrorAction SilentlyContinue
-  if (-not $rule -or $rule.Description -ne "onechat-gpu-worker v3") { return $false }
+  if (-not $rule -or $rule.Description -ne "onechat-gpu-worker v4") { return $false }
   # A rule Windows created from the "allow python.exe?" prompt (open to all,
   # or a block that overrides ours) means firewall.ps1 must clean up again.
   $others = Get-NetFirewallApplicationFilter -Program $Python -ErrorAction SilentlyContinue |
@@ -258,7 +258,7 @@ function Start-Worker {
   # Model helper: lets image-gen check and download model files (Civitai/HF)
   # into data\models, the same way it does for RunPod pods.
   if (-not (Get-KitPid $HelperPidFile)) {
-    $helperPort = if ($cfg.helperPort) { $cfg.helperPort } else { 3000 }
+    $helperPort = if ($cfg.helperPort) { $cfg.helperPort } else { 8189 }
     $helperLog = Join-Path $Logs ("helper-" + (Get-Date -Format "yyyyMMdd") + ".log")
     $helper = Start-Process -FilePath $Python `
       -ArgumentList @("-s", "`"$Kit\helper.py`"", "--models", "`"$Data\models`"", "--port", "$helperPort") `

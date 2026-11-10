@@ -41,7 +41,7 @@
  └──────────────────────────────┘    pull (토큰)   └─────────────────────────────┘
 ```
 
-- 앱 → 워커: ComfyUI 표준 API(`/prompt`, `/ws`, `/history`, `/view`, `/upload/image`, `/queue`, `/system_stats`, `/models/{folder}`). RunPod와 같은 코드 경로를 쓰고 `remoteKind: "gpu-worker"`로 구분함. RunPod 전용 헬퍼(:3000) 조회는 건너뜀.
+- 앱 → 워커: ComfyUI 표준 API(`/prompt`, `/ws`, `/history`, `/view`, `/upload/image`, `/queue`, `/system_stats`, `/models/{folder}`). RunPod와 같은 코드 경로를 쓰고 `remoteKind: "gpu-worker"`로 구분함. RunPod 전용 헬퍼 조회는 건너뜀. 워커 키트 헬퍼는 :8189(ComfyUI :8188 옆).
 - 워커 → depot(선택): 워커가 켜질 때 manifest와 모델을 끌어감. 맥에서 동료 PC로 밀어 넣는 경로는 없음.
 
 ## 앱 쪽 구현
@@ -119,7 +119,7 @@ ComfyUI 실행 인자: `--listen 0.0.0.0 --port 8188 --base-directory <kit>\data
 
 ### 모델 받기 (앱에서 버튼으로)
 
-- 키트의 `helper.py`가 ComfyUI 옆에서 3000번 포트로 함께 뜸. RunPod 헬퍼와 같은 API(`/api/runpod/helper/status|files|download|download/stream|catalog|model-capabilities`) 중 모델 확인, 다운로드에 필요한 부분만 구현(파이썬 표준 라이브러리, 포터블 내장 파이썬으로 실행).
+- 키트의 `helper.py`가 ComfyUI 옆에서 8189번 포트로 함께 뜸(동료 PC의 개발 서버가 흔히 3000을 쓰므로 3000이 아님. `worker-config.json`의 `helperPort`로 변경 가능하지만 앱은 8189를 가정). RunPod 헬퍼와 같은 API(`/api/runpod/helper/status|files|download|download/stream|catalog|model-capabilities`) 중 모델 확인, 다운로드에 필요한 부분만 구현(파이썬 표준 라이브러리, 포터블 내장 파이썬으로 실행).
 - 앱은 워커 id를 팟처럼 취급(`getRunpodPod`가 `gpuWorkers`도 찾음). 그래서 RunPod와 같은 확인과 다운로드 경로를 그대로 탐.
 - 생성 화면에서 `GPU 워커`를 선택하면 워커 목록 아래 "모델 파일" 확인 버튼, 누락 목록, "다운로드 N개" 버튼이 보임. 생성 버튼을 눌러도 먼저 확인함(헬퍼가 응답하지 않으면 확인을 건너뛰고 생성 진행).
 - 다운로드는 Civitai, HF에서 워커 PC로 바로 받음. 토큰은 요청마다 맥에서 전달(RunPod 팟과 같은 방식). 쓰기는 `data\models` 안으로만 제한, https만 허용, 다른 호스트로 리다이렉트될 때는 토큰을 떼고 보냄.
