@@ -27,6 +27,12 @@ interface WorkerStatus {
     error?: string;
   } | null;
   downloads: WorkerDownload[] | null;
+  update?: {
+    state: string;
+    message?: string;
+    at?: string;
+    pending?: boolean;
+  } | null;
 }
 
 interface WorkerDownload {
@@ -95,6 +101,24 @@ function shortDevice(device?: string) {
   return match ? match[0] : device.split(":").pop()?.trim() ?? device;
 }
 
+const UPDATE_STATE_KO: Record<string, string> = {
+  checking: "업데이트 확인 중",
+  models: "새 모델 받는 중",
+  waiting: "업데이트 준비됨, 대기열 비면 재시작",
+  restarting: "재시작 중",
+  "up-to-date": "최신 상태",
+  applied: "최신 적용됨",
+  error: "업데이트 실패",
+};
+
+function updateLabel(update: WorkerStatus["update"], ko: boolean) {
+  if (!update) return "";
+  if (update.pending) return ko ? "업데이트 요청됨" : "update requested";
+  if (update.state === "unknown") return "";
+  const label = ko ? UPDATE_STATE_KO[update.state] ?? update.state : update.state;
+  return update.state === "error" && update.message ? `${label}: ${update.message}` : label;
+}
+
 /** Worker whose helper takes file checks/downloads: online primary first. */
 function pickCheckWorker(list: WorkerStatus[]) {
   const usable = list.filter((worker) => worker.enabled && worker.probe?.online);
@@ -127,6 +151,7 @@ export function GpuWorkerStatus({
   const [checkWorkerId, setCheckWorkerId] = useState("");
   const [checking, setChecking] = useState(false);
   const [checkMessage, setCheckMessage] = useState("");
+  const [updateNote, setUpdateNote] = useState<Record<string, string>>({});
   const startDownload = useRunpodDownloadStore((state) => state.startDownload);
   const downloading = useRunpodDownloadStore((state) =>
     checkWorkerId ? state.downloadingByPod[checkWorkerId] ?? false : false
@@ -204,6 +229,36 @@ export function GpuWorkerStatus({
     return () => window.removeEventListener(RUNPOD_DOWNLOAD_FINISHED_EVENT, onFinished);
   }, [checkFiles, checkWorkerId]);
 
+  const requestUpdate = useCallback(
+    async (workerId: string) => {
+      setUpdateNote((prev) => ({ ...prev, [workerId]: ko ? "업데이트 요청 중..." : "Requesting update..." }));
+      try {
+        const res = await fetch("/api/gpu-workers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "update", workerId }),
+        });
+        const data = (await res.json()) as {
+          results?: { ok: boolean; error?: string }[];
+          error?: string;
+        };
+        const result = data.results?.[0];
+        const note = !res.ok
+          ? data.error || `HTTP ${res.status}`
+          : result?.ok
+            ? ""
+            : (ko ? "요청 실패: " : "Request failed: ") + (result?.error ?? "unknown");
+        setUpdateNote((prev) => ({ ...prev, [workerId]: note }));
+      } catch (err) {
+        setUpdateNote((prev) => ({
+          ...prev,
+          [workerId]: err instanceof Error ? err.message : String(err),
+        }));
+      }
+    },
+    [ko]
+  );
+
   const downloadable = missing.filter((item) => item.downloadable === true);
 
   if (error) {
@@ -228,8 +283,10 @@ export function GpuWorkerStatus({
         {workers.map((worker) => {
           const online = worker.enabled && worker.probe?.online;
           const queue = worker.probe ? worker.probe.queueRunning + worker.probe.queuePending : 0;
+          const updateText = updateNote[worker.id] || updateLabel(worker.update, ko);
           return (
-            <li key={worker.id} className="flex items-center justify-between gap-2">
+            <li key={worker.id} className="space-y-0.5">
+            <div className="flex items-center justify-between gap-2">
               <span className="flex min-w-0 items-center gap-1.5">
                 <span
                   className={`h-2 w-2 shrink-0 rounded-full ${
@@ -251,7 +308,25 @@ export function GpuWorkerStatus({
                     : ko
                       ? "꺼짐"
                       : "offline"}
+                {online && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="ml-1.5 h-5 px-1.5 text-[11px]"
+                    title={
+                      ko
+                        ? "맥의 depot에서 노드, 모델, 키트를 지금 가져오게 함 (depot 실행 필요)"
+                        : "Pull nodes, models and kit from this Mac's depot now (depot must be running)"
+                    }
+                    onClick={() => void requestUpdate(worker.id)}
+                  >
+                    {ko ? "업데이트" : "Update"}
+                  </Button>
+                )}
               </span>
+            </div>
+            {updateText && <p className="pl-3.5 text-muted-foreground">{updateText}</p>}
             </li>
           );
         })}

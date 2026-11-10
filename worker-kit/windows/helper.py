@@ -7,9 +7,14 @@ ComfyUI portable's embedded Python (stdlib only), next to ComfyUI.
 
 Only writes inside the models folder it is given. Downloads only over https.
 Reachable only from the addresses firewall.ps1 allows.
+
+POST /api/worker/update (Bearer = the worker token) asks the kit's update
+watcher to pull marc's depot now. The request carries no content: what gets
+installed still comes only from the depot manifest.
 """
 
 import argparse
+import hmac
 import json
 import os
 import ssl
@@ -27,6 +32,9 @@ POD_PREFIX = "/workspace/ComfyUI/models/"
 CHUNK = 1024 * 1024
 
 MODELS_DIR = ""
+KIT_DIR = os.path.dirname(os.path.abspath(__file__))
+UPDATE_FLAG = os.path.join(KIT_DIR, "update-request.flag")
+UPDATE_STATE = os.path.join(KIT_DIR, "update-state.json")
 CATALOG_LOCK = threading.Lock()
 # In-flight downloads, keyed by relative model path, so anyone can see the
 # percent via GET /api/runpod/helper/downloads (not only the caller streaming it).
@@ -202,6 +210,24 @@ def safetensors_capabilities(path):
     }
 
 
+def worker_token():
+    try:
+        with open(os.path.join(KIT_DIR, "worker-config.json"), encoding="utf-8-sig") as f:
+            return str(json.load(f).get("token") or "")
+    except Exception:
+        return ""
+
+
+def update_state():
+    try:
+        with open(UPDATE_STATE, encoding="utf-8-sig") as f:
+            state = json.load(f)
+    except Exception:
+        state = {"state": "unknown"}
+    state["pending"] = os.path.isfile(UPDATE_FLAG)
+    return state
+
+
 def catalog_file():
     return os.path.join(MODELS_DIR, ".image-gen-catalog.json")
 
@@ -253,7 +279,14 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(200, {"catalog": read_catalog()})
         if path == "/api/runpod/helper/downloads":
             return self._json(200, {"downloads": downloads_snapshot()})
+        if path == "/api/worker/update":
+            return self._json(200, update_state())
         return self._json(404, {"error": "Not found"})
+
+    def _authorized(self):
+        expected = worker_token()
+        given = (self.headers.get("Authorization") or "").replace("Bearer ", "", 1).strip()
+        return bool(expected) and hmac.compare_digest(given.encode(), expected.encode())
 
     def do_POST(self):
         path = urllib.parse.urlparse(self.path).path
@@ -261,6 +294,12 @@ class Handler(BaseHTTPRequestHandler):
             body = self._body()
         except Exception as error:
             return self._json(400, {"error": str(error)})
+        if path == "/api/worker/update":
+            if not self._authorized():
+                return self._json(401, {"error": "bad token"})
+            with open(UPDATE_FLAG, "w", encoding="utf-8") as f:
+                f.write(time.strftime("%Y-%m-%dT%H:%M:%S"))
+            return self._json(202, {"ok": True, **update_state()})
         try:
             if path == "/api/runpod/helper/files":
                 files = [str(f) for f in body.get("files") or []]

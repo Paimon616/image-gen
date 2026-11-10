@@ -42,7 +42,7 @@
 ```
 
 - 앱 → 워커: ComfyUI 표준 API(`/prompt`, `/ws`, `/history`, `/view`, `/upload/image`, `/queue`, `/system_stats`, `/models/{folder}`). RunPod와 같은 코드 경로를 쓰고 `remoteKind: "gpu-worker"`로 구분함. RunPod 전용 헬퍼(:3000) 조회는 건너뜀.
-- 워커 → depot(선택): 워커가 켜질 때, 그리고 켜져 있는 동안 10분마다 manifest와 모델을 끌어감(자동 업데이트). 맥에서 동료 PC로 밀어 넣는 경로는 없음.
+- 워커 → depot(선택): 워커가 켜질 때, 그리고 앱에서 업데이트를 요청했을 때 manifest와 모델을 끌어감. 요청은 신호뿐이고 내용은 항상 depot manifest에서 옴. 워커가 스스로 주기적으로 묻지 않음.
 
 ## 앱 쪽 구현
 
@@ -112,7 +112,7 @@
 | `stop-worker.bat` | 끄기. GPU 즉시 해제 |
 | `uninstall-worker.bat` | 방화벽 규칙 제거. 그다음 폴더 삭제로 완전 제거 |
 | `worker-config.json` | marc가 채워서 전달. `allowFrom`(marc 맥 IP)은 필수, `depotUrl`/`token`은 선택 |
-| `worker.ps1`, `firewall.ps1` | 실제 로직. PowerShell 5.1 호환, ASCII와 CRLF. `worker.ps1 watch`가 자동 업데이트 루프 |
+| `worker.ps1`, `firewall.ps1` | 실제 로직. PowerShell 5.1 호환, ASCII와 CRLF. `worker.ps1 watch`가 업데이트 요청 감시 |
 
 ComfyUI 실행 인자: `--listen 0.0.0.0 --port 8188 --base-directory <kit>\data --disable-auto-launch --disable-api-nodes`.
 모델, 커스텀 노드, 입출력이 전부 키트 폴더 안 `data\`에 있음.
@@ -137,13 +137,14 @@ ComfyUI 실행 인자: `--listen 0.0.0.0 --port 8188 --base-directory <kit>\data
   - 프로필 밖 파일은 내려주지 않음. 경로 우회(`..`) 차단, 토큰과 허용 IP 확인.
   - 워커는 manifest에 없는 커스텀 노드를 `custom_nodes_disabled`로 옮김. ComfyUI-Manager는 설치하지 않음(원격 임의 설치 경로 차단).
 - 키트 고정 노드: `worker-kit/windows/custom-nodes.json`. marc가 키트 안에 커밋으로 고정한 목록(현재 `ComfyUI_IPAdapter_plus` 하나, 기준 시트 BETA용). `start-worker.bat`(또는 `worker.ps1 nodes`) 실행 시 그 PC에서만 설치. github.com https + 40자리 커밋 해시만 허용, 원격에서 추가, 변경 불가. depot 동기화도 이 목록은 비활성화하지 않음. 자세한 내용은 [character-reference-sheet.md](character-reference-sheet.md).
-- 자동 업데이트: depot이 설정된 워커는 `start-worker.bat` 뒤에 숨은 감시 프로세스(`worker.ps1 watch`)가 함께 뜸.
-  - 10분마다(`autoUpdateMinutes`) depot manifest 확인. 새 모델은 ComfyUI를 끄지 않고 바로 받음.
-  - ComfyUI 커밋, 커스텀 노드, 키트 파일이 바뀌었으면 큐가 비기를 기다렸다가(30초 간격 2회 연속 빈 큐) 워커를 재시작해 적용. 생성 중에는 끊지 않음.
+- 요청형 업데이트: depot이 설정된 워커는 `start-worker.bat` 뒤에 숨은 감시 프로세스(`worker.ps1 watch`)가 함께 뜸. 스스로 depot에 묻지 않고 요청이 올 때만 동작.
+  - 요청: 생성 화면 GPU 워커 목록의 `업데이트` 버튼, 또는 `POST /api/gpu-workers {"action":"update","workerId"?}`. 앱이 워커 헬퍼(:3000)의 `POST /api/worker/update`를 워커 토큰(Bearer)으로 호출. 토큰은 `GPU_WORKER_TOKEN` 환경변수나 `.local/gpu-worker-depot.env`(gitignore)에서 읽음. depot이 맥에서 켜져 있어야 함.
+  - 요청에는 설치 대상이 없음. 헬퍼는 플래그 파일만 쓰고, 감시 프로세스가 depot manifest를 받아 처리.
+  - 새 모델은 ComfyUI를 끄지 않고 받음. ComfyUI 커밋, 커스텀 노드, 키트 파일이 바뀌었으면 큐가 비기를 기다렸다가(15초 간격 2회 연속 빈 큐) 재시작해 적용. 바뀐 게 없으면 재시작 없음.
+  - 상태: `GET /api/worker/update`(헬퍼) → checking, models, waiting, restarting, up-to-date, applied, error. 생성 화면 워커 줄 아래에 표시.
   - 키트 파일 자동 교체 대상은 `worker.ps1`, `helper.py`, `custom-nodes.json`뿐. depot이 sha256을 manifest에 싣고 워커가 받은 뒤 검증, 불일치면 교체하지 않음. `.bat`(실행 중 cmd가 파일을 이어 읽음), `firewall.ps1`(관리자 권한), `worker-config.json`은 원격 교체 불가.
-  - depot에 안 닿으면 지금 상태로 계속 돌고, 실패한 버전은 같은 버전으로 재시작을 반복하지 않음.
-  - 끄려면 `worker-config.json`에 `"autoUpdate": false`. 기록은 `logs\watch-*.log`.
-  - 이 기능이 없는 구버전 키트는 한 번만 손으로 새 `worker.ps1`을 넣고 재시작해야 함. 그다음부터는 자동.
+  - 요청을 받지 않으려면 `worker-config.json`에 `"autoUpdate": false`. 기록은 `logs\watch-*.log`.
+  - 이 기능이 없는 구버전 키트는 한 번만 손으로 새 키트를 넣고 재시작해야 함. 그다음부터는 버튼으로.
 - 방법 B: 앱의 다운로드 버튼(위). 방법 C: 모델 파일을 `data\models\checkpoints`, `data\models\loras`에 직접 복사.
 - 동기화 뒤에는 앱의 모델 캐시가 30초 안에 갱신됨. 바로 반영하려면 `POST /api/gpu-workers {"action":"refresh-models"}`.
 

@@ -7,11 +7,12 @@
 #   worker.ps1 sync      only the depot sync (optional; models can also be copied
 #                        into data\models by hand)
 #   worker.ps1 nodes     only the kit's pinned custom nodes (custom-nodes.json)
-#   worker.ps1 watch     auto-update loop (started by start when a depot is set):
-#                        every few minutes it checks the depot; when marc changed
-#                        the ComfyUI ref, nodes or kit files it waits until the
-#                        queue is empty, then restarts the worker to apply them.
-#                        New models download in the background without a restart.
+#   worker.ps1 watch     update watcher (started by start when a depot is set).
+#                        Idle until marc's app sends an update request (helper
+#                        POST /api/worker/update, worker token). Then it pulls the
+#                        depot: new models download without a restart; changed
+#                        ComfyUI ref, nodes or kit files are applied by restarting
+#                        once the queue is empty. It never polls on its own.
 #   worker.ps1 stop      stop ComfyUI (and the auto-update loop)
 #   worker.ps1 status    show whether it is running
 #
@@ -43,7 +44,8 @@ $ManifestCache = Join-Path $Kit "manifest.json"
 $KitNodesPath = Join-Path $Kit "custom-nodes.json"   # marc-pinned node list shipped with the kit
 $WatcherPidFile = Join-Path $Kit "watcher.pid"
 $AppliedPath = Join-Path $Kit "applied-version.txt"    # signature of the depot setup this worker runs
-$AttemptedPath = Join-Path $Kit "attempted-version.txt" # last signature the watcher restarted for
+$UpdateFlag = Join-Path $Kit "update-request.flag"     # written by helper.py on an update request
+$UpdateState = Join-Path $Kit "update-state.json"      # read by helper.py (GET /api/worker/update)
 # Kit files the depot may replace (sha256-checked). Launchers (.bat), firewall.ps1
 # (runs as admin) and worker-config.json are never replaced remotely.
 $KitAutoFiles = @("worker.ps1", "helper.py", "custom-nodes.json")
@@ -329,9 +331,13 @@ function Start-Worker {
         Sync-Code $manifest
         Sync-Models $manifest $cfg
         Set-Content -Path $AppliedPath -Value (Get-CodeSignature $manifest)
+        Set-UpdateState "applied" "synced on start"
         Write-Host "Sync done." -ForegroundColor Green
       }
-    } catch { Write-Warning "Sync failed: $($_.Exception.Message). Starting with the current setup." }
+    } catch {
+      Write-Warning "Sync failed: $($_.Exception.Message). Starting with the current setup."
+      Set-UpdateState "error" "sync on start failed: $($_.Exception.Message)"
+    }
   }
   try { Install-KitNodes } catch { Write-Warning "Kit custom nodes failed: $($_.Exception.Message). Starting without them." }
   # --base-directory does not create its subfolders; ComfyUI crashes at startup
@@ -412,40 +418,48 @@ function Test-WorkerIdle($cfg) {
   } catch { return $false }
 }
 
-# Auto-update loop. Pulls from marc's depot only (same trust as start); nothing
-# is pushed to this PC. Code changes are applied by a normal restart, and only
-# while no generation is queued or running.
+function Set-UpdateState($state, $message) {
+  $body = @{ state = $state; message = $message; at = (Get-Date -Format "s"); version = (Read-Text $AppliedPath) }
+  Set-Content -Path $UpdateState -Value ($body | ConvertTo-Json -Compress) -Encoding UTF8
+  Write-WatchLog "$state $message"
+}
+
+# Update watcher. Does nothing until an update request arrives (flag file from
+# helper.py). Pulls from marc's depot only; the request itself carries nothing.
+# Code changes are applied by a normal restart, only while the queue is empty.
 function Watch-Worker {
   $cfg = Read-Config
   if (-not $cfg.depotUrl -or $cfg.autoUpdate -eq $false) { return }
   Set-Content -Path $WatcherPidFile -Value $PID
-  $minutes = if ($cfg.autoUpdateMinutes) { [Math]::Max(1, [int]$cfg.autoUpdateMinutes) } else { 10 }
-  Write-WatchLog "watching $($cfg.depotUrl) every $minutes min"
+  Write-WatchLog "waiting for update requests (depot $($cfg.depotUrl))"
   while ($true) {
-    Start-Sleep -Seconds ($minutes * 60)
+    Start-Sleep -Seconds 3
     if (-not (Get-WorkerPid)) { Write-WatchLog "worker stopped; exiting"; break }
     if ((Get-WatcherPid) -ne $PID) { break }
+    if (-not (Test-Path $UpdateFlag)) { continue }
+    Remove-Item -Force -ErrorAction SilentlyContinue $UpdateFlag
     try {
+      Set-UpdateState "checking" "reading the depot manifest"
       $manifest = Get-Manifest $cfg
-      if (-not $manifest) { continue }
-      try { Sync-Models $manifest $cfg } catch { Write-WatchLog "model sync failed: $($_.Exception.Message)" }
+      if (-not $manifest) { Set-UpdateState "error" "depot not reachable"; continue }
+      Set-UpdateState "models" "downloading new models"
+      Sync-Models $manifest $cfg
       $sig = Get-CodeSignature $manifest
-      if ($sig -eq (Read-Text $AppliedPath) -or $sig -eq (Read-Text $AttemptedPath)) { continue }
-      Write-WatchLog "update available; waiting for an empty queue"
+      if ($sig -eq (Read-Text $AppliedPath)) { Set-UpdateState "up-to-date" "nothing to restart for"; continue }
+      Set-UpdateState "waiting" "update ready; waiting for an empty queue"
       $idle = 0
       while ($idle -lt 2) {
-        Start-Sleep -Seconds 30
+        Start-Sleep -Seconds 15
         if (-not (Get-WorkerPid)) { Write-WatchLog "worker stopped; exiting"; return }
         if (Test-WorkerIdle $cfg) { $idle++ } else { $idle = 0 }
       }
-      Set-Content -Path $AttemptedPath -Value $sig
-      Write-WatchLog "restarting to apply the update"
+      Set-UpdateState "restarting" "applying the update"
       Remove-Item -Force -ErrorAction SilentlyContinue $WatcherPidFile
       Stop-Worker
       Start-Process -FilePath "powershell.exe" -WindowStyle Hidden `
         -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$Kit\worker.ps1`" start"
       return
-    } catch { Write-WatchLog "check failed: $($_.Exception.Message)" }
+    } catch { Set-UpdateState "error" $_.Exception.Message }
   }
   if ((Read-Text $WatcherPidFile) -eq "$PID") { Remove-Item -Force -ErrorAction SilentlyContinue $WatcherPidFile }
 }
@@ -465,7 +479,7 @@ function Stop-Worker {
 function Show-Status {
   $id = Get-WorkerPid
   if ($id) { Write-Host "Running (pid $id)." -ForegroundColor Green } else { Write-Host "Stopped." }
-  if (Get-WatcherPid) { Write-Host "Auto-update: on (logs\watch-*.log)." }
+  if (Get-WatcherPid) { Write-Host "Update watcher: on, waiting for requests (logs\watch-*.log)." }
 }
 
 switch ($Action) {

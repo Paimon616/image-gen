@@ -10,6 +10,8 @@ import {
   type GpuWorkerRejection,
   type GpuWorkload,
 } from "@/lib/gpu-worker-dispatch";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { readSettings } from "@/lib/settings";
 import type { GenerationParams } from "@/lib/types";
 
@@ -299,6 +301,65 @@ async function fetchWorkerDownloads(worker: GpuWorkerConfig): Promise<GpuWorkerD
   }
 }
 
+export interface GpuWorkerUpdateState {
+  state: string;
+  message?: string;
+  at?: string;
+  version?: string;
+  pending?: boolean;
+}
+
+/**
+ * Shared worker token (same as the depot's GPU_WORKER_TOKEN). From the env, or
+ * .local/gpu-worker-depot.env (gitignored) where the depot setup keeps it.
+ */
+function gpuWorkerToken() {
+  if (process.env.GPU_WORKER_TOKEN?.trim()) return process.env.GPU_WORKER_TOKEN.trim();
+  try {
+    const env = readFileSync(join(process.cwd(), ".local", "gpu-worker-depot.env"), "utf8");
+    return /^GPU_WORKER_TOKEN=(.+)$/m.exec(env)?.[1]?.trim() ?? "";
+  } catch {
+    return "";
+  }
+}
+
+/** Update watcher state on the worker (older kits without it: null). */
+async function fetchWorkerUpdateState(worker: GpuWorkerConfig): Promise<GpuWorkerUpdateState | null> {
+  try {
+    return await fetchJson<GpuWorkerUpdateState>(`${helperUrlForWorker(worker)}/api/worker/update`);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Ask a worker to pull marc's depot now. The request carries no content; the
+ * worker installs only what the depot manifest lists and restarts itself only
+ * when code changed and its queue is empty.
+ */
+export async function requestGpuWorkerUpdate(worker: GpuWorkerConfig) {
+  const token = gpuWorkerToken();
+  if (!token) {
+    return { id: worker.id, ok: false, error: "GPU_WORKER_TOKEN not set (.local/gpu-worker-depot.env)" };
+  }
+  try {
+    const res = await fetch(`${helperUrlForWorker(worker)}/api/worker/update`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
+    });
+    const data = (await res.json().catch(() => ({}))) as GpuWorkerUpdateState & { error?: string };
+    if (res.status === 404) {
+      return { id: worker.id, ok: false, error: "worker kit too old (no update endpoint)" };
+    }
+    if (!res.ok) return { id: worker.id, ok: false, error: data.error || `HTTP ${res.status}` };
+    return { id: worker.id, ok: true, update: data };
+  } catch (error) {
+    return { id: worker.id, ok: false, error: errorMessage(error) };
+  }
+}
+
 export async function getGpuWorkerStatuses() {
   const workers = await getGpuWorkers();
   return Promise.all(
@@ -309,6 +370,7 @@ export async function getGpuWorkerStatuses() {
         reserved: pool.reserved.get(worker.id) ?? 0,
         probe,
         downloads: probe?.online ? await fetchWorkerDownloads(worker) : null,
+        update: probe?.online ? await fetchWorkerUpdateState(worker) : null,
       };
     })
   );
