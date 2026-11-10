@@ -1,0 +1,14 @@
+{
+  "$comment": "Shared LAN GPU workers for everyone who pulls this repo. Used when .local/settings.json has no gpuWorkers. See docs/gpu-workers.md.",
+  "gpuWorkers": [
+    {
+      "id": "rtx3060-pc1",
+      "label": "3060 PC1",
+      "url": "http://10.202.66.127:8188",
+      "role": "primary",
+      "speed": 1,
+      "maxQueue": 2,
+      "enabled": true
+    }
+  ]
+}

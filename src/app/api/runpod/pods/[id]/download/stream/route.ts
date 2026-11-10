@@ -1,3 +1,4 @@
+import { invalidateGpuWorkerModels } from "@/lib/gpu-workers";
 import { streamRunpodResourceDownload } from "@/lib/runpod";
 import type { ImportedCivitaiResource } from "@/lib/types";
 
@@ -29,6 +30,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
           body.targetPath,
           (event) => send(controller, event)
         );
+        // When the target is a LAN GPU worker, the dispatcher's cached
+        // /models listing must see the new file right away.
+        invalidateGpuWorkerModels(id);
         send(controller, { type: "done", path });
       } catch (error) {
         send(controller, {

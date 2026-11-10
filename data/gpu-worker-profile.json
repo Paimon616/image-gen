@@ -1,0 +1,7 @@
+{
+  "$comment": "What every LAN GPU worker (colleague PC) gets on sync. customNodes are names from comfyui-config/custom-nodes.json (pinned refs come from there). models are '<folder>/<file>' keys; files present in COMFYUI_MODELS_DIR are served from this Mac, others are proxied from their model-catalog.json source_url. Add the Illustrious checkpoint and LoRAs under test here. See docs/gpu-workers.md.",
+  "customNodes": ["ComfyUI-Impact-Pack", "ComfyUI-Impact-Subpack", "ComfyUI_IPAdapter_plus"],
+  "models": [
+    "checkpoints/hassakuXLIllustrious_v22.safetensors"
+  ]
+}

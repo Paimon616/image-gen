@@ -9,6 +9,11 @@ import {
   isChatProviderId,
   type ChatProviderId,
 } from "@/lib/chat-models";
+import {
+  gpuWorkerHelperUrl,
+  normalizeGpuWorkers,
+  type GpuWorkerConfig,
+} from "@/lib/gpu-worker-dispatch";
 
 export type RunpodPodKind = "image" | "video";
 
@@ -19,6 +24,8 @@ export interface RunpodPodSettings {
   podId: string;
   ssh: string;
   comfyUrl: string;
+  /** Helper origin when it is not derived from comfyUrl (LAN GPU workers). */
+  helperUrl?: string;
 }
 
 export interface AppSettings {
@@ -27,6 +34,9 @@ export interface AppSettings {
   huggingfaceApiKey: string;
   runpodApiKey: string;
   runpodPods: RunpodPodSettings[];
+  // Remote ComfyUI GPU workers (colleague PCs on the office LAN). The
+  // "workers" generation target dispatches across these — see docs/gpu-workers.md.
+  gpuWorkers: GpuWorkerConfig[];
   // Chat (LLM) providers Paimon can run on. One key per vendor; the selected
   // provider/model pair below decides which one Paimon actually uses.
   openrouterApiKey: string;
@@ -42,6 +52,10 @@ export interface AppSettings {
   // ~60s+ before anything could be queued. Turn it on when prompt-editing
   // quality matters more than how fast the render starts.
   paimonChatReasoning: boolean;
+  // BETA 캐릭터 기준 시트: confirmed reference sheet + IP-Adapter conditioning on
+  // every render of that character. Off = generation is unchanged.
+  // See docs/character-reference-sheet.md.
+  betaCharacterSheet: boolean;
 }
 
 export const CHAT_PROVIDER_KEY_FIELDS = {
@@ -56,12 +70,17 @@ const SETTINGS_PATH = join(process.cwd(), ".local", "settings.json");
 // Version-controlled pod list used to seed a fresh clone. It holds pod
 // connection info only (no API keys), so it is safe to commit.
 const DEFAULT_PODS_PATH = join(process.cwd(), "data", "default-pods.json");
+// Version-controlled GPU worker list (LAN ComfyUI on colleague PCs), so every
+// teammate who pulls gets the shared workers without typing IPs. Used while the
+// local settings have no gpuWorkers of their own.
+const DEFAULT_GPU_WORKERS_PATH = join(process.cwd(), "data", "default-gpu-workers.json");
 
 const DEFAULT_SETTINGS: AppSettings = {
   civitaiApiKey: "",
   huggingfaceApiKey: "",
   runpodApiKey: "",
   runpodPods: [],
+  gpuWorkers: [],
   openrouterApiKey: "",
   anthropicApiKey: "",
   openaiApiKey: "",
@@ -70,6 +89,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   paimonChatProvider: DEFAULT_PAIMON_CHAT_PROVIDER,
   paimonChatModel: DEFAULT_PAIMON_CHAT_MODEL,
   paimonChatReasoning: false,
+  betaCharacterSheet: false,
 };
 
 async function readDefaultPods(): Promise<RunpodPodSettings[]> {
@@ -100,6 +120,8 @@ function cleanSettings(value: Partial<AppSettings>): AppSettings {
     paimonChatModel:
       String(value.paimonChatModel ?? "").trim() || DEFAULT_PAIMON_CHAT_MODEL,
     paimonChatReasoning: Boolean(value.paimonChatReasoning),
+    betaCharacterSheet: value.betaCharacterSheet === true,
+    gpuWorkers: normalizeGpuWorkers(value.gpuWorkers),
     runpodPods: Array.isArray(value.runpodPods)
       ? value.runpodPods.map((pod) => ({
           id: String(pod.id || crypto.randomUUID()),
@@ -115,16 +137,30 @@ function cleanSettings(value: Partial<AppSettings>): AppSettings {
   };
 }
 
+async function readDefaultGpuWorkers() {
+  try {
+    const parsed = JSON.parse(await readFile(DEFAULT_GPU_WORKERS_PATH, "utf8"));
+    return normalizeGpuWorkers(Array.isArray(parsed) ? parsed : parsed?.gpuWorkers);
+  } catch {
+    return [];
+  }
+}
+
 export async function readSettings() {
+  let settings: AppSettings;
   try {
     const raw = await readFile(SETTINGS_PATH, "utf8");
-    return cleanSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(raw) });
+    settings = cleanSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(raw) });
   } catch {
     // No local settings yet (e.g. a fresh git clone): seed the pod list from
     // the version-controlled defaults so a new machine has the pods ready.
     // API keys stay empty and must still be entered locally.
-    return { ...DEFAULT_SETTINGS, runpodPods: await readDefaultPods() };
+    settings = { ...DEFAULT_SETTINGS, runpodPods: await readDefaultPods() };
   }
+  if (settings.gpuWorkers.length === 0) {
+    settings.gpuWorkers = await readDefaultGpuWorkers();
+  }
+  return settings;
 }
 
 export async function writeSettings(settings: AppSettings) {
@@ -134,9 +170,24 @@ export async function writeSettings(settings: AppSettings) {
   return clean;
 }
 
-export async function getRunpodPod(id: string) {
+export async function getRunpodPod(id: string): Promise<RunpodPodSettings | undefined> {
   const settings = await readSettings();
-  return settings.runpodPods.find((pod) => pod.id === id || pod.podId === id);
+  const pod = settings.runpodPods.find((pod) => pod.id === id || pod.podId === id);
+  if (pod) return pod;
+  // A LAN GPU worker runs the same helper API (worker-kit/windows/helper.py on
+  // :8189 next to ComfyUI :8188), so the pod file check / download flow works
+  // on it unchanged. It has no RunPod pod id or SSH.
+  const worker = settings.gpuWorkers.find((worker) => worker.id === id);
+  if (!worker) return undefined;
+  return {
+    id: worker.id,
+    kind: "image",
+    label: worker.label,
+    podId: "",
+    ssh: "",
+    comfyUrl: worker.url,
+    helperUrl: gpuWorkerHelperUrl(worker),
+  };
 }
 
 export async function getCivitaiApiKey() {

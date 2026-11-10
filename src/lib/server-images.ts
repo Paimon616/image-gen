@@ -130,7 +130,15 @@ export function toResponseBody(buffer: Buffer) {
 // compute the ungrouped count without paying for a full listing.
 export async function listImageFilenames(): Promise<string[]> {
   const files = await readdir(OUTPUT_DIR).catch(() => [] as string[]);
-  return files.filter(isValidImageFilename);
+  return files.filter(isGalleryImageFilename);
+}
+
+// 기준 시트 참조 영역 crops live next to the images (so /api/images serves and
+// uploads them like any reference) but are working files, not gallery items.
+export const SHEET_CROP_PREFIX = "sheetref-";
+
+function isGalleryImageFilename(filename: string) {
+  return isValidImageFilename(filename) && !filename.startsWith(SHEET_CROP_PREFIX);
 }
 
 export async function listGeneratedImages({
@@ -146,7 +154,7 @@ export async function listGeneratedImages({
   modelPrefix?: string | null;
 }) {
   const files = await readdir(OUTPUT_DIR).catch(() => [] as string[]);
-  let imageFiles = files.filter(isValidImageFilename);
+  let imageFiles = files.filter(isGalleryImageFilename);
 
   // Filtering by workspace is cheap: membership lives in a single central file,
   // so we can narrow the file list before stat/sort/paginate.

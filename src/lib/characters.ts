@@ -17,6 +17,7 @@ import {
   type CharacterLora,
   type GenerationParams,
 } from "@/lib/types";
+import { normalizeReferenceSheet } from "@/lib/character-sheet";
 
 const DATA_DIR = join(process.cwd(), "data");
 const CHARACTERS_FILE = join(DATA_DIR, "characters.json");
@@ -238,6 +239,7 @@ function normalizeCharacter(raw: unknown): Character | null {
         : legacyBackgrounds(record)
     ),
     situations: normalizeSituations(record.situations),
+    referenceSheet: normalizeReferenceSheet(record.referenceSheet),
     // Legacy records have no `order`; fall back to createdAt so their existing
     // relative order (the old sort key) is preserved on first read.
     order:
@@ -458,6 +460,10 @@ export function updateCharacter(
         "situations" in record
           ? normalizeSituations(record.situations)
           : existing.situations,
+      referenceSheet:
+        "referenceSheet" in record
+          ? normalizeReferenceSheet(record.referenceSheet)
+          : (existing.referenceSheet ?? null),
       updatedAt: Date.now(),
     };
 

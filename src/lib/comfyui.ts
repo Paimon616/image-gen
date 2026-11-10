@@ -35,6 +35,16 @@ import {
 import { getRunpodCheckpointCapabilities } from "./runpod";
 import { DEFAULT_PARAMS, normalizeGenerationSeed } from "./types";
 import { censorModelFile } from "./censor-assets";
+import {
+  DEFAULT_STYLE_STRENGTH,
+  IPADAPTER_MODEL,
+  SHEET_RENDER_NEGATIVE,
+  type IpAdapterFeature,
+  appendUniqueTags,
+  clampSheetStrength,
+  ipAdapterMissingMessage,
+  pickIpAdapterFiles,
+} from "./character-sheet";
 import type {
   VideoPipelineLoraSlot,
   VideoPipelineStackLoraToggle,
@@ -122,6 +132,11 @@ export interface ComfyGeneratedMedia {
 
 export interface ComfyClientOptions {
   baseUrl?: string;
+  // Which kind of remote ComfyUI baseUrl points at. RunPod pods run the
+  // image-gen helper on :3000 next to ComfyUI; LAN GPU workers (colleague PCs)
+  // run plain ComfyUI only, so pod-helper probes must be skipped for them
+  // (a firewalled :3000 would stall every job until the probe times out).
+  remoteKind?: "runpod" | "gpu-worker";
 }
 
 type WorkflowControlNetConfig = ControlNetConfig & {
@@ -885,13 +900,17 @@ async function buildKrea2Workflow(
     Number(params.hires_upscale)
   );
   const workflow: Record<string, unknown> = {
-    "1": {
-      class_type: "UNETLoader",
-      inputs: {
-        unet_name: checkpoint,
-        weight_dtype: "default",
-      },
-    },
+    // GGUF-quantized Krea 2 (e.g. Q5_K_M, 8.9 GB) fits a 12 GB card whole instead
+    // of offloading part of the fp8 weights every step; needs ComfyUI-GGUF.
+    "1": /\.gguf$/i.test(checkpoint)
+      ? { class_type: "UnetLoaderGGUF", inputs: { unet_name: checkpoint } }
+      : {
+          class_type: "UNETLoader",
+          inputs: {
+            unet_name: checkpoint,
+            weight_dtype: "default",
+          },
+        },
     "8": {
       class_type: "CLIPLoader",
       inputs: {
@@ -1552,6 +1571,213 @@ async function addPulidWorkflowNodes(
   return ["204", 0];
 }
 
+// --- BETA 캐릭터 기준 시트: IP-Adapter reference conditioning ----------------
+// A sheet-confirmed character's renders carry character_sheet_image (set by the
+// generate route, never by the client). The sheet is fed through cubiq
+// ComfyUI_IPAdapter_plus on the SDXL graph:
+//   IPAdapterModelLoader ┐
+//   CLIPVisionLoader     ┤→ IPAdapterAdvanced(model) → patched MODEL → KSampler
+//   LoadImage → PrepImageForClipVision(pad) ┘
+// Explicit loaders (not IPAdapterUnifiedLoader) so missing nodes/files are
+// detected from /object_info here and reported clearly, instead of failing deep
+// inside the graph at execution time. "pad" keeps every view of the sheet
+// instead of center-cropping to the front view.
+function comfyTargetLabel(options?: ComfyClientOptions) {
+  if (options?.remoteKind === "gpu-worker") return `GPU 워커(${options.baseUrl ?? ""})`;
+  if (options?.remoteKind === "runpod") return "RunPod";
+  return "로컬 ComfyUI";
+}
+
+// Setup probe for the studio's 기준 시트 tab: is the node there, and which model
+// files does the target list? `reachable` false = ComfyUI did not answer, so the
+// caller must not claim "not installed".
+export interface IpAdapterSheetSetupStatus {
+  reachable: boolean;
+  nodeInstalled: boolean;
+  ipadapter: string | null;
+  clipVision: string | null;
+  missing: ("ipadapter" | "clip_vision")[];
+  // The recommended (NoobAI) adapter is the one in use.
+  recommended: boolean;
+}
+
+export async function checkIpAdapterSheetSetup(
+  options?: ComfyClientOptions
+): Promise<IpAdapterSheetSetupStatus> {
+  let reachable = true;
+  try {
+    await comfyFetch("/system_stats", { signal: AbortSignal.timeout(15_000) }, options);
+  } catch {
+    reachable = false;
+  }
+  if (!reachable) {
+    return {
+      reachable,
+      nodeInstalled: false,
+      ipadapter: null,
+      clipVision: null,
+      missing: [],
+      recommended: false,
+    };
+  }
+  const [applyInfo, loaderInfo, clipInfo] = await Promise.all([
+    getComfyObjectInfoEntry("IPAdapterAdvanced", options),
+    getComfyObjectInfoEntry("IPAdapterModelLoader", options),
+    getComfyObjectInfoEntry("CLIPVisionLoader", options),
+  ]);
+  const nodeInstalled = Boolean(applyInfo && loaderInfo);
+  const picked = pickIpAdapterFiles(
+    comfyInputComboOptions(loaderInfo?.input?.required?.["ipadapter_file"]),
+    comfyInputComboOptions(clipInfo?.input?.required?.["clip_name"])
+  );
+  return "missing" in picked
+    ? {
+        reachable,
+        nodeInstalled,
+        ipadapter: null,
+        clipVision: null,
+        missing: picked.missing,
+        recommended: false,
+      }
+    : {
+        reachable,
+        nodeInstalled,
+        ipadapter: picked.ipadapter,
+        clipVision: picked.clipVision,
+        missing: [],
+        recommended: picked.ipadapter === IPADAPTER_MODEL.fileName,
+      };
+}
+
+interface IpAdapterReference {
+  feature: IpAdapterFeature;
+  image: string;
+  weight: number;
+  weightType: string;
+  // "pad" keeps a whole multi-view sheet; "center" suits an ordinary picture.
+  cropPosition: string;
+  endAt: number;
+}
+
+// Wires one IPAdapterAdvanced per reference onto MODEL, sharing one adapter +
+// CLIP Vision loader. Node ids: loaders 210/211, then 212+4n per reference
+// (LoadImage, PrepImageForClipVision, IPAdapterAdvanced). PuLID owns 200–204.
+async function addIpAdapterNodes(
+  workflow: Record<string, unknown>,
+  references: IpAdapterReference[],
+  modelRef: [string, number],
+  options?: ComfyClientOptions
+): Promise<[string, number]> {
+  if (references.length === 0) return modelRef;
+
+  const target = comfyTargetLabel(options);
+  const feature = references[0].feature;
+  const [applyInfo, loaderInfo, clipInfo, prepInfo] = await Promise.all([
+    getComfyObjectInfoEntry("IPAdapterAdvanced", options),
+    getComfyObjectInfoEntry("IPAdapterModelLoader", options),
+    getComfyObjectInfoEntry("CLIPVisionLoader", options),
+    getComfyObjectInfoEntry("PrepImageForClipVision", options),
+  ]);
+  const applyRequired = applyInfo?.input?.required;
+  if (!applyRequired || !loaderInfo?.input?.required) {
+    throw new Error(ipAdapterMissingMessage("node", target, feature));
+  }
+  const picked = pickIpAdapterFiles(
+    comfyInputComboOptions(loaderInfo.input.required["ipadapter_file"]),
+    comfyInputComboOptions(clipInfo?.input?.required?.["clip_name"])
+  );
+  if ("missing" in picked) {
+    throw new Error(ipAdapterMissingMessage(picked.missing, target, feature));
+  }
+
+  workflow["210"] = {
+    class_type: "IPAdapterModelLoader",
+    inputs: { ipadapter_file: picked.ipadapter },
+  };
+  workflow["211"] = {
+    class_type: "CLIPVisionLoader",
+    inputs: { clip_name: picked.clipVision },
+  };
+
+  let current = modelRef;
+  for (const [index, reference] of references.entries()) {
+    const base = 212 + index * 4;
+    const loadId = String(base);
+    const prepId = String(base + 1);
+    const applyId = String(base + 2);
+    const image = await resolveControlNetImage(reference.image, options);
+    workflow[loadId] = { class_type: "LoadImage", inputs: { image } };
+    let imageRef: [string, number] = [loadId, 0];
+    if (prepInfo?.input?.required) {
+      workflow[prepId] = {
+        class_type: "PrepImageForClipVision",
+        inputs: {
+          image: imageRef,
+          interpolation: pickComfyCombo(prepInfo.input.required["interpolation"], "LANCZOS"),
+          crop_position: pickComfyCombo(
+            prepInfo.input.required["crop_position"],
+            reference.cropPosition
+          ),
+          sharpening: 0,
+        },
+      };
+      imageRef = [prepId, 0];
+    }
+    const applyInputs: Record<string, unknown> = {
+      model: current,
+      ipadapter: ["210", 0],
+      clip_vision: ["211", 0],
+      image: imageRef,
+      weight: reference.weight,
+      weight_type: pickComfyCombo(applyRequired["weight_type"], reference.weightType),
+      combine_embeds: pickComfyCombo(applyRequired["combine_embeds"], "concat"),
+      start_at: 0,
+      end_at: reference.endAt,
+      embeds_scaling: pickComfyCombo(applyRequired["embeds_scaling"], "V only"),
+    };
+    for (const [name, spec] of Object.entries(applyRequired)) {
+      if (name in applyInputs) continue;
+      const fallback = comfyInputDefault(spec);
+      if (fallback !== undefined) applyInputs[name] = fallback;
+    }
+    workflow[applyId] = { class_type: "IPAdapterAdvanced", inputs: applyInputs };
+    current = [applyId, 0];
+  }
+  return current;
+}
+
+// The IP-Adapter references a default-graph render carries: the character's
+// confirmed sheet (BETA, set only by the generate route) and the generator's
+// 스타일 이미지. Sheet first so identity is applied before style.
+function ipAdapterReferences(params: GenerationParams): IpAdapterReference[] {
+  const references: IpAdapterReference[] = [];
+  const sheet = params.character_sheet_image?.trim();
+  if (sheet) {
+    references.push({
+      feature: "sheet",
+      image: sheet,
+      weight: clampSheetStrength(params.character_sheet_strength),
+      weightType: "linear",
+      cropPosition: "pad",
+      // Let the last steps run free so the scene's own lighting/detail settles.
+      endAt: 0.8,
+    });
+  }
+  const style = params.style_image?.trim();
+  if (style) {
+    references.push({
+      feature: "style",
+      image: style,
+      weight: clampSheetStrength(params.style_image_strength ?? DEFAULT_STYLE_STRENGTH),
+      // SDXL style-only layers: colour, texture, rendering — not the subject.
+      weightType: "style transfer",
+      cropPosition: "center",
+      endAt: 1,
+    });
+  }
+  return references;
+}
+
 // --- Z-Image (Tongyi-MAI) ---------------------------------------------------
 // Z-Image is a Lumina2-architecture DiT that ships as diffusion weights only: it
 // carries no CLIP and no VAE, so the standard CheckpointLoaderSimple graph dies with
@@ -1960,15 +2186,20 @@ async function addKrea2IdentityEditNodes(
       target_latent: targetLatentRef,
       fit_mode: "fit",
       ref_boost: refBoost,
+      ref_position:
+        params.character_reference_layout === "beside" ? "beside (right of target)" : "aligned (trained)",
     },
   };
   workflow["44"] = {
     class_type: "Krea2EditGroundedEncode",
     inputs: {
       clip: clipRef,
-      prompt:
-        `Create an image of this person. ${params.prompt.trim()}. ` +
-        "Keep the exact face, hairstyle, outfit and the illustration style of the person in the reference image.",
+      prompt: params.character_reference_restage
+        ? `Create an image of this person. ${params.prompt.trim()}. ` +
+          "Keep the person's face, hairstyle and outfit from the reference image, but take the pose, " +
+          "facial expression, camera angle, framing and lighting from this description, not from the reference."
+        : `Create an image of this person. ${params.prompt.trim()}. ` +
+          "Keep the exact face, hairstyle, outfit and the illustration style of the person in the reference image.",
       image: ["41", 0],
       grounding_px: 768,
     },
@@ -2010,7 +2241,9 @@ async function buildDefaultWorkflow(params: GenerationParams, options?: ComfyCli
   // the local disk (it returns null for a remote file, silently skipping this
   // guard). Falls back to the local read for local generation.
   const checkpointCapabilities = options?.baseUrl
-    ? await getRunpodCheckpointCapabilities(options.baseUrl, checkpoint)
+    ? options.remoteKind === "gpu-worker"
+      ? null
+      : await getRunpodCheckpointCapabilities(options.baseUrl, checkpoint)
     : await getCheckpointCapabilities(checkpoint);
 
   // Z-Image is checked before the diffusion-only guard because the weights may live in
@@ -2079,6 +2312,8 @@ async function buildDefaultWorkflow(params: GenerationParams, options?: ComfyCli
   // Patch the identity into MODEL after LoRAs so PuLID sees the final weights and
   // every downstream consumer (base + hires KSampler, FaceDetailer) inherits it.
   modelRef = await addPulidWorkflowNodes(workflow, params, modelRef, options);
+  // IP-Adapter (BETA 기준 시트 + 스타일 참조) on top of PuLID; all patch MODEL.
+  modelRef = await addIpAdapterNodes(workflow, ipAdapterReferences(params), modelRef, options);
 
   if (params.clip_skip > 1) {
     workflow["20"] = {
@@ -2111,7 +2346,13 @@ async function buildDefaultWorkflow(params: GenerationParams, options?: ComfyCli
   workflow["3"] = {
     class_type: "CLIPTextEncode",
     inputs: {
-      text: withEmbeddingTokens(params.negative_prompt, []),
+      // A sheet-conditioned render must not copy the sheet's multi-view layout.
+      text: withEmbeddingTokens(
+        params.character_sheet_image?.trim()
+          ? appendUniqueTags(params.negative_prompt, SHEET_RENDER_NEGATIVE)
+          : params.negative_prompt,
+        []
+      ),
       clip: clipRef,
     },
   };
@@ -2909,7 +3150,20 @@ export async function cancelComfyPrompt(promptId?: string, options?: ComfyClient
   }
 
   try {
-    await comfyFetch("/interrupt", { method: "POST" }, options);
+    // With a prompt id, ComfyUI only interrupts if THAT prompt is the one
+    // running. A bare /interrupt stops whatever runs — on a GPU worker or pod
+    // shared by several people that would kill someone else's render.
+    await comfyFetch(
+      "/interrupt",
+      promptId?.trim()
+        ? {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt_id: promptId }),
+          }
+        : { method: "POST" },
+      options
+    );
     canceled = true;
   } catch (error) {
     errors.push(error instanceof Error ? error.message : "Failed to interrupt ComfyUI");

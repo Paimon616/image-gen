@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { stashVideoBatch, toAbsoluteImageUrl } from "@/lib/video-reference";
 import { imageMatchesWorkspace, useStore } from "@/lib/store";
 import { isPulidInstallableError } from "@/lib/pulid-assets";
+import { GeneratorSheetBadge } from "@/components/character-sheet-panel";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -26,6 +27,7 @@ import { Gallery } from "@/components/gallery";
 import { WorkspaceBar } from "@/components/workspace-bar";
 import { ImageViewer } from "@/components/image-viewer";
 import { AppSidebar } from "@/components/app-sidebar";
+import { GpuWorkerStatus } from "@/components/gpu-worker-status";
 import { EditorSection } from "@/components/editor-section";
 import { FieldHelp } from "@/components/field-help";
 import { PaimonChat, type PaimonAttachment } from "@/components/paimon-chat";
@@ -46,6 +48,7 @@ import { useRunpodDownloadStore } from "@/lib/runpod-download-store";
 import {
   useGenerationQueueStore,
   type RunpodMissingFile,
+  type GenerationTarget,
 } from "@/lib/generation-queue-store";
 import {
   runpodDownloadEntryId,
@@ -206,7 +209,9 @@ export default function Home() {
   // Always start with the deterministic default so the server-rendered HTML and
   // the client's first render match. The persisted value is read after mount
   // (see the useEffect below) to avoid a hydration mismatch.
-  const [generationTarget, setGenerationTarget] = useState<"local" | "runpod">("local");
+  const [generationTarget, setGenerationTarget] = useState<GenerationTarget>("local");
+  const [workerSlots, setWorkerSlots] = useState(2);
+  const [workerCheckId, setWorkerCheckId] = useState("");
   // Local ComfyUI backend state. The launcher no longer starts ComfyUI; the app
   // offers to start it on demand via a banner when in local mode (see below).
   const [comfy, setComfy] = useState<{
@@ -352,8 +357,8 @@ export default function Home() {
       const savedGenerationTarget = window.localStorage.getItem(
         GENERATION_TARGET_STORAGE_KEY
       );
-      if (savedGenerationTarget === "runpod") {
-        setGenerationTarget("runpod");
+      if (savedGenerationTarget === "runpod" || savedGenerationTarget === "workers") {
+        setGenerationTarget(savedGenerationTarget);
       }
     } catch {}
   }, []);
@@ -551,7 +556,7 @@ export default function Home() {
   }, [ko, refreshRunpodRunning, runpodPods, selectedRunpodPodId]);
 
   const selectGenerationTarget = useCallback(
-    (target: "local" | "runpod") => {
+    (target: GenerationTarget) => {
       setGenerationTarget(target);
       try {
         window.localStorage.setItem(GENERATION_TARGET_STORAGE_KEY, target);
@@ -1343,6 +1348,8 @@ export default function Home() {
     setGenerationConfig({
       generationTarget,
       runpodPodId: selectedRunpodPodId,
+      workerSlots,
+      workerCheckId,
       ko,
       modeError: generationModeError,
     });
@@ -1352,6 +1359,8 @@ export default function Home() {
     ko,
     selectedRunpodPodId,
     setGenerationConfig,
+    workerCheckId,
+    workerSlots,
   ]);
 
   const enqueueGeneration = useCallback(
@@ -1634,6 +1643,9 @@ export default function Home() {
   const isGenerating = Boolean(activeGeneration);
   const queuedJobCount = generationQueue.length;
   const runpodTargetMissing = generationTarget === "runpod" && !selectedRunpodPodId;
+  // Worker PCs mirror this machine's model set (synced from the depot), so the
+  // pickers and imports browse the local catalog for the worker target too.
+  const pickerTarget = generationTarget === "workers" ? "local" : generationTarget;
   const runpodPodRunning =
     runpodConnection.comfyReachable ||
     runpodConnection.podDesiredStatus.toUpperCase() === "RUNNING";
@@ -1651,9 +1663,10 @@ export default function Home() {
             <p className="text-xs text-muted-foreground">{currentModel.name}</p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <div className="grid grid-cols-2 gap-1 rounded-md border border-border bg-card/80 p-1">
+            <div className="grid grid-cols-3 gap-1 rounded-md border border-border bg-card/80 p-1">
               {[
                 { value: "local" as const, label: ko ? "로컬" : "Local" },
+                { value: "workers" as const, label: ko ? "GPU 워커" : "Workers" },
                 { value: "runpod" as const, label: "RunPod" },
               ].map((item) => (
                 <button
@@ -1707,6 +1720,16 @@ export default function Home() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          {generationTarget === "workers" && (
+            <GpuWorkerStatus
+              ko={ko}
+              params={params}
+              missing={runpodMissingFiles}
+              onSlotsChange={setWorkerSlots}
+              onCheckWorkerChange={setWorkerCheckId}
+              onMissingChange={setRunpodMissingFiles}
+            />
+          )}
           {generationTarget === "local" && comfy.local && !comfy.running && (
             <div className="space-y-2 rounded-md border border-sky-500/40 bg-sky-500/10 p-3">
               <div className="flex items-center justify-between gap-2">
@@ -2181,13 +2204,13 @@ export default function Home() {
 
           <EditorSection title={ko ? "가져오기" : "Import"} description={ko ? "이미지 URL, Civitai URL, 이미지 메타데이터에서 레퍼런스 · 프롬프트 · 설정을 가져옵니다." : "Import prompts and settings from Civitai or image metadata."}>
           <UrlReferenceImport onGenerate={(next) => enqueueGeneration(next)} />
-          <CivitaiImport generationTarget={generationTarget} />
-          <MetadataImport generationTarget={generationTarget} />
+          <CivitaiImport generationTarget={pickerTarget} />
+          <MetadataImport generationTarget={pickerTarget} />
           </EditorSection>
 
           <EditorSection title={ko ? "모델" : "Models"} description={ko ? "기본 모델과 LoRA, 임베딩을 선택합니다." : "Choose the base model, LoRA, and embeddings."}>
             <ModelSelector
-              generationTarget={generationTarget}
+              generationTarget={pickerTarget}
               runpodPodId={generationTarget === "runpod" ? selectedRunpodPodId : ""}
             />
           </EditorSection>
@@ -2454,6 +2477,7 @@ export default function Home() {
           {(currentModel.supports.ip_adapter || currentModel.supports.face_id) && (
             <>
               <Separator />
+              <GeneratorSheetBadge />
               <div className="grid gap-3 xl:grid-cols-2">
                 {currentModel.supports.ip_adapter && (
                   <div>
@@ -2464,6 +2488,30 @@ export default function Home() {
                       value={params.style_image}
                       onChange={(url) => setParams({ style_image: url })}
                     />
+                    {params.style_image && (
+                      <div className="mt-2">
+                        <div className="mb-2 flex items-center justify-between">
+                          <FieldHelp
+                            label={ko ? "스타일 강도" : "Style Strength"}
+                            help={ko ? "IP-Adapter 'style transfer' 가중치. SDXL/Illustrious 전용(Krea 2·Z-Image·Anima에서는 무시). ComfyUI_IPAdapter_plus 노드와 IP-Adapter 모델 필요(npm run setup:ipadapter). 권장 0.6–1.0." : "IP-Adapter 'style transfer' weight. SDXL/Illustrious only (ignored on Krea 2, Z-Image, Anima). Needs ComfyUI_IPAdapter_plus and the IP-Adapter models (npm run setup:ipadapter). Sweet spot 0.6–1.0."}
+                          />
+                          <span className="text-xs font-mono">
+                            {(params.style_image_strength ?? 0.8).toFixed(2)}
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min={0}
+                          max={1.5}
+                          step={0.05}
+                          value={params.style_image_strength ?? 0.8}
+                          onChange={(e) =>
+                            setParams({ style_image_strength: parseFloat(e.target.value) })
+                          }
+                          className="w-full accent-primary"
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
 

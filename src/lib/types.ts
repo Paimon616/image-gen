@@ -27,7 +27,7 @@ export const AVAILABLE_MODELS: ModelConfig[] = [
       lora: true,
       embeddings: true,
       custom_model: true,
-      ip_adapter: false,
+      ip_adapter: true,
       face_id: true,
       negative_prompt: true,
     },
@@ -90,6 +90,28 @@ export interface GenerationParams {
   // face more faithfully; lower lets the prompt/pose lead. Only consulted on the
   // SDXL/Illustrious workflow when character_image is set. Sweet spot ~0.7–1.0.
   character_reference_strength: number;
+  /**
+   * Krea 2 character reference placement. "aligned" (default) pins the reference
+   * onto the output layout, so scenes inherit its pose/framing; "beside" keeps
+   * identity but lets the person be restaged (comfyui-krea2edit ref_position).
+   */
+  character_reference_layout?: "aligned" | "beside";
+  /** Krea 2: ask to keep face/hair/outfit only and follow the prompt for pose, expression, camera. */
+  character_reference_restage?: boolean;
+  // BETA 캐릭터 기준 시트: the character's confirmed reference sheet image. Set
+  // server-side (api/generate/stream) for renders of a sheet-confirmed character
+  // when the beta is on; applied as IP-Adapter conditioning on the SDXL workflow.
+  // Optional so older saved params stay valid.
+  character_sheet_image?: string | null;
+  // IP-Adapter weight for character_sheet_image (0–1.5, default 0.45).
+  character_sheet_strength?: number;
+  // Generator-side, per-render overrides of the character's sheet settings
+  // (the route still decides whether a sheet applies at all). disabled = skip
+  // the sheet for this render; strength_override null = use the character's.
+  character_sheet_disabled?: boolean;
+  character_sheet_strength_override?: number | null;
+  // IP-Adapter weight for style_image (0–1.5, default 0.8, "style transfer").
+  style_image_strength?: number;
   source_image: string | null;
   denoise_strength: number;
   pose_reference_image: string | null;
@@ -238,6 +260,39 @@ export interface CharacterMainImage {
   params: GenerationParams | null;
 }
 
+// BETA 캐릭터 기준 시트 — a turnaround/expression sheet picked from generated
+// candidates. Once confirmed (and the beta is on), every render of the character
+// is IP-Adapter-conditioned on it. See docs/character-reference-sheet.md.
+export interface CharacterReferenceSheet {
+  // App-served image URL, e.g. "/api/images/<file>".
+  url: string;
+  filename: string;
+  thumbnailUrl?: string;
+  // Locked as this character's reference. Unconfirmed = picked but not locked.
+  confirmed: boolean;
+  // Per-character switch; off = renders ignore the sheet even when confirmed.
+  enabled: boolean;
+  // The sheet's generation prompt and seed, for regeneration/reproduction.
+  prompt: string;
+  seed: number | null;
+  // IP-Adapter weight used for this character's renders.
+  strength: number;
+  confirmedAt?: number;
+  // 참조 영역: a square face/upper-body crop of the sheet. When set it is what
+  // IP-Adapter sees instead of the whole multi-view sheet (which leaks extra
+  // figures into scenes). Region is normalized to the sheet's width/height.
+  crop?: CharacterReferenceSheetCrop | null;
+}
+
+export interface CharacterReferenceSheetCrop {
+  url: string;
+  filename: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 export interface Character {
   id: string;
   name: string;
@@ -263,6 +318,8 @@ export interface Character {
   backgrounds: CharacterBackground[];
   // 상황.
   situations: CharacterSituation[];
+  // BETA 기준 시트. Absent/null until a candidate is picked.
+  referenceSheet?: CharacterReferenceSheet | null;
   // Manual position in the character list (ascending). Legacy records without
   // this fall back to createdAt so their relative order is preserved on read.
   order: number;
@@ -604,6 +661,11 @@ export const DEFAULT_PARAMS: GenerationParams = {
   style_image: null,
   character_image: null,
   character_reference_strength: 0.7,
+  character_sheet_image: null,
+  character_sheet_strength: 0.45,
+  character_sheet_disabled: false,
+  character_sheet_strength_override: null,
+  style_image_strength: 0.8,
   source_image: null,
   denoise_strength: 0.6,
   pose_reference_image: null,
