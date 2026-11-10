@@ -160,55 +160,85 @@ export function ImageUpload({
       />
 
       {value ? (
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={enlarge}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              enlarge();
-            }
-          }}
-          title={ko ? "클릭하면 크게 볼 수 있어요" : "Click to view larger"}
-          className="relative group cursor-zoom-in focus:outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={value} alt={label} className={previewClassName} />
-          <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="flex flex-col">
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={enlarge}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                enlarge();
+              }
+            }}
+            title={ko ? "클릭하면 크게 볼 수 있어요" : "Click to view larger"}
+            className="relative cursor-zoom-in focus:outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={value} alt={label} className={previewClassName} />
+            {uploading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-xs text-white">
+                {ko ? "올리는 중…" : "Uploading…"}
+              </div>
+            )}
+          </div>
+          {/* Always visible (not hover-only) so swapping the image is obvious. */}
+          <div className="flex flex-wrap gap-1.5 border-t border-border p-2">
             <Button
+              type="button"
               size="sm"
-              variant="secondary"
-              onClick={(event) => {
-                event.stopPropagation();
-                inputRef.current?.click();
-              }}
+              variant="outline"
+              className="h-7 flex-1 px-2 text-xs"
+              onClick={() => inputRef.current?.click()}
+              disabled={uploading}
+              title={ko ? "다른 이미지 파일로 바꿉니다" : "Replace with another image file"}
             >
-              Replace
+              {ko ? "파일로 교체" : "Replace"}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 flex-1 px-2 text-xs"
+              onClick={() => void pasteFromClipboard()}
+              disabled={uploading}
+              title={ko ? "클립보드의 이미지로 바꿉니다" : "Replace with the clipboard image"}
+            >
+              {ko ? "붙여넣기" : "Paste"}
             </Button>
             {allowGallery && (
               <Button
+                type="button"
                 size="sm"
-                variant="secondary"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setPickerOpen(true);
-                }}
+                variant="outline"
+                className="h-7 flex-1 px-2 text-xs"
+                onClick={() => setPickerOpen(true)}
+                disabled={uploading}
+                title={ko ? "갤러리의 이미지로 바꿉니다" : "Replace with a gallery image"}
               >
-                Gallery
+                {ko ? "갤러리" : "Gallery"}
               </Button>
             )}
             <Button
+              type="button"
               size="sm"
-              variant="destructive"
-              onClick={(event) => {
-                event.stopPropagation();
-                onChange(null);
-              }}
+              variant="outline"
+              className="h-7 px-2 text-xs text-destructive hover:text-destructive"
+              onClick={() => onChange(null)}
+              disabled={uploading}
             >
-              Remove
+              {ko ? "제거" : "Remove"}
             </Button>
           </div>
+          {pasteError && (
+            <p className="px-2 pb-2 text-[11px] text-muted-foreground">
+              {ko
+                ? pasteError === "No image in clipboard"
+                  ? "클립보드에 이미지가 없습니다"
+                  : "여기를 클릭한 뒤 Ctrl+V 하세요"
+                : pasteError}
+            </p>
+          )}
         </div>
       ) : (
         <div className="flex flex-col">

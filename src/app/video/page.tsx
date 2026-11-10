@@ -56,7 +56,11 @@ import {
   useRunpodDownloadStore,
   type RunpodDownloadItem,
 } from "@/lib/runpod-download-store";
-import { takeVideoReference } from "@/lib/video-reference";
+import {
+  takeVideoBatch,
+  takeVideoReference,
+  type VideoBatchHandoff,
+} from "@/lib/video-reference";
 import { censorSetupReady, type CensorSetupStatus } from "@/lib/censor-assets";
 import {
   DEFAULT_CENSOR_SETTINGS,
@@ -298,6 +302,77 @@ const VIDEO_THUMBNAIL_MAX_WIDTH = 560;
 // Cards mounted at once; scrolling near the end grows the window by another
 // batch, so a gallery with hundreds of clips doesn't render them all up front.
 const VIDEO_GALLERY_RENDER_BATCH = 40;
+
+// Image gallery "5초 영상" batch: used when the vision model can't write a
+// motion prompt, and appended to every prompt so the clip keeps the start frame.
+const FALLBACK_MOTION_PROMPT =
+  "The character breathes softly and blinks, a gentle smile spreading across her face as she tilts her head slightly toward the viewer. Her hair and clothing sway lightly with the movement while the camera stays still, ending on a calm, warm expression.";
+const KEEP_LOOK_SUFFIX =
+  "Keep the same character, face, hair, outfit, art style, colors, lighting and background as the first frame throughout the clip; do not add any body part, accessory, object or person that is not in the first frame; static camera, smooth natural motion, no cuts.";
+// Note: FALLBACK_MOTION_PROMPT names no species features (ears, tail) so it is
+// safe for any image.
+const VIDEO_BATCH_NEGATIVE_PROMPT =
+  "low quality, blurry, flicker, jitter, warped motion, temporal inconsistency, morphing face, identity change, outfit change, extra limbs, bad hands, duplicate subject, text, watermark, subtitles, sudden cuts, frozen frame";
+
+// The "5초 영상" batch always renders with MiniMax H3 native (multi-ref): it
+// keeps the start frame's art style and fine detail (hands, face) best, for
+// every image model. Falls back to the screen's pipeline only if it is missing.
+const VIDEO_BATCH_PIPELINE = "minimax-h3-native-multiref-i2va";
+
+// Frame count for `seconds` at the pipeline's frame rate. Video models want
+// 4n+1 (Wan) or 8n+1 (LTX) frames; 8n+1 satisfies both.
+function framesFor(seconds: number, fps: number) {
+  return Math.max(9, Math.round((seconds * fps) / 8) * 8 + 1);
+}
+
+function lengthFor(
+  params: VideoGenerationParams,
+  seconds: number
+): Partial<VideoGenerationParams> {
+  const settings = { ...params.video_pipeline_settings };
+  // MiniMax pipelines take the clip length in seconds and size the canvas from
+  // the start image themselves.
+  if (typeof settings.duration_seconds === "number") settings.duration_seconds = seconds;
+  if (typeof settings.auto_aspect === "boolean") settings.auto_aspect = true;
+  const fpsKey =["frame_rate", "fps"].find((key) => typeof settings[key] === "number");
+  const lengthKey = ["length", "num_frames", "frames", "frame_count"].find(
+    (key) => typeof settings[key] === "number"
+  );
+  if (lengthKey) {
+    const fps = fpsKey ? Number(settings[fpsKey]) : params.fps;
+    settings[lengthKey] = framesFor(seconds, fps > 0 ? fps : 24);
+  }
+  const fps = params.fps > 0 ? params.fps : 16;
+  return {
+    video_pipeline_settings: settings,
+    num_frames: framesFor(seconds, fps),
+    duration_seconds: seconds,
+  };
+}
+
+// Keeps the canvas's longer side and follows the start image's aspect ratio
+// (multiples of 16), so a portrait image doesn't render into a landscape canvas.
+function canvasFor(
+  params: VideoGenerationParams,
+  size: { width: number; height: number }
+): Partial<VideoGenerationParams> {
+  const longer = Math.max(params.width, params.height);
+  if (!longer || !size.width || !size.height) return {};
+  const ratio = size.width / size.height;
+  const round16 = (value: number) => Math.max(16, Math.round(value / 16) * 16);
+  return ratio >= 1
+    ? { width: round16(longer), height: round16(longer / ratio) }
+    : { width: round16(longer * ratio), height: round16(longer) };
+}
+
+function readImageSize(url: string) {
+  return new Promise<{ width: number; height: number } | null>((resolve) => {
+    const image = new window.Image();
+    image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight });
+    image.onerror = () => resolve(null);
+    image.src = url;
+  });
+}
 
 function VideoGalleryCard({
   video,
@@ -2648,6 +2723,113 @@ export default function VideoPage() {
     videoWorkflowReadyForTarget,
   ]);
 
+  // --- Image gallery "5초 영상" batch ----------------------------------------
+  // The image gallery hands over several images; once the selected pipeline is
+  // ready, each becomes one clip: the on-screen pipeline and settings, the
+  // length set to the requested seconds, the image as the start frame and a
+  // motion prompt written from that image (keep the look, one natural action).
+  const [videoBatch, setVideoBatch] = useState<VideoBatchHandoff | null>(null);
+  const [videoBatchNotice, setVideoBatchNotice] = useState("");
+  const videoBatchRunningRef = useRef(false);
+
+  useEffect(() => {
+    const batch = takeVideoBatch();
+    if (!batch) return;
+    setVideoBatch(batch);
+    setVideoBatchNotice(
+      language === "ko"
+        ? `이미지 ${batch.images.length}장 받음 — 파이프라인 준비를 기다리는 중`
+        : `${batch.images.length} images received — waiting for the pipeline`
+    );
+    // Only on mount: the handoff is consumed once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const videoBatchReady =
+    videoPipelines.length > 0 &&
+    (!soundPassActive || soundWorkflowReady) &&
+    videoWorkflowReadyForTarget &&
+    runpodTargetReady &&
+    runpodConnected;
+
+  useEffect(() => {
+    if (!videoBatch || !videoBatchReady || videoBatchRunningRef.current) return;
+    videoBatchRunningRef.current = true;
+    const batch = videoBatch;
+    setVideoBatch(null);
+    const ko = language === "ko";
+
+    void (async () => {
+      let queued = 0;
+      const failed: string[] = [];
+      const usedPipelines = new Set<string>();
+      for (const [index, image] of batch.images.entries()) {
+        setVideoBatchNotice(
+          ko
+            ? `${index + 1}/${batch.images.length} 동작 프롬프트 작성 중…`
+            : `Writing motion prompt ${index + 1}/${batch.images.length}…`
+        );
+        let prompt = "";
+        try {
+          const res = await fetch("/api/motion-prompt", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imageUrl: image.url, seconds: batch.seconds }),
+          });
+          const data = (await res.json().catch(() => ({}))) as { prompt?: string; error?: string };
+          prompt = data.prompt?.trim() ?? "";
+          if (!prompt && data.error) failed.push(data.error);
+        } catch (error) {
+          failed.push(error instanceof Error ? error.message : String(error));
+        }
+        if (!prompt) prompt = FALLBACK_MOTION_PROMPT;
+
+        const screen = useVideoStore.getState().params;
+        const pipeline =
+          videoPipelines.find((item) => item.id === VIDEO_BATCH_PIPELINE) ||
+          videoPipelines.find((item) => item.id === screen.video_pipeline);
+        const current: VideoGenerationParams = pipeline
+          ? {
+              ...screen,
+              video_pipeline: pipeline.id,
+              video_model: pipeline.id.includes("wan")
+                ? pipeline.id.includes("base")
+                  ? "wan-base"
+                  : "wan-smoothmix"
+                : "ltx-10eros",
+              video_pipeline_settings: settingsForPipeline(pipeline, screen),
+            }
+          : screen;
+        usedPipelines.add(pipeline?.label ?? current.video_pipeline);
+        const size = await readImageSize(image.url);
+        const jobParams: VideoGenerationParams = {
+          ...current,
+          prompt: `${prompt} ${KEEP_LOOK_SUFFIX}`,
+          negative_prompt: current.negative_prompt?.trim()
+            ? current.negative_prompt
+            : VIDEO_BATCH_NEGATIVE_PROMPT,
+          source_image: image.url,
+          extra_ref_images: [],
+          seed: null,
+          ...lengthFor(current, batch.seconds),
+          ...(size ? canvasFor(current, size) : {}),
+        };
+        useVideoGenerationQueueStore.getState().enqueue(jobParams);
+        queued += 1;
+      }
+      setVideoBatchNotice(
+        ko
+          ? `${queued}개를 ${batch.seconds}초 영상으로 대기열에 넣었습니다 (${[...usedPipelines].join(" · ")})${
+              failed.length ? ` (동작 프롬프트 실패 ${failed.length}개는 기본 동작으로)` : ""
+            }`
+          : `Queued ${queued} ${batch.seconds}s clips${
+              failed.length ? ` (${failed.length} used the default motion)` : ""
+            }`
+      );
+      videoBatchRunningRef.current = false;
+    })();
+  }, [language, settingsForPipeline, videoBatch, videoBatchReady, videoPipelines]);
+
   // `override` lets a caller queue params it just wrote to the store without
   // waiting for this component to re-render with them (the Paimon situation
   // runner composes a prompt and queues it in the same tick).
@@ -4458,6 +4640,19 @@ export default function VideoPage() {
             </Button>
             <Film className="h-4 w-4 text-muted-foreground" />
             <h2 className="text-sm font-medium">Video Gallery</h2>
+            {videoBatchNotice && (
+              <span className="flex items-center gap-1.5 rounded-md bg-primary/10 px-2 py-1 text-xs text-primary">
+                {videoBatchNotice}
+                <button
+                  type="button"
+                  className="text-primary/70 hover:text-primary"
+                  onClick={() => setVideoBatchNotice("")}
+                  aria-label="Dismiss"
+                >
+                  ×
+                </button>
+              </span>
+            )}
             <Button
               type="button"
               size="sm"

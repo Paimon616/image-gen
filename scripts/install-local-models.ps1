@@ -69,6 +69,7 @@ $Models = @(
   @("krea2", "loras/Capitan01R_Krea2_TextFusion_Refusal_Reduction_v2_updated.safetensors", "$CIVITAI/3416236", 30354320),
   @("krea2", "loras/More_Dynamic_Poses_Krea2_000002500.safetensors", "$CIVITAI/3296632", 228587800),
   @("krea2", "loras/CameraAngles_Krea2_v2.safetensors", "$CIVITAI/3432735", 228587224),
+  @("krea2", "loras/Detailed_Emotions_Expressions_Krea2_V1.safetensors", "$CIVITAI/3193133", 228588936),
 
   # ---- anima ----
   @("anima", "checkpoints/One obsession_animaV5turbo.safetensors", "$CIVITAI/3443487", 4182229969),
