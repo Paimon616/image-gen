@@ -3,7 +3,8 @@ import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import sharp from "sharp";
 
-import { squareCropRect } from "@/lib/character-sheet";
+import { DEFAULT_SHEET_CROP, squareCropRect } from "@/lib/character-sheet";
+import { findSheetFocus } from "@/lib/sheet-auto-crop";
 import {
   imageUrl,
   isValidImageFilename,
@@ -20,21 +21,27 @@ export const dynamic = "force-dynamic";
 // one figure instead of the multi-view sheet (which duplicated characters in
 // scenes during evaluation; docs/character-reference-sheet.md).
 // Body: { filename, x, y, size } — x/y normalized to the sheet, size × width.
+// Or { filename, auto: true } — find the front-facing figure's head-to-chest
+// square (lib/sheet-auto-crop); falls back to DEFAULT_SHEET_CROP.
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => null)) as {
     filename?: unknown;
+    auto?: unknown;
     x?: unknown;
     y?: unknown;
     size?: unknown;
   } | null;
   const filename = typeof body?.filename === "string" ? body.filename : "";
+  const auto = body?.auto === true;
   const nums = [body?.x, body?.y, body?.size].map((value) =>
     typeof value === "number" && Number.isFinite(value) ? value : NaN
   );
-  if (!isValidImageFilename(filename) || nums.some((value) => Number.isNaN(value) || value < 0 || value > 1)) {
+  if (
+    !isValidImageFilename(filename) ||
+    (!auto && nums.some((value) => Number.isNaN(value) || value < 0 || value > 1))
+  ) {
     return Response.json({ error: "Invalid crop request." }, { status: 400 });
   }
-  const [x, y, size] = nums;
 
   let source: Buffer;
   try {
@@ -46,7 +53,19 @@ export async function POST(req: Request) {
   if (!meta.width || !meta.height) {
     return Response.json({ error: "Unreadable sheet image." }, { status: 400 });
   }
-  const rect = squareCropRect(meta.width, meta.height, { x, y, size });
+  let region: { x: number; y: number; size: number } = { x: nums[0], y: nums[1], size: nums[2] };
+  let detected = false;
+  if (auto) {
+    const { data, info } = await sharp(source)
+      .removeAlpha()
+      .resize({ width: 304 })
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    const found = findSheetFocus(new Uint8Array(data), info.width, info.height);
+    detected = Boolean(found);
+    region = found ?? { ...DEFAULT_SHEET_CROP };
+  }
+  const rect = squareCropRect(meta.width, meta.height, region);
   const out = `${SHEET_CROP_PREFIX}${randomUUID()}.png`;
   await writeFile(
     join(OUTPUT_DIR, out),
@@ -58,5 +77,6 @@ export async function POST(req: Request) {
   return Response.json({
     crop: { url: imageUrl(out), filename: out, ...rect.normalized },
     thumbnailUrl: thumbnailUrl(out),
+    ...(auto ? { detected } : {}),
   });
 }

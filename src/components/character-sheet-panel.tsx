@@ -157,9 +157,10 @@ export function CharacterSheetPanel({
         crop: null,
       };
       onPatch({ referenceSheet: next });
-      // Start with the default 참조 영역 so renders get one figure, not the
-      // whole sheet; the user can move it in the editor below.
-      void cutSheetCrop(image.filename, DEFAULT_SHEET_CROP).then((crop) => {
+      // Start with an automatic 참조 영역 (the front-facing figure's head to
+      // chest) so renders get one figure, not the whole sheet; the user can
+      // move it in the editor below.
+      void cutSheetCrop(image.filename, "auto").then((crop) => {
         if (crop) onPatch({ referenceSheet: { ...next, crop } });
       });
     },
@@ -327,13 +328,13 @@ export function CharacterSheetPanel({
 
 async function cutSheetCrop(
   filename: string,
-  region: { x: number; y: number; size: number }
+  region: { x: number; y: number; size: number } | "auto"
 ): Promise<CharacterReferenceSheetCrop | null> {
   try {
     const res = await fetch("/api/character-sheet/crop", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ filename, ...region }),
+      body: JSON.stringify(region === "auto" ? { filename, auto: true } : { filename, ...region }),
     });
     if (!res.ok) return null;
     const data = (await res.json()) as { crop?: CharacterReferenceSheetCrop };
@@ -378,9 +379,9 @@ function SheetCropEditor({
     };
   };
 
-  const save = async () => {
+  const save = async (target: typeof region | "auto" = region) => {
     setSaving(true);
-    const crop = await cutSheetCrop(sheet.filename, region);
+    const crop = await cutSheetCrop(sheet.filename, target);
     setSaving(false);
     if (crop) {
       setRegion({ x: crop.x, y: crop.y, size: crop.w });
@@ -443,6 +444,15 @@ function SheetCropEditor({
         <Button size="sm" variant="outline" disabled={saving || Boolean(savedMatches)} onClick={() => void save()}>
           {saving ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
           참조 영역 저장
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={saving}
+          onClick={() => void save("auto")}
+          title="시트에서 정면 인물의 머리~가슴을 자동으로 찾음"
+        >
+          자동으로 찾기
         </Button>
         {sheet.crop ? (
           <span className="inline-flex items-center gap-1.5 text-muted-foreground">
