@@ -202,9 +202,12 @@ export function visionModelCandidates(llm: PaimonLlm) {
 /** Non-streaming multimodal call used for reference-image analysis. */
 export async function analyzeWithVision(
   llm: PaimonLlm,
-  content: ChatContentPart[]
+  content: ChatContentPart[],
+  options: { maxTokens?: number; timeoutMs?: number } = {}
 ): Promise<{ analysis: string; errors: string[] }> {
   const errors: string[] = [];
+  const maxTokens = options.maxTokens ?? 900;
+  const timeoutMs = options.timeoutMs ?? 20_000;
 
   for (const model of visionModelCandidates(llm)) {
     try {
@@ -212,10 +215,10 @@ export async function analyzeWithVision(
         const message = await anthropicClient(llm.apiKey).messages.create(
           {
             model,
-            max_tokens: 900,
+            max_tokens: maxTokens,
             messages: [{ role: "user", content: toAnthropicContent(content) }],
           },
-          { timeout: 20_000 }
+          { timeout: timeoutMs }
         );
         const analysis = anthropicText(message).trim();
         if (analysis) return { analysis, errors };
@@ -229,11 +232,11 @@ export async function analyzeWithVision(
         {
           model,
           temperature: 0.1,
-          max_tokens: 900,
+          max_tokens: maxTokens,
           ...reasoningPayload(llm),
           messages: [{ role: "user", content }],
         },
-        AbortSignal.timeout(20_000)
+        AbortSignal.timeout(timeoutMs)
       );
       const result = await response.json().catch(() => null);
       const analysis = result?.choices?.[0]?.message?.content;

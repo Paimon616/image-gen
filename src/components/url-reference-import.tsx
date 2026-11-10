@@ -4,13 +4,12 @@ import { useRef, useState } from "react";
 import { Copy, ImageIcon, ImagePlus, Layers, Loader2, X } from "lucide-react";
 import { useStore } from "@/lib/store";
 import type { GenerationParams } from "@/lib/types";
-import { MODEL_PRESETS, presetToParams } from "@/lib/model-presets";
 import {
+  ANALYSIS_VERSION,
   buildVariationPrompts,
   VARIATION_COUNTS,
   VARIATION_NEGATIVE_PROMPT,
-  VARIATION_REFERENCE_STRENGTH,
-  type ReferenceAnalysis,
+  type VariationPlan,
 } from "@/lib/reference-variations";
 import { FieldHelp } from "@/components/field-help";
 import { Button } from "@/components/ui/button";
@@ -26,12 +25,9 @@ interface ReferenceFromUrlResponse {
   error?: string;
 }
 
-const COPY_PRESET_ID = "krea2-identity-adult";
-// The copy keeps the reference's outfit and pose: Identity Edit copies those from
-// about 0.9 up (below 0.6 the face drifts).
-const COPY_REFERENCE_STRENGTH = 0.9;
+// The copy uses the on-screen reference strength (default 0.7). Identity Edit
+// copies outfit and pose more closely toward 0.9; below 0.6 the face drifts.
 // Dynamic Poses pushes the pose away from the reference, which a copy must not do.
-const COPY_DROPPED_LORA = /More_Dynamic_Poses/i;
 // About the area of 832x1248: big enough for detail, fast on Krea2 Turbo.
 const COPY_TARGET_AREA = 832 * 1248;
 
@@ -58,7 +54,7 @@ export function UrlReferenceImport({
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState<"reference" | "copy" | "batch" | null>(null);
   // One vision pass per reference image; repeated batch presses reuse it.
-  const analysisCache = useRef<{ imageUrl: string; analysis: ReferenceAnalysis } | null>(null);
+  const analysisCache = useRef<{ key: string; analysis: VariationPlan } | null>(null);
   const [status, setStatus] = useState("");
 
   const fetchReference = async (describe: boolean) => {
@@ -140,60 +136,50 @@ export function UrlReferenceImport({
     }
   };
 
-  // Setting B: the on-screen reference at 0.7 on Krea 2 with no extra LoRAs, and a
-  // prompt that spells out the reference's style, face, hair and background
-  // rendering; each image gets its own pose, expression, camera and background.
+  // The on-screen prompt as written, with only its pose, expression, background and
+  // camera swapped per image, generated with the model and settings on screen.
   const generateVariations = async (count: number) => {
-    const imageUrl = useStore.getState().params.character_image;
+    const { character_image: imageUrl, prompt: screenPrompt } = useStore.getState().params;
     if (!imageUrl || busy) return;
+    const sourcePrompt = (screenPrompt ?? "").trim();
+    const cacheKey = [ANALYSIS_VERSION, imageUrl, sourcePrompt].join("\n");
     setBusy("batch");
     try {
       let analysis =
-        analysisCache.current?.imageUrl === imageUrl ? analysisCache.current.analysis : null;
+        analysisCache.current?.key === cacheKey ? analysisCache.current.analysis : null;
       if (!analysis) {
         setStatus(
           ko
-            ? "비전 모델이 레퍼런스의 화풍 · 얼굴 · 머리 · 배경을 분석하는 중... (5~20초)"
-            : "Analyzing the reference style, face, hair and backgrounds... (5-20s)"
+            ? "프롬프트에서 포즈 · 표정 · 배경 · 카메라 부분을 찾아 변형을 만드는 중... (10~40초)"
+            : "Finding the pose, expression, background and camera parts of the prompt and varying them... (10-40s)"
         );
         const res = await fetch("/api/reference-analysis", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageUrl }),
+          body: JSON.stringify({ imageUrl, prompt: sourcePrompt }),
         });
-        const data = (await res.json().catch(() => ({}))) as ReferenceAnalysis & { error?: string };
-        if (!res.ok || !data.style) {
-          throw new Error(data.error || (ko ? "레퍼런스 분석에 실패했습니다." : "Reference analysis failed."));
+        const data = (await res.json().catch(() => ({}))) as VariationPlan & { error?: string };
+        if (!res.ok || !data.base) {
+          throw new Error(data.error || (ko ? "프롬프트 분석에 실패했습니다." : "Prompt analysis failed."));
         }
         analysis = data;
-        analysisCache.current = { imageUrl, analysis };
+        analysisCache.current = { key: cacheKey, analysis };
       }
 
-      const preset = MODEL_PRESETS.find((item) => item.id === COPY_PRESET_ID);
-      if (!preset) throw new Error("Krea2 preset is missing.");
-      const modelsData = await fetch("/api/models", { cache: "no-store" })
-        .then((res) => res.json())
-        .catch(() => ({}));
-      const available = ((modelsData.checkpointAssets ?? []) as { path: string }[]).map(
-        (asset) => asset.path
-      );
-      const presetParams = presetToParams(preset, available);
+      // Everything but the prompt comes from the screen as it is when the button is
+      // pressed: the model the user picked, its LoRAs, sampler, steps, reference
+      // strength and face fix. Only the mode is pinned to text-to-image, since a
+      // source image would hold every variation to its pose and background.
       const prompts = buildVariationPrompts(analysis, count);
+      const screen = useStore.getState().params;
       const settings: Partial<GenerationParams> = {
-        ...presetParams,
-        loras: [],
         character_image: imageUrl,
-        character_reference_strength: VARIATION_REFERENCE_STRENGTH,
-        negative_prompt: VARIATION_NEGATIVE_PROMPT,
+        negative_prompt: screen.negative_prompt?.trim() || VARIATION_NEGATIVE_PROMPT,
         generation_mode: "text_to_image",
         source_image: null,
         seed: null,
       };
-
-      // The form shows the settings the batch runs with (first prompt as a sample),
-      // so the screen and the queued jobs never disagree.
-      setParams({ ...settings, prompt: prompts[0] });
-      const base = { ...useStore.getState().params, ...settings };
+      const base = { ...screen, ...settings };
       for (let index = 0; index < prompts.length; index += 1) {
         setStatus(
           ko
@@ -204,8 +190,8 @@ export function UrlReferenceImport({
       }
       setStatus(
         ko
-          ? `${count}장을 대기열에 넣었습니다 (Krea2 · 참조 0.7 · 추가 로라 없음 · 화풍 자세히). 장마다 포즈 · 표정 · 카메라 · 배경이 다릅니다.`
-          : `Queued ${count} images (Krea2, reference 0.7, no extra LoRAs, detailed style). Each has its own pose, expression, camera and background.`
+          ? `${count}장을 대기열에 넣었습니다 (화면 모델 · 설정 · 프롬프트 그대로). 장마다 포즈 · 표정 · 카메라 · 배경만 다릅니다${analysis.setting ? ` (배경: ${analysis.setting})` : ""}.`
+          : `Queued ${count} images (on-screen model, settings and prompt). Only the pose, expression, camera and background change per image.`
       );
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
@@ -224,25 +210,13 @@ export function UrlReferenceImport({
     );
     try {
       const data = await fetchReference(true);
-      const preset = MODEL_PRESETS.find((item) => item.id === COPY_PRESET_ID);
-      if (!preset) throw new Error("Krea2 preset is missing.");
-
-      const modelsData = await fetch("/api/models", { cache: "no-store" })
-        .then((res) => res.json())
-        .catch(() => ({}));
-      const available = ((modelsData.checkpointAssets ?? []) as { path: string }[]).map(
-        (asset) => asset.path
-      );
-      const presetParams = presetToParams(preset, available);
       const description = data.prompt || data.sourcePrompt || "";
+      // The model, LoRAs, sampler, reference strength and face fix stay as the user picked them on
+      // screen; only the reference, its aspect ratio and the prompt change.
       const next: Partial<GenerationParams> = {
-        ...presetParams,
-        loras: (presetParams.loras ?? []).filter((lora) => !COPY_DROPPED_LORA.test(lora.path)),
         ...copySize(data.width, data.height),
         character_image: data.url,
-        character_reference_strength: COPY_REFERENCE_STRENGTH,
         prompt: COPY_PROMPT_HEAD + description,
-        negative_prompt: "",
         generation_mode: "text_to_image",
         source_image: null,
         seed: null,
@@ -251,8 +225,8 @@ export function UrlReferenceImport({
       setParams(next);
       setStatus(
         ko
-          ? "Krea2 프리셋 · 참조 0.9 · 같은 비율로 생성을 시작했습니다. 프롬프트는 수정해서 다시 뽑을 수 있습니다."
-          : "Started a Krea2 copy (reference 0.9, same aspect ratio). Edit the prompt and generate again to adjust."
+          ? "화면에서 고른 모델 · 참조 강도 · 같은 비율로 생성을 시작했습니다. 프롬프트는 수정해서 다시 뽑을 수 있습니다."
+          : "Started a copy with the selected model and reference strength (same aspect ratio). Edit the prompt and generate again to adjust."
       );
       await onGenerate({ ...useStore.getState().params, ...next });
     } catch (error) {
@@ -283,8 +257,8 @@ export function UrlReferenceImport({
               label={ko ? "이미지 URL로 레퍼런스" : "Reference from image URL"}
               help={
                 ko
-                  ? "이미지 주소(또는 이미지가 있는 페이지 주소)를 넣으면 이미지를 받아 캐릭터 참조로 넣습니다. '똑같이 뽑기'는 비전 모델이 그림을 영어 프롬프트로 설명하고, Krea2 프리셋(참조 강도 0.9, 같은 비율)으로 바로 한 장 생성합니다. tensor.art처럼 페이지가 자동 접근을 막는 사이트는 이미지 위 우클릭 → '이미지 주소 복사'로 넣으세요."
-                  : "Paste an image address (or a page that shows one) to download it as the character reference. 'Copy' has the vision model describe the picture in English and generates one image right away with the Krea2 preset (reference 0.9, same aspect ratio). For sites that block automated access such as tensor.art, right-click the image and copy the image address."
+                  ? "이미지 주소(또는 이미지가 있는 페이지 주소)를 넣으면 이미지를 받아 캐릭터 참조로 넣습니다. '똑같이 뽑기'는 비전 모델이 그림을 영어 프롬프트로 설명하고, 화면에서 고른 모델과 참조 강도(기본 0.7)로, 같은 비율로 바로 한 장 생성합니다. tensor.art처럼 페이지가 자동 접근을 막는 사이트는 이미지 위 우클릭 → '이미지 주소 복사'로 넣으세요."
+                  : "Paste an image address (or a page that shows one) to download it as the character reference. 'Copy' has the vision model describe the picture in English and generates one image right away with the selected model and reference strength (default 0.7, same aspect ratio). For sites that block automated access such as tensor.art, right-click the image and copy the image address."
               }
             />
             <p className="mt-1 text-xs text-muted-foreground">
@@ -376,8 +350,8 @@ export function UrlReferenceImport({
           label={ko ? "레퍼런스로 다양하게 뽑기" : "Varied batch from the reference"}
           help={
             ko
-              ? "지금 캐릭터 참조 이미지로 누른 장수만큼 대기열에 넣습니다. 비전 모델이 레퍼런스의 화풍 · 얼굴 · 머리 · 의상과 어울리는 배경을 분석하고, 장마다 포즈 · 표정 · 카메라 구도 · 배경을 다르게 조합합니다. Krea2 · 참조 강도 0.7 · 추가 로라 없음(포즈 · 각도 로라는 화풍을 바꿔서 뺌)."
-              : "Queues the chosen number of images from the current character reference. A vision model reads the reference style, face, hair, outfit and fitting backgrounds; each image combines a different pose, expression, camera and background. Krea2, reference 0.7, no extra LoRAs (pose / angle LoRAs change the style)."
+              ? "지금 프롬프트와 캐릭터 참조 이미지로 누른 장수만큼 대기열에 넣습니다. 프롬프트는 그대로 쓰고, 그 안의 포즈 · 표정 · 배경 · 카메라 구도만 빼서 장마다 변형으로 바꿉니다(포즈 · 표정은 원래 것을 변형, 배경은 프롬프트 장소 안의 여러 곳, 예: 영국 성 → 정원 · 거실 · 침실 · 테라스). 모델 · 로라 · 참조 강도 · 얼굴 보정 등 나머지 설정은 화면에서 고른 그대로 씁니다."
+              : "Queues the chosen number of images from the current prompt and character reference. The prompt is kept as written; only its pose, expression, background and camera parts are swapped per image for variations (backgrounds are spots inside the place the prompt names). The model, LoRAs, reference strength, face fix and the rest come from the screen."
           }
         />
         <div className="grid grid-cols-4 gap-2" role="group" aria-label={ko ? "다양하게 뽑기 장수" : "Batch size"}>

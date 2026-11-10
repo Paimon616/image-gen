@@ -1,23 +1,44 @@
-// Builds varied Krea 2 prompts around one character reference for the batch
-// buttons under the image-URL box. The recipe that kept the reference style best
-// in testing ("setting B"): Identity Edit at 0.7, no extra LoRAs (pose / angle /
-// emotion LoRAs pull their own training style in), and a concrete description of
-// the line art, coloring, face, hair and background rendering in the prompt.
+// Builds the "varied batch" prompts for the buttons under the image-URL box.
+// The on-screen prompt stays as the user wrote it (style, character, outfit,
+// quality tags); only its pose, expression, background and camera parts are
+// swapped per image for variations of them. Generation runs on Krea 2 with the
+// on-screen reference at 0.7 and no extra LoRAs (pose / angle / emotion LoRAs
+// pull their own training style in).
 
-export interface ReferenceAnalysis {
+export interface VariationPlan {
   gender: "female" | "male";
-  style: string;
-  face: string;
-  hair: string;
-  body: string;
-  outfit: string;
-  // What the reference already shows; the prompt says not to repeat them, because
-  // Identity Edit otherwise slides back to the reference pose and wall.
-  referencePose: string;
-  referenceBackground: string;
-  backgroundStyle: string;
+  // The on-screen prompt with its pose / expression / background / camera
+  // fragments taken out.
+  base: string;
+  removed: string[];
+  // The place the prompt describes as a whole (a British castle and its
+  // grounds), split into backgrounds (garden, drawing room, bedroom, terrace...).
+  setting: string;
   backgrounds: string[];
+  // Variations of the pose and expression in the prompt.
+  poses: string[];
+  expressions: string[];
 }
+
+// Removes exact fragments (tags or phrases) from a prompt and tidies the
+// separators left behind.
+export function removePromptFragments(prompt: string, fragments: string[]) {
+  let result = prompt;
+  // Longest first, so "castle interior" goes before "castle".
+  for (const fragment of [...fragments].sort((a, b) => b.length - a.length)) {
+    const index = result.indexOf(fragment);
+    if (index >= 0) result = result.slice(0, index) + result.slice(index + fragment.length);
+  }
+  return result
+    .replace(/\s+([,.;])/g, "$1")
+    .replace(/([,;])(\s*[,;])+/g, "$1")
+    .replace(/\.(\s*[,.])+/g, ".")
+    .replace(/\s{2,}/g, " ")
+    .replace(/^[\s,.;]+|[\s,;]+$/g, "")
+    .trim();
+}
+
+export const ANALYSIS_VERSION = 5;
 
 export const VARIATION_COUNTS = [10, 30, 50, 100] as const;
 export const VARIATION_REFERENCE_STRENGTH = 0.7;
@@ -153,45 +174,31 @@ function toMale(text: string) {
     .replace(/\bher\b/g, "his");
 }
 
-export function buildVariationPrompts(analysis: ReferenceAnalysis, count: number) {
-  const pose = deck(POSES);
-  const expression = deck(EXPRESSIONS);
+export function buildVariationPrompts(plan: VariationPlan, count: number) {
+  const pose = deck(plan.poses.length >= 4 ? plan.poses : POSES);
+  const expression = deck(plan.expressions.length >= 4 ? plan.expressions : EXPRESSIONS);
   const camera = deck(CAMERAS);
   const view = deck(VIEWS);
-  const background = deck(analysis.backgrounds);
-
-  const identity =
-    sentence(
-      `a 2D illustration of the same character from the reference image, copying the reference art style exactly: ${analysis.style}`
-    ) +
-    sentence(`Her face is drawn exactly like the reference: ${analysis.face}`) +
-    sentence(`Her hair is exactly like the reference: ${analysis.hair}`) +
-    sentence(analysis.body) +
-    sentence(`She wears the same outfit as the reference: ${analysis.outfit}`);
+  const background = deck(plan.backgrounds);
+  const base = /[.!?,]$/.test(plan.base) ? plan.base : `${plan.base}.`;
 
   return Array.from({ length: count }, () => {
     const direction = view();
     let shot = camera();
     // A back view has no face to frame; swap a face close-up for the next camera.
     if (/from behind/.test(direction) && /close-up/.test(shot.desc)) shot = camera();
-    return (
-      `${shot.angle}, ` +
-      identity +
+    const variation =
+      `${shot.angle}. ` +
       sentence(`Pose: ${pose()}`) +
       sentence(`Direction: ${direction}`) +
       sentence(`Expression: ${expression()}`) +
       sentence(`Camera: ${shot.desc}`) +
-      sentence(`Background: ${background()}`) +
-      (analysis.referencePose
-        ? sentence(`This is a new pose, not the reference pose (${analysis.referencePose})`)
-        : "") +
-      (analysis.referenceBackground
-        ? sentence(`The reference background (${analysis.referenceBackground}) does not appear`)
-        : "") +
       sentence(
-        `The background is drawn in exactly the same art style as the reference: ${analysis.backgroundStyle}`
+        plan.setting
+          ? `Background: ${background()}, part of ${plan.setting}`
+          : `Background: ${background()}`
       ) +
-      "Clean anatomy with five fingers on each hand, one person only, no text, no watermark."
-    ).trim();
-  }).map((prompt) => (analysis.gender === "male" ? toMale(prompt) : prompt));
+      "One person only, clean anatomy with five fingers on each hand, no text, no watermark.";
+    return `${base} ${plan.gender === "male" ? toMale(variation) : variation}`.trim();
+  });
 }
