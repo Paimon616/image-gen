@@ -63,7 +63,7 @@ PuLID(`캐릭터 이미지`)와 동시 사용 가능. 둘 다 MODEL 패치라 �
 ## 참조 영역 (얼굴 크롭)
 
 여러 뷰가 담긴 시트를 통째로 IP-Adapter에 넣으면 장면에 캐릭터가 2명 그려지는 일이 생김. 그래서 시트 확정 시
-왼쪽 위 정사각 영역(정면 얼굴~어깨, `DEFAULT_SHEET_CROP`)을 자동으로 잘라 `referenceSheet.crop`에 저장하고,
+정면 인물의 머리~가슴 정사각 영역을 자동으로 찾아 잘라 `referenceSheet.crop`에 저장하고,
 렌더에는 이 크롭만 넣음. 스튜디오 기준 시트 탭에서 클릭으로 위치, 슬라이더로 크기 조정 후 `참조 영역 저장`.
 
 자동 영역(`src/lib/sheet-auto-crop.ts`, `POST /api/character-sheet/crop {filename, auto: true}`): 모델이나 네트워크 없이 픽셀 규칙만 씀.
