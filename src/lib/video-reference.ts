@@ -64,3 +64,48 @@ export function takeVideoReference(): VideoReferenceHandoff | null {
     return null;
   }
 }
+
+// Batch handoff: the image gallery's "N초 영상" button sends several selected
+// images at once. The video page takes them on mount and queues one clip per
+// image with the current pipeline settings, a fixed length and a motion prompt
+// written from each image.
+export const VIDEO_BATCH_HANDOFF_KEY = "image-gen-video-batch";
+
+export interface VideoBatchHandoff {
+  images: { url: string; filename?: string; model?: string }[];
+  seconds: number;
+  timestamp: number;
+}
+
+export function stashVideoBatch(handoff: VideoBatchHandoff) {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(VIDEO_BATCH_HANDOFF_KEY, JSON.stringify(handoff));
+  } catch {
+    // sessionStorage unavailable; the video page simply gets no batch.
+  }
+}
+
+export function takeVideoBatch(): VideoBatchHandoff | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(VIDEO_BATCH_HANDOFF_KEY);
+    if (!raw) return null;
+    window.sessionStorage.removeItem(VIDEO_BATCH_HANDOFF_KEY);
+    const parsed = JSON.parse(raw) as Partial<VideoBatchHandoff>;
+    const images = Array.isArray(parsed?.images)
+      ? parsed.images.filter(
+          (image): image is { url: string; filename?: string; model?: string } =>
+            Boolean(image) && typeof image.url === "string" && image.url.length > 0
+        )
+      : [];
+    if (images.length === 0) return null;
+    return {
+      images,
+      seconds: typeof parsed.seconds === "number" && parsed.seconds > 0 ? parsed.seconds : 5,
+      timestamp: typeof parsed.timestamp === "number" ? parsed.timestamp : Date.now(),
+    };
+  } catch {
+    return null;
+  }
+}

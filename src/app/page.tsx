@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { stashVideoBatch, toAbsoluteImageUrl } from "@/lib/video-reference";
 import { imageMatchesWorkspace, useStore } from "@/lib/store";
 import { isPulidInstallableError } from "@/lib/pulid-assets";
 import { Textarea } from "@/components/ui/textarea";
@@ -55,6 +57,7 @@ import {
   GripVertical,
   Download,
   DownloadCloud,
+  Film,
   FolderMinus,
   FolderX,
   FolderPlus,
@@ -149,6 +152,7 @@ function canUploadRunpodMissingFile(item: RunpodMissingFile) {
 }
 
 export default function Home() {
+  const router = useRouter();
   const {
     params,
     setParams,
@@ -785,6 +789,23 @@ export default function Home() {
   const clearGallerySelection = useCallback(() => {
     setSelectedGalleryImageIds(new Set());
   }, []);
+
+  // Hands the selected saved images to the video tab, which queues one 5-second
+  // clip per image (see takeVideoBatch in the video page).
+  const sendSelectedGalleryImagesToVideo = useCallback(() => {
+    if (selectedPersistedGalleryImages.length === 0) return;
+    stashVideoBatch({
+      images: selectedPersistedGalleryImages.map((image) => ({
+        url: toAbsoluteImageUrl(image.url),
+        filename: image.filename,
+        model: image.params?.model_name || image.params?.model,
+      })),
+      seconds: 5,
+      timestamp: Date.now(),
+    });
+    setSelectedGalleryImageIds(new Set());
+    router.push("/video");
+  }, [router, selectedPersistedGalleryImages]);
 
   const deleteSelectedGalleryImages = useCallback(async () => {
     if (selectedGalleryImages.length === 0 || batchActionBusy) return;
@@ -2654,8 +2675,8 @@ export default function Home() {
 
       {/* Main Content - Gallery */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        <div className="p-4 border-b border-border flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+        <div className="p-4 border-b border-border flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
             <Button
               type="button"
               size="icon-sm"
@@ -2666,7 +2687,7 @@ export default function Home() {
             >
               {editorOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
             </Button>
-            <h2 className="text-sm font-medium">{ko ? "갤러리" : "Gallery"}</h2>
+            <h2 className="whitespace-nowrap text-sm font-medium">{ko ? "갤러리" : "Gallery"}</h2>
             <Button
               type="button"
               size="sm"
@@ -2679,7 +2700,7 @@ export default function Home() {
                 : ko ? "다중선택" : "Multi-select"}
             </Button>
             {gallerySelectionMode && (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="whitespace-nowrap rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
                   {ko
                     ? `${selectedGalleryCount}개 선택`
@@ -2772,6 +2793,22 @@ export default function Home() {
                 >
                   <FolderX className="h-3.5 w-3.5" />
                   {ko ? "워크스페이스 비우기" : "Clear workspaces"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5"
+                  onClick={sendSelectedGalleryImagesToVideo}
+                  disabled={batchActionBusy || selectedPersistedGalleryCount === 0}
+                  title={
+                    ko
+                      ? "선택한 이미지마다 MiniMax H3 native로 5초 영상을 만듭니다. 얼굴·옷·화풍·배경은 그대로 두고 이미지에 맞는 자연스러운 동작만 넣습니다"
+                      : "Makes a 5-second MiniMax H3 native clip from each selected image, keeping the look and adding one natural action"
+                  }
+                >
+                  <Film className="h-3.5 w-3.5" />
+                  {ko ? "5초 영상" : "5s video"}
                 </Button>
                 <Button
                   type="button"
