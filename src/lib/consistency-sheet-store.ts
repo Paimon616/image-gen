@@ -19,11 +19,11 @@ const PARAMS_STORAGE_KEY = "consistency-sheet-params-v3";
 // images are data URIs and far too large for localStorage.
 function persistParams(params: ConsistencySheetParams) {
   if (typeof window === "undefined") return;
-  const { mode, resolution, workspaceId } = params;
+  const { mode, resolution, workspaceId, engine, gpuTarget } = params;
   try {
     window.localStorage.setItem(
       PARAMS_STORAGE_KEY,
-      JSON.stringify({ mode, resolution, workspaceId })
+      JSON.stringify({ mode, resolution, workspaceId, engine, gpuTarget })
     );
   } catch {
     /* ignore */
@@ -96,6 +96,8 @@ export const useConsistencySheetStore = create<ConsistencySheetState>((set) => (
             saved.mode === "background" || saved.mode === "scene"
               ? saved.mode
               : s.params.mode,
+          engine: saved.engine === "gpu" ? "gpu" : s.params.engine,
+          gpuTarget: saved.gpuTarget === "local" ? "local" : s.params.gpuTarget,
           resolution:
             saved.resolution === "1k" ||
             saved.resolution === "2k" ||

@@ -114,7 +114,17 @@ export async function startConsistencySheetGeneration(
           continue;
         }
 
-        if (event === "tick") {
+        if (event === "tick" && data.state === "GPU") {
+          // GPU engine: the generation route's own progress messages.
+          const percent = typeof data.progress === "number" ? data.progress : null;
+          updatePending(clientId, {
+            status: {
+              state: "generating",
+              progress: percent !== null ? Math.min(0.95, Math.max(0.05, percent / 100)) : 0.1,
+              message: String(data.message || STATUS_LABEL.running[language]),
+            },
+          });
+        } else if (event === "tick") {
           // One tick per queue poll, carrying fal's own queue state.
           tickCount += 1;
           const progress = Math.min(0.9, 0.1 + tickCount * 0.03);
