@@ -34,6 +34,7 @@ import type {
   Character,
   CharacterReferenceSheet,
   CharacterReferenceSheetCrop,
+  CharacterReferenceSheetRegion,
   GeneratedImage,
   GenerationParams,
 } from "@/lib/types";
@@ -160,8 +161,8 @@ export function CharacterSheetPanel({
       // Start with an automatic 참조 영역 (the front-facing figure's head to
       // chest) so renders get one figure, not the whole sheet; the user can
       // move it in the editor below.
-      void cutSheetCrop(image.filename, "auto").then((crop) => {
-        if (crop) onPatch({ referenceSheet: { ...next, crop } });
+      void cutSheetCrop(image.filename, "auto").then((result) => {
+        if (result) onPatch({ referenceSheet: { ...next, crop: result.crop, regions: result.regions ?? [] } });
       });
     },
     [onPatch, sheet]
@@ -204,11 +205,14 @@ export function CharacterSheetPanel({
 
         {sheet?.confirmed && (
           <div className="mb-4 grid gap-4 rounded-lg border border-border p-3 sm:grid-cols-[minmax(0,360px)_1fr]">
-            <SheetCropEditor
-              key={sheet.filename}
-              sheet={sheet}
-              onSaved={(crop) => updateSheet({ crop })}
-            />
+            <div className="space-y-3">
+              <SheetCropEditor
+                key={sheet.filename}
+                sheet={sheet}
+                onSaved={(crop, regions) => updateSheet(regions ? { crop, regions } : { crop })}
+              />
+              <SheetRegionStrip sheet={sheet} />
+            </div>
             <div className="space-y-3 text-xs">
               <label className="flex items-center justify-between gap-3">
                 <span>이 캐릭터에 시트 참조 사용</span>
@@ -326,10 +330,12 @@ export function CharacterSheetPanel({
   );
 }
 
+// "auto" also returns every view found on the sheet (front full body, side,
+// back) for per-scene selection; a manual region returns just the crop.
 async function cutSheetCrop(
   filename: string,
   region: { x: number; y: number; size: number } | "auto"
-): Promise<CharacterReferenceSheetCrop | null> {
+): Promise<{ crop: CharacterReferenceSheetCrop; regions?: CharacterReferenceSheetRegion[] } | null> {
   try {
     const res = await fetch("/api/character-sheet/crop", {
       method: "POST",
@@ -337,11 +343,54 @@ async function cutSheetCrop(
       body: JSON.stringify(region === "auto" ? { filename, auto: true } : { filename, ...region }),
     });
     if (!res.ok) return null;
-    const data = (await res.json()) as { crop?: CharacterReferenceSheetCrop };
-    return data.crop ?? null;
+    const data = (await res.json()) as {
+      crop?: CharacterReferenceSheetCrop;
+      regions?: CharacterReferenceSheetRegion[];
+    };
+    return data.crop ? { crop: data.crop, regions: data.regions } : null;
   } catch {
     return null;
   }
+}
+
+const REGION_LABELS: Record<CharacterReferenceSheetRegion["kind"], string> = {
+  front_upper: "정면 상반신",
+  front_full: "정면 전신",
+  side: "측면",
+  back: "뒷모습",
+};
+
+// Views found on the sheet. Each scene uses the one its prompt asks for
+// (full body / from side / from behind…); missing views fall back to 참조 영역.
+function SheetRegionStrip({ sheet }: { sheet: CharacterReferenceSheet }) {
+  const regions = sheet.regions ?? [];
+  if (regions.length === 0) return null;
+  return (
+    <div className="space-y-1.5 text-xs">
+      <div className="flex flex-wrap gap-2">
+        {regions.map((region) => {
+          const url = region.kind === "front_upper" && sheet.crop ? sheet.crop.url : region.url;
+          return (
+            <figure key={region.kind} className="w-16 space-y-0.5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={url}
+                alt={REGION_LABELS[region.kind]}
+                className="h-20 w-16 rounded border border-border bg-muted object-contain"
+              />
+              <figcaption className="text-center text-[10px] text-muted-foreground">
+                {REGION_LABELS[region.kind]}
+              </figcaption>
+            </figure>
+          );
+        })}
+      </div>
+      <p className="text-muted-foreground">
+        장면 프롬프트에 맞춰 자동 선택: 전신(full body, walking 등), 측면(from side, profile), 뒷모습(from
+        behind). 없으면 참조 영역 사용.
+      </p>
+    </div>
+  );
 }
 
 // 참조 영역 editor: a square on the confirmed sheet (click to move, slider to
@@ -352,7 +401,10 @@ function SheetCropEditor({
   onSaved,
 }: {
   sheet: CharacterReferenceSheet;
-  onSaved: (crop: CharacterReferenceSheetCrop | null) => void;
+  onSaved: (
+    crop: CharacterReferenceSheetCrop | null,
+    regions?: CharacterReferenceSheetRegion[]
+  ) => void;
 }) {
   const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
   const [region, setRegion] = useState(() =>
@@ -381,11 +433,12 @@ function SheetCropEditor({
 
   const save = async (target: typeof region | "auto" = region) => {
     setSaving(true);
-    const crop = await cutSheetCrop(sheet.filename, target);
+    const result = await cutSheetCrop(sheet.filename, target);
     setSaving(false);
-    if (crop) {
+    if (result) {
+      const { crop } = result;
       setRegion({ x: crop.x, y: crop.y, size: crop.w });
-      onSaved(crop);
+      onSaved(crop, result.regions);
     }
   };
 

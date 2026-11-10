@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { findSheetFocus, isSkinTone } from "./sheet-auto-crop.ts";
+import { findSheetFocus, findSheetRegions, isSkinTone } from "./sheet-auto-crop.ts";
 
 const W = 300;
 const H = 200;
@@ -84,4 +84,36 @@ test("returns null when nothing shows a face", () => {
   figure(rgb, 50, true);
   assert.equal(findSheetFocus(rgb, W, H), null);
   assert.equal(findSheetFocus(canvas(), W, H), null);
+});
+
+/** Side view: skin pushed to one edge of the head. */
+function sideFigure(rgb: Uint8Array, x: number) {
+  fill(rgb, x, 4, x + 30, 14, HAIR);
+  fill(rgb, x, 14, x + 20, 30, HAIR);
+  fill(rgb, x + 20, 14, x + 30, 30, SKIN);
+  fill(rgb, x, 30, x + 30, 120, CLOTH);
+  fill(rgb, x + 6, 120, x + 24, 196, LEGS);
+}
+
+test("findSheetRegions labels front, side and back figures", () => {
+  const rgb = canvas();
+  figure(rgb, 20, false);
+  sideFigure(rgb, 110);
+  figure(rgb, 200, true);
+  const regions = findSheetRegions(rgb, W, H);
+  const center = (r: { x: number; w: number } | null) => (r ? (r.x + r.w / 2) * W : NaN);
+  assert.ok(regions.frontUpper && regions.frontFull);
+  assert.ok(Math.abs(center(regions.frontFull) - 35) < 8, `front ${center(regions.frontFull)}`);
+  assert.ok(regions.side && Math.abs(center(regions.side) - 125) < 12, `side ${center(regions.side)}`);
+  assert.ok(regions.back && Math.abs(center(regions.back) - 215) < 8, `back ${center(regions.back)}`);
+});
+
+test("findSheetRegions leaves side and back empty when the sheet has none", () => {
+  const rgb = canvas();
+  figure(rgb, 40, false);
+  headColumn(rgb, 200);
+  const regions = findSheetRegions(rgb, W, H);
+  assert.ok(regions.frontFull);
+  assert.equal(regions.side, null);
+  assert.equal(regions.back, null);
 });

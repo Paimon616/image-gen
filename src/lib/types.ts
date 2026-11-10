@@ -110,6 +110,8 @@ export interface GenerationParams {
   // the sheet for this render; strength_override null = use the character's.
   character_sheet_disabled?: boolean;
   character_sheet_strength_override?: number | null;
+  /** Which sheet view the route used for this render (set server-side, for metadata). */
+  character_sheet_region?: SheetRegionKind | null;
   // IP-Adapter weight for style_image (0–1.5, default 0.8, "style transfer").
   style_image_strength?: number;
   source_image: string | null;
@@ -282,6 +284,15 @@ export interface CharacterReferenceSheet {
   // IP-Adapter sees instead of the whole multi-view sheet (which leaks extra
   // figures into scenes). Region is normalized to the sheet's width/height.
   crop?: CharacterReferenceSheetCrop | null;
+  // Views found on the sheet (front full body, side, back...). Each scene uses
+  // the one its prompt asks for (pickSheetRegion); missing ones fall back to crop.
+  regions?: CharacterReferenceSheetRegion[];
+}
+
+export type SheetRegionKind = "front_upper" | "front_full" | "side" | "back";
+
+export interface CharacterReferenceSheetRegion extends CharacterReferenceSheetCrop {
+  kind: SheetRegionKind;
 }
 
 export interface CharacterReferenceSheetCrop {
