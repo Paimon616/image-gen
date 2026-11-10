@@ -9,7 +9,11 @@ import {
   isChatProviderId,
   type ChatProviderId,
 } from "@/lib/chat-models";
-import { normalizeGpuWorkers, type GpuWorkerConfig } from "@/lib/gpu-worker-dispatch";
+import {
+  gpuWorkerHelperUrl,
+  normalizeGpuWorkers,
+  type GpuWorkerConfig,
+} from "@/lib/gpu-worker-dispatch";
 
 export type RunpodPodKind = "image" | "video";
 
@@ -20,6 +24,8 @@ export interface RunpodPodSettings {
   podId: string;
   ssh: string;
   comfyUrl: string;
+  /** Helper origin when it is not derived from comfyUrl (LAN GPU workers). */
+  helperUrl?: string;
 }
 
 export interface AppSettings {
@@ -169,7 +175,7 @@ export async function getRunpodPod(id: string): Promise<RunpodPodSettings | unde
   const pod = settings.runpodPods.find((pod) => pod.id === id || pod.podId === id);
   if (pod) return pod;
   // A LAN GPU worker runs the same helper API (worker-kit/windows/helper.py on
-  // :3000 next to ComfyUI :8188), so the pod file check / download flow works
+  // :8189 next to ComfyUI :8188), so the pod file check / download flow works
   // on it unchanged. It has no RunPod pod id or SSH.
   const worker = settings.gpuWorkers.find((worker) => worker.id === id);
   if (!worker) return undefined;
@@ -180,6 +186,7 @@ export async function getRunpodPod(id: string): Promise<RunpodPodSettings | unde
     podId: "",
     ssh: "",
     comfyUrl: worker.url,
+    helperUrl: gpuWorkerHelperUrl(worker),
   };
 }
 

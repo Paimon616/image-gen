@@ -41,7 +41,7 @@
  └──────────────────────────────┘    pull (토큰)   └─────────────────────────────┘
 ```
 
-- 앱 → 워커: ComfyUI 표준 API(`/prompt`, `/ws`, `/history`, `/view`, `/upload/image`, `/queue`, `/system_stats`, `/models/{folder}`). RunPod와 같은 코드 경로를 쓰고 `remoteKind: "gpu-worker"`로 구분함. RunPod 전용 헬퍼(:3000) 조회는 건너뜀.
+- 앱 → 워커: ComfyUI 표준 API(`/prompt`, `/ws`, `/history`, `/view`, `/upload/image`, `/queue`, `/system_stats`, `/models/{folder}`). RunPod와 같은 코드 경로를 쓰고 `remoteKind: "gpu-worker"`로 구분함. RunPod 전용 헬퍼 조회는 건너뜀.
 - 워커 → depot(선택): 워커가 켜질 때, 그리고 앱에서 업데이트를 요청했을 때 manifest와 모델을 끌어감. 요청은 신호뿐이고 내용은 항상 depot manifest에서 옴. 워커가 스스로 주기적으로 묻지 않음.
 
 ## 앱 쪽 구현
@@ -119,7 +119,7 @@ ComfyUI 실행 인자: `--listen 0.0.0.0 --port 8188 --base-directory <kit>\data
 
 ### 모델 받기 (앱에서 버튼으로)
 
-- 키트의 `helper.py`가 ComfyUI 옆에서 3000번 포트로 함께 뜸. RunPod 헬퍼와 같은 API(`/api/runpod/helper/status|files|download|download/stream|catalog|model-capabilities`) 중 모델 확인, 다운로드에 필요한 부분만 구현(파이썬 표준 라이브러리, 포터블 내장 파이썬으로 실행).
+- 키트의 `helper.py`가 ComfyUI 옆에서 8189번 포트로 함께 뜸(동료 PC의 개발 서버가 흔히 3000을 쓰므로 3000이 아님. `worker-config.json`의 `helperPort`로 변경 가능하지만 앱은 8189를 가정). RunPod 헬퍼와 같은 API(`/api/runpod/helper/status|files|download|download/stream|catalog|model-capabilities`) 중 모델 확인, 다운로드에 필요한 부분만 구현(파이썬 표준 라이브러리, 포터블 내장 파이썬으로 실행).
 - 앱은 워커 id를 팟처럼 취급(`getRunpodPod`가 `gpuWorkers`도 찾음). 그래서 RunPod와 같은 확인과 다운로드 경로를 그대로 탐.
 - 생성 화면에서 `GPU 워커`를 선택하면 워커 목록 아래 "모델 파일" 확인 버튼, 누락 목록, "다운로드 N개" 버튼이 보임. 생성 버튼을 눌러도 먼저 확인함(헬퍼가 응답하지 않으면 확인을 건너뛰고 생성 진행).
 - 다운로드는 Civitai, HF에서 워커 PC로 바로 받음. 토큰은 요청마다 맥에서 전달(RunPod 팟과 같은 방식). 쓰기는 `data\models` 안으로만 제한, https만 허용, 다른 호스트로 리다이렉트될 때는 토큰을 떼고 보냄.
@@ -138,7 +138,7 @@ ComfyUI 실행 인자: `--listen 0.0.0.0 --port 8188 --base-directory <kit>\data
   - 워커는 manifest에 없는 커스텀 노드를 `custom_nodes_disabled`로 옮김. ComfyUI-Manager는 설치하지 않음(원격 임의 설치 경로 차단).
 - 키트 고정 노드: `worker-kit/windows/custom-nodes.json`. marc가 키트 안에 커밋으로 고정한 목록(현재 `ComfyUI_IPAdapter_plus` 하나, 기준 시트 BETA용). `start-worker.bat`(또는 `worker.ps1 nodes`) 실행 시 그 PC에서만 설치. github.com https + 40자리 커밋 해시만 허용, 원격에서 추가, 변경 불가. depot 동기화도 이 목록은 비활성화하지 않음. 자세한 내용은 [character-reference-sheet.md](character-reference-sheet.md).
 - 요청형 업데이트: depot이 설정된 워커는 `start-worker.bat` 뒤에 숨은 감시 프로세스(`worker.ps1 watch`)가 함께 뜸. 스스로 depot에 묻지 않고 요청이 올 때만 동작.
-  - 요청: 생성 화면 GPU 워커 목록의 `업데이트` 버튼, 또는 `POST /api/gpu-workers {"action":"update","workerId"?}`. 앱이 워커 헬퍼(:3000)의 `POST /api/worker/update`를 워커 토큰(Bearer)으로 호출. 토큰은 `GPU_WORKER_TOKEN` 환경변수나 `.local/gpu-worker-depot.env`(gitignore)에서 읽음. depot이 맥에서 켜져 있어야 함.
+  - 요청: 생성 화면 GPU 워커 목록의 `업데이트` 버튼, 또는 `POST /api/gpu-workers {"action":"update","workerId"?}`. 앱이 워커 헬퍼(:8189)의 `POST /api/worker/update`를 워커 토큰(Bearer)으로 호출. 토큰은 `GPU_WORKER_TOKEN` 환경변수나 `.local/gpu-worker-depot.env`(gitignore)에서 읽음. depot이 맥에서 켜져 있어야 함.
   - 요청에는 설치 대상이 없음. 헬퍼는 플래그 파일만 쓰고, 감시 프로세스가 depot manifest를 받아 처리.
   - 새 모델은 ComfyUI를 끄지 않고 받음. ComfyUI 커밋, 커스텀 노드, 키트 파일이 바뀌었으면 큐가 비기를 기다렸다가(15초 간격 2회 연속 빈 큐) 재시작해 적용. 바뀐 게 없으면 재시작 없음.
   - 상태: `GET /api/worker/update`(헬퍼) → checking, models, waiting, restarting, up-to-date, applied, error. 생성 화면 워커 줄 아래에 표시.

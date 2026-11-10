@@ -538,7 +538,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--models", required=True)
     parser.add_argument("--host", default="0.0.0.0")
-    parser.add_argument("--port", type=int, default=3000)
+    parser.add_argument("--port", type=int, default=8189)
     args = parser.parse_args()
     MODELS_DIR = os.path.abspath(args.models)
     os.makedirs(MODELS_DIR, exist_ok=True)

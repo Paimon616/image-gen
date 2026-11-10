@@ -3,6 +3,7 @@ import "server-only";
 import {
   chooseGpuWorker,
   classifyWorkload,
+  gpuWorkerHelperUrl,
   missingModelFiles,
   requiredModelFiles,
   type GpuWorkerCandidate,
@@ -283,9 +284,9 @@ export interface GpuWorkerDownload {
   error?: string;
 }
 
-/** The worker kit's model helper runs on :3000 next to ComfyUI :8188. */
+/** The worker kit's model helper runs on GPU_WORKER_HELPER_PORT next to ComfyUI. */
 function helperUrlForWorker(worker: GpuWorkerConfig) {
-  return worker.url.replace(/:8188$/, ":3000");
+  return gpuWorkerHelperUrl(worker);
 }
 
 /** Model downloads on the worker, including ones started elsewhere. */
