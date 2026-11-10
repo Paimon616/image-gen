@@ -34,6 +34,10 @@ export interface GpuWorkerProbe {
   device?: string;
   vramTotal?: number;
   vramFree?: number;
+  /** VRAM held by ComfyUI's torch allocator (≈ loaded models + working memory). */
+  vramComfy?: number;
+  ramTotal?: number;
+  ramFree?: number;
   comfyuiVersion?: string;
   error?: string;
   checkedAt: number;
@@ -76,8 +80,13 @@ async function probeUncached(worker: GpuWorkerConfig): Promise<GpuWorkerProbe> {
   try {
     const [stats, queue] = await Promise.all([
       fetchJson<{
-        system?: { comfyui_version?: string };
-        devices?: { name?: string; vram_total?: number; vram_free?: number }[];
+        system?: { comfyui_version?: string; ram_total?: number; ram_free?: number };
+        devices?: {
+          name?: string;
+          vram_total?: number;
+          vram_free?: number;
+          torch_vram_total?: number;
+        }[];
       }>(`${worker.url}/system_stats`),
       fetchJson<{ queue_running?: unknown[]; queue_pending?: unknown[] }>(`${worker.url}/queue`),
     ]);
@@ -89,6 +98,9 @@ async function probeUncached(worker: GpuWorkerConfig): Promise<GpuWorkerProbe> {
       device: device?.name,
       vramTotal: device?.vram_total,
       vramFree: device?.vram_free,
+      vramComfy: device?.torch_vram_total,
+      ramTotal: stats.system?.ram_total,
+      ramFree: stats.system?.ram_free,
       comfyuiVersion: stats.system?.comfyui_version,
       checkedAt,
     };

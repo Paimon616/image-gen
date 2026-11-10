@@ -24,6 +24,10 @@ interface WorkerStatus {
     queuePending: number;
     device?: string;
     vramTotal?: number;
+    vramFree?: number;
+    vramComfy?: number;
+    ramTotal?: number;
+    ramFree?: number;
     error?: string;
   } | null;
   downloads: WorkerDownload[] | null;
@@ -94,6 +98,53 @@ function DownloadRow({ item, ko }: { item: WorkerDownload; ko: boolean }) {
 }
 
 const POLL_MS = 5_000;
+
+function gb(bytes: number) {
+  return `${(bytes / 1024 ** 3).toFixed(1)}GB`;
+}
+
+// Live memory of a worker PC (refreshes with the list, every 5s). While a model
+// loads, VRAM/RAM climb here — ComfyUI itself reports no load percentage.
+function MemoryMeters({ probe, ko }: { probe: NonNullable<WorkerStatus["probe"]>; ko: boolean }) {
+  const meters: { label: string; used: number; total: number; note?: string }[] = [];
+  if (probe.vramTotal && probe.vramFree !== undefined) {
+    meters.push({
+      label: "VRAM",
+      used: probe.vramTotal - probe.vramFree,
+      total: probe.vramTotal,
+    });
+  }
+  if (probe.ramTotal && probe.ramFree !== undefined) {
+    meters.push({ label: "RAM", used: probe.ramTotal - probe.ramFree, total: probe.ramTotal });
+  }
+  if (meters.length === 0) return null;
+  return (
+    <div className="grid grid-cols-2 gap-2 pl-3.5" title={ko ? "워커 PC 메모리 사용량 (5초마다 갱신)" : "Worker PC memory (refreshes every 5s)"}>
+      {meters.map((meter) => {
+        const percent = Math.min(100, Math.max(0, Math.round((meter.used / meter.total) * 100)));
+        return (
+          <div key={meter.label} className="min-w-0 space-y-0.5">
+            <div className="flex justify-between gap-1 text-[11px] text-muted-foreground">
+              <span>
+                {meter.label} {percent}%
+              </span>
+              <span className="truncate">
+                {gb(meter.used)} / {gb(meter.total)}
+              </span>
+            </div>
+            <div className="h-1 overflow-hidden rounded bg-muted">
+              <div
+                className={`h-full ${percent >= 90 ? "bg-amber-500" : "bg-primary"}`}
+                style={{ width: `${percent}%` }}
+              />
+            </div>
+            {meter.note && <div className="truncate text-[10px] text-muted-foreground">{meter.note}</div>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 function shortDevice(device?: string) {
   if (!device) return "";
@@ -337,6 +388,7 @@ export function GpuWorkerStatus({
                 )}
               </span>
             </div>
+            {online && worker.probe && <MemoryMeters probe={worker.probe} ko={ko} />}
             {updateText && <p className="pl-3.5 text-muted-foreground">{updateText}</p>}
             </li>
           );
