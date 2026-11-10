@@ -7,7 +7,12 @@
 #   worker.ps1 sync      only the depot sync (optional; models can also be copied
 #                        into data\models by hand)
 #   worker.ps1 nodes     only the kit's pinned custom nodes (custom-nodes.json)
-#   worker.ps1 stop      stop ComfyUI
+#   worker.ps1 watch     auto-update loop (started by start when a depot is set):
+#                        every few minutes it checks the depot; when marc changed
+#                        the ComfyUI ref, nodes or kit files it waits until the
+#                        queue is empty, then restarts the worker to apply them.
+#                        New models download in the background without a restart.
+#   worker.ps1 stop      stop ComfyUI (and the auto-update loop)
 #   worker.ps1 status    show whether it is running
 #
 # Everything lives inside this folder. Nothing outside it is read or written,
@@ -17,7 +22,7 @@
 
 param(
   [Parameter(Position = 0)]
-  [ValidateSet("install", "sync", "nodes", "start", "stop", "status")]
+  [ValidateSet("install", "sync", "nodes", "start", "watch", "stop", "status")]
   [string]$Action = "status",
   [switch]$NoSync
 )
@@ -36,6 +41,12 @@ $PidFile = Join-Path $Kit "comfyui.pid"
 $HelperPidFile = Join-Path $Kit "helper.pid"
 $ManifestCache = Join-Path $Kit "manifest.json"
 $KitNodesPath = Join-Path $Kit "custom-nodes.json"   # marc-pinned node list shipped with the kit
+$WatcherPidFile = Join-Path $Kit "watcher.pid"
+$AppliedPath = Join-Path $Kit "applied-version.txt"    # signature of the depot setup this worker runs
+$AttemptedPath = Join-Path $Kit "attempted-version.txt" # last signature the watcher restarted for
+# Kit files the depot may replace (sha256-checked). Launchers (.bat), firewall.ps1
+# (runs as admin) and worker-config.json are never replaced remotely.
+$KitAutoFiles = @("worker.ps1", "helper.py", "custom-nodes.json")
 
 function Read-Config {
   if (-not (Test-Path $ConfigPath)) {
@@ -132,17 +143,17 @@ function Install-Runtime {
 # The kit's own pinned custom nodes (custom-nodes.json, shipped and versioned
 # with the kit). Installed locally on start; nothing remote can add to or change
 # this list. Each entry must be a github.com https repo at a full 40-hex commit.
+function Test-NodeEntry($node) {
+  if ($node.name -notmatch '^[A-Za-z0-9._-]+$') { Write-Warning "Skipping node with invalid name: $($node.name)"; return $false }
+  if ($node.repo -notmatch '^https://github\.com/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+(\.git)?$') { Write-Warning "Skipping $($node.name): repo must be https://github.com/owner/name"; return $false }
+  if ($node.ref -notmatch '^[0-9a-f]{40}$') { Write-Warning "Skipping $($node.name): ref must be a full commit hash"; return $false }
+  return $true
+}
+
 function Get-KitNodes {
   if (-not (Test-Path $KitNodesPath)) { return @() }
   $list = (Get-Content $KitNodesPath -Raw | ConvertFrom-Json).customNodes
-  $valid = @()
-  foreach ($node in $list) {
-    if ($node.name -notmatch '^[A-Za-z0-9._-]+$') { Write-Warning "Skipping node with invalid name: $($node.name)"; continue }
-    if ($node.repo -notmatch '^https://github\.com/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+(\.git)?$') { Write-Warning "Skipping $($node.name): repo must be https://github.com/owner/name"; continue }
-    if ($node.ref -notmatch '^[0-9a-f]{40}$') { Write-Warning "Skipping $($node.name): ref must be a full commit hash"; continue }
-    $valid += $node
-  }
-  return $valid
+  return @($list | Where-Object { Test-NodeEntry $_ })
 }
 
 function Install-NodeAtRef($node) {
@@ -193,7 +204,48 @@ function Sync-Worker {
   if (Get-WorkerPid) { throw "ComfyUI is running. Stop it before syncing." }
   $manifest = Get-Manifest $cfg
   if (-not $manifest) { return }
+  Sync-Code $manifest
+  Sync-Models $manifest $cfg
+  Set-Content -Path $AppliedPath -Value (Get-CodeSignature $manifest)
+  Write-Host "Sync done." -ForegroundColor Green
+}
 
+# Signature of everything that needs a ComfyUI restart (core, nodes, kit files).
+# Models are left out: they download while ComfyUI runs.
+function Get-CodeSignature($manifest) {
+  $parts = @("core=$($manifest.comfyui.ref)")
+  foreach ($node in $manifest.customNodes) { $parts += "node=$($node.name)@$($node.ref)" }
+  if ($manifest.kit) { foreach ($f in $manifest.kit.files) { $parts += "kit=$($f.name)@$($f.sha256)" } }
+  $bytes = [Text.Encoding]::UTF8.GetBytes((($parts | Sort-Object) -join "`n"))
+  $sha = [Security.Cryptography.SHA256]::Create()
+  return ([BitConverter]::ToString($sha.ComputeHash($bytes)) -replace '-', '').ToLower()
+}
+
+# Replace kit files the depot lists (only $KitAutoFiles, sha256-verified).
+# Returns $true when something changed, so the caller can rerun the new script.
+function Update-KitFiles($manifest, $cfg) {
+  if (-not $manifest.kit -or -not $manifest.kit.files) { return $false }
+  $changed = $false
+  foreach ($f in $manifest.kit.files) {
+    if ($KitAutoFiles -notcontains $f.name) { Write-Warning "Ignoring kit file $($f.name) (not auto-updatable)."; continue }
+    if ($f.sha256 -notmatch '^[0-9a-f]{64}$') { Write-Warning "Ignoring kit file $($f.name) (bad hash)."; continue }
+    $dest = Join-Path $Kit $f.name
+    if ((Test-Path $dest) -and ((Get-FileHash -Algorithm SHA256 $dest).Hash.ToLower() -eq $f.sha256)) { continue }
+    Write-Step "kit file $($f.name)"
+    $tmp = "$dest.new"
+    Remove-Item -Force -ErrorAction SilentlyContinue $tmp, "$tmp.part"
+    Invoke-Download "$($cfg.depotUrl.TrimEnd('/'))/kit/$($f.name)" $tmp $cfg.token
+    if ((Get-FileHash -Algorithm SHA256 $tmp).Hash.ToLower() -ne $f.sha256) {
+      Remove-Item -Force -ErrorAction SilentlyContinue $tmp
+      throw "Kit file $($f.name) failed its hash check; keeping the old one."
+    }
+    Move-Item -Force $tmp $dest
+    $changed = $true
+  }
+  return $changed
+}
+
+function Sync-Code($manifest) {
   # 1. ComfyUI core at marc's pinned commit (replaces only runtime\ComfyUI code).
   $coreRefFile = Join-Path $Core ".worker-ref"
   $coreRef = if (Test-Path $coreRefFile) { (Get-Content $coreRefFile -Raw).Trim() } else { "" }
@@ -212,6 +264,7 @@ function Sync-Worker {
   # The kit's pinned nodes are always wanted (installed by Install-KitNodes).
   foreach ($node in Get-KitNodes) { $wanted[$node.name] = $true }
   foreach ($node in $manifest.customNodes) {
+    if (-not (Test-NodeEntry $node)) { continue }
     $wanted[$node.name] = $true
     Install-NodeAtRef $node
   }
@@ -220,7 +273,9 @@ function Sync-Worker {
     Write-Step "disable unlisted custom node $($_.Name)"
     Move-Item -Force $_.FullName (Join-Path $disabledDir $_.Name)
   }
+}
 
+function Sync-Models($manifest, $cfg) {
   # 3. Models: download what is missing (size check when the depot knows it).
   foreach ($model in $manifest.models) {
     $dest = Join-Path $Data ("models\" + $model.folder + "\" + ($model.name -replace '/', '\'))
@@ -231,7 +286,6 @@ function Sync-Worker {
     $url = "$($cfg.depotUrl.TrimEnd('/'))/files/$($model.folder)/" + [uri]::EscapeDataString($model.name)
     Invoke-Download $url $dest $cfg.token
   }
-  Write-Host "Sync done." -ForegroundColor Green
 }
 
 function Test-FirewallOk($cfg) {
@@ -262,8 +316,22 @@ function Start-Worker {
   if (Get-WorkerPid) { Write-Host "Already running."; return }
   if (-not (Test-Path $Python)) { Install-Runtime }
   Ensure-Firewall $cfg
-  if (-not $NoSync) {
-    try { Sync-Worker } catch { Write-Warning "Sync failed: $($_.Exception.Message). Starting with the current setup." }
+  if (-not $NoSync -and $cfg.depotUrl) {
+    try {
+      $manifest = Get-Manifest $cfg
+      if ($manifest) {
+        if (Update-KitFiles $manifest $cfg) {
+          # PowerShell already parsed the old script; run the new one instead.
+          Write-Step "Kit updated; continuing with the new worker.ps1"
+          & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Kit "worker.ps1") start
+          return
+        }
+        Sync-Code $manifest
+        Sync-Models $manifest $cfg
+        Set-Content -Path $AppliedPath -Value (Get-CodeSignature $manifest)
+        Write-Host "Sync done." -ForegroundColor Green
+      }
+    } catch { Write-Warning "Sync failed: $($_.Exception.Message). Starting with the current setup." }
   }
   try { Install-KitNodes } catch { Write-Warning "Kit custom nodes failed: $($_.Exception.Message). Starting without them." }
   # --base-directory does not create its subfolders; ComfyUI crashes at startup
@@ -298,6 +366,7 @@ function Start-Worker {
       -RedirectStandardOutput $helperLog -RedirectStandardError "$helperLog.err"
     Set-Content -Path $HelperPidFile -Value $helper.Id
   }
+  Start-Watcher $cfg
   Write-Host "Starting ComfyUI on port $($cfg.port) (pid $($proc.Id))..."
   for ($i = 0; $i -lt 90; $i++) {
     Start-Sleep -Seconds 2
@@ -311,7 +380,80 @@ function Start-Worker {
   Write-Warning "ComfyUI is still starting. Check $log"
 }
 
+function Get-WatcherPid {
+  if (-not (Test-Path $WatcherPidFile)) { return $null }
+  $id = [int](Get-Content $WatcherPidFile -Raw)
+  $proc = Get-CimInstance Win32_Process -Filter "ProcessId=$id" -ErrorAction SilentlyContinue
+  if ($proc -and $proc.CommandLine -like "*worker.ps1*watch*") { return $id }
+  Remove-Item -Force -ErrorAction SilentlyContinue $WatcherPidFile
+  return $null
+}
+
+function Start-Watcher($cfg) {
+  if (-not $cfg.depotUrl -or $cfg.autoUpdate -eq $false) { return }
+  if (Get-WatcherPid) { return }
+  $proc = Start-Process -FilePath "powershell.exe" -WindowStyle Hidden -PassThru `
+    -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$Kit\worker.ps1`" watch"
+  Set-Content -Path $WatcherPidFile -Value $proc.Id
+}
+
+function Write-WatchLog($text) {
+  New-Item -ItemType Directory -Force -Path $Logs | Out-Null
+  $line = (Get-Date -Format "yyyy-MM-dd HH:mm:ss") + " " + $text
+  Add-Content -Path (Join-Path $Logs ("watch-" + (Get-Date -Format "yyyyMMdd") + ".log")) -Value $line
+}
+
+function Read-Text($path) { if (Test-Path $path) { (Get-Content $path -Raw).Trim() } else { "" } }
+
+function Test-WorkerIdle($cfg) {
+  try {
+    $q = Invoke-RestMethod -TimeoutSec 5 "http://127.0.0.1:$($cfg.port)/queue"
+    return (@($q.queue_running).Count -eq 0 -and @($q.queue_pending).Count -eq 0)
+  } catch { return $false }
+}
+
+# Auto-update loop. Pulls from marc's depot only (same trust as start); nothing
+# is pushed to this PC. Code changes are applied by a normal restart, and only
+# while no generation is queued or running.
+function Watch-Worker {
+  $cfg = Read-Config
+  if (-not $cfg.depotUrl -or $cfg.autoUpdate -eq $false) { return }
+  Set-Content -Path $WatcherPidFile -Value $PID
+  $minutes = if ($cfg.autoUpdateMinutes) { [Math]::Max(1, [int]$cfg.autoUpdateMinutes) } else { 10 }
+  Write-WatchLog "watching $($cfg.depotUrl) every $minutes min"
+  while ($true) {
+    Start-Sleep -Seconds ($minutes * 60)
+    if (-not (Get-WorkerPid)) { Write-WatchLog "worker stopped; exiting"; break }
+    if ((Get-WatcherPid) -ne $PID) { break }
+    try {
+      $manifest = Get-Manifest $cfg
+      if (-not $manifest) { continue }
+      try { Sync-Models $manifest $cfg } catch { Write-WatchLog "model sync failed: $($_.Exception.Message)" }
+      $sig = Get-CodeSignature $manifest
+      if ($sig -eq (Read-Text $AppliedPath) -or $sig -eq (Read-Text $AttemptedPath)) { continue }
+      Write-WatchLog "update available; waiting for an empty queue"
+      $idle = 0
+      while ($idle -lt 2) {
+        Start-Sleep -Seconds 30
+        if (-not (Get-WorkerPid)) { Write-WatchLog "worker stopped; exiting"; return }
+        if (Test-WorkerIdle $cfg) { $idle++ } else { $idle = 0 }
+      }
+      Set-Content -Path $AttemptedPath -Value $sig
+      Write-WatchLog "restarting to apply the update"
+      Remove-Item -Force -ErrorAction SilentlyContinue $WatcherPidFile
+      Stop-Worker
+      Start-Process -FilePath "powershell.exe" -WindowStyle Hidden `
+        -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$Kit\worker.ps1`" start"
+      return
+    } catch { Write-WatchLog "check failed: $($_.Exception.Message)" }
+  }
+  if ((Read-Text $WatcherPidFile) -eq "$PID") { Remove-Item -Force -ErrorAction SilentlyContinue $WatcherPidFile }
+}
+
 function Stop-Worker {
+  $watcher = Get-WatcherPid
+  if ($watcher -and $watcher -ne $PID) { & taskkill.exe /PID $watcher /F | Out-Null }
+  Remove-Item -Force -ErrorAction SilentlyContinue $WatcherPidFile
   $ids = @((Get-WorkerPid), (Get-KitPid $HelperPidFile)) | Where-Object { $_ }
   if ($ids.Count -eq 0) { Write-Host "Not running."; return }
   # /T kills the process tree (ComfyUI may spawn helpers).
@@ -323,6 +465,7 @@ function Stop-Worker {
 function Show-Status {
   $id = Get-WorkerPid
   if ($id) { Write-Host "Running (pid $id)." -ForegroundColor Green } else { Write-Host "Stopped." }
+  if (Get-WatcherPid) { Write-Host "Auto-update: on (logs\watch-*.log)." }
 }
 
 switch ($Action) {
@@ -330,6 +473,7 @@ switch ($Action) {
   "sync" { Sync-Worker }
   "nodes" { Install-KitNodes }
   "start" { Start-Worker }
+  "watch" { Watch-Worker }
   "stop" { Stop-Worker }
   "status" { Show-Status }
 }

@@ -24,7 +24,7 @@ import { createServer } from "node:http";
 import { join, resolve, sep } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import { timingSafeEqual } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const TOKEN = process.env.GPU_WORKER_TOKEN?.trim() ?? "";
@@ -47,7 +47,14 @@ const MODEL_FOLDERS = new Set([
   "pulid",
   "insightface",
   "clip_vision",
+  "ipadapter",
 ]);
+
+// Kit files a running worker replaces on its own (auto-update). Launchers
+// (.bat, cmd reads them while running), firewall.ps1 (runs as admin) and
+// worker-config.json stay manual. worker.ps1 keeps its own copy of this list.
+export const KIT_AUTO_FILES = ["worker.ps1", "helper.py", "custom-nodes.json"];
+const KIT_DIR = join(ROOT, "worker-kit", "windows");
 
 if (TOKEN.length < 16) {
   console.error("GPU_WORKER_TOKEN is required (16+ chars). e.g. export GPU_WORKER_TOKEN=$(openssl rand -hex 24)");
@@ -112,6 +119,25 @@ async function localFile(folder, name) {
   }
 }
 
+/** Kit file bytes as the worker should store them (.ps1 with CRLF line ends). */
+export function kitFileBytes(name, raw = readFileSync(join(KIT_DIR, name))) {
+  if (!name.endsWith(".ps1")) return raw;
+  return Buffer.from(raw.toString("utf8").replace(/\r\n/g, "\n").replace(/\n/g, "\r\n"), "utf8");
+}
+
+function kitManifest() {
+  const files = [];
+  for (const name of KIT_AUTO_FILES) {
+    try {
+      const bytes = kitFileBytes(name);
+      files.push({ name, size: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex") });
+    } catch {
+      // missing in this checkout: the worker keeps its copy
+    }
+  }
+  return { files };
+}
+
 async function buildManifest() {
   const profile = readJson("data/gpu-worker-profile.json", {});
   const catalog = readJson("data/model-catalog.json", {});
@@ -151,6 +177,7 @@ async function buildManifest() {
       .filter((node) => wantedNodes.has(node.name))
       .map((node) => ({ name: node.name, repo: node.repo, ref: node.ref })),
     models,
+    kit: kitManifest(),
     problems,
   };
 }
@@ -222,6 +249,16 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "GET" && url.pathname === "/manifest") {
       return sendJson(res, 200, await buildManifest());
+    }
+
+    const kitMatch = /^\/kit\/([^/]+)$/.exec(url.pathname);
+    if (req.method === "GET" && kitMatch) {
+      const name = decodeURIComponent(kitMatch[1]);
+      if (!KIT_AUTO_FILES.includes(name)) return sendJson(res, 404, { error: "not a kit file" });
+      const bytes = kitFileBytes(name);
+      console.log(`[depot] ${ip} GET kit/${name}`);
+      res.writeHead(200, { "Content-Type": "application/octet-stream", "Content-Length": bytes.length });
+      return res.end(bytes);
     }
 
     const fileMatch = /^\/files\/([^/]+)\/(.+)$/.exec(url.pathname);

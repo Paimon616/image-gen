@@ -1,9 +1,11 @@
 {
-  "$comment": "Required: allowFrom = the Mac IPs allowed to use this GPU (everyone generating with image-gen). Optional: depotUrl/token to auto-sync models and custom nodes from marc's Mac; without them, put model files into data\\models\\<folder> by hand.",
+  "$comment": "Required: allowFrom = the Mac IPs allowed to use this GPU (everyone generating with image-gen). Optional: depotUrl/token to auto-sync models and custom nodes from marc's Mac; without them, put model files into data\\models\\<folder> by hand. With a depot, the worker auto-updates while it runs (autoUpdate, checked every autoUpdateMinutes); set autoUpdate to false to only update on start.",
   "allowFrom": ["10.0.0.10", "10.0.0.11"],
   "port": 8188,
   "depotUrl": "",
   "token": "",
+  "autoUpdate": true,
+  "autoUpdateMinutes": 10,
   "portableRelease": "latest",
   "extraArgs": []
 }
