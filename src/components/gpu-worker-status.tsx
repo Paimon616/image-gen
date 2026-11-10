@@ -324,6 +324,17 @@ export function GpuWorkerStatus({
                     {ko ? "업데이트" : "Update"}
                   </Button>
                 )}
+                {online && (
+                  <a
+                    href={`/api/gpu-workers/logs?workerId=${encodeURIComponent(worker.id)}&name=watch`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="ml-1 text-[11px] underline-offset-2 hover:underline"
+                    title={ko ? "워커 로그 보기 (새 탭)" : "Worker logs (new tab)"}
+                  >
+                    {ko ? "로그" : "Logs"}
+                  </a>
+                )}
               </span>
             </div>
             {updateText && <p className="pl-3.5 text-muted-foreground">{updateText}</p>}

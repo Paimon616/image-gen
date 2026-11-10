@@ -11,9 +11,13 @@ Reachable only from the addresses firewall.ps1 allows.
 POST /api/worker/update (Bearer = the worker token) asks the kit's update
 watcher to pull marc's depot now. The request carries no content: what gets
 installed still comes only from the depot manifest.
+
+GET /api/worker/logs[?name=watch|comfyui|comfyui-err|helper|helper-err&lines=N]
+(same token) returns the tail of the newest kit log of that kind, read-only.
 """
 
 import argparse
+import glob
 import hmac
 import json
 import os
@@ -229,6 +233,49 @@ def update_state():
     return state
 
 
+# Fixed log kinds -> file patterns inside <kit>\logs. Nothing else is readable.
+LOG_KINDS = {
+    "watch": "watch-*.log",
+    "comfyui": "comfyui-*.log",
+    "comfyui-err": "comfyui-*.log.err",
+    "helper": "helper-*.log",
+    "helper-err": "helper-*.log.err",
+}
+LOG_TAIL_BYTES = 512 * 1024
+
+
+def newest_log(kind):
+    files = glob.glob(os.path.join(KIT_DIR, "logs", LOG_KINDS[kind]))
+    if kind in ("comfyui", "helper"):
+        files = [f for f in files if not f.endswith(".err")]
+    return max(files, key=os.path.getmtime) if files else None
+
+
+def log_listing():
+    result = []
+    for kind in LOG_KINDS:
+        path = newest_log(kind)
+        if path:
+            stat = os.stat(path)
+            result.append({"name": kind, "file": os.path.basename(path), "size": stat.st_size,
+                           "modified": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(stat.st_mtime))})
+    return result
+
+
+def log_tail(kind, lines):
+    path = newest_log(kind)
+    if not path:
+        return {"name": kind, "file": None, "lines": []}
+    with open(path, "rb") as f:
+        f.seek(0, os.SEEK_END)
+        size = f.tell()
+        f.seek(max(0, size - LOG_TAIL_BYTES))
+        data = f.read()
+    text = data.decode("utf-8", errors="replace")
+    return {"name": kind, "file": os.path.basename(path), "size": size,
+            "lines": text.splitlines()[-lines:]}
+
+
 def watcher_alive():
     """True when the kit's update watcher (worker.ps1 watch) is running."""
     try:
@@ -309,6 +356,20 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(200, {"downloads": downloads_snapshot()})
         if path == "/api/worker/update":
             return self._json(200, update_state())
+        if path == "/api/worker/logs":
+            if not self._authorized():
+                return self._json(401, {"error": "bad token"})
+            query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            name = (query.get("name") or [""])[0]
+            if not name:
+                return self._json(200, {"logs": log_listing()})
+            if name not in LOG_KINDS:
+                return self._json(400, {"error": "name must be one of %s" % ", ".join(LOG_KINDS)})
+            try:
+                lines = max(1, min(5000, int((query.get("lines") or ["300"])[0])))
+            except ValueError:
+                lines = 300
+            return self._json(200, log_tail(name, lines))
         return self._json(404, {"error": "Not found"})
 
     def _authorized(self):

@@ -360,6 +360,38 @@ export async function requestGpuWorkerUpdate(worker: GpuWorkerConfig) {
   }
 }
 
+export const GPU_WORKER_LOG_KINDS = ["watch", "comfyui", "comfyui-err", "helper", "helper-err"] as const;
+export type GpuWorkerLogKind = (typeof GPU_WORKER_LOG_KINDS)[number];
+
+export interface GpuWorkerLogTail {
+  name: string;
+  file: string | null;
+  size?: number;
+  lines: string[];
+}
+
+/** Tail of one kit log on the worker (read-only, worker token). */
+export async function fetchGpuWorkerLog(
+  worker: GpuWorkerConfig,
+  name: GpuWorkerLogKind,
+  lines = 300
+): Promise<GpuWorkerLogTail> {
+  const token = gpuWorkerToken();
+  if (!token) throw new Error("GPU_WORKER_TOKEN not set (.local/gpu-worker-depot.env)");
+  const url = `${helperUrlForWorker(worker)}/api/worker/logs?name=${encodeURIComponent(name)}&lines=${lines}`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+    signal: AbortSignal.timeout(10_000),
+  }).catch((error: unknown) => {
+    throw new Error(errorMessage(error));
+  });
+  if (res.status === 404) throw new Error("worker kit too old (no log endpoint)");
+  const data = (await res.json().catch(() => ({}))) as GpuWorkerLogTail & { error?: string };
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+}
+
 export async function getGpuWorkerStatuses() {
   const workers = await getGpuWorkers();
   return Promise.all(
