@@ -103,6 +103,13 @@ export interface GenerationParams {
    * edit: scene on the first inputs, person on the _b inputs).
    */
   scene_reference_image?: string | null;
+  /**
+   * SDXL: an explicit IP-Adapter identity reference sent by the caller (the
+   * consistency sheet GPU engine). Same graph as character_sheet_image, which
+   * stays route-controlled.
+   */
+  identity_reference_image?: string | null;
+  identity_reference_strength?: number;
   // BETA 캐릭터 기준 시트: the character's confirmed reference sheet image. Set
   // server-side (api/generate/stream) for renders of a sheet-confirmed character
   // when the beta is on; applied as IP-Adapter conditioning on the SDXL workflow.
