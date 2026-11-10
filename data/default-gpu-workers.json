@@ -4,7 +4,7 @@
     {
       "id": "rtx3060-pc1",
       "label": "3060 PC1",
-      "url": "http://10.202.97.111:8188",
+      "url": "http://10.202.66.127:8188",
       "role": "primary",
       "speed": 1,
       "maxQueue": 2,
