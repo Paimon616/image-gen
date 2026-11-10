@@ -198,7 +198,10 @@ R27: 시트 확정 시 정면 상반신, 정면 전신, 측면, 뒷모습 영역
 - 캐릭터, 배경 시트: 프롬프트로 생성. 레퍼런스가 있으면 첫 장만 Krea 2 캐릭터 참조로 사용(노드가 참조를 최대 2장 받음).
 - 장면: 캐릭터 시트는 정면 전신 영역을 자동으로 잘라 인물 참조, 배경 시트는 4분할의 첫 칸을 장소 참조로 써서 Krea 2 두 참조 편집(장소 aligned, 인물 beside)으로 "이 인물을 이 장소에". 복장 참조는 쓰지 않음.
 - 크기 고정: 시트 1024×1024, 장면 768×1344(Krea 2는 약 1MP 학습). 3060 기준 시트 약 1분, 장면 약 2분.
-- 모델 파일 이름은 `CONSISTENCY_SHEET_GPU_MODEL`(기본 `krea2_turbo_fp8_scaled.safetensors`).
+- 모델 선택: 대상(GPU 워커 / 이 PC)에 실제 설치된 이미지 모델 목록(`GET /api/consistency-sheet/gpu-models?target=`)에서 고름. 기본은 `CONSISTENCY_SHEET_GPU_MODEL`(기본 `krea2_turbo_fp8_scaled.safetensors`).
+  - Krea 2: 캐릭터 + 배경 참조(위 방식).
+  - SDXL / Illustrious: 캐릭터 참조만, IP-Adapter(`identity_reference_image`, 0.6). 배경 시트는 쓰지 않음. 3060 기준 시트 약 30초, 장면 약 35초.
+  - Z-Image, Anima: 참조 없이 프롬프트만.
 
 ### 로컬 GPU(예: RTX 4080 PC)에서 쓰기
 1. 그 PC에 image-gen과 ComfyUI 설치(이미지 생성 탭 로컬 생성과 같은 준비).

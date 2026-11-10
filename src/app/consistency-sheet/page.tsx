@@ -627,6 +627,12 @@ export default function ConsistencySheetPage() {
                     </button>
                   ))}
                 </div>
+                <GpuModelPicker
+                  target={params.gpuTarget}
+                  value={params.gpuModel}
+                  onChange={(gpuModel) => patch({ gpuModel })}
+                  lang={language}
+                />
                 <p className="text-[11px] leading-4 text-muted-foreground">{tr("gpuHint", language)}</p>
               </>
             )}
@@ -1076,3 +1082,112 @@ function SheetCard({
     </div>
   );
 }
+
+interface GpuModelOption {
+  name: string;
+  family: "krea2" | "sdxl" | "zimage" | "anima";
+  person: boolean;
+  place: boolean;
+}
+
+const GPU_FAMILY_LABEL: Record<GpuModelOption["family"], string> = {
+  krea2: "Krea 2",
+  sdxl: "SDXL",
+  zimage: "Z-Image",
+  anima: "Anima",
+};
+
+// Image models installed on the chosen GPU target (GPU workers or this PC),
+// with what each can use as references in the 일관성 시트 GPU engine.
+function GpuModelPicker({
+  target,
+  value,
+  onChange,
+  lang,
+}: {
+  target: "workers" | "local";
+  value: string;
+  onChange: (model: string) => void;
+  lang: Lang;
+}) {
+  const [state, setState] = useState<{
+    target: string;
+    models: GpuModelOption[];
+    defaultModel: string;
+    error: string;
+  } | null>(null);
+
+  useEffect(() => {
+    let stopped = false;
+    fetch(`/api/consistency-sheet/gpu-models?target=${target}`, { cache: "no-store" })
+      .then(async (res) => {
+        const data = (await res.json()) as {
+          models?: GpuModelOption[];
+          defaultModel?: string;
+          error?: string;
+        };
+        if (stopped) return;
+        setState({
+          target,
+          models: data.models ?? [],
+          defaultModel: data.defaultModel ?? "",
+          error: res.ok ? "" : data.error || `HTTP ${res.status}`,
+        });
+      })
+      .catch((err: unknown) => {
+        if (!stopped) {
+          setState({ target, models: [], defaultModel: "", error: err instanceof Error ? err.message : String(err) });
+        }
+      });
+    return () => {
+      stopped = true;
+    };
+  }, [target]);
+
+  const loading = !state || state.target !== target;
+  const models = loading ? [] : state.models;
+  // The saved choice when it is installed here, else the Krea 2 default, else the first.
+  const effective =
+    models.find((m) => m.name === value)?.name ??
+    models.find((m) => m.name === state?.defaultModel)?.name ??
+    models[0]?.name ??
+    "";
+  const current = models.find((m) => m.name === effective);
+
+  useEffect(() => {
+    if (!loading && effective && effective !== value) onChange(effective);
+  }, [loading, effective, value, onChange]);
+
+  const refs = current
+    ? current.person && current.place
+      ? lang === "ko" ? "참조: 캐릭터 + 배경" : "References: character + place"
+      : current.person
+        ? lang === "ko" ? "참조: 캐릭터만 (IP-Adapter), 배경 시트는 안 씀" : "References: character only (IP-Adapter)"
+        : lang === "ko" ? "참조 없음, 프롬프트만" : "No references, prompt only"
+    : "";
+
+  return (
+    <div className="space-y-1">
+      <select
+        value={effective}
+        onChange={(event) => onChange(event.target.value)}
+        disabled={loading || models.length === 0}
+        className="h-8 w-full rounded-md border border-border bg-card px-2 text-xs"
+        aria-label={lang === "ko" ? "GPU 모델" : "GPU model"}
+      >
+        {loading && <option value="">{lang === "ko" ? "모델 확인 중..." : "Checking models..."}</option>}
+        {!loading && models.length === 0 && (
+          <option value="">{lang === "ko" ? "사용할 수 있는 모델 없음" : "No models available"}</option>
+        )}
+        {models.map((model) => (
+          <option key={model.name} value={model.name}>
+            {GPU_FAMILY_LABEL[model.family]} · {model.name}
+          </option>
+        ))}
+      </select>
+      {!loading && state?.error && <p className="text-[11px] text-destructive">{state.error}</p>}
+      {refs && <p className="text-[11px] text-muted-foreground">{refs}</p>}
+    </div>
+  );
+}
+

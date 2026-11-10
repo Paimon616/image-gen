@@ -1763,6 +1763,17 @@ function ipAdapterReferences(params: GenerationParams): IpAdapterReference[] {
       endAt: 0.8,
     });
   }
+  const identity = params.identity_reference_image?.trim();
+  if (identity) {
+    references.push({
+      feature: "sheet",
+      image: identity,
+      weight: clampSheetStrength(params.identity_reference_strength ?? 0.6),
+      weightType: "linear",
+      cropPosition: "pad",
+      endAt: 0.8,
+    });
+  }
   const style = params.style_image?.trim();
   if (style) {
     references.push({

@@ -77,6 +77,10 @@ function normalizeParams(raw: Record<string, unknown>): ConsistencySheetParams {
     workspaceId: isValidWorkspaceId(raw.workspaceId) ? raw.workspaceId : "",
     engine: raw.engine === "gpu" ? "gpu" : "fal",
     gpuTarget: raw.gpuTarget === "local" ? "local" : "workers",
+    gpuModel:
+      typeof raw.gpuModel === "string" && /^[\w .\-/\\]{1,200}\.(safetensors|gguf|ckpt)$/i.test(raw.gpuModel)
+        ? raw.gpuModel
+        : "",
   };
 }
 
