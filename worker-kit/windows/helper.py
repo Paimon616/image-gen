@@ -325,8 +325,9 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/worker/update":
             if not self._authorized():
                 return self._json(401, {"error": "bad token"})
+            # "from" only reorders the worker's configured depots; it never adds one.
             with open(UPDATE_FLAG, "w", encoding="utf-8") as f:
-                f.write(time.strftime("%Y-%m-%dT%H:%M:%S"))
+                json.dump({"at": time.strftime("%Y-%m-%dT%H:%M:%S"), "from": self.client_address[0]}, f)
             try:
                 restarted = ensure_watcher()
             except Exception as error:

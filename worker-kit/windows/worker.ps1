@@ -63,6 +63,15 @@ function Read-Config {
   }
   $cfg = Get-Content $ConfigPath -Raw | ConvertFrom-Json
   if (-not $cfg.port) { $cfg | Add-Member -NotePropertyName port -NotePropertyValue 8188 -Force }
+  # depotUrls: marc's Macs that may serve updates (same repo, same token), tried
+  # in order. depotUrl (single) still works. depotUrl ends up as the one in use.
+  $urls = @()
+  if ($cfg.depotUrls) { $urls += @($cfg.depotUrls) }
+  if ($cfg.depotUrl) { $urls += $cfg.depotUrl }
+  $urls = @($urls | Where-Object { $_ -match '^http://[A-Za-z0-9.-]+(:\d+)?/?$' } | Select-Object -Unique)
+  $cfg | Add-Member -NotePropertyName depotUrls -NotePropertyValue $urls -Force
+  $first = if ($urls.Count -gt 0) { $urls[0] } else { "" }
+  $cfg | Add-Member -NotePropertyName depotUrl -NotePropertyValue $first -Force
   return $cfg
 }
 
@@ -189,21 +198,30 @@ function Install-KitNodes {
   foreach ($node in Get-KitNodes) { Install-NodeAtRef $node }
 }
 
-function Get-Manifest($cfg) {
-  try {
-    $res = Invoke-WebRequest -UseBasicParsing -TimeoutSec 10 `
-      -Headers @{ Authorization = "Bearer $($cfg.token)" } `
-      -Uri "$($cfg.depotUrl.TrimEnd('/'))/manifest"
-    Set-Content -Path $ManifestCache -Value $res.Content -Encoding UTF8
-    return $res.Content | ConvertFrom-Json
-  } catch {
-    Write-Warning "Depot not reachable ($($_.Exception.Message))."
-    if (Test-Path $ManifestCache) {
-      Write-Warning "Using the last synced setup."
-      return $null
-    }
-    throw "First sync needs marc's depot running. Ask marc to start it."
+# Tries each configured depot; $preferHost (the Mac that sent the update request)
+# goes first when it is one of them. Unlisted hosts are never contacted.
+function Get-Manifest($cfg, $preferHost = "") {
+  $urls = @($cfg.depotUrls)
+  if ($preferHost) {
+    $urls = @($urls | Where-Object { ([uri]$_).Host -eq $preferHost }) + @($urls | Where-Object { ([uri]$_).Host -ne $preferHost })
   }
+  $errors = @()
+  foreach ($url in $urls) {
+    try {
+      $res = Invoke-WebRequest -UseBasicParsing -TimeoutSec 10 `
+        -Headers @{ Authorization = "Bearer $($cfg.token)" } `
+        -Uri "$($url.TrimEnd('/'))/manifest"
+      Set-Content -Path $ManifestCache -Value $res.Content -Encoding UTF8
+      $cfg.depotUrl = $url
+      return $res.Content | ConvertFrom-Json
+    } catch { $errors += "${url}: $($_.Exception.Message)" }
+  }
+  Write-Warning "Depot not reachable ($($errors -join '; '))."
+  if (Test-Path $ManifestCache) {
+    Write-Warning "Using the last synced setup."
+    return $null
+  }
+  throw "First sync needs marc's depot running. Ask marc to start it."
 }
 
 function Sync-Worker {
@@ -466,16 +484,19 @@ function Watch-Worker {
   $cfg = Read-Config
   if (-not $cfg.depotUrl -or $cfg.autoUpdate -eq $false) { return }
   Set-Content -Path $WatcherPidFile -Value $PID
-  Write-WatchLog "waiting for update requests (depot $($cfg.depotUrl))"
+  Write-WatchLog "waiting for update requests (depots $($cfg.depotUrls -join ', '))"
   while ($true) {
     Start-Sleep -Seconds 3
     if (-not (Get-WorkerPid)) { Write-WatchLog "worker stopped; exiting"; break }
     if ((Get-WatcherPid) -ne $PID) { break }
     if (-not (Test-Path $UpdateFlag)) { continue }
+    $from = ""
+    try { $from = [string]((Get-Content $UpdateFlag -Raw | ConvertFrom-Json).from) } catch {}
     Remove-Item -Force -ErrorAction SilentlyContinue $UpdateFlag
     try {
+      $cfg = Read-Config
       Set-UpdateState "checking" "reading the depot manifest"
-      $manifest = Get-Manifest $cfg
+      $manifest = Get-Manifest $cfg $from
       if (-not $manifest) { Set-UpdateState "error" "depot not reachable"; continue }
       Set-UpdateState "models" "downloading new models"
       Sync-Models $manifest $cfg
