@@ -448,8 +448,31 @@ function Get-WatcherPid {
   return $null
 }
 
+function Test-UpdatesEnabled($cfg) { return [bool]$cfg.depotUrl -and $cfg.autoUpdate -ne $false }
+
+# idleUnloadMinutes (default 10, 0 = off): after that long with an empty queue,
+# ComfyUI drops its models from VRAM and RAM (POST /free), so the GPU is free
+# for the PC's owner. The next job reloads them (first image is slower).
+function Get-IdleUnloadMinutes($cfg) {
+  if ($null -eq $cfg.idleUnloadMinutes) { return 10 }
+  return [Math]::Max(0, [double]$cfg.idleUnloadMinutes)
+}
+
+function Get-QueueDepth($cfg) {
+  try {
+    $q = Invoke-RestMethod -TimeoutSec 5 "http://127.0.0.1:$($cfg.port)/queue"
+    return @($q.queue_running).Count + @($q.queue_pending).Count
+  } catch { return -1 }
+}
+
+function Invoke-IdleUnload($cfg) {
+  $body = '{"unload_models": true, "free_memory": true}'
+  Invoke-RestMethod -TimeoutSec 30 -Method Post -ContentType "application/json" -Body $body `
+    "http://127.0.0.1:$($cfg.port)/free" | Out-Null
+}
+
 function Start-Watcher($cfg) {
-  if (-not $cfg.depotUrl -or $cfg.autoUpdate -eq $false) { return }
+  if (-not (Test-UpdatesEnabled $cfg) -and (Get-IdleUnloadMinutes $cfg) -le 0) { return }
   if (Get-WatcherPid) { return }
   $proc = Start-Process -FilePath "powershell.exe" -WindowStyle Hidden -PassThru `
     -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$Kit\worker.ps1`" watch"
@@ -482,14 +505,32 @@ function Set-UpdateState($state, $message) {
 # Code changes are applied by a normal restart, only while the queue is empty.
 function Watch-Worker {
   $cfg = Read-Config
-  if (-not $cfg.depotUrl -or $cfg.autoUpdate -eq $false) { return }
+  $updates = Test-UpdatesEnabled $cfg
+  $idleMinutes = Get-IdleUnloadMinutes $cfg
+  if (-not $updates -and $idleMinutes -le 0) { return }
   Set-Content -Path $WatcherPidFile -Value $PID
-  Write-WatchLog "waiting for update requests (depots $($cfg.depotUrls -join ', '))"
+  if ($updates) { Write-WatchLog "waiting for update requests (depots $($cfg.depotUrls -join ', '))" }
+  if ($idleMinutes -gt 0) { Write-WatchLog "idle unload after $idleMinutes min with an empty queue" }
+  $lastBusy = Get-Date
+  $unloaded = $true   # nothing is loaded until the first job runs
   while ($true) {
     Start-Sleep -Seconds 3
     if (-not (Get-WorkerPid)) { Write-WatchLog "worker stopped; exiting"; break }
     if ((Get-WatcherPid) -ne $PID) { break }
-    if (-not (Test-Path $UpdateFlag)) { continue }
+    if ($idleMinutes -gt 0) {
+      $depth = Get-QueueDepth $cfg
+      if ($depth -gt 0) {
+        $lastBusy = Get-Date
+        $unloaded = $false
+      } elseif ($depth -eq 0 -and -not $unloaded -and ((Get-Date) - $lastBusy).TotalMinutes -ge $idleMinutes) {
+        try {
+          Invoke-IdleUnload $cfg
+          $unloaded = $true
+          Write-WatchLog "idle $idleMinutes min: models unloaded"
+        } catch { Write-WatchLog "idle unload failed: $($_.Exception.Message)" }
+      }
+    }
+    if (-not $updates -or -not (Test-Path $UpdateFlag)) { continue }
     $from = ""
     try { $from = [string]((Get-Content $UpdateFlag -Raw | ConvertFrom-Json).from) } catch {}
     Remove-Item -Force -ErrorAction SilentlyContinue $UpdateFlag

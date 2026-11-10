@@ -146,6 +146,7 @@ ComfyUI 실행 인자: `--listen 0.0.0.0 --port 8188 --base-directory <kit>\data
   - 감시 프로세스가 죽어 있으면 헬퍼가 업데이트 요청을 받을 때 다시 띄움.
 - 로그 원격 조회: 생성 화면 워커 줄의 `로그` 링크(새 탭) 또는 `GET /api/gpu-workers/logs?workerId=&name=watch|comfyui|comfyui-err|helper|helper-err&lines=300[&format=json]`. 앱이 워커 헬퍼 `GET /api/worker/logs`를 워커 토큰으로 호출. 키트 `logs\` 안의 정해진 종류 최신 파일 끝부분만 읽기 전용으로 반환.
 - 맥 여러 대: `worker-config.json`의 `depotUrls`에 depot을 띄울 맥들을 나열(예: `http://10.202.96.117:5354`, `http://10.202.99.31:5354`). 켤 때는 순서대로 시도, 업데이트 요청은 요청을 보낸 맥이 목록에 있으면 그 맥 depot부터 시도. 목록 밖 주소로는 절대 접속하지 않음. 각 맥은 같은 토큰(`.local/gpu-worker-depot.env`)과 같은 브랜치로 depot 실행.
+- 유휴 시 모델 내림: 감시 프로세스가 3초마다 ComfyUI 큐를 보고, 큐가 `idleUnloadMinutes`(기본 10분) 동안 비어 있으면 `POST /free {unload_models, free_memory}`로 모델을 VRAM과 RAM에서 내림. 동료가 GPU를 다른 일에 쓸 수 있게 하기 위함. 다음 작업은 모델을 다시 올리므로 첫 장이 느림(Krea 2 기준 약 +20초). `0`이면 끔. Ollama의 keep_alive와 같은 개념.
 - 로그인 시 자동 시작: `worker-config.json`의 `"startAtLogon": true`. `start-worker.bat`이 사용자 시작프로그램 폴더에 바로가기(`onechat GPU worker.lnk`) 하나를 만들어, Windows 로그인 때마다 숨김으로 `worker.ps1 start` 실행. 관리자 권한, 예약 작업 없음. `false`로 바꾸고 한 번 켜거나 `uninstall-worker.bat`, `worker.ps1 autostart-off`로 제거. 동료 PC의 GPU를 상시 쓰게 되므로 켜기 전에 동료 동의 필요.
   - 동료에게 부탁해야 하는 경우로 남는 것: 최초 1회 키트 설치, 맥 IP 변경 시 `depotUrl` 수정(DHCP 임대 90일), 방화벽 규칙이나 포터블 런타임(파이썬, torch) 교체. 자동 시작을 켜면 재부팅 후 실행은 빠짐.
   - 요청을 받지 않으려면 `worker-config.json`에 `"autoUpdate": false`. 기록은 `logs\watch-*.log`.
