@@ -75,10 +75,41 @@ async function fetchLocalRequirements(params: GenerationParams) {
 }
 
 /**
+ * Id of the GPU worker the requirement check should look at: the first enabled
+ * worker, preferring one that is online. "" until known or when not in workers mode.
+ */
+function useFirstGpuWorkerId(enabled: boolean) {
+  const [id, setId] = useState("");
+  useEffect(() => {
+    if (!enabled) return;
+    let active = true;
+    void fetch("/api/gpu-workers", { cache: "no-store" })
+      .then((response) => response.json())
+      .then(
+        (data: {
+          workers?: { id: string; enabled?: boolean; probe?: { online?: boolean } }[];
+        }) => {
+          if (!active) return;
+          const workers = (data.workers ?? []).filter((worker) => worker.enabled !== false);
+          const chosen = workers.find((worker) => worker.probe?.online) ?? workers[0];
+          setId(chosen?.id ?? "");
+        }
+      )
+      .catch(() => {
+        if (active) setId("");
+      });
+    return () => {
+      active = false;
+    };
+  }, [enabled]);
+  return enabled ? id : "";
+}
+
+/**
  * Whether the selected checkpoint + workflow can actually run on the active target,
  * and a one-click install for whatever it is missing. Local checks the app's own
- * ComfyUI models tree and downloads into it; RunPod asks the pod's helper and hands
- * the batch to the background download queue.
+ * ComfyUI models tree and downloads into it; RunPod and GPU workers ask the remote
+ * helper and hand the batch to the background download queue.
  */
 export function WorkflowRequirements() {
   const { params, language } = useStore();
@@ -87,13 +118,23 @@ export function WorkflowRequirements() {
     (state) => state.config.generationTarget
   );
   const runpodPodId = useGenerationQueueStore((state) => state.config.runpodPodId);
+  const runpodMode = generationTarget === "runpod";
+  const workersMode = generationTarget === "workers";
+  // GPU workers resolve as RunPod-style targets (getRunpodPod knows their ids), so
+  // the pod file check and the background download queue work for them unchanged.
+  const workerId = useFirstGpuWorkerId(workersMode);
+  const remoteMode = runpodMode || workersMode;
+  const remoteId = runpodMode ? runpodPodId : workersMode ? workerId : "";
   const startRunpodDownload = useRunpodDownloadStore((state) => state.startDownload);
   const runpodDownloading = useRunpodDownloadStore(
-    (state) => state.downloadingByPod[runpodPodId] ?? false
+    (state) => state.downloadingByPod[remoteId] ?? false
   );
   const runpodPendingRecheck = useRunpodDownloadStore(
-    (state) => state.pendingRecheckByPod[runpodPodId] ?? false
+    (state) => state.pendingRecheckByPod[remoteId] ?? false
   );
+
+  const placeKo = runpodMode ? "RunPod에" : workersMode ? "GPU 워커에" : "로컬에";
+  const placeEn = runpodMode ? "the pod" : workersMode ? "the GPU worker" : "this machine";
 
   const [requirements, setRequirements] = useState<WorkflowRequirement[] | null>(null);
   const [installing, setInstalling] = useState(false);
@@ -104,12 +145,11 @@ export function WorkflowRequirements() {
     paramsRef.current = params;
   }, [params]);
 
-  const runpodMode = generationTarget === "runpod";
   // Only the fields a requirement depends on: re-checking on every prompt keystroke
   // would hammer the pod helper.
   const signature = [
     generationTarget,
-    runpodMode ? runpodPodId : "",
+    remoteId,
     params.model_name,
     params.krea2_workflow,
     params.upscale_model_name,
@@ -117,15 +157,15 @@ export function WorkflowRequirements() {
 
   const load = useCallback(async () => {
     const current = paramsRef.current;
-    if (!runpodMode) return fetchLocalRequirements(current);
-    if (!runpodPodId) return null;
+    if (!remoteMode) return fetchLocalRequirements(current);
+    if (!remoteId) return null;
 
     // The pod check reports only what is absent, so pair it with the local endpoint's
     // requirement list: that gives the same "here is everything this workflow needs"
     // view for a pod, with presence taken from the pod instead of this disk.
     const [list, podMissing] = await Promise.all([
       fetchLocalRequirements(current),
-      fetchRunpodMissing(runpodPodId, current),
+      fetchRunpodMissing(remoteId, current),
     ]);
     const pending = new Map(podMissing.map((item) => [item.path, item]));
     const rows = list.map((item) => {
@@ -141,7 +181,7 @@ export function WorkflowRequirements() {
     // Anything else the pod lacks (LoRAs, embeddings, the ADetailer detector) still
     // blocks generation, so the one-click install has to cover it too.
     return [...rows, ...requirementsFromRunpodMissing([...pending.values()])];
-  }, [runpodMode, runpodPodId]);
+  }, [remoteMode, remoteId]);
 
   // Re-check whenever the workflow, checkpoint, or target changes — selecting a
   // workflow is exactly when the user needs to know what it still needs. A finished
@@ -281,10 +321,10 @@ export function WorkflowRequirements() {
   );
 
   const installOnRunpod = useCallback(async () => {
-    if (!runpodPodId) return;
+    if (!remoteId) return;
     // Re-check first: the banner may be stale, and startDownload needs the resource
     // metadata the check returns.
-    const podMissing = await fetchRunpodMissing(runpodPodId, paramsRef.current);
+    const podMissing = await fetchRunpodMissing(remoteId, paramsRef.current);
     const downloads = podMissing.filter((item) => item.downloadable === true);
     // Download beats upload when both are possible (the pod pulls faster than
     // this machine pushes); upload covers the rest that exists locally.
@@ -296,28 +336,28 @@ export function WorkflowRequirements() {
       return;
     }
     if (uploads.length > 0) {
-      await uploadToRunpod(runpodPodId, uploads);
+      await uploadToRunpod(remoteId, uploads);
     }
     if (downloads.length > 0) {
       setMessage(
         ko
-          ? `RunPod에 ${downloads.length}개 파일을 받는 중입니다.`
-          : `Downloading ${downloads.length} file(s) to RunPod.`
+          ? `${placeKo} ${downloads.length}개 파일을 받는 중입니다.`
+          : `Downloading ${downloads.length} file(s) to ${placeEn}.`
       );
       await startRunpodDownload(
-        runpodPodId,
+        remoteId,
         downloads.map((item) => ({ path: item.path, resource: item.resource })),
         { ko }
       );
     } else {
       setMessage(ko ? "업로드 완료." : "Upload complete.");
     }
-  }, [ko, runpodPodId, startRunpodDownload, uploadToRunpod]);
+  }, [ko, placeEn, placeKo, remoteId, startRunpodDownload, uploadToRunpod]);
 
   const install = useCallback(async () => {
     setInstalling(true);
     try {
-      if (runpodMode) {
+      if (remoteMode) {
         await installOnRunpod();
       } else {
         await installLocal(installable);
@@ -328,7 +368,7 @@ export function WorkflowRequirements() {
     } finally {
       setInstalling(false);
     }
-  }, [installLocal, installOnRunpod, installable, load, runpodMode]);
+  }, [installLocal, installOnRunpod, installable, load, remoteMode]);
 
   // Nothing to say for checkpoints that need no support files (plain SDXL merges).
   if (!requirements || (requirements.length === 0 && !message)) return null;
@@ -338,8 +378,8 @@ export function WorkflowRequirements() {
       <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
         <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
         {ko
-          ? `이 워크플로우에 필요한 파일이 ${runpodMode ? "RunPod에" : "로컬에"} 모두 있습니다.`
-          : `Every file this workflow needs is ${runpodMode ? "on the pod" : "installed locally"}.`}
+          ? `이 워크플로우에 필요한 파일이 ${placeKo} 모두 있습니다.`
+          : `Every file this workflow needs is ${remoteMode ? `on ${placeEn}` : "installed locally"}.`}
         {message && <span className="ml-1">{message}</span>}
       </p>
     );
@@ -352,8 +392,8 @@ export function WorkflowRequirements() {
       <div className="flex items-center gap-1.5 font-semibold text-amber-700 dark:text-amber-400">
         <AlertTriangle className="h-3.5 w-3.5" />
         {ko
-          ? `이 워크플로우에 필요한 파일 ${missing.length}개가 ${runpodMode ? "RunPod에" : "로컬에"} 없습니다.`
-          : `${missing.length} file(s) this workflow needs are missing ${runpodMode ? "on the pod" : "locally"}.`}
+          ? `이 워크플로우에 필요한 파일 ${missing.length}개가 ${placeKo} 없습니다.`
+          : `${missing.length} file(s) this workflow needs are missing ${remoteMode ? `on ${placeEn}` : "locally"}.`}
       </div>
       <div className="space-y-0.5">
         {missing.map((item) => (
@@ -384,11 +424,9 @@ export function WorkflowRequirements() {
             <DownloadCloud className="h-3.5 w-3.5" />
           )}
           {ko
-            ? runpodMode
-              ? "RunPod에 한 번에 설치"
-              : "로컬에 한 번에 설치"
-            : runpodMode
-              ? "Install all on RunPod"
+            ? `${placeKo} 한 번에 설치`
+            : remoteMode
+              ? `Install all on ${placeEn}`
               : "Install all locally"}
         </Button>
         {message && <span className="text-muted-foreground">{message}</span>}
