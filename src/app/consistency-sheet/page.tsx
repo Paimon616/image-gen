@@ -119,6 +119,21 @@ const T = {
     ko: "생성에 30초~수분 소요. 1K 한 장에 약 $0.22, 해상도와 레퍼런스 수에 따라 올라갑니다.",
     en: "Takes 30s–minutes. ~$0.22 per 1K sheet; more with resolution and references.",
   },
+  engine: { ko: "생성 엔진", en: "Engine" },
+  engineFal: { ko: "GPT-Image-2", en: "GPT-Image-2" },
+  engineFalSub: { ko: "fal.ai · 유료", en: "fal.ai · paid" },
+  engineGpu: { ko: "우리 GPU", en: "Our GPUs" },
+  engineGpuSub: { ko: "Krea 2 · 무료", en: "Krea 2 · free" },
+  gpuTargetWorkers: { ko: "GPU 워커", en: "GPU workers" },
+  gpuTargetLocal: { ko: "로컬", en: "Local" },
+  gpuCostHint: {
+    ko: "무료 (우리 GPU). 3060 기준 장당 1~2분.",
+    en: "Free (our GPUs). ~1–2 min per image on the 3060.",
+  },
+  gpuHint: {
+    ko: "Krea 2로 생성. 크기 고정(시트 1024×1024, 장면 768×1344). 레퍼런스는 첫 장만 캐릭터 참조로 쓰고, 장면은 캐릭터 시트 + 배경 시트를 사용(복장 참조 제외). 3060 기준 장당 1~2분.",
+    en: "Krea 2. Fixed size (sheet 1024², scene 768×1344). Uses the first reference only; scenes use the character + background sheets (no outfit). ~1–2 min per image on the 3060.",
+  },
   galleryTitle: { ko: "시트 갤러리", en: "Sheet gallery" },
   empty: {
     ko: "아직 생성한 시트가 없습니다. 왼쪽에서 레퍼런스와 프롬프트를 설정하고 생성하세요.",
@@ -570,7 +585,55 @@ export default function ConsistencySheetPage() {
             />
           </div>
 
-          {/* Resolution */}
+          {/* Engine: paid GPT-Image-2 or Krea 2 on our own GPUs */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">{tr("engine", language)}</Label>
+            <div className="grid grid-cols-2 gap-1">
+              {(["fal", "gpu"] as const).map((engine) => (
+                <button
+                  key={engine}
+                  type="button"
+                  onClick={() => patch({ engine })}
+                  className={cn(
+                    "rounded-md border px-2.5 py-1.5 text-xs font-semibold transition-colors",
+                    params.engine === engine
+                      ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                      : "border-border bg-card/60 text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {tr(engine === "fal" ? "engineFal" : "engineGpu", language)}
+                  <span className="block text-[10px] font-normal opacity-80">
+                    {tr(engine === "fal" ? "engineFalSub" : "engineGpuSub", language)}
+                  </span>
+                </button>
+              ))}
+            </div>
+            {params.engine === "gpu" && (
+              <>
+                <div className="grid grid-cols-2 gap-1">
+                  {(["workers", "local"] as const).map((target) => (
+                    <button
+                      key={target}
+                      type="button"
+                      onClick={() => patch({ gpuTarget: target })}
+                      className={cn(
+                        "rounded-md border px-2.5 py-1 text-[11px] font-semibold transition-colors",
+                        params.gpuTarget === target
+                          ? "border-primary/60 bg-primary/10 text-foreground"
+                          : "border-border bg-card/60 text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {tr(target === "workers" ? "gpuTargetWorkers" : "gpuTargetLocal", language)}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] leading-4 text-muted-foreground">{tr("gpuHint", language)}</p>
+              </>
+            )}
+          </div>
+
+          {/* Resolution (GPT-Image-2 only; Krea 2 runs at a fixed ~1 MP) */}
+          {params.engine !== "gpu" && (
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold">
               {tr(
@@ -599,6 +662,7 @@ export default function ConsistencySheetPage() {
               ))}
             </div>
           </div>
+          )}
 
           {/* Save target */}
           <div className="space-y-1.5">
@@ -643,7 +707,7 @@ export default function ConsistencySheetPage() {
             {tr(params.mode === "scene" ? "generateScene" : "generate", language)}
           </Button>
           <p className="text-center text-[10.5px] leading-tight text-muted-foreground">
-            {tr("costHint", language)}
+            {params.engine === "gpu" ? tr("gpuCostHint", language) : tr("costHint", language)}
           </p>
         </div>
       </aside>

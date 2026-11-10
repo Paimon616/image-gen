@@ -90,7 +90,13 @@ export interface ConsistencySheetParams {
   // Workspace the finished sheet is filed under. Empty means "no workspace",
   // which is how the sheet gallery treats an unassigned file.
   workspaceId: string;
+  // "fal" = GPT-Image-2 on fal.ai (paid); "gpu" = Krea 2 on our own GPUs.
+  engine: ConsistencySheetEngine;
+  // GPU engine only: the LAN GPU workers or this Mac's ComfyUI.
+  gpuTarget: "workers" | "local";
 }
+
+export type ConsistencySheetEngine = "fal" | "gpu";
 
 export const DEFAULT_CONSISTENCY_SHEET_PARAMS: ConsistencySheetParams = {
   mode: "character",
@@ -101,6 +107,8 @@ export const DEFAULT_CONSISTENCY_SHEET_PARAMS: ConsistencySheetParams = {
   outfitReference: null,
   backgroundReference: null,
   workspaceId: "",
+  engine: "fal",
+  gpuTarget: "workers",
 };
 
 /** The images actually sent, in the order the prompt numbers them. */

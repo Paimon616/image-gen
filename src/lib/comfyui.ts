@@ -2166,6 +2166,8 @@ async function addKrea2IdentityEditNodes(
     : DEFAULT_PARAMS.character_reference_strength;
   const refBoost = Math.round(strength * KREA2_IDENTITY_BOOST_PER_STRENGTH * 100) / 100;
   const image = await resolveControlNetImage(reference, options);
+  const sceneRef = params.scene_reference_image?.trim();
+  const sceneImage = sceneRef ? await resolveControlNetImage(sceneRef, options) : null;
 
   workflow["40"] = {
     class_type: "LoraLoaderModelOnly",
@@ -2176,6 +2178,47 @@ async function addKrea2IdentityEditNodes(
     class_type: "VAEEncode",
     inputs: { pixels: ["41", 0], vae: vaeRef },
   };
+  if (sceneImage) {
+    // Two-reference edit (person into a place), as the node pack documents:
+    // the scene on the main inputs pinned to the layout, the person on the _b
+    // inputs placed beside the canvas so they can be restaged into it.
+    workflow["45"] = { class_type: "LoadImage", inputs: { image: sceneImage } };
+    workflow["46"] = {
+      class_type: "VAEEncode",
+      inputs: { pixels: ["45", 0], vae: vaeRef },
+    };
+    workflow["43"] = {
+      class_type: "Krea2EditModelPatch",
+      inputs: {
+        model: ["40", 0],
+        source_latent: ["46", 0],
+        source_image: ["45", 0],
+        source_latent_b: ["42", 0],
+        source_image_b: ["41", 0],
+        vae: vaeRef,
+        target_latent: targetLatentRef,
+        fit_mode: "fit",
+        ref_boost: refBoost,
+        ref_boost_a: 1,
+        ref_position: "beside (right of target)",
+        ref_position_a: "aligned (trained)",
+      },
+    };
+    workflow["44"] = {
+      class_type: "Krea2EditGroundedEncode",
+      inputs: {
+        clip: clipRef,
+        prompt:
+          `Place the person from the second image into the place from the first image. ${params.prompt.trim()}. ` +
+          "Keep the person's face, hairstyle and outfit, and keep the place's layout, props and lighting.",
+        image: ["45", 0],
+        image_b: ["41", 0],
+        grounding_px: 768,
+      },
+    };
+    return { modelRef: ["43", 0], positiveRef: ["44", 0] };
+  }
+
   workflow["43"] = {
     class_type: "Krea2EditModelPatch",
     inputs: {

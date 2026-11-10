@@ -16,6 +16,7 @@ import {
   type ConsistencySheetResolution,
 } from "@/lib/consistency-sheet";
 import { isValidWorkspaceId, setFileWorkspaces } from "@/lib/workspaces";
+import { generateSheetOnGpu, gpuSheetSize, type GpuSheetTarget } from "@/lib/consistency-sheet-gpu";
 
 export const runtime = "nodejs";
 // A 4K sheet with sixteen references can take a few minutes; keep the function
@@ -74,6 +75,8 @@ function normalizeParams(raw: Record<string, unknown>): ConsistencySheetParams {
     backgroundReference:
       mode === "scene" ? asDataUrl(raw.backgroundReference) : null,
     workspaceId: isValidWorkspaceId(raw.workspaceId) ? raw.workspaceId : "",
+    engine: raw.engine === "gpu" ? "gpu" : "fal",
+    gpuTarget: raw.gpuTarget === "local" ? "local" : "workers",
   };
 }
 
@@ -115,6 +118,44 @@ const sleep = (ms: number, signal: AbortSignal) =>
     );
   });
 
+// Writes the PNG and its sidecar, files it under the chosen workspace, and
+// returns the gallery entry. Shared by the fal and GPU engines.
+async function saveSheet(
+  params: ConsistencySheetParams,
+  buffer: Buffer,
+  meta: { model: string; size: string; referenceCount: number }
+) {
+  await mkdir(OUTPUT_DIR, { recursive: true });
+  const fileId = randomUUID();
+  const filename = `${fileId}.png`;
+  const image: ConsistencySheetImage = {
+    id: fileId,
+    url: `/api/consistency-sheet/images/${filename}`,
+    filename,
+    timestamp: Date.now(),
+    contentType: "image/png",
+    prompt: params.prompt,
+    params: {
+      mode: params.mode,
+      prompt: params.prompt,
+      resolution: params.resolution,
+      size: meta.size,
+      model: meta.model,
+      referenceCount: meta.referenceCount,
+    },
+  };
+  await writeFile(join(OUTPUT_DIR, filename), buffer);
+  await writeFile(join(OUTPUT_DIR, `${fileId}.json`), JSON.stringify(image, null, 2), "utf-8");
+  // Membership lives in workspaces.json, not the sidecar; an id for a workspace
+  // that has since been deleted is dropped there.
+  if (params.workspaceId) {
+    image.workspaces = await setFileWorkspaces("consistencySheet", filename, [
+      params.workspaceId,
+    ]).catch(() => [] as string[]);
+  }
+  return image;
+}
+
 export async function POST(req: NextRequest) {
   const apiKey = process.env.FAL_KEY?.trim() || "";
 
@@ -129,6 +170,8 @@ export async function POST(req: NextRequest) {
   }
 
   const params = normalizeParams(rawBody);
+  const engine = params.engine;
+  const gpuTarget: GpuSheetTarget = params.gpuTarget;
   const clientId =
     typeof rawBody.clientId === "string" ? rawBody.clientId : randomUUID();
 
@@ -156,14 +199,6 @@ export async function POST(req: NextRequest) {
         }
       };
 
-      if (!apiKey) {
-        send("error", {
-          id: clientId,
-          message: "fal.ai 키가 없습니다. .env.local에 FAL_KEY를 넣으세요.",
-        });
-        close();
-        return;
-      }
       const references = consistencySheetReferences(params);
       if (!params.prompt.trim() && references.length === 0) {
         send("error", {
@@ -174,6 +209,46 @@ export async function POST(req: NextRequest) {
         return;
       }
 
+      // Our own GPUs (Krea 2): no fal key, no per-image cost.
+      if (engine === "gpu") {
+        send("queued", { id: clientId });
+        try {
+          const { buffer, model } = await generateSheetOnGpu({
+            params,
+            origin: req.nextUrl.origin,
+            target: gpuTarget,
+            signal: abortSignal,
+            onProgress: (message, progress) =>
+              send("tick", { id: clientId, state: "GPU", message, progress }),
+          });
+          send("saving", { id: clientId });
+          const { width, height } = gpuSheetSize(params.mode);
+          const image = await saveSheet(params, buffer, {
+            model: `${model} (GPU)`,
+            size: `${width}x${height}`,
+            referenceCount: references.length,
+          });
+          send("complete", { id: clientId, image });
+        } catch (error) {
+          if (abortSignal.aborted) send("canceled", { id: clientId });
+          else
+            send("error", {
+              id: clientId,
+              message: error instanceof Error ? error.message : "알 수 없는 오류",
+            });
+        }
+        close();
+        return;
+      }
+
+      if (!apiKey) {
+        send("error", {
+          id: clientId,
+          message: "fal.ai 키가 없습니다. .env.local에 FAL_KEY를 넣으세요.",
+        });
+        close();
+        return;
+      }
       send("queued", { id: clientId });
 
       const authHeaders = {
@@ -320,44 +395,11 @@ export async function POST(req: NextRequest) {
         }
         const buffer = Buffer.from(await fileRes.arrayBuffer());
 
-        await mkdir(OUTPUT_DIR, { recursive: true });
-        const fileId = randomUUID();
-        const filename = `${fileId}.png`;
-
-        const image: ConsistencySheetImage = {
-          id: fileId,
-          url: `/api/consistency-sheet/images/${filename}`,
-          filename,
-          timestamp: Date.now(),
-          contentType: "image/png",
-          prompt: params.prompt,
-          params: {
-            mode: params.mode,
-            prompt: params.prompt,
-            resolution: params.resolution,
-            size: consistencySheetSizeLabel(params.mode, params.resolution),
-            model: endpoint,
-            referenceCount: references.length,
-          },
-        };
-
-        await writeFile(join(OUTPUT_DIR, filename), buffer);
-        await writeFile(
-          join(OUTPUT_DIR, `${fileId}.json`),
-          JSON.stringify(image, null, 2),
-          "utf-8"
-        );
-
-        // File the sheet under the chosen workspace. Membership lives in
-        // workspaces.json, not the sidecar, and an id for a workspace that has
-        // since been deleted is dropped there.
-        if (params.workspaceId) {
-          image.workspaces = await setFileWorkspaces(
-            "consistencySheet",
-            filename,
-            [params.workspaceId]
-          ).catch(() => [] as string[]);
-        }
+        const image = await saveSheet(params, buffer, {
+          model: endpoint,
+          size: consistencySheetSizeLabel(params.mode, params.resolution),
+          referenceCount: references.length,
+        });
 
         send("complete", { id: clientId, image });
         close();

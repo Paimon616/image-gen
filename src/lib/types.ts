@@ -98,6 +98,11 @@ export interface GenerationParams {
   character_reference_layout?: "aligned" | "beside";
   /** Krea 2: ask to keep face/hair/outfit only and follow the prompt for pose, expression, camera. */
   character_reference_restage?: boolean;
+  /**
+   * Krea 2: a place to put the character_image person into (two-reference
+   * edit: scene on the first inputs, person on the _b inputs).
+   */
+  scene_reference_image?: string | null;
   // BETA 캐릭터 기준 시트: the character's confirmed reference sheet image. Set
   // server-side (api/generate/stream) for renders of a sheet-confirmed character
   // when the beta is on; applied as IP-Adapter conditioning on the SDXL workflow.
