@@ -1,0 +1,14 @@
+---
+name: character-reference-sheet
+description: BETA character reference sheet — where the IP-Adapter conditioning is injected and which pins must stay in sync
+metadata:
+  type: project
+---
+- Only `api/generate/stream` sets `character_sheet_image` (client value is dropped). Conditions: settings `betaCharacterSheet`, character `referenceSheet.confirmed && enabled`, backend comfyui, `situationId !== "__sheet__"` (sheet candidates stay unconditioned).
+- Workflow: `addIpAdapterNodes` + `ipAdapterReferences` in `src/lib/comfyui.ts`; loaders 210/211 shared, 212+4n per reference (sheet first, then the generator's `style_image`, style transfer). PuLID uses 200–204. Generator overrides: `character_sheet_disabled`, `character_sheet_strength_override` (applied in `applyReferenceSheet`). Uses explicit loaders, not `IPAdapterUnifiedLoader`, so missing files are caught from `/object_info` before queueing.
+- IP-Adapter pins in 3 places: `src/lib/character-sheet.ts`, `comfyui-config/custom-nodes.json`, `worker-kit/windows/custom-nodes.json`.
+- CLIP Vision file is h94 `models/image_encoder/model.safetensors` saved as `CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors`.
+- Human doc: `docs/character-reference-sheet.md`.
+- Verified 2026-11-09: the IP-Adapter graph executes on real ComfyUI (Mac, ComfyUI_IPAdapter_plus @ a0f451a). A 16GB Mac with SDXL + ViT-H + IP-Adapter swaps hard (~45–60 s/step even with `--lowvram`); use a CUDA worker for real use.
+- LAN worker reachability: a dev server launched from the Claude desktop preview pane got EHOSTUNREACH to the LAN worker while the same `node` from a shell reached it (macOS Local Network permission per process tree). Run the dev server from a terminal when testing GPU workers.
+- Long helper downloads (2.5GB CLIP Vision) can end with "terminated" on older worker helpers (no background downloads); re-POSTing resumes from the `.download` partial.

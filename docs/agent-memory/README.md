@@ -27,6 +27,7 @@ metadata:
 - [MiniMax H3 DaSiWa pipeline](minimax-h3-dasiwa-pipeline.md) — `dasiwa-minimax-h3-i2va`, Director injection contract, pod setup script, RunPod proxy 524 handling
 - [MiniMax H3 multi-ref pipeline](minimax-h3-multiref-pipeline.md) — `minimax-h3-native-multiref-i2va` (clean hands), `extra_ref_images` contract, fixed-24fps guard
 - [Z-Image pipeline](zimage-pipeline.md) — Z-Image loaders, support files, turbo recipe
+- [Character reference sheet (BETA)](character-reference-sheet.md) — sheet confirmed per character; generate route injects `character_sheet_image`; IP-Adapter pins live in 3 places
 - [ComfyUI blueprints as recipe source](comfyui-blueprints-recipe-source.md) — `ComfyUI/blueprints/*.json` are the official per-family recipes; validate via local `/prompt`
 
 ## New machine / new account checklist
@@ -46,3 +47,4 @@ Optional: the old machine's global Claude rules (`~/.claude/rules/intent-router.
 for the davinci `da:*` plugin, `semble-routing.md` for the semble MCP) are user
 config, not project config — reinstall the davinci plugin on the new account if
 you want them.
+- [krea2-on-3060.md](krea2-on-3060.md) — Krea 2 files, nodes, fp8 vs GGUF speed, identity-edit pitfalls on the 3060 worker

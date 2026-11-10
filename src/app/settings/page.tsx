@@ -9,6 +9,7 @@ import {
   Download,
   Film,
   Fish,
+  FlaskConical,
   Gem,
   Image as ImageIcon,
   KeyRound,
@@ -26,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   CHAT_PROVIDERS,
@@ -47,7 +49,7 @@ interface RunpodPodForm {
 }
 
 type SettingsGroup = "basic" | "pods" | "llm";
-type SaveScope = "keys" | "image" | "video" | ChatProviderId;
+type SaveScope = "keys" | "image" | "video" | "workers" | ChatProviderId;
 type ImportMode = "replace" | "append";
 
 interface ModelListState {
@@ -146,6 +148,9 @@ export default function SettingsPage() {
   const [podTransferError, setPodTransferError] = useState("");
   const [podTransferNotice, setPodTransferNotice] = useState("");
   const podFileInput = useRef<HTMLInputElement>(null);
+  // LAN GPU workers (colleague PCs), edited as JSON — see docs/gpu-workers.md.
+  const [gpuWorkersDraft, setGpuWorkersDraft] = useState("[]");
+  const [gpuWorkersError, setGpuWorkersError] = useState("");
   // Chat providers: one key draft per provider, plus where its key comes from
   // (saved in settings, or only present as an environment variable).
   const [chatKeys, setChatKeys] = useState(() => emptyProviderRecord(""));
@@ -164,6 +169,9 @@ export default function SettingsPage() {
   const [modelSearch, setModelSearch] = useState(() => emptyProviderRecord(""));
   const [customModel, setCustomModel] = useState(() => emptyProviderRecord(""));
   const [loadError, setLoadError] = useState("");
+  // BETA 캐릭터 기준 시트. Saved on toggle (its own PUT), not with the key form.
+  const [betaCharacterSheet, setBetaCharacterSheet] = useState(false);
+  const [betaSaving, setBetaSaving] = useState(false);
   const [savingScope, setSavingScope] = useState<SaveScope | null>(null);
   const [savedScope, setSavedScope] = useState<SaveScope | null>(null);
 
@@ -172,6 +180,8 @@ export default function SettingsPage() {
     setHuggingfaceApiKeyConfigured(Boolean(data.huggingfaceApiKeyConfigured));
     setRunpodApiKeyConfigured(Boolean(data.runpodApiKeyConfigured));
     setRunpodPods(normalizePods(data.runpodPods));
+    setBetaCharacterSheet(data.betaCharacterSheet === true);
+    setGpuWorkersDraft(JSON.stringify(data.gpuWorkers ?? [], null, 2));
     const readFlags = (value: unknown) => {
       const flags = (value ?? {}) as Record<string, unknown>;
       return Object.fromEntries(
@@ -377,6 +387,18 @@ export default function SettingsPage() {
   // values server-side); the scope only decides which button shows feedback so
   // image/video pod lists can be saved independently without losing the other.
   const save = async (scope: SaveScope) => {
+    let gpuWorkers: unknown;
+    try {
+      gpuWorkers = JSON.parse(gpuWorkersDraft);
+      if (!Array.isArray(gpuWorkers)) throw new Error("not an array");
+      setGpuWorkersError("");
+    } catch {
+      setGpuWorkersError(
+        ko ? "GPU 워커 JSON이 배열 형식이 아님" : "GPU workers must be a JSON array."
+      );
+      if (scope === "workers") return;
+      gpuWorkers = undefined;
+    }
     setSavingScope(scope);
     setSavedScope(null);
     setLoadError("");
@@ -389,6 +411,7 @@ export default function SettingsPage() {
           huggingfaceApiKey,
           runpodApiKey,
           runpodPods,
+          gpuWorkers,
           openrouterApiKey: chatKeys.openrouter,
           anthropicApiKey: chatKeys.anthropic,
           openaiApiKey: chatKeys.openai,
@@ -416,6 +439,28 @@ export default function SettingsPage() {
       setLoadError(ko ? "저장하지 못했습니다." : "Failed to save.");
     } finally {
       setSavingScope(null);
+    }
+  };
+
+  const toggleBetaCharacterSheet = async (next: boolean) => {
+    setBetaCharacterSheet(next);
+    setBetaSaving(true);
+    setLoadError("");
+    try {
+      // Only this field: the PUT keeps every other stored value.
+      const response = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ betaCharacterSheet: next }),
+      });
+      if (!response.ok) throw new Error("Save failed");
+      const data = (await response.json()) as Record<string, unknown>;
+      setBetaCharacterSheet(data.betaCharacterSheet === true);
+    } catch {
+      setBetaCharacterSheet(!next);
+      setLoadError(ko ? "저장하지 못했습니다." : "Failed to save.");
+    } finally {
+      setBetaSaving(false);
     }
   };
 
@@ -648,6 +693,44 @@ export default function SettingsPage() {
                   />
                 </div>
               </section>
+
+              <section className="mt-6 rounded-xl border border-border bg-background shadow-sm">
+                <header className="flex items-start gap-3 border-b border-border px-6 py-4">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <FlaskConical className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <h2 className="text-sm font-semibold">
+                      {ko ? "베타 기능" : "Beta features"}
+                    </h2>
+                    <p className="text-xs text-muted-foreground">
+                      {ko
+                        ? "실험 기능. 끄면 기존 동작 그대로."
+                        : "Experimental. Off = existing behaviour unchanged."}
+                    </p>
+                  </div>
+                </header>
+                <div className="space-y-2 px-6 py-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-1">
+                      <Label htmlFor="beta-character-sheet">
+                        {ko ? "캐릭터 기준 시트 (BETA)" : "Character reference sheet (BETA)"}
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        {ko
+                          ? "캐릭터 스튜디오에 '기준 시트' 탭 추가. 확정한 시트를 그 캐릭터의 모든 렌더에 IP-Adapter 참조로 자동 적용 (SDXL/Illustrious, 로컬 ComfyUI 또는 GPU 워커). 유료 API 사용 없음. ComfyUI_IPAdapter_plus 노드와 IP-Adapter 모델 필요."
+                          : "Adds a 'Reference sheet' tab to the character studio. A confirmed sheet is applied as IP-Adapter reference to every render of that character (SDXL/Illustrious, local ComfyUI or GPU workers). No paid API. Needs the ComfyUI_IPAdapter_plus node and IP-Adapter models."}
+                      </p>
+                    </div>
+                    <Switch
+                      id="beta-character-sheet"
+                      checked={betaCharacterSheet}
+                      disabled={betaSaving}
+                      onCheckedChange={(checked) => void toggleBetaCharacterSheet(checked)}
+                    />
+                  </div>
+                </div>
+              </section>
             </TabsContent>
 
             {/* 팟 — image/video pod lists + JSON transfer */}
@@ -734,6 +817,43 @@ export default function SettingsPage() {
                   onPickFile={() => podFileInput.current?.click()}
                   onFileChange={(file) => void importPodsFile(file)}
                 />
+
+                <section className="rounded-xl border border-border bg-background shadow-sm">
+                  <header className="flex items-start gap-3 border-b border-border px-6 py-4">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <Cpu className="h-4 w-4" />
+                    </span>
+                    <div>
+                      <h2 className="text-sm font-semibold">
+                        {ko ? "GPU 워커 (사내망 ComfyUI)" : "GPU workers (LAN ComfyUI)"}
+                      </h2>
+                      <p className="text-xs text-muted-foreground">
+                        {ko
+                          ? "생성 대상 'GPU 워커'가 이 목록에 나눠 보냄. role: primary(주력)/light(미리보기·업스케일·대기열 넘침), speed: 4080 기준 상대 속도, maxQueue: 최대 대기 작업 수."
+                          : "The 'Workers' target dispatches across these. role: primary/light, speed: relative to a 4080, maxQueue: max jobs held."}
+                      </p>
+                    </div>
+                  </header>
+                  <div className="space-y-3 px-6 py-5">
+                    <Textarea
+                      value={gpuWorkersDraft}
+                      onChange={(event) => setGpuWorkersDraft(event.target.value)}
+                      rows={10}
+                      spellCheck={false}
+                      className="font-mono text-xs"
+                      placeholder={`[\n  { "id": "rtx4080", "label": "4080 (동료A)", "url": "http://10.0.0.80:8188", "role": "primary", "speed": 1, "maxQueue": 3, "enabled": true },\n  { "id": "rtx3060", "label": "3060 (동료B)", "url": "http://10.0.0.60:8188", "role": "light", "speed": 0.4, "maxQueue": 2, "enabled": true }\n]`}
+                    />
+                    {gpuWorkersError && (
+                      <p className="text-xs text-destructive">{gpuWorkersError}</p>
+                    )}
+                    <SectionSaveBar
+                      onSave={() => void save("workers")}
+                      saving={savingScope === "workers"}
+                      saved={savedScope === "workers"}
+                      ko={ko}
+                    />
+                  </div>
+                </section>
               </div>
             </TabsContent>
 

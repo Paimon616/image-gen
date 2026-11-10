@@ -658,6 +658,11 @@ export function ImageViewer() {
           label: ko ? "캐릭터" : "Character",
           url: params.character_image,
         },
+        {
+          key: "character_sheet_image",
+          label: ko ? "기준 시트 (BETA)" : "Reference sheet (BETA)",
+          url: params.character_sheet_image ?? null,
+        },
       ].filter((item) => item.url)
     : [];
   const findAsset = (assets: LocalModelAsset[], path: string) =>

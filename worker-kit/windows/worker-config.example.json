@@ -1,0 +1,13 @@
+{
+  "$comment": "Required: allowFrom = the Mac IPs allowed to use this GPU (everyone generating with image-gen). Optional: depotUrl (or depotUrls, a list of marc's Macs tried in order; an update request from one of them tries it first)/token to auto-sync models and custom nodes from marc's Mac; without them, put model files into data\\models\\<folder> by hand. With a depot, marc's app can ask the running worker to pull updates (Update button; token required); set autoUpdate to false to only update on start. startAtLogon: true starts the worker hidden at every Windows logon (Startup-folder shortcut, removed by uninstall-worker.bat or by setting it false). idleUnloadMinutes: after that many minutes with an empty queue ComfyUI unloads its models so the GPU is free for this PC (0 = keep them loaded).",
+  "allowFrom": ["10.0.0.10", "10.0.0.11"],
+  "port": 8188,
+  "depotUrl": "",
+  "depotUrls": [],
+  "token": "",
+  "autoUpdate": true,
+  "startAtLogon": false,
+  "idleUnloadMinutes": 10,
+  "portableRelease": "latest",
+  "extraArgs": []
+}

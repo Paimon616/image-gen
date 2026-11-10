@@ -88,6 +88,9 @@ export interface PaimonCharacter {
   // the character's scale), so a LoRA trained after the main image was made
   // still applies. Each entry's triggerWords are guaranteed into the prompt.
   loras?: CharacterLora[];
+  // BETA 기준 시트: true when the character has a confirmed, enabled sheet (the
+  // generate route then applies it). Used only to warn before rendering.
+  referenceSheetConfirmed?: boolean;
 }
 
 // Which of the three swappable segments a compose turn may rewrite. Unchecked
@@ -1126,6 +1129,9 @@ export async function loadCharacterLibrary(): Promise<PaimonCharacter[]> {
           // Already normalized by the characters store; passed through as-is
           // (normalizeLoraList would strip each entry's triggerWords).
           loras: character.loras?.length ? character.loras : undefined,
+          referenceSheetConfirmed: Boolean(
+            character.referenceSheet?.confirmed && character.referenceSheet.enabled
+          ),
           outfits: character.outfits
             .filter((outfit) => outfit.prompt.trim())
             .map((outfit) => ({ name: outfit.name, prompt: outfit.prompt })),

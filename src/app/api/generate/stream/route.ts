@@ -7,8 +7,15 @@ import {
   fetchComfyImages,
   queueComfyPrompt,
   waitForComfyImageRefs,
+  type ComfyClientOptions,
   type ComfyGeneratedImage,
 } from "@/lib/comfyui";
+import {
+  acquireGpuWorker,
+  forgetGpuWorkerProbe,
+  getGpuWorkers,
+  type GpuWorkerLease,
+} from "@/lib/gpu-workers";
 import {
   getModelConfig,
   normalizeGenerationSeed,
@@ -20,7 +27,9 @@ import { buildGenerationResources } from "@/lib/generation-resource-links";
 import { generateWithA1111, interruptA1111 } from "@/lib/a1111";
 import { toggleImageWorkspace, workspaceExists } from "@/lib/workspaces";
 import { notifyWorkspaceChanged } from "@/lib/runpod-share";
-import { getRunpodPod } from "@/lib/settings";
+import { getRunpodPod, readSettings } from "@/lib/settings";
+import { getCharacter, isValidCharacterId } from "@/lib/characters";
+import { applyReferenceSheet, shouldApplyReferenceSheet } from "@/lib/character-sheet";
 import {
   checkRunpodGenerationFiles,
   ensureRunpodComfyCatalogReady,
@@ -165,30 +174,78 @@ export async function POST(req: NextRequest) {
     resources,
     characterId,
     situationId,
+    workload,
     ...rawBody
   } = (await req.json()) as GenerationParams & {
     civitaiOrigin?: CivitaiOrigin;
     workspaceId?: string;
-    generationTarget?: "local" | "runpod";
+    generationTarget?: "local" | "runpod" | "workers";
+    // GPU worker pool hint: "light" (preview/upscale) may go to the slower card.
+    workload?: "full" | "light";
     runpodPodId?: string;
     resources?: ImportedCivitaiResource[];
     characterId?: string;
     situationId?: string;
   };
-  const body: GenerationParams = {
+  let body: GenerationParams = {
     ...rawBody,
     width: normalizeImageDimension(rawBody.width),
     height: normalizeImageDimension(rawBody.height),
     seed: normalizeGenerationSeed(rawBody.seed),
+    // Only this route sets the sheet reference (below); a client-sent value is
+    // dropped so the beta toggle and per-character switch stay authoritative.
+    character_sheet_image: null,
+    // A gallery pick is an app-relative URL; resolveControlNetImage uploads
+    // only absolute refs to the ComfyUI that runs the job.
+    style_image: rawBody.style_image?.startsWith("/api/")
+      ? new URL(rawBody.style_image, req.nextUrl.origin).toString()
+      : rawBody.style_image,
   };
+  // BETA 캐릭터 기준 시트: a render linked to a sheet-confirmed character gets
+  // the sheet as IP-Adapter reference. Off (beta or per-character) = unchanged.
+  if (characterId && isValidCharacterId(characterId) && body.backend === "comfyui") {
+    const [settings, character] = await Promise.all([
+      readSettings(),
+      getCharacter(characterId),
+    ]);
+    if (
+      character?.referenceSheet &&
+      shouldApplyReferenceSheet({
+        betaEnabled: settings.betaCharacterSheet,
+        sheet: character.referenceSheet,
+        situationId,
+        backend: body.backend,
+      })
+    ) {
+      // Absolute URL: resolveControlNetImage uploads only http(s) refs to the
+      // ComfyUI that runs the job (local, pod or GPU worker), like /api/upload.
+      const sheet = character.referenceSheet;
+      const absolute = (url: string) => new URL(url, req.nextUrl.origin).toString();
+      body = applyReferenceSheet(body, {
+        ...sheet,
+        url: absolute(sheet.url),
+        crop: sheet.crop ? { ...sheet.crop, url: absolute(sheet.crop.url) } : null,
+      });
+    }
+  }
   const modelConfig = getModelConfig(body.model);
   const runpodPod =
     generationTarget === "runpod" && runpodPodId
       ? await getRunpodPod(runpodPodId)
       : undefined;
-  const comfyOptions = runpodPod?.comfyUrl
-    ? { baseUrl: runpodPod.comfyUrl }
+  // Reassigned once a GPU worker is leased for the "workers" target.
+  let comfyOptions: ComfyClientOptions | undefined = runpodPod?.comfyUrl
+    ? { baseUrl: runpodPod.comfyUrl, remoteKind: "runpod" }
     : undefined;
+  const useGpuWorkers = generationTarget === "workers";
+  let workerLease: GpuWorkerLease | null = null;
+
+  if (useGpuWorkers && body.backend !== "comfyui") {
+    return Response.json(
+      { error: "GPU worker generation supports the ComfyUI backend only." },
+      { status: 400 }
+    );
+  }
 
   if (generationTarget === "runpod") {
     if (!runpodPod) {
@@ -342,7 +399,52 @@ export async function POST(req: NextRequest) {
         }
 
         const clientId = randomUUID();
-        ws = await openComfyWebSocket(clientId, comfyOptions?.baseUrl);
+        if (useGpuWorkers) {
+          send("progress", { progress: 1, message: "Picking a GPU worker..." });
+          // A worker that answered the probe can still drop the socket (PC
+          // just turned off). Nothing has been queued yet, so moving to the
+          // next worker cannot duplicate the job.
+          const tried = new Set<string>();
+          const attempts = Math.max(1, (await getGpuWorkers()).length);
+          for (let attempt = 0; attempt < attempts; attempt++) {
+            const lease = await acquireGpuWorker(
+              { ...body, workload },
+              {
+                exclude: tried,
+                signal: abortController.signal,
+                onWait: (waitedMs) =>
+                  send("progress", {
+                    progress: 1,
+                    message: `All GPU workers busy, waiting ${Math.round(waitedMs / 1000)}s...`,
+                  }),
+              }
+            );
+            try {
+              ws = await openComfyWebSocket(clientId, lease.worker.url);
+              workerLease = lease;
+              comfyOptions = { baseUrl: lease.worker.url, remoteKind: "gpu-worker" };
+              break;
+            } catch (error) {
+              lease.release();
+              forgetGpuWorkerProbe(lease.worker.id);
+              tried.add(lease.worker.id);
+              if (attempt === attempts - 1) throw error;
+            }
+          }
+          if (!workerLease) throw new Error("No GPU worker accepted the job.");
+          send("worker", {
+            id: workerLease.worker.id,
+            label: workerLease.worker.label,
+            workload: workerLease.workload,
+          });
+          send("progress", {
+            progress: 1,
+            message: `GPU worker: ${workerLease.worker.label}`,
+          });
+        } else {
+          ws = await openComfyWebSocket(clientId, comfyOptions?.baseUrl);
+        }
+        if (!ws) throw new Error("ComfyUI progress stream did not open");
 
         ws.addEventListener("message", (event) => {
           if (typeof event.data !== "string") return;
@@ -372,6 +474,7 @@ export async function POST(req: NextRequest) {
         send("progress", { progress: 1, message: "Queued..." });
         const queued = await queueComfyPrompt(body, clientId, comfyOptions);
         promptId = queued.prompt_id;
+        workerLease?.bindPrompt(promptId);
         lastComfyActivityAt = Date.now();
         send("queued", { prompt_id: promptId });
         send("progress", { progress: 2, message: "Waiting for ComfyUI..." });
@@ -385,7 +488,11 @@ export async function POST(req: NextRequest) {
         const savedImages = await saveBufferedImages({
           images,
           params: body,
-          endpoint: runpodPod ? `runpod/${runpodPod.label || runpodPod.podId}` : modelConfig.id,
+          endpoint: workerLease
+            ? `worker/${workerLease.worker.label}`
+            : runpodPod
+              ? `runpod/${runpodPod.label || runpodPod.podId}`
+              : modelConfig.id,
           civitaiOrigin,
           workspaceId,
           characterId,
@@ -404,6 +511,7 @@ export async function POST(req: NextRequest) {
       } finally {
         req.signal.removeEventListener("abort", abortComfyPrompt);
         ws?.close();
+        workerLease?.release();
         if (!clientDisconnected) {
           controller.close();
         }

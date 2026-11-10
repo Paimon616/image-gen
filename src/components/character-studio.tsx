@@ -47,6 +47,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CharacterPaimonChat } from "@/components/character-paimon-chat";
+import { CharacterSheetPanel } from "@/components/character-sheet-panel";
+import { CHARACTER_SHEET_SITUATION_ID } from "@/lib/character-sheet";
 import {
   AssetChoiceButton,
   AssetPickerDialog,
@@ -82,7 +84,7 @@ const SELECTED_CHARACTER_KEY = "characterStudio:selectedId";
 const ACTIVE_TAB_KEY = "characterStudio:activeTab";
 // 상황 탭 보기 방식 (목록/갤러리) — 탭처럼 localStorage로 유지.
 const SITUATION_VIEW_KEY = "characterStudio:situationView";
-const TAB_VALUES = new Set(["basic", "identity", "background", "situation"]);
+const TAB_VALUES = new Set(["basic", "identity", "sheet", "background", "situation"]);
 
 // Native <select> styling to match the app's inputs (mirrors app-sidebar).
 const SELECT_CLASS =
@@ -728,6 +730,22 @@ export function CharacterStudio() {
   const [sharingId, setSharingId] = useState("");
   const [shareMessage, setShareMessage] = useState("");
   const [downloadOpen, setDownloadOpen] = useState(false);
+
+  // BETA 캐릭터 기준 시트 (Settings > 베타 기능). Off = the 기준 시트 tab and
+  // its warnings are hidden; generation is unchanged.
+  const [betaCharacterSheet, setBetaCharacterSheet] = useState(false);
+  useEffect(() => {
+    let active = true;
+    fetch("/api/settings", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data: { betaCharacterSheet?: boolean }) => {
+        if (active) setBetaCharacterSheet(data.betaCharacterSheet === true);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const charactersRef = useRef<Character[]>([]);
   const saveTimers = useRef<Map<string, number>>(new Map());
@@ -1910,7 +1928,7 @@ export function CharacterStudio() {
             </div>
 
             <Tabs
-              value={activeTab}
+              value={activeTab === "sheet" && !betaCharacterSheet ? "basic" : activeTab}
               onValueChange={(value) => {
                 setActiveTab(value);
                 window.localStorage.setItem(ACTIVE_TAB_KEY, value);
@@ -1924,6 +1942,17 @@ export function CharacterStudio() {
                     아이덴티티
                     <TabCount count={selected.outfits.length} />
                   </TabsTrigger>
+                  {betaCharacterSheet && (
+                    <TabsTrigger value="sheet">
+                      기준 시트
+                      {!selected.referenceSheet?.confirmed && (
+                        <span
+                          className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-amber-500"
+                          title="기준 시트 미확정"
+                        />
+                      )}
+                    </TabsTrigger>
+                  )}
                   <TabsTrigger value="background">
                     배경
                     <TabCount count={selected.backgrounds.length} />
@@ -2250,8 +2279,39 @@ export function CharacterStudio() {
                   </SectionCard>
                 </TabsContent>
 
+                {/* 기준 시트 (BETA) */}
+                {betaCharacterSheet && (
+                  <TabsContent value="sheet" className="space-y-4">
+                    <CharacterSheetPanel
+                      character={selected}
+                      candidates={situationImages[CHARACTER_SHEET_SITUATION_ID] ?? []}
+                      onPatch={patchSelected}
+                      onOpenImage={setSelectedImage}
+                      onReloadImages={() => void reloadSituationImages()}
+                    />
+                  </TabsContent>
+                )}
+
                 {/* 상황 */}
                 <TabsContent value="situation" className="space-y-4">
+                  {betaCharacterSheet && !selected.referenceSheet?.confirmed && (
+                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-700 dark:text-amber-300">
+                      <span>
+                        기준 시트 미확정 (BETA). 확정 전 상황 렌더는 얼굴·의상이 이미지마다 달라질 수 있음.
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setActiveTab("sheet");
+                          window.localStorage.setItem(ACTIVE_TAB_KEY, "sheet");
+                        }}
+                      >
+                        기준 시트 만들기
+                      </Button>
+                    </div>
+                  )}
                   {situationSelectMode && (
                     <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5">
                       <Button
