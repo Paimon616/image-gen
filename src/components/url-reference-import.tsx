@@ -1,10 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import { Copy, ImageIcon, ImagePlus, Loader2, X } from "lucide-react";
+import { useRef, useState } from "react";
+import { Copy, ImageIcon, ImagePlus, Layers, Loader2, X } from "lucide-react";
 import { useStore } from "@/lib/store";
 import type { GenerationParams } from "@/lib/types";
 import { MODEL_PRESETS, presetToParams } from "@/lib/model-presets";
+import {
+  buildVariationPrompts,
+  VARIATION_COUNTS,
+  VARIATION_NEGATIVE_PROMPT,
+  VARIATION_REFERENCE_STRENGTH,
+  type ReferenceAnalysis,
+} from "@/lib/reference-variations";
 import { FieldHelp } from "@/components/field-help";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,7 +56,9 @@ export function UrlReferenceImport({
   const { params, setParams, language } = useStore();
   const ko = language === "ko";
   const [url, setUrl] = useState("");
-  const [busy, setBusy] = useState<"reference" | "copy" | null>(null);
+  const [busy, setBusy] = useState<"reference" | "copy" | "batch" | null>(null);
+  // One vision pass per reference image; repeated batch presses reuse it.
+  const analysisCache = useRef<{ imageUrl: string; analysis: ReferenceAnalysis } | null>(null);
   const [status, setStatus] = useState("");
 
   const fetchReference = async (describe: boolean) => {
@@ -123,6 +132,80 @@ export function UrlReferenceImport({
         ko
           ? `캐릭터 참조로 넣었습니다 (${data.width}×${data.height}).`
           : `Set as the character reference (${data.width}×${data.height}).`
+      );
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  // Setting B: the on-screen reference at 0.7 on Krea 2 with no extra LoRAs, and a
+  // prompt that spells out the reference's style, face, hair and background
+  // rendering; each image gets its own pose, expression, camera and background.
+  const generateVariations = async (count: number) => {
+    const imageUrl = useStore.getState().params.character_image;
+    if (!imageUrl || busy) return;
+    setBusy("batch");
+    try {
+      let analysis =
+        analysisCache.current?.imageUrl === imageUrl ? analysisCache.current.analysis : null;
+      if (!analysis) {
+        setStatus(
+          ko
+            ? "비전 모델이 레퍼런스의 화풍 · 얼굴 · 머리 · 배경을 분석하는 중... (5~20초)"
+            : "Analyzing the reference style, face, hair and backgrounds... (5-20s)"
+        );
+        const res = await fetch("/api/reference-analysis", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageUrl }),
+        });
+        const data = (await res.json().catch(() => ({}))) as ReferenceAnalysis & { error?: string };
+        if (!res.ok || !data.style) {
+          throw new Error(data.error || (ko ? "레퍼런스 분석에 실패했습니다." : "Reference analysis failed."));
+        }
+        analysis = data;
+        analysisCache.current = { imageUrl, analysis };
+      }
+
+      const preset = MODEL_PRESETS.find((item) => item.id === COPY_PRESET_ID);
+      if (!preset) throw new Error("Krea2 preset is missing.");
+      const modelsData = await fetch("/api/models", { cache: "no-store" })
+        .then((res) => res.json())
+        .catch(() => ({}));
+      const available = ((modelsData.checkpointAssets ?? []) as { path: string }[]).map(
+        (asset) => asset.path
+      );
+      const presetParams = presetToParams(preset, available);
+      const prompts = buildVariationPrompts(analysis, count);
+      const settings: Partial<GenerationParams> = {
+        ...presetParams,
+        loras: [],
+        character_image: imageUrl,
+        character_reference_strength: VARIATION_REFERENCE_STRENGTH,
+        negative_prompt: VARIATION_NEGATIVE_PROMPT,
+        generation_mode: "text_to_image",
+        source_image: null,
+        seed: null,
+      };
+
+      // The form shows the settings the batch runs with (first prompt as a sample),
+      // so the screen and the queued jobs never disagree.
+      setParams({ ...settings, prompt: prompts[0] });
+      const base = { ...useStore.getState().params, ...settings };
+      for (let index = 0; index < prompts.length; index += 1) {
+        setStatus(
+          ko
+            ? `대기열에 넣는 중... ${index + 1}/${count}`
+            : `Queueing... ${index + 1}/${count}`
+        );
+        await onGenerate({ ...base, prompt: prompts[index] });
+      }
+      setStatus(
+        ko
+          ? `${count}장을 대기열에 넣었습니다 (Krea2 · 참조 0.7 · 추가 로라 없음 · 화풍 자세히). 장마다 포즈 · 표정 · 카메라 · 배경이 다릅니다.`
+          : `Queued ${count} images (Krea2, reference 0.7, no extra LoRAs, detailed style). Each has its own pose, expression, camera and background.`
       );
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
@@ -286,6 +369,41 @@ export function UrlReferenceImport({
             </div>
           )}
         </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <FieldHelp
+          label={ko ? "레퍼런스로 다양하게 뽑기" : "Varied batch from the reference"}
+          help={
+            ko
+              ? "지금 캐릭터 참조 이미지로 누른 장수만큼 대기열에 넣습니다. 비전 모델이 레퍼런스의 화풍 · 얼굴 · 머리 · 의상과 어울리는 배경을 분석하고, 장마다 포즈 · 표정 · 카메라 구도 · 배경을 다르게 조합합니다. Krea2 · 참조 강도 0.7 · 추가 로라 없음(포즈 · 각도 로라는 화풍을 바꿔서 뺌)."
+              : "Queues the chosen number of images from the current character reference. A vision model reads the reference style, face, hair, outfit and fitting backgrounds; each image combines a different pose, expression, camera and background. Krea2, reference 0.7, no extra LoRAs (pose / angle LoRAs change the style)."
+          }
+        />
+        <div className="grid grid-cols-4 gap-2" role="group" aria-label={ko ? "다양하게 뽑기 장수" : "Batch size"}>
+          {VARIATION_COUNTS.map((count) => (
+            <Button
+              key={count}
+              type="button"
+              variant="outline"
+              onClick={() => void generateVariations(count)}
+              disabled={!params.character_image || busy !== null}
+              className="h-9"
+            >
+              {busy === "batch" ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Layers className="h-3.5 w-3.5" />
+              )}
+              {ko ? `${count}장` : `${count}`}
+            </Button>
+          ))}
+        </div>
+        {!params.character_image && (
+          <p className="text-xs text-muted-foreground">
+            {ko ? "먼저 캐릭터 참조 이미지를 넣으세요." : "Set a character reference first."}
+          </p>
+        )}
       </div>
 
       {status && <p className="text-xs text-muted-foreground">{status}</p>}
