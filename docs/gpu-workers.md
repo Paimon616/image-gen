@@ -142,7 +142,9 @@ ComfyUI 실행 인자: `--listen 0.0.0.0 --port 8188 --base-directory <kit>\data
   - 요청에는 설치 대상이 없음. 헬퍼는 플래그 파일만 쓰고, 감시 프로세스가 depot manifest를 받아 처리.
   - 새 모델은 ComfyUI를 끄지 않고 받음. ComfyUI 커밋, 커스텀 노드, 키트 파일이 바뀌었으면 큐가 비기를 기다렸다가(15초 간격 2회 연속 빈 큐) 재시작해 적용. 바뀐 게 없으면 재시작 없음.
   - 상태: `GET /api/worker/update`(헬퍼) → checking, models, waiting, restarting, up-to-date, applied, error. 생성 화면 워커 줄 아래에 표시.
-  - 키트 파일 자동 교체 대상은 `worker.ps1`, `helper.py`, `custom-nodes.json`뿐. depot이 sha256을 manifest에 싣고 워커가 받은 뒤 검증, 불일치면 교체하지 않음. `.bat`(실행 중 cmd가 파일을 이어 읽음), `firewall.ps1`(관리자 권한), `worker-config.json`은 원격 교체 불가.
+  - 키트 파일 자동 교체: `worker.ps1`, `helper.py`, `custom-nodes.json`은 언제나, `.bat` 실행 파일은 업데이트 재시작 때만(그때는 실행 중인 cmd가 없음. 손으로 켤 때 바뀐 `.bat`은 다음 업데이트 요청 때 교체). depot이 sha256을 manifest에 싣고 워커가 받은 뒤 검증, 불일치면 교체하지 않음. `firewall.ps1`(관리자 권한)과 `worker-config.json`은 원격 교체 불가.
+  - 감시 프로세스가 죽어 있으면 헬퍼가 업데이트 요청을 받을 때 다시 띄움.
+  - 동료에게 부탁해야 하는 경우로 남는 것: 최초 1회 키트 설치, PC 재부팅 후 `start-worker.bat` 실행, 맥 IP 변경 시 `depotUrl` 수정(DHCP 임대 90일), 방화벽 규칙이나 포터블 런타임(파이썬, torch) 교체.
   - 요청을 받지 않으려면 `worker-config.json`에 `"autoUpdate": false`. 기록은 `logs\watch-*.log`.
   - 이 기능이 없는 구버전 키트는 한 번만 손으로 새 키트를 넣고 재시작해야 함. 그다음부터는 버튼으로.
 - 방법 B: 앱의 다운로드 버튼(위). 방법 C: 모델 파일을 `data\models\checkpoints`, `data\models\loras`에 직접 복사.

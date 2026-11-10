@@ -50,10 +50,18 @@ const MODEL_FOLDERS = new Set([
   "ipadapter",
 ]);
 
-// Kit files a running worker replaces on its own (auto-update). Launchers
-// (.bat, cmd reads them while running), firewall.ps1 (runs as admin) and
-// worker-config.json stay manual. worker.ps1 keeps its own copy of this list.
-export const KIT_AUTO_FILES = ["worker.ps1", "helper.py", "custom-nodes.json"];
+// Kit files a worker replaces on its own when it updates. The .bat launchers
+// are only replaced on an update restart (no cmd is reading them then).
+// firewall.ps1 (runs as admin) and worker-config.json stay manual.
+// worker.ps1 keeps its own copy of this list.
+export const KIT_AUTO_FILES = [
+  "worker.ps1",
+  "helper.py",
+  "custom-nodes.json",
+  "start-worker.bat",
+  "stop-worker.bat",
+  "uninstall-worker.bat",
+];
 const KIT_DIR = join(ROOT, "worker-kit", "windows");
 
 if (TOKEN.length < 16) {
@@ -119,9 +127,9 @@ async function localFile(folder, name) {
   }
 }
 
-/** Kit file bytes as the worker should store them (.ps1 with CRLF line ends). */
+/** Kit file bytes as the worker should store them (.ps1/.bat with CRLF line ends). */
 export function kitFileBytes(name, raw = readFileSync(join(KIT_DIR, name))) {
-  if (!name.endsWith(".ps1")) return raw;
+  if (!/\.(ps1|bat)$/.test(name)) return raw;
   return Buffer.from(raw.toString("utf8").replace(/\r\n/g, "\n").replace(/\n/g, "\r\n"), "utf8");
 }
 

@@ -18,6 +18,7 @@ import hmac
 import json
 import os
 import ssl
+import subprocess
 import sys
 import threading
 import time
@@ -228,6 +229,33 @@ def update_state():
     return state
 
 
+def watcher_alive():
+    """True when the kit's update watcher (worker.ps1 watch) is running."""
+    try:
+        with open(os.path.join(KIT_DIR, "watcher.pid"), encoding="utf-8-sig") as f:
+            pid = int(f.read().strip())
+    except Exception:
+        return False
+    if os.name != "nt":
+        return True
+    out = subprocess.run(["tasklist", "/FI", "PID eq %d" % pid, "/FO", "CSV", "/NH"],
+                         capture_output=True, text=True).stdout
+    return ('"%d"' % pid) in out
+
+
+def ensure_watcher():
+    """Start the watcher if it died, so an update request is never lost."""
+    if os.name != "nt" or watcher_alive():
+        return False
+    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(subprocess, "DETACHED_PROCESS", 0)
+    subprocess.Popen(
+        ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+         os.path.join(KIT_DIR, "worker.ps1"), "watch"],
+        cwd=KIT_DIR, creationflags=flags, close_fds=True,
+    )
+    return True
+
+
 def catalog_file():
     return os.path.join(MODELS_DIR, ".image-gen-catalog.json")
 
@@ -299,7 +327,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(401, {"error": "bad token"})
             with open(UPDATE_FLAG, "w", encoding="utf-8") as f:
                 f.write(time.strftime("%Y-%m-%dT%H:%M:%S"))
-            return self._json(202, {"ok": True, **update_state()})
+            try:
+                restarted = ensure_watcher()
+            except Exception as error:
+                return self._json(500, {"error": "update watcher not running: %s" % error})
+            return self._json(202, {"ok": True, "watcherRestarted": restarted, **update_state()})
         try:
             if path == "/api/runpod/helper/files":
                 files = [str(f) for f in body.get("files") or []]

@@ -25,7 +25,8 @@ param(
   [Parameter(Position = 0)]
   [ValidateSet("install", "sync", "nodes", "start", "watch", "stop", "status")]
   [string]$Action = "status",
-  [switch]$NoSync
+  [switch]$NoSync,
+  [switch]$FromWatcher   # start launched by the update watcher (no .bat is running)
 )
 
 $ErrorActionPreference = "Stop"
@@ -46,9 +47,11 @@ $WatcherPidFile = Join-Path $Kit "watcher.pid"
 $AppliedPath = Join-Path $Kit "applied-version.txt"    # signature of the depot setup this worker runs
 $UpdateFlag = Join-Path $Kit "update-request.flag"     # written by helper.py on an update request
 $UpdateState = Join-Path $Kit "update-state.json"      # read by helper.py (GET /api/worker/update)
-# Kit files the depot may replace (sha256-checked). Launchers (.bat), firewall.ps1
-# (runs as admin) and worker-config.json are never replaced remotely.
+# Kit files the depot may replace (sha256-checked). The .bat launchers only on a
+# watcher restart (cmd reads a running .bat line by line). firewall.ps1 (runs as
+# admin) and worker-config.json are never replaced remotely.
 $KitAutoFiles = @("worker.ps1", "helper.py", "custom-nodes.json")
+$KitLauncherFiles = @("start-worker.bat", "stop-worker.bat", "uninstall-worker.bat")
 
 function Read-Config {
   if (-not (Test-Path $ConfigPath)) {
@@ -223,16 +226,19 @@ function Get-CodeSignature($manifest) {
   return ([BitConverter]::ToString($sha.ComputeHash($bytes)) -replace '-', '').ToLower()
 }
 
-# Replace kit files the depot lists (only $KitAutoFiles, sha256-verified).
-# Returns $true when something changed, so the caller can rerun the new script.
+# Replace kit files the depot lists ($KitAutoFiles, plus $KitLauncherFiles on a
+# watcher restart; sha256-verified). Returns changed (rerun the new script) and
+# deferred (launchers left for the next update restart).
 function Update-KitFiles($manifest, $cfg) {
-  if (-not $manifest.kit -or -not $manifest.kit.files) { return $false }
-  $changed = $false
+  $result = [pscustomobject]@{ changed = $false; deferred = $false }
+  if (-not $manifest.kit -or -not $manifest.kit.files) { return $result }
   foreach ($f in $manifest.kit.files) {
-    if ($KitAutoFiles -notcontains $f.name) { Write-Warning "Ignoring kit file $($f.name) (not auto-updatable)."; continue }
+    $launcher = $KitLauncherFiles -contains $f.name
+    if (($KitAutoFiles -notcontains $f.name) -and -not $launcher) { Write-Warning "Ignoring kit file $($f.name) (not auto-updatable)."; continue }
     if ($f.sha256 -notmatch '^[0-9a-f]{64}$') { Write-Warning "Ignoring kit file $($f.name) (bad hash)."; continue }
     $dest = Join-Path $Kit $f.name
     if ((Test-Path $dest) -and ((Get-FileHash -Algorithm SHA256 $dest).Hash.ToLower() -eq $f.sha256)) { continue }
+    if ($launcher -and -not $FromWatcher) { $result.deferred = $true; continue }
     Write-Step "kit file $($f.name)"
     $tmp = "$dest.new"
     Remove-Item -Force -ErrorAction SilentlyContinue $tmp, "$tmp.part"
@@ -242,9 +248,9 @@ function Update-KitFiles($manifest, $cfg) {
       throw "Kit file $($f.name) failed its hash check; keeping the old one."
     }
     Move-Item -Force $tmp $dest
-    $changed = $true
+    if (-not $launcher) { $result.changed = $true }
   }
-  return $changed
+  return $result
 }
 
 function Sync-Code($manifest) {
@@ -322,15 +328,21 @@ function Start-Worker {
     try {
       $manifest = Get-Manifest $cfg
       if ($manifest) {
-        if (Update-KitFiles $manifest $cfg) {
+        $kitUpdate = Update-KitFiles $manifest $cfg | Select-Object -Last 1
+        if ($kitUpdate.changed) {
           # PowerShell already parsed the old script; run the new one instead.
           Write-Step "Kit updated; continuing with the new worker.ps1"
-          & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Kit "worker.ps1") start
+          $rerun = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $Kit "worker.ps1"), "start")
+          if ($FromWatcher) { $rerun += "-FromWatcher" }
+          & powershell @rerun
           return
         }
         Sync-Code $manifest
         Sync-Models $manifest $cfg
-        Set-Content -Path $AppliedPath -Value (Get-CodeSignature $manifest)
+        # Launchers still old: leave the version unapplied so the next update
+        # request restarts once more and swaps them.
+        $applied = if ($kitUpdate.deferred) { "launchers-pending" } else { Get-CodeSignature $manifest }
+        Set-Content -Path $AppliedPath -Value $applied
         Set-UpdateState "applied" "synced on start"
         Write-Host "Sync done." -ForegroundColor Green
       }
@@ -457,7 +469,7 @@ function Watch-Worker {
       Remove-Item -Force -ErrorAction SilentlyContinue $WatcherPidFile
       Stop-Worker
       Start-Process -FilePath "powershell.exe" -WindowStyle Hidden `
-        -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$Kit\worker.ps1`" start"
+        -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$Kit\worker.ps1`" start -FromWatcher"
       return
     } catch { Set-UpdateState "error" $_.Exception.Message }
   }
