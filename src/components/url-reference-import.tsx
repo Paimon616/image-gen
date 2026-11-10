@@ -1,9 +1,19 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Copy, ImageIcon, ImagePlus, Layers, Loader2, X } from "lucide-react";
+import {
+  Copy,
+  FolderOpen,
+  GalleryHorizontalEnd,
+  ImageIcon,
+  ImagePlus,
+  Layers,
+  Loader2,
+  X,
+} from "lucide-react";
 import { useStore } from "@/lib/store";
-import type { GenerationParams } from "@/lib/types";
+import type { GeneratedImage, GenerationParams } from "@/lib/types";
+import { ImageLibraryPicker } from "@/components/image-library-picker";
 import {
   ANALYSIS_VERSION,
   buildVariationPrompts,
@@ -56,6 +66,8 @@ export function UrlReferenceImport({
   // One vision pass per reference image; repeated batch presses reuse it.
   const analysisCache = useRef<{ key: string; analysis: VariationPlan } | null>(null);
   const [status, setStatus] = useState("");
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchReference = async (describe: boolean) => {
     const res = await fetch("/api/reference-from-url", {
@@ -73,28 +85,50 @@ export function UrlReferenceImport({
   // Sites like tensor.art block server fetches of their pages, but the browser
   // can hand over the picture itself: a dragged image carries its CDN address,
   // and "Copy image" + Ctrl+V carries the file.
+  // A local file (dropped, pasted or picked with 내 파일) is uploaded first; its
+  // address then goes through the same URL flow as a pasted link.
+  const uploadFile = async (file: File) => {
+    setBusy("reference");
+    setStatus(ko ? "이미지를 올리는 중..." : "Uploading image...");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: form });
+      const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
+      if (!res.ok || !data.url) throw new Error(data.error || "Upload failed");
+      setUrl(data.url);
+      setStatus(
+        ko
+          ? "이미지를 받았습니다. [레퍼런스로] 또는 [똑같이 뽑기]를 누르세요."
+          : "Image received. Press Use as reference or Copy image."
+      );
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const pickFromGallery = (image: GeneratedImage) => {
+    setPickerOpen(false);
+    let absolute = image.url;
+    try {
+      absolute = new URL(image.url, window.location.href).href;
+    } catch {
+      // Keep the raw value.
+    }
+    setUrl(absolute);
+    setStatus(
+      ko
+        ? "갤러리 이미지를 골랐습니다. [레퍼런스로] 또는 [똑같이 뽑기]를 누르세요."
+        : "Gallery image picked. Press Use as reference or Copy image."
+    );
+  };
+
   const takeImage = async (transfer: DataTransfer) => {
     const file = [...transfer.files].find((item) => item.type.startsWith("image/"));
     if (file) {
-      setBusy("reference");
-      setStatus(ko ? "이미지를 올리는 중..." : "Uploading image...");
-      try {
-        const form = new FormData();
-        form.append("file", file);
-        const res = await fetch("/api/upload", { method: "POST", body: form });
-        const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
-        if (!res.ok || !data.url) throw new Error(data.error || "Upload failed");
-        setUrl(data.url);
-        setStatus(
-          ko
-            ? "이미지를 받았습니다. [레퍼런스로] 또는 [똑같이 뽑기]를 누르세요."
-            : "Image received. Press Use as reference or Copy image."
-        );
-      } catch (error) {
-        setStatus(error instanceof Error ? error.message : String(error));
-      } finally {
-        setBusy(null);
-      }
+      await uploadFile(file);
       return true;
     }
 
@@ -263,7 +297,7 @@ export function UrlReferenceImport({
             />
             <p className="mt-1 text-xs text-muted-foreground">
               {ko
-                ? "이미지 주소를 넣거나, 이미지를 이 칸에 끌어다 놓거나, '이미지 복사' 후 Ctrl+V 하세요. (tensor.art 페이지 주소는 막혀 있어 이 방법으로)"
+                ? "이미지 주소를 넣거나, [내 파일] · [갤러리]에서 고르거나, 이미지를 이 칸에 끌어다 놓거나, '이미지 복사' 후 Ctrl+V 하세요. (tensor.art 페이지 주소는 막혀 있어 이 방법으로)"
                 : "Paste an image address, drag an image here, or copy the image and press Ctrl+V. (tensor.art page links are blocked; use these instead.)"}
             </p>
           </div>
@@ -315,6 +349,41 @@ export function UrlReferenceImport({
                 <Copy className="h-3.5 w-3.5" />
               )}
               {ko ? "똑같이 뽑기" : "Copy image"}
+            </Button>
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = "";
+              if (file) void uploadFile(file);
+            }}
+          />
+          <div className="mt-2 flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={busy !== null}
+              className="h-8 flex-1 text-xs"
+            >
+              <FolderOpen className="h-3.5 w-3.5" />
+              {ko ? "내 파일" : "My files"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setPickerOpen(true)}
+              disabled={busy !== null}
+              className="h-8 flex-1 text-xs"
+            >
+              <GalleryHorizontalEnd className="h-3.5 w-3.5" />
+              {ko ? "갤러리" : "Gallery"}
             </Button>
           </div>
         </div>
@@ -381,6 +450,13 @@ export function UrlReferenceImport({
       </div>
 
       {status && <p className="text-xs text-muted-foreground">{status}</p>}
+      {pickerOpen && (
+        <ImageLibraryPicker
+          title={ko ? "가져올 이미지" : "Image to import"}
+          onClose={() => setPickerOpen(false)}
+          onPick={pickFromGallery}
+        />
+      )}
     </section>
   );
 }
