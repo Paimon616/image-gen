@@ -1,38 +1,27 @@
 {
-  "upscale_models/remacri_original.safetensors": {
-    "name": "Remacri",
-    "version": "Original",
-    "base_model": "Upscaler",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/b6b3d1d9-6467-4719-9136-877732b4c3aa/original=true/2566828.jpeg",
-    "civitai_url": "https://civitai.red/models/147759/remacri?modelVersionId=164821",
-    "tags": [
-      "base model"
-    ],
-    "risk": {
-      "level": "OK",
-      "reason": "Rent 허용 + 특이사항 없음",
-      "allow_commercial_use": "Y"
-    },
-    "license": {
-      "allowNoCredit": true,
-      "allowDerivatives": true,
-      "allowDifferentLicense": true,
-      "allowCommercialUse": [
-        "RentCivit",
-        "Rent",
-        "Image",
-        "Sell"
-      ]
-    },
-    "source_url": "https://civitai.red/models/147759/remacri?modelVersionId=164821"
-  },
-  "upscale_models/4x-UltraSharp.pth": {
-    "name": "4x-Ultrasharp",
-    "version": "4x-UltraSharp v1.0",
-    "base_model": "Upscaler",
-    "civitai_url": "https://civitai.red/models/116225/4x-ultrasharp?modelVersionId=125843",
-    "source_url": "https://civitai.red/models/116225/4x-ultrasharp?modelVersionId=125843",
+  "checkpoints/10Eros_v1.4_bf16.safetensors": {
+    "name": "10Eros (LTX 2.3 A/V checkpoint)",
+    "version": "v1.4 bf16",
+    "base_model": "LTXV 2.3",
     "thumbnail_url": null,
+    "civitai_url": "https://civitai.red/models/2447875?modelVersionId=3109610",
+    "source_url": "https://civitai.com/api/download/models/3109610?type=Other&format=SafeTensor&fp=bf16",
+    "tags": [
+      "ltx23",
+      "checkpoint",
+      "video",
+      "audio",
+      "nsfw"
+    ],
+    "note": "확인됨: Civitai 10Eros v1.4 (bf16). 파일명이 civitai에서는 ltx2310eros_v14.safetensors 이므로 다운로드 후 10Eros_v1.4_bf16.safetensors 로 배치 필요"
+  },
+  "checkpoints/amanesseWorks_v20.safetensors": {
+    "name": "Amanesse Works",
+    "version": "v2.0",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/1965943/amanesse-works?modelVersionId=2414241",
+    "source_url": "https://civitai.red/models/1965943/amanesse-works?modelVersionId=2414241",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/faf39b7d-059b-43e6-b534-f245fadbbbfb/original=true/110679365.jpeg",
     "tags": []
   },
   "checkpoints/aMixIllustrious_aMix.safetensors": {
@@ -118,6 +107,44 @@
       ]
     }
   },
+  "checkpoints/animij_ai.safetensors": {
+    "name": "Animij",
+    "version": "AI",
+    "base_model": "Anima",
+    "civitai_url": "https://civitai.red/models/1353314/animij?modelVersionId=3166879",
+    "source_url": "https://civitai.red/models/1353314/animij?modelVersionId=3166879",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/132002ab-8b85-4c3e-8240-7cc57ba6ac40/original=true/137957663.mp4",
+    "tags": []
+  },
+  "checkpoints/animij_v10.safetensors": {
+    "name": "Animij",
+    "version": "v10",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/9aed08ab-82fa-4b5b-97a5-f8c6e1b6d4e3/original=true/126292343.jpeg",
+    "civitai_url": "https://civitai.red/models/1353314/animij?modelVersionId=2827109",
+    "source_url": "https://civitai.red/models/1353314/animij?modelVersionId=2827109",
+    "tags": [
+      "nsfw",
+      "merge",
+      "anime",
+      "colors",
+      "soft",
+      "sfw",
+      "model",
+      "base model",
+      "checkpoint",
+      "illustrious"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Image"
+      ]
+    }
+  },
   "checkpoints/autismmixSDXL_autismmixPony.safetensors": {
     "name": "AutismMix SDXL",
     "version": "AutismMix_pony",
@@ -132,6 +159,26 @@
       "sdxl anime",
       "checkpoint xl",
       "ponyxl"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit"
+      ]
+    }
+  },
+  "checkpoints/bismuthIllustrious_v50.safetensors": {
+    "name": "Bismuth Illustrious Mix",
+    "version": "v5.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/c83874da-9869-46f4-87b0-23acc18dc05f/original=true/102713524.jpeg",
+    "civitai_url": "https://civitai.red/models/1359028/bismuth-illustrious-mix?modelVersionId=2257097",
+    "source_url": "https://civitai.red/models/1359028/bismuth-illustrious-mix?modelVersionId=2257097",
+    "tags": [
+      "base model"
     ],
     "license": {
       "allowNoCredit": true,
@@ -366,6 +413,15 @@
       ]
     }
   },
+  "checkpoints/divingIllustriousReal_proVAE.safetensors": {
+    "name": "Diving-Illustrious Real-Asian",
+    "version": "Pro+VAE",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/1562047/diving-illustrious-real-asian?modelVersionId=2359917",
+    "source_url": "https://civitai.red/models/1562047/diving-illustrious-real-asian?modelVersionId=2359917",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/c3642bcb-de37-4ce9-9d62-4ee986ebbf9c/original=true/108200847.jpeg",
+    "tags": []
+  },
   "checkpoints/divingIllustriousReal_v70VAE.safetensors": {
     "name": "Diving-Illustrious Real-Asian",
     "version": "v7.0+VAE",
@@ -382,6 +438,14 @@
         "RentCivit"
       ]
     }
+  },
+  "checkpoints/duchesse_v30.safetensors": {
+    "name": "Duchesse",
+    "version": "v3.0",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/1798332/duchesse?modelVersionId=2370371",
+    "source_url": "https://civitai.red/models/1798332/duchesse?modelVersionId=2370371",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/7511df6d-9db4-4db3-ac86-57a893f4d171/original=true/108667096.jpeg"
   },
   "checkpoints/epicrealism_naturalSinRC1VAE.safetensors": {
     "name": "epiCRealism",
@@ -420,6 +484,15 @@
         "Rent"
       ]
     }
+  },
+  "checkpoints/gloamingMonolith_obsidianCore.safetensors": {
+    "name": "Gloaming Monolith",
+    "version": "Obsidian Core",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/2386011/gloaming-monolith?modelVersionId=2683000",
+    "source_url": "https://civitai.red/models/2386011/gloaming-monolith?modelVersionId=2683000",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/240305a0-c9af-4fbe-b938-67981b2b5d53/original=true/120830085.jpeg",
+    "tags": []
   },
   "checkpoints/goldenHour_v10.safetensors": {
     "name": "Golden Hour",
@@ -655,6 +728,15 @@
         "Image"
       ]
     }
+  },
+  "checkpoints/illustrijEVO_lvl3.safetensors": {
+    "name": "Illustrij EVO",
+    "version": "LVL3",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/1772230/illustrij-evo?modelVersionId=2182724",
+    "source_url": "https://civitai.red/models/1772230/illustrij-evo?modelVersionId=2182724",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/53dad236-fab9-48a6-85e6-1e3a797be4cf/original=true/125808645.jpeg",
+    "tags": []
   },
   "checkpoints/illustriousXL_v01.safetensors": {
     "name": "Illustrious-XL",
@@ -934,6 +1016,15 @@
       ]
     }
   },
+  "checkpoints/moody-pro-signature-004_00001_.safetensors": {
+    "name": "Moody Pro Mix",
+    "version": "Collector's Edition: 典藏版",
+    "base_model": "ZImageTurbo",
+    "civitai_url": "https://civitai.red/models/620406/moody-pro-mix?modelVersionId=3161628",
+    "source_url": "https://civitai.red/models/620406/moody-pro-mix?modelVersionId=3161628",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/a6fa6d2d-21fc-4801-ab90-5e0334e77a61/original=true/137713342.mp4",
+    "tags": []
+  },
   "checkpoints/moodyCutieMixKrea2_v10BETA.safetensors": {
     "name": "Moody Cutie Mix (Krea2 Uncensored)",
     "version": "V1.0 (BETA)",
@@ -952,6 +1043,23 @@
         "RentCivit"
       ]
     }
+  },
+  "checkpoints/moodyProMix_collectorsEdition.safetensors": {
+    "name": "Moody Pro Mix",
+    "version": "Collector's Edition: 典藏版",
+    "base_model": "ZImageTurbo",
+    "civitai_url": "https://civitai.red/models/620406/moody-pro-mix?modelVersionId=3161628",
+    "source_url": "https://civitai.red/models/620406/moody-pro-mix?modelVersionId=3161628",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/a6fa6d2d-21fc-4801-ab90-5e0334e77a61/original=true/137713342.mp4",
+    "tags": []
+  },
+  "checkpoints/moodyRealMix_zitV7.safetensors": {
+    "name": "Moody Real Mix",
+    "version": "ZIT V7",
+    "base_model": "ZImageTurbo",
+    "civitai_url": "https://civitai.red/models/621441/moody-real-mix?modelVersionId=3005060",
+    "source_url": "https://civitai.red/models/621441/moody-real-mix?modelVersionId=3005060",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/9afcc4e3-f67e-4342-a42b-6f0e1dbc849b/original=true/132824809.mp4"
   },
   "checkpoints/nova3DCGXL_ilV90.safetensors": {
     "name": "Nova 3DCG XL",
@@ -1027,6 +1135,14 @@
       ]
     }
   },
+  "checkpoints/novaFurryXL_ilV170.safetensors": {
+    "name": "Nova Furry XL",
+    "version": "IL v17.0",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/503815/nova-furry-xl?modelVersionId=2792241",
+    "source_url": "https://civitai.red/models/503815/nova-furry-xl?modelVersionId=2792241",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/251bc5bd-bdb4-4676-a791-6366c40307e4/original=true/124939697.jpeg"
+  },
   "checkpoints/novaOrangeXL_v130.safetensors": {
     "name": "Nova Orange XL",
     "version": "v13.0",
@@ -1096,6 +1212,33 @@
       ]
     }
   },
+  "checkpoints/oneObsession_v18.safetensors": {
+    "name": "One obsession",
+    "version": "v18",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/af055785-c9e1-4b08-9b20-dc97009fb237/original=true/106319312.jpeg",
+    "civitai_url": "https://civitai.red/models/1318945/one-obsession?modelVersionId=2319122",
+    "source_url": "https://civitai.red/models/1318945/one-obsession?modelVersionId=2319122",
+    "tags": [
+      "base model",
+      "anime",
+      "one",
+      "noob",
+      "one obsession",
+      "sdxl",
+      "obsession",
+      "my style"
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Image"
+      ]
+    }
+  },
   "checkpoints/oneObsession_v20Bold.safetensors": {
     "name": "One obsession",
     "version": "v20_Bold色彩",
@@ -1155,6 +1298,42 @@
       ]
     }
   },
+  "checkpoints/oneObsession_v23.safetensors": {
+    "name": "One obsession",
+    "version": "v23",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/f06ec748-fdfa-4f4d-ba83-0515284acbae/original=true/136374252.jpeg",
+    "civitai_url": "https://civitai.red/models/1318945/one-obsession?modelVersionId=3118448",
+    "source_url": "https://civitai.red/models/1318945/one-obsession?modelVersionId=3118448",
+    "tags": [
+      "base model",
+      "anime",
+      "one",
+      "noob",
+      "one obsession",
+      "sdxl",
+      "obsession",
+      "my style"
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Image"
+      ]
+    }
+  },
+  "checkpoints/perfectAsian_perfectAsian.safetensors": {
+    "name": "Perfect Asian",
+    "version": "Perfect Asian",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/2131682/perfect-asian?modelVersionId=2411362",
+    "source_url": "https://civitai.red/models/2131682/perfect-asian?modelVersionId=2411362",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/f57ffcfe-94c0-42be-9c04-8c319af537e4/original=true/110398252.jpeg",
+    "tags": []
+  },
   "checkpoints/picxReal_10.safetensors": {
     "name": "PicX_real",
     "version": "1.0",
@@ -1184,6 +1363,15 @@
       ]
     }
   },
+  "checkpoints/pieModels_mango.safetensors": {
+    "name": "Pie - Models 🥧",
+    "version": "Mango",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/1593793/pie-models?modelVersionId=2913030",
+    "source_url": "https://civitai.red/models/1593793/pie-models?modelVersionId=2913030",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/2a7511fa-a5f7-4a01-8f8b-c02be6a7cb58/original=true/129400918.jpeg",
+    "tags": []
+  },
   "checkpoints/pieModels_nutella.safetensors": {
     "name": "Pie - Models 🥧",
     "version": "Nutella",
@@ -1212,6 +1400,30 @@
       ]
     },
     "source_url": "https://civitai.red/models/1593793/pie-models?modelVersionId=3009657"
+  },
+  "checkpoints/pieModels_oreo.safetensors": {
+    "name": "Pie - Models 🥧",
+    "version": "Oreo",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/d7c1e5d7-cf42-4bb6-8384-7254f55c6610/original=true/137104589.jpeg",
+    "civitai_url": "https://civitai.red/models/1593793/pie-models?modelVersionId=3142094",
+    "source_url": "https://civitai.red/models/1593793/pie-models?modelVersionId=3142094",
+    "tags": [
+      "model",
+      "merge",
+      "anime",
+      "illustrious",
+      "base model",
+      "women"
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
+    }
   },
   "checkpoints/plantMilkModelSuite_flax.safetensors": {
     "name": "Plant Milk 🌿 - Model Suite",
@@ -1265,6 +1477,15 @@
       ]
     }
   },
+  "checkpoints/postbanixl_v2.safetensors": {
+    "name": "PostBanIXL",
+    "version": "V2",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/1947875/postbanixl?modelVersionId=2322440",
+    "source_url": "https://civitai.red/models/1947875/postbanixl?modelVersionId=2322440",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/c8094130-fd94-499f-b7e0-c5e41ad8b86e/original=true/106472900.jpeg",
+    "tags": []
+  },
   "checkpoints/prefectIllustriousXL_v8.safetensors": {
     "name": "Prefect illustrious XL",
     "version": "v8",
@@ -1289,6 +1510,30 @@
       ],
       "allow_commercial_use": "N"
     },
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
+    }
+  },
+  "checkpoints/prefectPonyXL_v50.safetensors": {
+    "name": "Prefect Pony XL",
+    "version": "v5.0",
+    "base_model": "Pony",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/dc720ef4-dca7-4530-92ae-0b99939dc3ed/original=true/48693303.jpeg",
+    "civitai_url": "https://civitai.red/models/439889/prefect-pony-xl?modelVersionId=1199750",
+    "source_url": "https://civitai.red/models/439889/prefect-pony-xl?modelVersionId=1199750",
+    "tags": [
+      "animagine",
+      "base model",
+      "pony xl",
+      "woman",
+      "anime",
+      "girls"
+    ],
     "license": {
       "allowNoCredit": false,
       "allowDerivatives": false,
@@ -1324,6 +1569,14 @@
         "Sell"
       ]
     }
+  },
+  "checkpoints/ramthrustsNSFWPINK_v31RAMSDelicious.safetensors": {
+    "name": "RAMTHRUST'S-NSFW-PINK-ALCHEMY-ANIMA 🩷",
+    "version": "v3.1-RAMS-Delicious-Mango",
+    "base_model": "Anima",
+    "civitai_url": "https://civitai.red/models/2578175/ramthrust-s-nsfw-pink-alchemy-anima?modelVersionId=3278527",
+    "source_url": "https://civitai.red/models/2578175/ramthrust-s-nsfw-pink-alchemy-anima?modelVersionId=3278527",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/80b60e1c-d43a-46b6-8d15-04ec8b20fa6d/original=true/141306274.mp4"
   },
   "checkpoints/redLilyIllu_v10.safetensors": {
     "name": "Red Lily | Illu",
@@ -1539,6 +1792,20 @@
       ]
     }
   },
+  "checkpoints/sd_xl_base_1.0.safetensors": {
+    "name": "Stable Diffusion XL Base 1.0",
+    "version": "1.0",
+    "base_model": "SDXL 1.0",
+    "thumbnail_url": null,
+    "civitai_url": "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/resolve/main/sd_xl_base_1.0.safetensors",
+    "source_url": "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/resolve/main/sd_xl_base_1.0.safetensors",
+    "tags": [
+      "sdxl",
+      "checkpoint",
+      "base"
+    ],
+    "note": "앱 기본 base 모델. 공식 Stability HF 배포(직접 다운로드)."
+  },
   "checkpoints/somboy_v25.safetensors": {
     "name": "SomBoy",
     "version": "v2.5",
@@ -1672,6 +1939,14 @@
         "Rent"
       ]
     }
+  },
+  "checkpoints/uncannyValley_Noob3dV2.safetensors": {
+    "name": "Uncanny valley",
+    "version": "UncannyValley noob 3d V2",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/507472/uncanny-valley?modelVersionId=1880913",
+    "source_url": "https://civitai.red/models/507472/uncanny-valley?modelVersionId=1880913",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/f9019fba-9b84-499a-ac7e-e4b1f3c60d47/original=true/81101435.jpeg"
   },
   "checkpoints/unholyDesireMixSinister_v30.safetensors": {
     "name": "Unholy Desire Mix - Sinister Aesthetic (Illustrious)",
@@ -1941,6 +2216,37 @@
       ]
     }
   },
+  "checkpoints/z_image_turbo_bf16.safetensors": {
+    "name": "Z Image Turbo",
+    "version": "Turbo",
+    "base_model": "ZImageTurbo",
+    "civitai_url": "https://civitai.red/models/2168935/z-image-turbo?modelVersionId=2442439",
+    "source_url": "https://civitai.red/models/2168935/z-image-turbo?modelVersionId=2442439",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/41150b54-1830-470c-a98e-f46a2e908122/original=true/111679195.jpeg",
+    "tags": []
+  },
+  "diffusion_models/DasiwaMinimaxH3_dasiwaREF2VAHybridV1.safetensors": {
+    "name": "DaSiWa MiniMax H3 REF2VA Hybrid",
+    "version": "v1.0 bf16",
+    "base_model": "MiniMax H3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/frauleinpiss/DasiwaH3mirror/resolve/main/DasiwaMinimaxH3_dasiwaREF2VAHybridV1.safetensors",
+    "tags": [
+      "minimax-h3",
+      "diffusion",
+      "video",
+      "hybrid"
+    ],
+    "note": "확인됨: fl2va+ref2va 병합 하이브리드. 2026-09-04부터 bf16(34.0GB, SHA256 ddd1641d…04c4d, frauleinpiss/DasiwaH3mirror). 이전 int8 미러(yamanakaaa2015/mymodel, 19.53GiB, SHA256 71c61492…b7121c)는 비공개 전환되어 접근 불가. 원본 civitai 모델(2877206)은 삭제됨."
+  },
+  "diffusion_models/Krea2 Turbo_FP8": {
+    "name": "Krea2 Turbo_FP8",
+    "version": "Krea 2 TURBO",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2723583/krea2-turbo-fp8?modelVersionId=3060999",
+    "source_url": "https://civitai.red/models/2723583/krea2-turbo-fp8?modelVersionId=3060999"
+  },
   "diffusion_models/krea2_turbo_fp8_scaled.safetensors": {
     "name": "Krea2 Turbo_FP8",
     "version": "Krea 2 TURBO",
@@ -1954,6 +2260,33 @@
     ],
     "risk": null,
     "license": null
+  },
+  "diffusion_models/krea2_turbo_int8_convrot.safetensors": {
+    "name": "Krea 2 Turbo Official Comfy-Org Checkpoints (Krea2)",
+    "version": "krea2_turbo_int8_convrot",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2726029/krea-2-turbo-official-comfy-org-checkpoints-krea2?modelVersionId=3091481",
+    "source_url": "https://civitai.red/models/2726029/krea-2-turbo-official-comfy-org-checkpoints-krea2?modelVersionId=3091481",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/8940b90b-7d94-435f-9b1a-7551b8aef713/original=true/135529120.jpeg",
+    "tags": []
+  },
+  "diffusion_models/krea2Turbo_v10.safetensors": {
+    "name": "Krea 2 Turbo",
+    "version": "v1.0",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2732656/krea-2-turbo?modelVersionId=3072332",
+    "source_url": "https://civitai.red/models/2732656/krea-2-turbo?modelVersionId=3072332",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/2d6c922c-af6e-41f7-8ca4-a91da06ece68/original=true/135352641.jpeg",
+    "tags": []
+  },
+  "diffusion_models/krea2TurboFP8_krea2TURBO.safetensors": {
+    "name": "Krea2 Turbo_FP8",
+    "version": "Krea 2 TURBO",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2723583/krea2-turbo-fp8?modelVersionId=3060999",
+    "source_url": "https://civitai.red/models/2723583/krea2-turbo-fp8?modelVersionId=3060999",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/5513863c-49e7-4030-93cb-b005d4bba68b/original=true/134583021.jpeg",
+    "tags": []
   },
   "diffusion_models/krea2TurboOfficialComfy_krea2TurboFp8.safetensors": {
     "name": "Krea 2 Turbo Official Comfy-Org Checkpoints (Krea2)",
@@ -1977,6 +2310,122 @@
       ]
     }
   },
+  "diffusion_models/krea2TurboOfficialComfy_krea2TurboInt8.safetensors": {
+    "name": "Krea 2 Turbo Official Comfy-Org Checkpoints (Krea2)",
+    "version": "krea2_turbo_int8_convrot",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2726029/krea-2-turbo-official-comfy-org-checkpoints-krea2?modelVersionId=3091481",
+    "source_url": "https://civitai.red/models/2726029/krea-2-turbo-official-comfy-org-checkpoints-krea2?modelVersionId=3091481",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/8940b90b-7d94-435f-9b1a-7551b8aef713/original=true/135529120.jpeg",
+    "tags": []
+  },
+  "diffusion_models/ltx-2.3-22b-dev_transformer_only_bf16.safetensors": {
+    "name": "LTX-Video 2.3 22B (transformer only, bf16)",
+    "version": "dev bf16",
+    "base_model": "LTXV 2.3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Kijai/LTX2.3_comfy/resolve/main/diffusion_models/ltx-2.3-22b-dev_transformer_only_bf16.safetensors",
+    "tags": [
+      "ltx23",
+      "diffusion",
+      "transformer",
+      "video"
+    ],
+    "note": "확인됨: Kijai/LTX2.3_comfy"
+  },
+  "diffusion_models/ltx-2.5-22b-dev-transformer-bf16.safetensors": {
+    "name": "LTX-2.5 22B dev transformer (bf16)",
+    "version": "dev bf16",
+    "base_model": "LTXV 2.5",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/diffusion_models/ltx-2.5-22b-dev-transformer-bf16.safetensors",
+    "tags": [
+      "ltx25",
+      "diffusion",
+      "transformer",
+      "video",
+      "dev"
+    ],
+    "note": "확인됨: Lightricks/LTX-2.5 공식. 42.0GB. dev/trainable(파인튜닝·최대품질). distilled LoRA와 함께 사용 가능."
+  },
+  "diffusion_models/ltx-2.5-22b-dev-transformer-comfy-int8-convrot.safetensors": {
+    "name": "LTX-2.5 22B dev transformer (ComfyUI int8)",
+    "version": "dev int8-convrot",
+    "base_model": "LTXV 2.5",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/diffusion_models/ltx-2.5-22b-dev-transformer-comfy-int8-convrot.safetensors",
+    "tags": [
+      "ltx25",
+      "diffusion",
+      "transformer",
+      "video",
+      "dev",
+      "int8"
+    ],
+    "note": "확인됨: Lightricks/LTX-2.5 공식. 21.5GB."
+  },
+  "diffusion_models/ltx-2.5-22b-distilled-transformer-bf16.safetensors": {
+    "name": "LTX-2.5 22B distilled transformer (bf16)",
+    "version": "distilled bf16",
+    "base_model": "LTXV 2.5",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/diffusion_models/ltx-2.5-22b-distilled-transformer-bf16.safetensors",
+    "tags": [
+      "ltx25",
+      "diffusion",
+      "transformer",
+      "video",
+      "distilled"
+    ],
+    "note": "확인됨: Lightricks/LTX-2.5 공식. 42.0GB. 고품질 i2v 기본 transformer(distilled, 2-stage). bf16는 80GB급 GPU 권장."
+  },
+  "diffusion_models/ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors": {
+    "name": "LTX-2.5 22B distilled transformer (ComfyUI int8)",
+    "version": "distilled int8-convrot",
+    "base_model": "LTXV 2.5",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/diffusion_models/ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors",
+    "tags": [
+      "ltx25",
+      "diffusion",
+      "transformer",
+      "video",
+      "distilled",
+      "int8"
+    ],
+    "note": "확인됨: Lightricks/LTX-2.5 공식. 21.5GB. 48GB GPU에 적합한 int8 양자화(ComfyUI 전용)."
+  },
+  "diffusion_models/ltx-2.5-22b-distilled-transformer-nvfp4.safetensors": {
+    "name": "LTX-2.5 22B distilled transformer (nvfp4)",
+    "version": "distilled nvfp4",
+    "base_model": "LTXV 2.5",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/diffusion_models/ltx-2.5-22b-distilled-transformer-nvfp4.safetensors",
+    "tags": [
+      "ltx25",
+      "diffusion",
+      "transformer",
+      "video",
+      "distilled",
+      "nvfp4"
+    ],
+    "note": "확인됨: Lightricks/LTX-2.5 공식. 18.7GB. Blackwell(RTX 50xx/B200) fp4 전용."
+  },
+  "diffusion_models/moodyAmateurMixKrea2_v10.safetensors": {
+    "name": "Moody Amateur Mix (Krea2 Uncensored)",
+    "version": "v1.0",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2859971/moody-amateur-mix-krea2-uncensored?modelVersionId=3230531",
+    "source_url": "https://civitai.red/models/2859971/moody-amateur-mix-krea2-uncensored?modelVersionId=3230531",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/dd1ab4a5-bb1f-467a-944c-a5bafc34dde6/original=true/139759609.mp4",
+    "tags": []
+  },
   "diffusion_models/moodyCutieMixKrea2_v10BETA.safetensors": {
     "name": "Moody Cutie Mix (Krea2 Uncensored)",
     "version": "V1.0 (BETA)",
@@ -1989,6 +2438,38 @@
     ],
     "risk": null,
     "license": null
+  },
+  "diffusion_models/Pornmaster_krea2_Turbo_fp8_v2.safetensors": {
+    "name": "PornMaster 色情大師-Krea2",
+    "version": "V2 Turbo int8",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2735032/pornmaster-krea2?modelVersionId=3119653",
+    "source_url": "https://civitai.red/models/2735032/pornmaster-krea2?modelVersionId=3119653",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/3ecec6f0-be2a-4cf5-b77d-309bea01a96d/original=true/136398602.jpeg",
+    "tags": []
+  },
+  "diffusion_models/pornmasterKrea2_v25Turbo.safetensors": {
+    "name": "PornMaster 色情大師-Krea2",
+    "version": "V2.5 Turbo",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2735032/pornmaster-krea2?modelVersionId=3171380",
+    "source_url": "https://civitai.red/models/2735032/pornmaster-krea2?modelVersionId=3171380",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/91c4d035-5327-4e65-9995-7181772d89c1/original=true/137962343.jpeg"
+  },
+  "diffusion_models/pornmasterKrea2_v2TurboInt8.safetensors": {
+    "name": "PornMaster 色情大師-Krea2 (V2 Turbo int8)",
+    "version": "V2 Turbo int8",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2735032/pornmaster-krea2?modelVersionId=3119653",
+    "source_url": "https://civitai.red/models/2735032/pornmaster-krea2?modelVersionId=3119653",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/91c4d035-5327-4e65-9995-7181772d89c1/original=true/137962343.jpeg",
+    "tags": [
+      "krea2",
+      "pornmaster",
+      "nsfw",
+      "int8"
+    ],
+    "note": "원본 PornMaster RES4LYF 워크플로우가 사용한 정확한 체크포인트. 공개 다운로드(무료)."
   },
   "diffusion_models/smoothMixWan2214BI2V_i2vV20High.safetensors": {
     "name": "Smooth Mix Wan 2.2 14B (I2V/T2V)",
@@ -2004,6 +2485,15 @@
     ],
     "risk": null,
     "license": null
+  },
+  "diffusion_models/z_image_turbo_bf16.safetensors": {
+    "name": "Z Image Turbo",
+    "version": "Turbo",
+    "base_model": "ZImageTurbo",
+    "civitai_url": "https://civitai.red/models/2168935/z-image-turbo?modelVersionId=2442439",
+    "source_url": "https://civitai.red/models/2168935/z-image-turbo?modelVersionId=2442439",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/41150b54-1830-470c-a98e-f46a2e908122/original=true/111679195.jpeg",
+    "tags": []
   },
   "embeddings/7dirtywords.pt": {
     "name": "7 Dirty Words negative prompt",
@@ -2135,6 +2625,17 @@
         "Sell"
       ]
     }
+  },
+  "embeddings/lazyhand.safetensors": {
+    "name": "✨ Lazy Embeddings for ALL illustrious NoobAI Pony SDXL models LazyPositive LazyNegative (Positive and Negative plus more!)",
+    "version": "lazyhand v1.0",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/1302719/lazy-embeddings-for-all-illustrious-noobai-pony-sdxl-models-lazypositive-lazynegative-positive-and-negative-plus-more?modelVersionId=1550840",
+    "source_url": "https://civitai.red/models/1302719/lazy-embeddings-for-all-illustrious-noobai-pony-sdxl-models-lazypositive-lazynegative-positive-and-negative-plus-more?modelVersionId=1550840",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/7439cbab-a426-4262-9dc9-17bf0e268012/original=true/64342103.jpeg",
+    "tags": [
+      "lazyhand"
+    ]
   },
   "embeddings/lazyneg.safetensors": {
     "name": "✨ Lazy Embeddings for ALL illustrious NoobAI Pony SDXL models LazyPositive LazyNegative (Positive and Negative plus more!)",
@@ -2325,6 +2826,96 @@
       "allow_commercial_use": "N"
     }
   },
+  "insightface/models/antelopev2/1k3d68.onnx": {
+    "name": "InsightFace antelopev2 1k3d68",
+    "version": "antelopev2",
+    "base_model": "InsightFace",
+    "thumbnail_url": null,
+    "source_url": "https://huggingface.co/DIAMONIK7777/antelopev2/resolve/main/1k3d68.onnx",
+    "tags": [
+      "pulid",
+      "insightface"
+    ],
+    "note": "PulidInsightFaceLoader용. src/lib/pulid-assets.ts PULID_INSIGHTFACE와 동일"
+  },
+  "insightface/models/antelopev2/2d106det.onnx": {
+    "name": "InsightFace antelopev2 2d106det",
+    "version": "antelopev2",
+    "base_model": "InsightFace",
+    "thumbnail_url": null,
+    "source_url": "https://huggingface.co/DIAMONIK7777/antelopev2/resolve/main/2d106det.onnx",
+    "tags": [
+      "pulid",
+      "insightface"
+    ],
+    "note": "PulidInsightFaceLoader용. src/lib/pulid-assets.ts PULID_INSIGHTFACE와 동일"
+  },
+  "insightface/models/antelopev2/genderage.onnx": {
+    "name": "InsightFace antelopev2 genderage",
+    "version": "antelopev2",
+    "base_model": "InsightFace",
+    "thumbnail_url": null,
+    "source_url": "https://huggingface.co/DIAMONIK7777/antelopev2/resolve/main/genderage.onnx",
+    "tags": [
+      "pulid",
+      "insightface"
+    ],
+    "note": "PulidInsightFaceLoader용. src/lib/pulid-assets.ts PULID_INSIGHTFACE와 동일"
+  },
+  "insightface/models/antelopev2/glintr100.onnx": {
+    "name": "InsightFace antelopev2 glintr100",
+    "version": "antelopev2",
+    "base_model": "InsightFace",
+    "thumbnail_url": null,
+    "source_url": "https://huggingface.co/DIAMONIK7777/antelopev2/resolve/main/glintr100.onnx",
+    "tags": [
+      "pulid",
+      "insightface"
+    ],
+    "note": "PulidInsightFaceLoader용. src/lib/pulid-assets.ts PULID_INSIGHTFACE와 동일"
+  },
+  "insightface/models/antelopev2/scrfd_10g_bnkps.onnx": {
+    "name": "InsightFace antelopev2 scrfd_10g_bnkps",
+    "version": "antelopev2",
+    "base_model": "InsightFace",
+    "thumbnail_url": null,
+    "source_url": "https://huggingface.co/DIAMONIK7777/antelopev2/resolve/main/scrfd_10g_bnkps.onnx",
+    "tags": [
+      "pulid",
+      "insightface"
+    ],
+    "note": "PulidInsightFaceLoader용. src/lib/pulid-assets.ts PULID_INSIGHTFACE와 동일"
+  },
+  "latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors": {
+    "name": "LTX-2.5 latent spatial upscaler x2 (bf16)",
+    "version": "v1.0 bf16",
+    "base_model": "LTXV 2.5",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
+    "tags": [
+      "ltx25",
+      "upscaler",
+      "spatial",
+      "latent"
+    ],
+    "note": "확인됨: Lightricks/LTX-2.5 공식. 2-stage 정제 패스의 공간 x2 업스케일러."
+  },
+  "latent_upscale_models/ltx-2.5-latent-temporal-upscaler-x2-bf16-1.0.safetensors": {
+    "name": "LTX-2.5 latent temporal upscaler x2 (bf16)",
+    "version": "v1.0 bf16",
+    "base_model": "LTXV 2.5",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/latent_upscale_models/ltx-2.5-latent-temporal-upscaler-x2-bf16-1.0.safetensors",
+    "tags": [
+      "ltx25",
+      "upscaler",
+      "temporal",
+      "latent"
+    ],
+    "note": "확인됨: Lightricks/LTX-2.5 공식. 시간축 x2 업스케일러(프레임 보간, 선택)."
+  },
   "loras/[Artstyle] SomethingWeird_Geekpower [IL].safetensors": {
     "name": "[IL] Geekpower AI Styles",
     "version": "SomethingWeird",
@@ -2344,6 +2935,13 @@
         "RentCivit"
       ]
     }
+  },
+  "loras/[Krea 2] BloomGirls UltraRealism": {
+    "name": "[Krea 2] BloomGirls UltraRealism",
+    "version": "[Krea 2] Beta V0.1",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2735553/krea-2-bloomgirls-ultrarealism?modelVersionId=3075850",
+    "source_url": "https://civitai.red/models/2735553/krea-2-bloomgirls-ultrarealism?modelVersionId=3075850"
   },
   "loras/[Style filter] Xu Er thick paint composition light texture enhancement Illustrious.safetensors": {
     "name": "[Style filter] Xu Er thick paint composition light texture enhancement",
@@ -2376,6 +2974,14 @@
         "RentCivit"
       ]
     }
+  },
+  "loras/[Yue]Nijistyle①.safetensors": {
+    "name": "Niji-male-style①",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/1028032/niji-male-style?modelVersionId=1152969",
+    "source_url": "https://civitai.red/models/1028032/niji-male-style?modelVersionId=1152969",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/2e834f10-0522-4512-b09b-198f14c263c2/original=true/44947989.jpeg"
   },
   "loras/0_11Xx_B.safetensors": {
     "name": "0__11Xx | Shiiro's Styles | Niji",
@@ -2459,6 +3065,17 @@
       ]
     }
   },
+  "loras/1SR9GTB6V2FV7S1C5VW8HJD7T0.safetensors": {
+    "name": "Intimate Kiss Anime Men",
+    "version": "V1",
+    "base_model": "Anima",
+    "civitai_url": "https://civitai.red/models/2717644/intimate-kiss-anime-men?modelVersionId=3053748",
+    "source_url": "https://civitai.red/models/2717644/intimate-kiss-anime-men?modelVersionId=3053748",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/a18284f5-f22f-4c18-b397-5b4012df3d0e/original=true/134386433.jpeg",
+    "tags": [
+      "ikamn"
+    ]
+  },
   "loras/2dRealPhoto_Background.safetensors": {
     "name": "2dReal/Photo Background",
     "version": "V1",
@@ -2508,6 +3125,41 @@
       ]
     },
     "source_url": "https://civitai.red/models/1028032/niji-male-style?modelVersionId=1152969"
+  },
+  "loras/69yottea_illu_v2.safetensors": {
+    "name": "96yottea | Style LoRa",
+    "version": "96yottea",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/3b33299f-d4ae-4bfc-9b1f-62d57190700f/original=true/46715466.jpeg",
+    "civitai_url": "https://civitai.red/models/1031927/96yottea-style-lora?modelVersionId=1157361",
+    "source_url": "https://civitai.red/models/1031927/96yottea-style-lora?modelVersionId=1157361",
+    "tags": [
+      "69yottea_style_illu",
+      "photorealistic",
+      "anime",
+      "video game",
+      "illu",
+      "cartoon",
+      "girls",
+      "woman",
+      "game character",
+      "realistic",
+      "lora",
+      "male",
+      "painting",
+      "game",
+      "style",
+      "man",
+      "styles"
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit"
+      ]
+    }
   },
   "loras/748cm_illu.safetensors": {
     "name": "748cm | Shiiro's Styles | Niji",
@@ -2643,6 +3295,37 @@
       ]
     }
   },
+  "loras/Add_color_PDXLv1.safetensors": {
+    "name": "Add Color - Slider",
+    "version": "Pony",
+    "base_model": "Pony",
+    "thumbnail_url": null,
+    "civitai_url": "https://civitai.red/models/1327644/add-color-slider?modelVersionId=1498957",
+    "source_url": "https://civitai.red/models/1327644/add-color-slider?modelVersionId=1498957",
+    "tags": []
+  },
+  "loras/add_detail.safetensors": {
+    "name": "Detail Tweaker LoRA (细节调整LoRA)",
+    "version": "v1.0",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/8db45d23-7bcf-4979-8b35-0e7779c5a8f8/original=true/692411.jpeg",
+    "civitai_url": "https://civitai.red/models/58390/detail-tweaker-lora-lora?modelVersionId=62833",
+    "source_url": "https://civitai.red/models/58390/detail-tweaker-lora-lora?modelVersionId=62833",
+    "tags": [
+      "lora",
+      "concept",
+      "anime",
+      "photorealistic",
+      "detailed",
+      "undetailed"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": []
+    }
+  },
   "loras/add-detail-xl.safetensors": {
     "name": "Detail Tweaker XL",
     "version": "v1.0",
@@ -2668,6 +3351,15 @@
       ]
     }
   },
+  "loras/ade-nikke-richy-v2_ixl.safetensors": {
+    "name": "Ade (NIKKE) SDXL LoRA [Illustrious] | 3 Outfits",
+    "version": "ade-nikke-richy-v2_ixl",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/1008601/ade-nikke-sdxl-lora-illustrious-3-outfits?modelVersionId=2212577",
+    "source_url": "https://civitai.red/models/1008601/ade-nikke-sdxl-lora-illustrious-3-outfits?modelVersionId=2212577",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/9f2db3f0-4d73-4733-b02b-cfc5538d8cf8/original=true/100147361.jpeg",
+    "tags": []
+  },
   "loras/AFAE-000010.safetensors": {
     "name": "Handsome Boy.1",
     "version": "v1.0",
@@ -2691,6 +3383,18 @@
       "style",
       "anime",
       "sexy"
+    ]
+  },
+  "loras/Akali OgiIllustriousLoRA.safetensors": {
+    "name": "Akali from League of Legends | Illustrious",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/1265593/akali-from-league-of-legends-illustrious?modelVersionId=1427327",
+    "source_url": "https://civitai.red/models/1265593/akali-from-league-of-legends-illustrious?modelVersionId=1427327",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/91f0398b-3ef2-4823-bb2f-4934bef54ca5/original=true/58427089.jpeg",
+    "tags": [
+      "dual wielding, holding kunai, Holding scythe",
+      "back tattoo, dragon tattoo"
     ]
   },
   "loras/Alastor_(hazbin_hotel).safetensors": {
@@ -3080,6 +3784,25 @@
       ]
     }
   },
+  "loras/Arcane_Krea2.safetensors": {
+    "name": "Arcane Style",
+    "version": "Arcane Style",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2815410/arcane-style?modelVersionId=3175347",
+    "source_url": "https://civitai.red/models/2815410/arcane-style?modelVersionId=3175347",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/6ce1e472-864c-495e-94f5-ecc9089b3726/original=true/138441719.mp4",
+    "tags": [
+      "arcanekreastyle"
+    ]
+  },
+  "loras/areola_size_krea2_loraholic.safetensors": {
+    "name": "Areola Size Slider - (Krea2 + ZIT)",
+    "version": "Krea2_v1",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2554618/areola-size-slider-krea2-zit?modelVersionId=3120387",
+    "source_url": "https://civitai.red/models/2554618/areola-size-slider-krea2-zit?modelVersionId=3120387",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/290e24e7-d6a1-41a1-9233-ce3d3ed68c6b/original=true/136418837.jpeg"
+  },
   "loras/Arweverse_-_OC-000007.safetensors": {
     "name": "Arweverse - [OC]",
     "version": "V1",
@@ -3164,6 +3887,14 @@
         "Rent"
       ]
     }
+  },
+  "loras/ass_krea2_loraholic.safetensors": {
+    "name": "Ass and Thighs Slider - (Krea-2 + ZIT)",
+    "version": "Krea-2_v1",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2554616/ass-and-thighs-slider-krea-2-zit?modelVersionId=3072964",
+    "source_url": "https://civitai.red/models/2554616/ass-and-thighs-slider-krea-2-zit?modelVersionId=3072964",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/81b11f8a-7ff0-40c7-a6dd-8c9cc2bdf794/original=true/134964430.jpeg"
   },
   "loras/atreidsv2style.safetensors": {
     "name": "Arsnitida Style | Illustrious",
@@ -3358,6 +4089,39 @@
       "honkai: star rail"
     ]
   },
+  "loras/bloomgirls-ultrarealism-krea2_4k.safetensors": {
+    "name": "[Krea 2] BloomGirls UltraRealism",
+    "version": "[Krea 2] Beta V0.1",
+    "base_model": "Krea 2",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/2140c790-e23d-4b78-9a74-693db5169772/original=true/135057112.jpeg",
+    "civitai_url": "https://civitai.red/models/2735553/krea-2-bloomgirls-ultrarealism?modelVersionId=3075850",
+    "source_url": "https://civitai.red/models/2735553/krea-2-bloomgirls-ultrarealism?modelVersionId=3075850",
+    "tags": [
+      "realism",
+      "realistic",
+      "ai influencer",
+      "style"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
+  },
+  "loras/breast_size_v2_krea2_loraholic.safetensors": {
+    "name": "Breast Size Slider  - (Krea-2 + ZIT)",
+    "version": "Krea-2_v2",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2540187/breast-size-slider-krea-2-zit?modelVersionId=3131773",
+    "source_url": "https://civitai.red/models/2540187/breast-size-slider-krea-2-zit?modelVersionId=3131773",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/c3c7667e-f0c2-4c77-b1c5-731b5b145571/original=true/136772816.jpeg"
+  },
   "loras/Bridge Tools Line Weight.safetensors": {
     "name": "Line Weight Slider - Bridge Tools (NoobAI/Illustrious/Pony)",
     "version": "v1.0",
@@ -3413,6 +4177,29 @@
         "RentCivit",
         "Rent",
         "Image"
+      ]
+    }
+  },
+  "loras/BWSTits_PONY.safetensors": {
+    "name": "Big Wide-Set Saggy Tits | Z-image Turbo + Flux + Pony + ILL",
+    "version": "Pony v1.0",
+    "base_model": "Pony",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/32727b87-a5f6-49ed-87f3-6b470c00964b/original=true/65629563.jpeg",
+    "civitai_url": "https://civitai.red/models/1357639/big-wide-set-saggy-tits-z-image-turbo-flux-pony-ill?modelVersionId=1576409",
+    "source_url": "https://civitai.red/models/1357639/big-wide-set-saggy-tits-z-image-turbo-flux-pony-ill?modelVersionId=1576409",
+    "tags": [
+      "BWSTits",
+      "big tits",
+      "saggy tits",
+      "concept",
+      "natural tits"
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "RentCivit"
       ]
     }
   },
@@ -3669,6 +4456,20 @@
       "color"
     ]
   },
+  "loras/coworker-girl.safetensors": {
+    "name": "coworker-girl",
+    "version": "자체 학습 · 2026-08-24",
+    "base_model": "Illustrious",
+    "thumbnail_url": "/api/models/thumbnail?folder=loras&file=coworker-girl.preview.png",
+    "civitai_url": null,
+    "source_url": null,
+    "tags": [
+      "self-trained",
+      "자체 학습",
+      "character",
+      "coworker-girl"
+    ]
+  },
   "loras/cryostyle.safetensors": {
     "name": "Cryosibilum Style | Illustrious",
     "version": "Experv1.0",
@@ -3780,6 +4581,17 @@
       ]
     }
   },
+  "loras/Deepthroat slider IXLR3_alpha16.0_rank32_full_last.safetensors": {
+    "name": "Deepthroat slider Pony/IllustriousXL",
+    "version": "IXL",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/871004/deepthroat-slider-pony-illustriousxl?modelVersionId=1498821",
+    "source_url": "https://civitai.red/models/871004/deepthroat-slider-pony-illustriousxl?modelVersionId=1498821",
+    "thumbnail_url": null,
+    "tags": [
+      "fellatio"
+    ]
+  },
   "loras/DemonerithIllustrious.safetensors": {
     "name": "Demonerith Style",
     "version": "v1.0",
@@ -3797,6 +4609,32 @@
       "reason": "Rent 허용 + 특이사항 없음",
       "allow_commercial_use": "Y"
     },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
+  },
+  "loras/detailed_notrigger.safetensors": {
+    "name": "extremely detailed (no trigger) - sliders.ntcai.xyz",
+    "version": "v2.0",
+    "base_model": "SDXL 1.0",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/3f5be346-5692-47d5-a9b3-a5d34e4e1a80/original=true/7702551.jpeg",
+    "civitai_url": "https://civitai.red/models/229213/extremely-detailed-no-trigger-sliders-ntcai-xyz?modelVersionId=383563",
+    "source_url": "https://civitai.red/models/229213/extremely-detailed-no-trigger-sliders-ntcai-xyz?modelVersionId=383563",
+    "tags": [
+      "concept",
+      "enhancer",
+      "sliders",
+      "detailed",
+      "extremely detailed"
+    ],
     "license": {
       "allowNoCredit": true,
       "allowDerivatives": true,
@@ -4089,6 +4927,17 @@
       ]
     }
   },
+  "loras/ElfinSmoothAnime.safetensors": {
+    "name": "ElfinSmooth",
+    "version": "Classic",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/1719319/elfinsmooth?modelVersionId=1945697",
+    "source_url": "https://civitai.red/models/1719319/elfinsmooth?modelVersionId=1945697",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/95019131-6d6f-4e6d-9cda-88d14556d8a3/original=true/88633592.jpeg",
+    "tags": [
+      "\"ElfinSmooth\""
+    ]
+  },
   "loras/Elle_based_on_Rick__Morty_Anime-000009.safetensors": {
     "name": "Elle (based on Rick & Morty Anime) - Illustrious",
     "version": "V1",
@@ -4151,6 +5000,20 @@
       ]
     }
   },
+  "loras/epic_cumshots-V1-LTX_2_3-CUMSH0T.safetensors": {
+    "name": "Epic Cumshots (LTX 2.3)",
+    "version": "V1 CUMSH0T",
+    "base_model": "LTXV 2.3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/cdkkkk/setup/resolve/main/ltx2/epic_cumshots-V1-LTX_2_3-CUMSH0T.safetensors",
+    "tags": [
+      "ltx23",
+      "lora",
+      "nsfw"
+    ],
+    "note": "확인됨(정확): cdkkkk/setup/ltx2 (428MB)"
+  },
   "loras/Expressive_H-000001.safetensors": {
     "name": "ExpressiveH (Hentai LoRa Style) エロアニメ",
     "version": "ExpressiveH",
@@ -4187,6 +5050,28 @@
         "Rent",
         "RentCivit",
         "Image"
+      ]
+    }
+  },
+  "loras/Eye_DetailerXL.safetensors": {
+    "name": "Eye Detailer_XL",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/d087da5c-1931-49ad-bdc6-9377b8a983f3/original=true/98694427.jpeg",
+    "civitai_url": "https://civitai.red/models/1933152/eye-detailer-xl?modelVersionId=2188014",
+    "source_url": "https://civitai.red/models/1933152/eye-detailer-xl?modelVersionId=2188014",
+    "tags": [
+      "style"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
       ]
     }
   },
@@ -4272,6 +5157,17 @@
       ]
     }
   },
+  "loras/Flat_colors_-_NikaStyle.safetensors": {
+    "name": "Flat colors, soft shading, chibi art– NikaStyle",
+    "version": "ILL",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/1940918/flat-colors-soft-shading-chibi-art-nikastyle?modelVersionId=2196722",
+    "source_url": "https://civitai.red/models/1940918/flat-colors-soft-shading-chibi-art-nikastyle?modelVersionId=2196722",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/52c6792f-a50e-4ff8-8d47-8406a5509e7a/original=true/99316911.jpeg",
+    "tags": [
+      "FlatNika,"
+    ]
+  },
   "loras/flatline_v2_-_Illus_x_Niji.safetensors": {
     "name": "Flatline - Anima/Illus x Niji [BETA]",
     "version": "v2.0 Remix",
@@ -4301,6 +5197,15 @@
         "Sell"
       ]
     }
+  },
+  "loras/FLMFX.safetensors": {
+    "name": "[BSS] - Styles for illustrious - FilmFX (Realism)",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/1747744/bss-styles-for-illustrious-filmfx-realism?modelVersionId=1978018",
+    "source_url": "https://civitai.red/models/1747744/bss-styles-for-illustrious-filmfx-realism?modelVersionId=1978018",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/9507dc78-23ac-4b73-a1bd-ab69df0c35f5/original=true/92105595.mp4",
+    "tags": []
   },
   "loras/flux dildo riding.safetensors": {
     "name": "dildo riding flux",
@@ -4341,6 +5246,17 @@
         "RentCivit"
       ]
     }
+  },
+  "loras/Fox burrow style 1 (Anima) v1.safetensors": {
+    "name": "Fox Burrow's Styles",
+    "version": "Fox Burrow Style 1",
+    "base_model": "Anima",
+    "civitai_url": "https://civitai.red/models/2779451/fox-burrow-s-styles?modelVersionId=3130169",
+    "source_url": "https://civitai.red/models/2779451/fox-burrow-s-styles?modelVersionId=3130169",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/27dad494-04f8-4124-9d9d-af3f75279d6b/original=true/136720716.jpeg",
+    "tags": [
+      "@foxburrow"
+    ]
   },
   "loras/Futurabbitstyle_animaV1.5-000016.safetensors": {
     "name": "Futurabbitstyle_anima",
@@ -4534,6 +5450,17 @@
       "monochrome"
     ]
   },
+  "loras/gpt-image-2_anima-base1_v1-1.safetensors": {
+    "name": "Style > gpt-image-2",
+    "version": "Anima-base1 v1.1",
+    "base_model": "Anima",
+    "civitai_url": "https://civitai.red/models/2564225/style-gpt-image-2?modelVersionId=2998634",
+    "source_url": "https://civitai.red/models/2564225/style-gpt-image-2?modelVersionId=2998634",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/eb04c719-1d9e-4309-9f06-c49b2cc6ba1f/original=true/132699696.jpeg",
+    "tags": [
+      "@gpt-image-2,"
+    ]
+  },
   "loras/Hanbok-V2.safetensors": {
     "name": "Hanbok",
     "version": "v2.0",
@@ -4562,6 +5489,20 @@
         "Rent"
       ]
     }
+  },
+  "loras/Hand Milking (Anima) v1.safetensors": {
+    "name": "Hand milking",
+    "version": "Anima - v1.0",
+    "base_model": "Anima",
+    "civitai_url": "https://civitai.red/models/2480423/hand-milking?modelVersionId=3332509",
+    "source_url": "https://civitai.red/models/2480423/hand-milking?modelVersionId=3332509",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/210eaa03-7caa-4da2-a955-fefbc878e0ed/original=true/142981374.jpeg",
+    "tags": [
+      "hand milking",
+      "grabbing another's breast",
+      "lactation",
+      "projectile lactation"
+    ]
   },
   "loras/Hand pony style v1.safetensors": {
     "name": "Hands XL + SD 1.5 + F1D + Pony + Illustrious + zit + ZIB",
@@ -4785,6 +5726,17 @@
       ]
     }
   },
+  "loras/hina_krea2Turbo_lora_tqd_v4.0.safetensors": {
+    "name": "[Krea2 Turbo] AsianMix Lora",
+    "version": "v4.0 - TQD",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2746042/krea2-turbo-asianmix-lora?modelVersionId=3203007",
+    "source_url": "https://civitai.red/models/2746042/krea2-turbo-asianmix-lora?modelVersionId=3203007",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/57487454-3a00-4be6-8273-dbfd11e052d3/original=true/138912695.jpeg",
+    "tags": [
+      "asian woman"
+    ]
+  },
   "loras/IceAI.safetensors": {
     "name": "DonM - IceAI [SD1.5]",
     "version": "v1.1",
@@ -4808,6 +5760,56 @@
         "Rent"
       ]
     }
+  },
+  "loras/iLLC0lorL1nes.safetensors": {
+    "name": "Velvet's Mythic Fantasy Styles | Flux + Pony + illustrious + ZiT + Anima + Krea2",
+    "version": "illustrious Colorful Line",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/599757/velvet-s-mythic-fantasy-styles-flux-pony-illustrious-zit-anima-krea2?modelVersionId=2620790",
+    "source_url": "https://civitai.red/models/599757/velvet-s-mythic-fantasy-styles-flux-pony-illustrious-zit-anima-krea2?modelVersionId=2620790",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/2b51113d-1a94-4635-9651-fe5778760f54/original=true/118378407.jpeg",
+    "tags": [
+      "C0lorL1nes"
+    ]
+  },
+  "loras/illustrious_all_rated_v1.safetensors": {
+    "name": "Motimalu - All Rated (Illustrious)",
+    "version": "v1.0 [Illustrious]",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/d3b25712-561a-4d64-b94f-7c2878d68adc/original=true/44339245.jpeg",
+    "civitai_url": "https://civitai.red/models/1018079/motimalu-all-rated-illustrious?modelVersionId=1141520",
+    "source_url": "https://civitai.red/models/1018079/motimalu-all-rated-illustrious?modelVersionId=1141520",
+    "tags": [
+      "masterpiece, best quality, very aesthetic, absurdres",
+      "illustrious",
+      "very aesthetic",
+      "anime",
+      "base model",
+      "best quality",
+      "masterpiece",
+      "niji"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
+    }
+  },
+  "loras/illustrious_masterpieces_v3.safetensors": {
+    "name": "Aesthetic Quality Modifiers - Masterpiece",
+    "version": "v3.0 [illustrious]",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/929497/aesthetic-quality-modifiers-masterpiece?modelVersionId=2247497",
+    "source_url": "https://civitai.red/models/929497/aesthetic-quality-modifiers-masterpiece?modelVersionId=2247497",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/c412dec5-ab50-4cc1-8b7b-1526e771fdf3/original=true/102155669.jpeg",
+    "tags": [
+      "masterpiece, best quality, very aesthetic"
+    ]
   },
   "loras/illustriousXLv01_stabilizer_v1.121.safetensors": {
     "name": "Stabilizer IL/NAI/CK",
@@ -4943,6 +5945,20 @@
       "allow_commercial_use": "N"
     }
   },
+  "loras/Implants2.safetensors": {
+    "name": "Breast Implants - PonyXL",
+    "version": "v1.0",
+    "base_model": "Pony",
+    "civitai_url": "https://civitai.red/models/536195/breast-implants-ponyxl?modelVersionId=596072",
+    "source_url": "https://civitai.red/models/536195/breast-implants-ponyxl?modelVersionId=596072",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/4cac77fb-fe77-4f6a-bb8d-738fa113a2c0/original=true/17052392.jpeg",
+    "tags": [
+      "breast implants",
+      "fake tits",
+      "unaligned breasts",
+      "perfectly round breasts"
+    ]
+  },
   "loras/incase_style_v3-1_ponyxl_ilff.safetensors": {
     "name": "Incase Style [PonyXL]",
     "version": "v3.0 (PonyXL Edition)",
@@ -5050,6 +6066,13 @@
       ]
     }
   },
+  "loras/Krea2 TextFusion Refusal-Reduction LoRA": {
+    "name": "Krea2 TextFusion Refusal-Reduction LoRA",
+    "version": "v1.0",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2775340/krea2-textfusion-refusal-reduction-lora?modelVersionId=3125118",
+    "source_url": "https://civitai.red/models/2775340/krea2-textfusion-refusal-reduction-lora?modelVersionId=3125118"
+  },
   "loras/krea2_Enhancer.safetensors": {
     "name": "Krea2_Enhancer",
     "version": "v1.0",
@@ -5099,6 +6122,31 @@
         "Sell"
       ]
     }
+  },
+  "loras/Krea2_TextFusion_Refusal_Reduction.safetensors": {
+    "name": "Krea2 TextFusion Refusal-Reduction LoRA",
+    "version": "v1",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2775340/krea2-textfusion-refusal-reduction-lora?modelVersionId=3125118",
+    "source_url": "https://civitai.red/models/2775340/krea2-textfusion-refusal-reduction-lora?modelVersionId=3125118",
+    "tags": [
+      "krea2",
+      "pornmaster",
+      "lora"
+    ],
+    "note": "원본 워크플로우에서 strength 1.0으로 활성. 강한 검열 주제 생성 보조.",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/1b36ccbb-d3de-4fbc-85e4-631f2e8c7732/original=true/136629949.jpeg"
+  },
+  "loras/krea2-bloomgirls-realism-step00004000.safetensors": {
+    "name": "[Krea 2] BloomGirls UltraRealism",
+    "version": "v1.0 (Main)",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2735553/krea-2-bloomgirls-ultrarealism?modelVersionId=3191538",
+    "source_url": "https://civitai.red/models/2735553/krea-2-bloomgirls-ultrarealism?modelVersionId=3191538",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/6e9d3fe6-76ac-48db-8331-e7404af29331/original=true/138554654.jpeg",
+    "tags": [
+      "bl00m"
+    ]
   },
   "loras/Krea2Rella_c1-st8000.safetensors": {
     "name": "Krea2 Rella Style",
@@ -5160,6 +6208,15 @@
       ]
     }
   },
+  "loras/lenovo_krea2.safetensors": {
+    "name": "Lenovo UltraReal",
+    "version": "v1.0 Krea2",
+    "base_model": "Krea 2",
+    "thumbnail_url": null,
+    "civitai_url": "https://civitai.red/models/1662740/lenovo-ultrareal?modelVersionId=3075606",
+    "source_url": "https://civitai.red/models/1662740/lenovo-ultrareal?modelVersionId=3075606",
+    "tags": []
+  },
   "loras/lightingSlider.safetensors": {
     "name": "Lighting / darkness slider",
     "version": "Illustrious",
@@ -5192,6 +6249,94 @@
         "Rent"
       ]
     }
+  },
+  "loras/ltx-2.5-22b-distilled-lora-450-bf16.safetensors": {
+    "name": "LTX-2.5 22B distilled LoRA (450, bf16)",
+    "version": "450 bf16",
+    "base_model": "LTXV 2.5",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/loras/ltx-2.5-22b-distilled-lora-450-bf16.safetensors",
+    "tags": [
+      "ltx25",
+      "lora",
+      "distilled",
+      "speed"
+    ],
+    "note": "확인됨: Lightricks/LTX-2.5 공식. dev transformer에 얹어 distilled 속도를 얻는 LoRA."
+  },
+  "loras/ltx2_3/ltx-2.3-22b-distilled-lora-fro90_ceil72.safetensors": {
+    "name": "LTX-Video 2.3 22B distilled LoRA",
+    "version": "fro90 ceil72",
+    "base_model": "LTXV 2.3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/TenStrip/LTX2.3_Distilled_Lora_1.1_Experiments/resolve/main/ltx-2.3-22b-distilled-lora-fro90_ceil72.safetensors",
+    "tags": [
+      "ltx23",
+      "lora",
+      "distilled",
+      "speed"
+    ],
+    "note": "확인됨(정확): TenStrip/LTX2.3_Distilled_Lora_1.1_Experiments. SulphurAI/Sulphur-2-base 에도 동일계열 존재"
+  },
+  "loras/LTX2.3_Breasts_Jiggle_Physics.safetensors": {
+    "name": "LTX2.3 Breasts Jiggle Physics",
+    "version": "LTX2.3",
+    "base_model": "LTXV 2.3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Sentinel7/ltxv/resolve/main/2536021/2850154/LTX2.3_Breasts_Jiggle_Physics.safetensors",
+    "tags": [
+      "ltx23",
+      "lora",
+      "nsfw",
+      "physics"
+    ],
+    "note": "확인됨(정확): Sentinel7/ltxv (674MB, main 브랜치)"
+  },
+  "loras/LTX2.3-MysticXXX.safetensors": {
+    "name": "LTX2.3 MysticXXX",
+    "version": "LTX2.3",
+    "base_model": "LTXV 2.3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": null,
+    "tags": [
+      "ltx23",
+      "lora",
+      "nsfw"
+    ],
+    "note": "런너블 버전에서 제거됨(워크플로우 node 922 미참조). 공개 LTX2.3판 없음, strength 0.40 저강도라 영향 미미. 원본 확보 시 <lora:LTX2.3-MysticXXX:0.40:0.40> 태그 복원 가능"
+  },
+  "loras/ltx23_nsfw_helper_multi_concept_lora_v2.safetensors": {
+    "name": "LTX2.3 NSFW Helper (multi-concept)",
+    "version": "v2",
+    "base_model": "LTXV 2.3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/cdkkkk/setup/resolve/main/ltx2/ltx23_nsfw_helper_multi_concept_lora_v1.safetensors",
+    "tags": [
+      "ltx23",
+      "lora",
+      "nsfw",
+      "helper"
+    ],
+    "note": "대체(v2 미발견): HF에는 v1만 존재 → cdkkkk/setup/ltx2 의 v1 사용. 원본 v2는 Civitai에서 별도 확인 필요"
+  },
+  "loras/Ltx23_RemoteOrgasm_v1.safetensors": {
+    "name": "LTX23 Remote Orgasm",
+    "version": "v1",
+    "base_model": "LTXV 2.3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Sentinel7/ltxv/resolve/main/2176039/2775805/LTX-2.3%20-%20Orgasm.safetensors",
+    "tags": [
+      "ltx23",
+      "lora",
+      "nsfw"
+    ],
+    "note": "치환(런너블): 원본 RemoteOrgasm은 공개 미발견 → Sentinel7/ltxv 'LTX-2.3 - Orgasm.safetensors'(805MB)로 다운로드. 저장 파일명은 워크플로우가 참조하는 Ltx23_RemoteOrgasm_v1.safetensors 로 지정할 것"
   },
   "loras/LUT_slider_xxXL_V1.safetensors": {
     "name": "LUT Color Grading - Slider",
@@ -5358,6 +6503,17 @@
     "risk": null,
     "license": null
   },
+  "loras/MGBODYTYPEO2IL.safetensors": {
+    "name": "Puffy Nipples / MG Body Type O for Realistic Illustious",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/2003137/puffy-nipples-mg-body-type-o-for-realistic-illustious?modelVersionId=2267333",
+    "source_url": "https://civitai.red/models/2003137/puffy-nipples-mg-body-type-o-for-realistic-illustious?modelVersionId=2267333",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/8f18b58a-8b64-4509-a620-42d450afb425/original=true/103329478.jpeg",
+    "tags": [
+      "(breasts, nipples, perky breasts)"
+    ]
+  },
   "loras/MGE_V6.1_IL_Final_R1.safetensors": {
     "name": "MGE Monster Girls",
     "version": "V6.1 - Illustrious",
@@ -5388,6 +6544,45 @@
         "RentCivit"
       ]
     }
+  },
+  "loras/Midjourney Image Enhancer XL v1.safetensors": {
+    "name": "Midjourney Image Enhancer XL/ILL Extreme",
+    "version": "XL v1.0",
+    "base_model": "SDXL 1.0",
+    "thumbnail_url": null,
+    "civitai_url": "https://civitai.red/models/542447/midjourney-image-enhancer-xl-ill-extreme?modelVersionId=603123",
+    "source_url": "https://civitai.red/models/542447/midjourney-image-enhancer-xl-ill-extreme?modelVersionId=603123",
+    "tags": []
+  },
+  "loras/minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy_resized_avg_rank_21_bf16.safetensors": {
+    "name": "MiniMax H3 lightx2v Turbo 4-step (rank 21)",
+    "version": "v0.1",
+    "base_model": "MiniMax H3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Kijai/MiniMax-H3_comfy/resolve/main/loras/minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy_resized_avg_rank_21_bf16.safetensors",
+    "tags": [
+      "minimax-h3",
+      "lora",
+      "turbo",
+      "distill"
+    ],
+    "note": "확인됨: Kijai/MiniMax-H3_comfy (0.31GB). DaSiWa 파이프라인 Turbo LoRA 컨트롤의 4-step 옵션. 권장: strength 0.75 + steps 4~12 + res_multistep(참조 영상 세팅: 0.75 / 12 steps)."
+  },
+  "loras/minimax_h3_fl2v_lightx2v_turbo_8step_v1.0_resized_avg_rank_24_bf16.safetensors": {
+    "name": "MiniMax H3 lightx2v Turbo 8-step (rank 24)",
+    "version": "v1.0",
+    "base_model": "MiniMax H3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Kijai/MiniMax-H3_comfy/resolve/main/loras/minimax_h3_fl2v_lightx2v_turbo_8step_v1.0_resized_avg_rank_24_bf16.safetensors",
+    "tags": [
+      "minimax-h3",
+      "lora",
+      "turbo",
+      "distill"
+    ],
+    "note": "확인됨: Kijai/MiniMax-H3_comfy (0.36GB, lightx2v 원본의 rank-24 축소판). DaSiWa 파이프라인 Turbo LoRA 컨트롤의 8-step 옵션. 권장: strength 1.0 + steps 8."
   },
   "loras/more_details.safetensors": {
     "name": "Add More Details - Detail Enhancer / Tweaker (细节调整) LoRA",
@@ -5487,6 +6682,20 @@
       ]
     }
   },
+  "loras/moyong-ran.safetensors": {
+    "name": "moyong-ran",
+    "version": "자체 학습 · 2026-08-23",
+    "base_model": "Illustrious",
+    "thumbnail_url": "/api/models/thumbnail?folder=loras&file=moyong-ran.preview.png",
+    "civitai_url": null,
+    "source_url": null,
+    "tags": [
+      "self-trained",
+      "자체 학습",
+      "character",
+      "moyong-ran"
+    ]
+  },
   "loras/MuseInDark_IL-NAI-Tweak-3.0.safetensors": {
     "name": "[Styles] Muses in Dark | Semi-real Style - Illustrious/PonyXL - Illustrious|NAI",
     "version": "v3.0",
@@ -5521,6 +6730,32 @@
         "Rent"
       ]
     }
+  },
+  "loras/MYD6GFCHY25BF3G7WNRH7ZM450.safetensors": {
+    "name": "Jubjub pro",
+    "version": "V1",
+    "base_model": "ZImageTurbo",
+    "civitai_url": "https://civitai.red/models/2834209/jubjub-pro?modelVersionId=3198437",
+    "source_url": "https://civitai.red/models/2834209/jubjub-pro?modelVersionId=3198437",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/72574ca3-1293-403f-b2f1-0c4361cd4328/original=true/139095431.jpeg",
+    "tags": [
+      "jubjub"
+    ]
+  },
+  "loras/MysticXXX_MMH3-V3.safetensors": {
+    "name": "[MMH3] Mystic XXX",
+    "version": "v3.0",
+    "base_model": "MiniMax H3",
+    "thumbnail_url": null,
+    "civitai_url": "https://civitai.red/models/2856467?modelVersionId=3260276",
+    "source_url": "https://huggingface.co/Kutches/minmax/resolve/main/MysticXXX_MMH3-V3.safetensors",
+    "tags": [
+      "minimax-h3",
+      "lora",
+      "nsfw",
+      "video"
+    ],
+    "note": "확인됨: civitai 2856467 v3.0 (0.28GB). DaSiWa MiniMax H3 파이프라인의 유일한 활성 LoRA(strength 0.9, workflow에 baked)."
   },
   "loras/MythicCraft_IL_(semi-real).safetensors": {
     "name": "MythicCraft",
@@ -5636,6 +6871,23 @@
       ]
     }
   },
+  "loras/NiaoDAN_ILL_V1.safetensors": {
+    "name": "Artist Style: NiaoDan",
+    "version": "NiaoDan_ILL_V1",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/178d241d-68cd-4c31-8a6d-3efda69dc7c3/original=true/50672984.jpeg",
+    "civitai_url": "https://civitai.red/models/1124271/artist-style-niaodan?modelVersionId=1263639",
+    "source_url": "https://civitai.red/models/1124271/artist-style-niaodan?modelVersionId=1263639",
+    "tags": [
+      "style"
+    ],
+    "license": {
+      "allowNoCredit": false,
+      "allowDerivatives": false,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": []
+    }
+  },
   "loras/Niji Boi.safetensors": {
     "name": "Niji Boi",
     "version": "v1.0",
@@ -5725,6 +6977,17 @@
         "Image"
       ]
     }
+  },
+  "loras/Nijireol Krea2 v1 Ep5.safetensors": {
+    "name": "NijiReol | Semi-realistic Niji Style [Anima/Krea2/NAI/Z-Image]",
+    "version": "Krea2 v1.0",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2384767/nijireol-semi-realistic-niji-style-anima-krea2-nai-z-image?modelVersionId=3146836",
+    "source_url": "https://civitai.red/models/2384767/nijireol-semi-realistic-niji-style-anima-krea2-nai-z-image?modelVersionId=3146836",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/67020358-423d-4256-ba05-b695243c3543/original=true/137254220.jpeg",
+    "tags": [
+      "Nijireol"
+    ]
   },
   "loras/nnestyle.safetensors": {
     "name": "Nene Mix style | Illustrious",
@@ -6073,6 +7336,37 @@
       ]
     }
   },
+  "loras/PornMaster_Flat_chest_&_Innie_pussy_krea2_V1.safetensors": {
+    "name": "PornMaster Krea2 Flat chest & Innie pussy",
+    "version": "V1",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2769967/pornmaster-krea2-flat-chest-innie-pussy?modelVersionId=3118444",
+    "source_url": "https://civitai.red/models/2769967/pornmaster-krea2-flat-chest-innie-pussy?modelVersionId=3118444",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/9ae1eb18-d378-4cde-931a-491a813febf1/original=true/136363569.jpeg",
+    "tags": [
+      "her genitals were just a slit,",
+      "she has small areolas, nipples visible.",
+      "she has no areolas. nipples visible."
+    ]
+  },
+  "loras/PornMaster_Krea2_Asian_slider_V1.safetensors": {
+    "name": "PornMaster Krea2 Asian slider",
+    "version": "V1",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2756475/pornmaster-krea2-asian-slider?modelVersionId=3101650",
+    "source_url": "https://civitai.red/models/2756475/pornmaster-krea2-asian-slider?modelVersionId=3101650",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/41a30feb-0368-4f8d-9f8c-f5370a26f4f8/original=true/135901174.jpeg",
+    "tags": []
+  },
+  "loras/PornMaster_Krea2_Realism_slider_V1.safetensors": {
+    "name": "PornMaster Krea2 Realism slider",
+    "version": "V1",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2742129/pornmaster-krea2-realism-slider?modelVersionId=3083986",
+    "source_url": "https://civitai.red/models/2742129/pornmaster-krea2-realism-slider?modelVersionId=3083986",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/df6dcd35-0774-46b9-9688-2536abcec786/original=true/135311091.jpeg",
+    "tags": []
+  },
   "loras/PosingDynamicsILL.safetensors": {
     "name": "Posing Dynamics",
     "version": "v1.0 Illustrious",
@@ -6102,6 +7396,28 @@
       ]
     }
   },
+  "loras/ppw_v7_Animv4.safetensors": {
+    "name": "People's Works: SDXL",
+    "version": "v7_Animv4",
+    "base_model": "SDXL 1.0",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/4f89d35e-9224-4fb8-9a34-5105d94ff577/original=true/65966963.jpeg",
+    "civitai_url": "https://civitai.red/models/1400090/people-s-works-sdxl?modelVersionId=1582690",
+    "source_url": "https://civitai.red/models/1400090/people-s-works-sdxl?modelVersionId=1582690",
+    "tags": [
+      "anime",
+      "style"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent"
+      ]
+    }
+  },
   "loras/ppw_v8_Illuv2stable_128.safetensors": {
     "name": "People's Works: SDXL",
     "version": "v8_Illusv2.0Stable",
@@ -6128,6 +7444,23 @@
         "Rent"
       ]
     }
+  },
+  "loras/Private_Style_v11.safetensors": {
+    "name": "Private Style",
+    "version": "v1.1",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2833524/private-style?modelVersionId=3214549",
+    "source_url": "https://civitai.red/models/2833524/private-style?modelVersionId=3214549",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/2324e005-cb6c-49a9-8646-e717f46dcec6/original=true/139274138.jpeg"
+  },
+  "loras/Purple_Grainy_Kr2_AM.safetensors": {
+    "name": "Purple Grainy || Photography lora",
+    "version": "v1.0 Krea 2",
+    "base_model": "Krea 2",
+    "thumbnail_url": null,
+    "civitai_url": "https://civitai.red/models/2329053/purple-grainy-photography-lora?modelVersionId=3110766",
+    "source_url": "https://civitai.red/models/2329053/purple-grainy-photography-lora?modelVersionId=3110766",
+    "tags": []
   },
   "loras/Pvnk_styl2.safetensors": {
     "name": "Pvnk | Shiiro's Styles",
@@ -6273,6 +7606,41 @@
       ]
     }
   },
+  "loras/Realism Engine Ideogram 4 + Krea 2": {
+    "name": "Realism Engine Ideogram 4 + Krea 2",
+    "version": "Krea2 v3.0",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2688234/realism-engine-ideogram-4-krea-2?modelVersionId=3109006",
+    "source_url": "https://civitai.red/models/2688234/realism-engine-ideogram-4-krea-2?modelVersionId=3109006"
+  },
+  "loras/realism_engine_krea2_v3.1.safetensors": {
+    "name": "Realism Engine Ideogram 4 + Krea 2",
+    "version": "Krea2 v3.0",
+    "base_model": "Krea 2",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/866d389f-c8df-4881-a59c-d7e322dae96d/original=true/136067861.jpeg",
+    "civitai_url": "https://civitai.red/models/2688234/realism-engine-ideogram-4-krea-2?modelVersionId=3109006",
+    "source_url": "https://civitai.red/models/2688234/realism-engine-ideogram-4-krea-2?modelVersionId=3109006",
+    "tags": [
+      "bimbo",
+      "porn",
+      "anal",
+      "blowjob",
+      "fisting",
+      "ideogram",
+      "base model"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
+  },
   "loras/RealismSlider-v1.safetensors": {
     "name": "[KREA 2] Realism Slider",
     "version": "v1.0",
@@ -6326,6 +7694,81 @@
       ]
     }
   },
+  "loras/Realistic Snapshot (Z-Image-Turbo + Krea 2)": {
+    "name": "Realistic Snapshot (Z-Image-Turbo + Krea 2)",
+    "version": "Krea2 (v0.5)",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2268008/realistic-snapshot-z-image-turbo-krea-2?modelVersionId=3084537",
+    "source_url": "https://civitai.red/models/2268008/realistic-snapshot-z-image-turbo-krea-2?modelVersionId=3084537"
+  },
+  "loras/Realistic Snapshot (Z-Image-Turbo + Krea 2).safetensors": {
+    "name": "Realistic Snapshot (Z-Image-Turbo + Krea 2)",
+    "version": "Krea2 (v0.5)",
+    "base_model": "Krea 2",
+    "civitai_url": "https://civitai.red/models/2268008/realistic-snapshot-z-image-turbo-krea-2?modelVersionId=3084537",
+    "source_url": "https://civitai.red/models/2268008/realistic-snapshot-z-image-turbo-krea-2?modelVersionId=3084537"
+  },
+  "loras/Realistic_Asian_Beauty.safetensors": {
+    "name": "Realistic Asian Beauty Enhancer",
+    "version": "V1",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/2098342/realistic-asian-beauty-enhancer?modelVersionId=2374085",
+    "source_url": "https://civitai.red/models/2098342/realistic-asian-beauty-enhancer?modelVersionId=2374085",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/553011bb-091d-4808-927d-d8c14b81af79/original=true/111447737.mp4",
+    "tags": []
+  },
+  "loras/RealisticAnimeIXL_v2.safetensors": {
+    "name": "CAT - Citron Styles",
+    "version": "Real Anime IXL",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/362745/cat-citron-styles?modelVersionId=1169083",
+    "source_url": "https://civitai.red/models/362745/cat-citron-styles?modelVersionId=1169083",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/228c9265-00ff-48c9-bc21-47ea17b800ab/original=true/45767032.jpeg",
+    "tags": [
+      "bokeh, luminescent background,"
+    ]
+  },
+  "loras/RealisticSnapshotKrea2.safetensors": {
+    "name": "Realistic Snapshot (Z-Image-Turbo + Krea 2)",
+    "version": "Krea2 (v0.5)",
+    "base_model": "Krea 2",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/0c7a64a2-9833-4207-82b9-ab5ead6981b1/original=true/135351239.jpeg",
+    "civitai_url": "https://civitai.red/models/2268008/realistic-snapshot-z-image-turbo-krea-2?modelVersionId=3084537",
+    "source_url": "https://civitai.red/models/2268008/realistic-snapshot-z-image-turbo-krea-2?modelVersionId=3084537",
+    "tags": [
+      "digicam",
+      "photorealistic",
+      "2000s",
+      "photography",
+      "amateur",
+      "realism",
+      "candid",
+      "style",
+      "beautifulgirl",
+      "ethereal",
+      "amateurphoto",
+      "influencer",
+      "selfie"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
+  },
+  "loras/RealSkin_xxXL_v1.safetensors": {
+    "name": "Real Skin Slider",
+    "version": "v1.0",
+    "base_model": "Pony",
+    "civitai_url": "https://civitai.red/models/1486921/real-skin-slider?modelVersionId=1681921",
+    "source_url": "https://civitai.red/models/1486921/real-skin-slider?modelVersionId=1681921"
+  },
   "loras/remacri_original.safetensors": {
     "name": "Remacri",
     "version": "Original",
@@ -6352,6 +7795,13 @@
         "Sell"
       ]
     }
+  },
+  "loras/Rembrandt Lighting style illu v1.safetensors": {
+    "name": "Rembrandt (Low-Key) Lighting Style XL + SD1.5 + F1D + Illu + Pony + zit",
+    "version": "Rembrandt Illu v1.0",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/280454/rembrandt-low-key-lighting-style-xl-sd1-5-f1d-illu-pony-zit?modelVersionId=1806931",
+    "source_url": "https://civitai.red/models/280454/rembrandt-low-key-lighting-style-xl-sd1-5-f1d-illu-pony-zit?modelVersionId=1806931"
   },
   "loras/RetroNijiIL.safetensors": {
     "name": "[Illustrious XL] Niji | Retro Anime Style LoRA",
@@ -6540,6 +7990,27 @@
       ]
     }
   },
+  "loras/sable_anima_3283137_epoch_10.safetensors": {
+    "name": "Sable - Time's oc",
+    "version": "Sable v1",
+    "base_model": "Anima",
+    "civitai_url": "https://civitai.red/models/2903749/sable-time-s-oc?modelVersionId=3283640",
+    "source_url": "https://civitai.red/models/2903749/sable-time-s-oc?modelVersionId=3283640",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/25ae39dd-372c-4668-b8a0-a01b99d37ded/original=true/141393391.jpeg",
+    "tags": [
+      "flame bra",
+      "white skin, colored skin"
+    ]
+  },
+  "loras/SantaDress_Doaxvv_v1.safetensors": {
+    "name": "サンタ / Santa Dress - DOAXVV Outfit (Illustrious)",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/2208066/santa-dress-doaxvv-outfit-illustrious?modelVersionId=2486068",
+    "source_url": "https://civitai.red/models/2208066/santa-dress-doaxvv-outfit-illustrious?modelVersionId=2486068",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/dec3be26-6ff2-4229-a657-6d84fa8e623d/original=true/113234446.jpeg",
+    "tags": []
+  },
   "loras/SDXL_Hanbok_LoRA_beta7.safetensors": {
     "name": "Hanbok_Woman_XL Korean traditional clothes",
     "version": "beta7",
@@ -6595,6 +8066,47 @@
         "RentCivit",
         "Rent",
         "Image"
+      ]
+    }
+  },
+  "loras/SexGod_FingeringDildo_LTX23_v1.safetensors": {
+    "name": "SexGod Fingering/Dildo LTX23",
+    "version": "v1",
+    "base_model": "LTXV 2.3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/cdkkkk/setup/resolve/main/ltx2/SexGod_FingeringDildo_LTX23_v1.safetensors",
+    "tags": [
+      "ltx23",
+      "lora",
+      "nsfw"
+    ],
+    "note": "확인됨(정확): cdkkkk/setup/ltx2 (2.7GB)"
+  },
+  "loras/SF 4 PoisonIlluLoRA.safetensors": {
+    "name": "Poison from Street Fighter | Illustrious",
+    "version": "v1.0 Illustrious",
+    "base_model": "Illustrious",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/3aea8faf-fa53-4226-9c9c-45e5046a6ad2/original=true/52521977.jpeg",
+    "civitai_url": "https://civitai.red/models/1157659/poison-from-street-fighter-illustrious?modelVersionId=1302086",
+    "source_url": "https://civitai.red/models/1157659/poison-from-street-fighter-illustrious?modelVersionId=1302086",
+    "tags": [
+      "poisn, long hair, peaked cap, collar, tank top, midriff, silver bracelet, off shoulder, nail polish, denim shorts, brown bracelet, armlet, chain belt, handcuff on belt, pumps",
+      "riding crop",
+      "sexy",
+      "beautiful woman",
+      "mommy",
+      "street fighter",
+      "character",
+      "cute girl"
+    ],
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": false,
+      "allowDifferentLicense": false,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit"
       ]
     }
   },
@@ -6885,6 +8397,44 @@
       ]
     }
   },
+  "loras/sweatill 222.safetensors": {
+    "name": "Sweaty / Steamy / Musky (Anima/Illustrious)",
+    "version": "v7.0",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/1335716/sweaty-steamy-musky-anima-illustrious?modelVersionId=2926356",
+    "source_url": "https://civitai.red/models/1335716/sweaty-steamy-musky-anima-illustrious?modelVersionId=2926356",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/b657e01c-9c1c-46e5-804a-80f52542a215/original=true/129975451.jpeg",
+    "tags": [
+      "sweat, sweatdrop, sweaty",
+      "wet skin, smell, visible breath, steaming body, steamy"
+    ]
+  },
+  "loras/SynthPussy_01_rank32.safetensors": {
+    "name": "SynthPussy 01 (rank32)",
+    "version": "rank32",
+    "base_model": "LTXV 2.3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/BoyoDiffusion/sharedmodelscivit/resolve/main/SynthPussy_01_rank32.safetensors",
+    "tags": [
+      "ltx23",
+      "lora",
+      "nsfw"
+    ],
+    "note": "확인됨(정확): BoyoDiffusion/sharedmodelscivit"
+  },
+  "loras/u3nomigi.safetensors": {
+    "name": "Uenomigi | Style LoRa",
+    "version": "v1.0",
+    "base_model": "Illustrious",
+    "civitai_url": "https://civitai.red/models/1173637/uenomigi-style-lora?modelVersionId=1320597",
+    "source_url": "https://civitai.red/models/1173637/uenomigi-style-lora?modelVersionId=1320597",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/a747958b-f515-4407-abe8-e63e05c3ebd7/original=true/53442140.jpeg",
+    "tags": [
+      "u3nomigi_illu",
+      "abstract,abstract shapes,halftone"
+    ]
+  },
   "loras/USNR STYLE_XL_lokr.safetensors": {
     "name": "薄塗り / USNR STYLE",
     "version": "vSDXL_Illustrious-XL",
@@ -6939,6 +8489,15 @@
         "Rent"
       ]
     }
+  },
+  "loras/v1.0.safetensors": {
+    "name": "v1.0",
+    "version": "V1",
+    "base_model": "SD 1.5",
+    "civitai_url": "https://civitai.red/models/1336410/v1-0?modelVersionId=1509122",
+    "source_url": "https://civitai.red/models/1336410/v1-0?modelVersionId=1509122",
+    "thumbnail_url": null,
+    "tags": []
   },
   "loras/vcalicia-anima-nvwls-v1.safetensors": {
     "name": "Alicia Melchiott/アリシア・メルキオット (Valkyria Chronicles) SDXL LoRA [Pony Diffusion]",
@@ -7094,6 +8653,15 @@
       ]
     }
   },
+  "loras/Yuri_유리 - (Not Real).safetensors": {
+    "name": "Yuri \"유리\" - (Not Real)",
+    "version": "Yuri \"유리\" - (Not Real) V1",
+    "base_model": "SDXL 1.0",
+    "civitai_url": "https://civitai.red/models/2837515/yuri-not-real?modelVersionId=3202647",
+    "source_url": "https://civitai.red/models/2837515/yuri-not-real?modelVersionId=3202647",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/f36a5c75-c804-4cc7-abb2-13c3d2c53087/original=true/139317590.jpeg",
+    "tags": []
+  },
   "loras/ZodaPlus.safetensors": {
     "name": "ZodaPlus 🍾 – Detailer",
     "version": "v1 - anima",
@@ -7151,736 +8719,31 @@
       ]
     }
   },
-  "vae/sdxlVAE_sdxlVAE.safetensors": {
-    "name": "SDXL VAE",
-    "version": "SDXL-VAE",
-    "base_model": "SDXL 1.0",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/78a2f5a9-3e6f-4af5-819c-98fa1dc54049/original=true/6370787.jpeg",
-    "civitai_url": "https://civitai.red/models/296576/sdxl-vae?modelVersionId=333245",
-    "source_url": "https://civitai.red/models/296576/sdxl-vae?modelVersionId=333245",
-    "tags": [
-      "style",
-      "vae",
-      "sdxl",
-      "sdxl vae"
-    ],
-    "risk": {
-      "level": "OK",
-      "reason": "Rent 허용 + 특이사항 없음",
-      "allow_commercial_use": "Y"
-    },
-    "license": {
-      "allowNoCredit": true,
-      "allowDerivatives": true,
-      "allowDifferentLicense": true,
-      "allowCommercialUse": [
-        "Image",
-        "RentCivit",
-        "Rent",
-        "Sell"
-      ]
-    }
-  },
-  "vae/vaeKlF8Anime2_klF8Anime2VAE.safetensors": {
-    "name": "VAE-kl-f8-anime2",
-    "version": "vkl-f8-anime2 VAE",
-    "base_model": "SD 1.5",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/cef0de43-694a-4b02-38bb-68f861596c00/original=true/576872.jpeg",
-    "risk": {
-      "level": "MEDIUM",
-      "reason": "Civitai 조회 실패 — 수동확인",
-      "allow_commercial_use": "N"
-    }
-  },
-  "loras/ppw_v7_Animv4.safetensors": {
-    "name": "People's Works: SDXL",
-    "version": "v7_Animv4",
-    "base_model": "SDXL 1.0",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/4f89d35e-9224-4fb8-9a34-5105d94ff577/original=true/65966963.jpeg",
-    "civitai_url": "https://civitai.red/models/1400090/people-s-works-sdxl?modelVersionId=1582690",
-    "source_url": "https://civitai.red/models/1400090/people-s-works-sdxl?modelVersionId=1582690",
-    "tags": [
-      "anime",
-      "style"
-    ],
-    "license": {
-      "allowNoCredit": true,
-      "allowDerivatives": true,
-      "allowDifferentLicense": true,
-      "allowCommercialUse": [
-        "Image",
-        "RentCivit",
-        "Rent"
-      ]
-    }
-  },
-  "loras/illustrious_all_rated_v1.safetensors": {
-    "name": "Motimalu - All Rated (Illustrious)",
-    "version": "v1.0 [Illustrious]",
-    "base_model": "Illustrious",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/d3b25712-561a-4d64-b94f-7c2878d68adc/original=true/44339245.jpeg",
-    "civitai_url": "https://civitai.red/models/1018079/motimalu-all-rated-illustrious?modelVersionId=1141520",
-    "source_url": "https://civitai.red/models/1018079/motimalu-all-rated-illustrious?modelVersionId=1141520",
-    "tags": [
-      "masterpiece, best quality, very aesthetic, absurdres",
-      "illustrious",
-      "very aesthetic",
-      "anime",
-      "base model",
-      "best quality",
-      "masterpiece",
-      "niji"
-    ],
-    "license": {
-      "allowNoCredit": true,
-      "allowDerivatives": true,
-      "allowDifferentLicense": false,
-      "allowCommercialUse": [
-        "Image",
-        "RentCivit",
-        "Rent"
-      ]
-    }
-  },
-  "loras/69yottea_illu_v2.safetensors": {
-    "name": "96yottea | Style LoRa",
-    "version": "96yottea",
-    "base_model": "Illustrious",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/3b33299f-d4ae-4bfc-9b1f-62d57190700f/original=true/46715466.jpeg",
-    "civitai_url": "https://civitai.red/models/1031927/96yottea-style-lora?modelVersionId=1157361",
-    "source_url": "https://civitai.red/models/1031927/96yottea-style-lora?modelVersionId=1157361",
-    "tags": [
-      "69yottea_style_illu",
-      "photorealistic",
-      "anime",
-      "video game",
-      "illu",
-      "cartoon",
-      "girls",
-      "woman",
-      "game character",
-      "realistic",
-      "lora",
-      "male",
-      "painting",
-      "game",
-      "style",
-      "man",
-      "styles"
-    ],
-    "license": {
-      "allowNoCredit": false,
-      "allowDerivatives": false,
-      "allowDifferentLicense": false,
-      "allowCommercialUse": [
-        "RentCivit"
-      ]
-    }
-  },
-  "checkpoints/bismuthIllustrious_v50.safetensors": {
-    "name": "Bismuth Illustrious Mix",
-    "version": "v5.0",
-    "base_model": "Illustrious",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/c83874da-9869-46f4-87b0-23acc18dc05f/original=true/102713524.jpeg",
-    "civitai_url": "https://civitai.red/models/1359028/bismuth-illustrious-mix?modelVersionId=2257097",
-    "source_url": "https://civitai.red/models/1359028/bismuth-illustrious-mix?modelVersionId=2257097",
-    "tags": [
-      "base model"
-    ],
-    "license": {
-      "allowNoCredit": true,
-      "allowDerivatives": true,
-      "allowDifferentLicense": false,
-      "allowCommercialUse": [
-        "Image",
-        "RentCivit"
-      ]
-    }
-  },
-  "checkpoints/oneObsession_v18.safetensors": {
-    "name": "One obsession",
-    "version": "v18",
-    "base_model": "Illustrious",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/af055785-c9e1-4b08-9b20-dc97009fb237/original=true/106319312.jpeg",
-    "civitai_url": "https://civitai.red/models/1318945/one-obsession?modelVersionId=2319122",
-    "source_url": "https://civitai.red/models/1318945/one-obsession?modelVersionId=2319122",
-    "tags": [
-      "base model",
-      "anime",
-      "one",
-      "noob",
-      "one obsession",
-      "sdxl",
-      "obsession",
-      "my style"
-    ],
-    "license": {
-      "allowNoCredit": false,
-      "allowDerivatives": true,
-      "allowDifferentLicense": false,
-      "allowCommercialUse": [
-        "RentCivit",
-        "Image"
-      ]
-    }
-  },
-  "loras/BWSTits_PONY.safetensors": {
-    "name": "Big Wide-Set Saggy Tits | Z-image Turbo + Flux + Pony + ILL",
-    "version": "Pony v1.0",
-    "base_model": "Pony",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/32727b87-a5f6-49ed-87f3-6b470c00964b/original=true/65629563.jpeg",
-    "civitai_url": "https://civitai.red/models/1357639/big-wide-set-saggy-tits-z-image-turbo-flux-pony-ill?modelVersionId=1576409",
-    "source_url": "https://civitai.red/models/1357639/big-wide-set-saggy-tits-z-image-turbo-flux-pony-ill?modelVersionId=1576409",
-    "tags": [
-      "BWSTits",
-      "big tits",
-      "saggy tits",
-      "concept",
-      "natural tits"
-    ],
-    "license": {
-      "allowNoCredit": false,
-      "allowDerivatives": false,
-      "allowDifferentLicense": false,
-      "allowCommercialUse": [
-        "RentCivit"
-      ]
-    }
-  },
-  "checkpoints/prefectPonyXL_v50.safetensors": {
-    "name": "Prefect Pony XL",
-    "version": "v5.0",
-    "base_model": "Pony",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/dc720ef4-dca7-4530-92ae-0b99939dc3ed/original=true/48693303.jpeg",
-    "civitai_url": "https://civitai.red/models/439889/prefect-pony-xl?modelVersionId=1199750",
-    "source_url": "https://civitai.red/models/439889/prefect-pony-xl?modelVersionId=1199750",
-    "tags": [
-      "animagine",
-      "base model",
-      "pony xl",
-      "woman",
-      "anime",
-      "girls"
-    ],
-    "license": {
-      "allowNoCredit": false,
-      "allowDerivatives": false,
-      "allowDifferentLicense": true,
-      "allowCommercialUse": [
-        "RentCivit"
-      ]
-    }
-  },
-  "loras/add_detail.safetensors": {
-    "name": "Detail Tweaker LoRA (细节调整LoRA)",
-    "version": "v1.0",
-    "base_model": "SD 1.5",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/8db45d23-7bcf-4979-8b35-0e7779c5a8f8/original=true/692411.jpeg",
-    "civitai_url": "https://civitai.red/models/58390/detail-tweaker-lora-lora?modelVersionId=62833",
-    "source_url": "https://civitai.red/models/58390/detail-tweaker-lora-lora?modelVersionId=62833",
-    "tags": [
-      "lora",
-      "concept",
-      "anime",
-      "photorealistic",
-      "detailed",
-      "undetailed"
-    ],
-    "license": {
-      "allowNoCredit": true,
-      "allowDerivatives": true,
-      "allowDifferentLicense": true,
-      "allowCommercialUse": []
-    }
-  },
-  "loras/detailed_notrigger.safetensors": {
-    "name": "extremely detailed (no trigger) - sliders.ntcai.xyz",
-    "version": "v2.0",
-    "base_model": "SDXL 1.0",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/3f5be346-5692-47d5-a9b3-a5d34e4e1a80/original=true/7702551.jpeg",
-    "civitai_url": "https://civitai.red/models/229213/extremely-detailed-no-trigger-sliders-ntcai-xyz?modelVersionId=383563",
-    "source_url": "https://civitai.red/models/229213/extremely-detailed-no-trigger-sliders-ntcai-xyz?modelVersionId=383563",
-    "tags": [
-      "concept",
-      "enhancer",
-      "sliders",
-      "detailed",
-      "extremely detailed"
-    ],
-    "license": {
-      "allowNoCredit": true,
-      "allowDerivatives": true,
-      "allowDifferentLicense": true,
-      "allowCommercialUse": [
-        "Image",
-        "RentCivit",
-        "Rent",
-        "Sell"
-      ]
-    }
-  },
-  "loras/NiaoDAN_ILL_V1.safetensors": {
-    "name": "Artist Style: NiaoDan",
-    "version": "NiaoDan_ILL_V1",
-    "base_model": "Illustrious",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/178d241d-68cd-4c31-8a6d-3efda69dc7c3/original=true/50672984.jpeg",
-    "civitai_url": "https://civitai.red/models/1124271/artist-style-niaodan?modelVersionId=1263639",
-    "source_url": "https://civitai.red/models/1124271/artist-style-niaodan?modelVersionId=1263639",
-    "tags": [
-      "style"
-    ],
-    "license": {
-      "allowNoCredit": false,
-      "allowDerivatives": false,
-      "allowDifferentLicense": true,
-      "allowCommercialUse": []
-    }
-  },
-  "checkpoints/oneObsession_v23.safetensors": {
-    "name": "One obsession",
-    "version": "v23",
-    "base_model": "Illustrious",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/f06ec748-fdfa-4f4d-ba83-0515284acbae/original=true/136374252.jpeg",
-    "civitai_url": "https://civitai.red/models/1318945/one-obsession?modelVersionId=3118448",
-    "source_url": "https://civitai.red/models/1318945/one-obsession?modelVersionId=3118448",
-    "tags": [
-      "base model",
-      "anime",
-      "one",
-      "noob",
-      "one obsession",
-      "sdxl",
-      "obsession",
-      "my style"
-    ],
-    "license": {
-      "allowNoCredit": false,
-      "allowDerivatives": true,
-      "allowDifferentLicense": false,
-      "allowCommercialUse": [
-        "RentCivit",
-        "Image"
-      ]
-    }
-  },
-  "loras/Eye_DetailerXL.safetensors": {
-    "name": "Eye Detailer_XL",
-    "version": "v1.0",
-    "base_model": "Illustrious",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/d087da5c-1931-49ad-bdc6-9377b8a983f3/original=true/98694427.jpeg",
-    "civitai_url": "https://civitai.red/models/1933152/eye-detailer-xl?modelVersionId=2188014",
-    "source_url": "https://civitai.red/models/1933152/eye-detailer-xl?modelVersionId=2188014",
-    "tags": [
-      "style"
-    ],
-    "license": {
-      "allowNoCredit": true,
-      "allowDerivatives": true,
-      "allowDifferentLicense": true,
-      "allowCommercialUse": [
-        "Image",
-        "RentCivit",
-        "Rent",
-        "Sell"
-      ]
-    }
-  },
-  "loras/SF 4 PoisonIlluLoRA.safetensors": {
-    "name": "Poison from Street Fighter | Illustrious",
-    "version": "v1.0 Illustrious",
-    "base_model": "Illustrious",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/3aea8faf-fa53-4226-9c9c-45e5046a6ad2/original=true/52521977.jpeg",
-    "civitai_url": "https://civitai.red/models/1157659/poison-from-street-fighter-illustrious?modelVersionId=1302086",
-    "source_url": "https://civitai.red/models/1157659/poison-from-street-fighter-illustrious?modelVersionId=1302086",
-    "tags": [
-      "poisn, long hair, peaked cap, collar, tank top, midriff, silver bracelet, off shoulder, nail polish, denim shorts, brown bracelet, armlet, chain belt, handcuff on belt, pumps",
-      "riding crop",
-      "sexy",
-      "beautiful woman",
-      "mommy",
-      "street fighter",
-      "character",
-      "cute girl"
-    ],
-    "license": {
-      "allowNoCredit": true,
-      "allowDerivatives": false,
-      "allowDifferentLicense": false,
-      "allowCommercialUse": [
-        "Image",
-        "RentCivit"
-      ]
-    }
-  },
-  "checkpoints/animij_v10.safetensors": {
-    "name": "Animij",
-    "version": "v10",
-    "base_model": "Illustrious",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/9aed08ab-82fa-4b5b-97a5-f8c6e1b6d4e3/original=true/126292343.jpeg",
-    "civitai_url": "https://civitai.red/models/1353314/animij?modelVersionId=2827109",
-    "source_url": "https://civitai.red/models/1353314/animij?modelVersionId=2827109",
-    "tags": [
-      "nsfw",
-      "merge",
-      "anime",
-      "colors",
-      "soft",
-      "sfw",
-      "model",
-      "base model",
-      "checkpoint",
-      "illustrious"
-    ],
-    "license": {
-      "allowNoCredit": true,
-      "allowDerivatives": true,
-      "allowDifferentLicense": true,
-      "allowCommercialUse": [
-        "RentCivit",
-        "Image"
-      ]
-    }
-  },
-  "checkpoints/pieModels_oreo.safetensors": {
-    "name": "Pie - Models 🥧",
-    "version": "Oreo",
-    "base_model": "Illustrious",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/d7c1e5d7-cf42-4bb6-8384-7254f55c6610/original=true/137104589.jpeg",
-    "civitai_url": "https://civitai.red/models/1593793/pie-models?modelVersionId=3142094",
-    "source_url": "https://civitai.red/models/1593793/pie-models?modelVersionId=3142094",
-    "tags": [
-      "model",
-      "merge",
-      "anime",
-      "illustrious",
-      "base model",
-      "women"
-    ],
-    "license": {
-      "allowNoCredit": false,
-      "allowDerivatives": true,
-      "allowDifferentLicense": true,
-      "allowCommercialUse": [
-        "RentCivit"
-      ]
-    }
-  },
-  "diffusion_models/Krea2 Turbo_FP8": {
-    "name": "Krea2 Turbo_FP8",
-    "version": "Krea 2 TURBO",
-    "base_model": "Krea 2",
-    "civitai_url": "https://civitai.red/models/2723583/krea2-turbo-fp8?modelVersionId=3060999",
-    "source_url": "https://civitai.red/models/2723583/krea2-turbo-fp8?modelVersionId=3060999"
-  },
-  "loras/[Krea 2] BloomGirls UltraRealism": {
-    "name": "[Krea 2] BloomGirls UltraRealism",
-    "version": "[Krea 2] Beta V0.1",
-    "base_model": "Krea 2",
-    "civitai_url": "https://civitai.red/models/2735553/krea-2-bloomgirls-ultrarealism?modelVersionId=3075850",
-    "source_url": "https://civitai.red/models/2735553/krea-2-bloomgirls-ultrarealism?modelVersionId=3075850"
-  },
-  "loras/Realistic Snapshot (Z-Image-Turbo + Krea 2)": {
-    "name": "Realistic Snapshot (Z-Image-Turbo + Krea 2)",
-    "version": "Krea2 (v0.5)",
-    "base_model": "Krea 2",
-    "civitai_url": "https://civitai.red/models/2268008/realistic-snapshot-z-image-turbo-krea-2?modelVersionId=3084537",
-    "source_url": "https://civitai.red/models/2268008/realistic-snapshot-z-image-turbo-krea-2?modelVersionId=3084537"
-  },
-  "loras/Realism Engine Ideogram 4 + Krea 2": {
-    "name": "Realism Engine Ideogram 4 + Krea 2",
-    "version": "Krea2 v3.0",
-    "base_model": "Krea 2",
-    "civitai_url": "https://civitai.red/models/2688234/realism-engine-ideogram-4-krea-2?modelVersionId=3109006",
-    "source_url": "https://civitai.red/models/2688234/realism-engine-ideogram-4-krea-2?modelVersionId=3109006"
-  },
-  "loras/Krea2 TextFusion Refusal-Reduction LoRA": {
-    "name": "Krea2 TextFusion Refusal-Reduction LoRA",
-    "version": "v1.0",
-    "base_model": "Krea 2",
-    "civitai_url": "https://civitai.red/models/2775340/krea2-textfusion-refusal-reduction-lora?modelVersionId=3125118",
-    "source_url": "https://civitai.red/models/2775340/krea2-textfusion-refusal-reduction-lora?modelVersionId=3125118"
-  },
-  "diffusion_models/krea2TurboFP8_krea2TURBO.safetensors": {
-    "name": "Krea2 Turbo_FP8",
-    "version": "Krea 2 TURBO",
-    "base_model": "Krea 2",
-    "civitai_url": "https://civitai.red/models/2723583/krea2-turbo-fp8?modelVersionId=3060999",
-    "source_url": "https://civitai.red/models/2723583/krea2-turbo-fp8?modelVersionId=3060999",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/5513863c-49e7-4030-93cb-b005d4bba68b/original=true/134583021.jpeg",
-    "tags": []
-  },
-  "loras/bloomgirls-ultrarealism-krea2_4k.safetensors": {
-    "name": "[Krea 2] BloomGirls UltraRealism",
-    "version": "[Krea 2] Beta V0.1",
-    "base_model": "Krea 2",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/2140c790-e23d-4b78-9a74-693db5169772/original=true/135057112.jpeg",
-    "civitai_url": "https://civitai.red/models/2735553/krea-2-bloomgirls-ultrarealism?modelVersionId=3075850",
-    "source_url": "https://civitai.red/models/2735553/krea-2-bloomgirls-ultrarealism?modelVersionId=3075850",
-    "tags": [
-      "realism",
-      "realistic",
-      "ai influencer",
-      "style"
-    ],
-    "license": {
-      "allowNoCredit": true,
-      "allowDerivatives": true,
-      "allowDifferentLicense": true,
-      "allowCommercialUse": [
-        "Image",
-        "RentCivit",
-        "Rent",
-        "Sell"
-      ]
-    }
-  },
-  "loras/RealisticSnapshotKrea2.safetensors": {
-    "name": "Realistic Snapshot (Z-Image-Turbo + Krea 2)",
-    "version": "Krea2 (v0.5)",
-    "base_model": "Krea 2",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/0c7a64a2-9833-4207-82b9-ab5ead6981b1/original=true/135351239.jpeg",
-    "civitai_url": "https://civitai.red/models/2268008/realistic-snapshot-z-image-turbo-krea-2?modelVersionId=3084537",
-    "source_url": "https://civitai.red/models/2268008/realistic-snapshot-z-image-turbo-krea-2?modelVersionId=3084537",
-    "tags": [
-      "digicam",
-      "photorealistic",
-      "2000s",
-      "photography",
-      "amateur",
-      "realism",
-      "candid",
-      "style",
-      "beautifulgirl",
-      "ethereal",
-      "amateurphoto",
-      "influencer",
-      "selfie"
-    ],
-    "license": {
-      "allowNoCredit": true,
-      "allowDerivatives": true,
-      "allowDifferentLicense": true,
-      "allowCommercialUse": [
-        "Image",
-        "RentCivit",
-        "Rent",
-        "Sell"
-      ]
-    }
-  },
-  "loras/realism_engine_krea2_v3.1.safetensors": {
-    "name": "Realism Engine Ideogram 4 + Krea 2",
-    "version": "Krea2 v3.0",
-    "base_model": "Krea 2",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/866d389f-c8df-4881-a59c-d7e322dae96d/original=true/136067861.jpeg",
-    "civitai_url": "https://civitai.red/models/2688234/realism-engine-ideogram-4-krea-2?modelVersionId=3109006",
-    "source_url": "https://civitai.red/models/2688234/realism-engine-ideogram-4-krea-2?modelVersionId=3109006",
-    "tags": [
-      "bimbo",
-      "porn",
-      "anal",
-      "blowjob",
-      "fisting",
-      "ideogram",
-      "base model"
-    ],
-    "license": {
-      "allowNoCredit": true,
-      "allowDerivatives": true,
-      "allowDifferentLicense": false,
-      "allowCommercialUse": [
-        "Image",
-        "RentCivit",
-        "Rent",
-        "Sell"
-      ]
-    }
-  },
-  "loras/Krea2_TextFusion_Refusal_Reduction.safetensors": {
-    "name": "Krea2 TextFusion Refusal-Reduction LoRA",
-    "version": "v1",
-    "base_model": "Krea 2",
-    "civitai_url": "https://civitai.red/models/2775340/krea2-textfusion-refusal-reduction-lora?modelVersionId=3125118",
-    "source_url": "https://civitai.red/models/2775340/krea2-textfusion-refusal-reduction-lora?modelVersionId=3125118",
-    "tags": [
-      "krea2",
-      "pornmaster",
-      "lora"
-    ],
-    "note": "원본 워크플로우에서 strength 1.0으로 활성. 강한 검열 주제 생성 보조.",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/1b36ccbb-d3de-4fbc-85e4-631f2e8c7732/original=true/136629949.jpeg"
-  },
-  "embeddings/lazyhand.safetensors": {
-    "name": "✨ Lazy Embeddings for ALL illustrious NoobAI Pony SDXL models LazyPositive LazyNegative (Positive and Negative plus more!)",
-    "version": "lazyhand v1.0",
-    "base_model": "Illustrious",
-    "civitai_url": "https://civitai.red/models/1302719/lazy-embeddings-for-all-illustrious-noobai-pony-sdxl-models-lazypositive-lazynegative-positive-and-negative-plus-more?modelVersionId=1550840",
-    "source_url": "https://civitai.red/models/1302719/lazy-embeddings-for-all-illustrious-noobai-pony-sdxl-models-lazypositive-lazynegative-positive-and-negative-plus-more?modelVersionId=1550840",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/7439cbab-a426-4262-9dc9-17bf0e268012/original=true/64342103.jpeg",
-    "tags": [
-      "lazyhand"
-    ]
-  },
-  "checkpoints/uncannyValley_Noob3dV2.safetensors": {
-    "name": "Uncanny valley",
-    "version": "UncannyValley noob 3d V2",
-    "base_model": "Illustrious",
-    "civitai_url": "https://civitai.red/models/507472/uncanny-valley?modelVersionId=1880913",
-    "source_url": "https://civitai.red/models/507472/uncanny-valley?modelVersionId=1880913",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/f9019fba-9b84-499a-ac7e-e4b1f3c60d47/original=true/81101435.jpeg"
-  },
-  "diffusion_models/pornmasterKrea2_v25Turbo.safetensors": {
-    "name": "PornMaster 色情大師-Krea2",
-    "version": "V2.5 Turbo",
-    "base_model": "Krea 2",
-    "civitai_url": "https://civitai.red/models/2735032/pornmaster-krea2?modelVersionId=3171380",
-    "source_url": "https://civitai.red/models/2735032/pornmaster-krea2?modelVersionId=3171380",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/91c4d035-5327-4e65-9995-7181772d89c1/original=true/137962343.jpeg"
-  },
-  "loras/Arcane_Krea2.safetensors": {
-    "name": "Arcane Style",
-    "version": "Arcane Style",
-    "base_model": "Krea 2",
-    "civitai_url": "https://civitai.red/models/2815410/arcane-style?modelVersionId=3175347",
-    "source_url": "https://civitai.red/models/2815410/arcane-style?modelVersionId=3175347",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/6ce1e472-864c-495e-94f5-ecc9089b3726/original=true/138441719.mp4",
-    "tags": [
-      "arcanekreastyle"
-    ]
-  },
-  "vae/qwen_image_vae.safetensors": {
-    "name": "Qwen-Image VAE",
-    "version": "Qwen_Image_VAE",
-    "base_model": "Qwen",
-    "civitai_url": "https://civitai.red/models/1912333/qwen-image-vae?modelVersionId=2164481",
-    "source_url": "https://civitai.red/models/1912333/qwen-image-vae?modelVersionId=2164481",
-    "thumbnail_url": null,
-    "tags": []
-  },
-  "text_encoders/qwen3vl_4b_fp8_scaled.safetensors": {
-    "name": "Qwen3-VL 4B (fp8 scaled) text encoder",
-    "version": "fp8 scaled",
-    "base_model": "Krea 2",
-    "thumbnail_url": null,
-    "civitai_url": "https://huggingface.co/Comfy-Org/Krea-2/resolve/main/text_encoders/qwen3vl_4b_fp8_scaled.safetensors",
-    "source_url": "https://huggingface.co/Comfy-Org/Krea-2/resolve/main/text_encoders/qwen3vl_4b_fp8_scaled.safetensors",
-    "tags": [
-      "krea2",
-      "text_encoder",
-      "qwen3vl"
-    ],
-    "note": "Krea 2 필수 text encoder (CLIPLoader type=krea2). PornMaster/Krea2 워크플로우 공용."
-  },
-  "checkpoints/sd_xl_base_1.0.safetensors": {
-    "name": "Stable Diffusion XL Base 1.0",
-    "version": "1.0",
-    "base_model": "SDXL 1.0",
-    "thumbnail_url": null,
-    "civitai_url": "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/resolve/main/sd_xl_base_1.0.safetensors",
-    "source_url": "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/resolve/main/sd_xl_base_1.0.safetensors",
-    "tags": [
-      "sdxl",
-      "checkpoint",
-      "base"
-    ],
-    "note": "앱 기본 base 모델. 공식 Stability HF 배포(직접 다운로드)."
-  },
-  "diffusion_models/pornmasterKrea2_v2TurboInt8.safetensors": {
-    "name": "PornMaster 色情大師-Krea2 (V2 Turbo int8)",
-    "version": "V2 Turbo int8",
-    "base_model": "Krea 2",
-    "civitai_url": "https://civitai.red/models/2735032/pornmaster-krea2?modelVersionId=3119653",
-    "source_url": "https://civitai.red/models/2735032/pornmaster-krea2?modelVersionId=3119653",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/91c4d035-5327-4e65-9995-7181772d89c1/original=true/137962343.jpeg",
-    "tags": [
-      "krea2",
-      "pornmaster",
-      "nsfw",
-      "int8"
-    ],
-    "note": "원본 PornMaster RES4LYF 워크플로우가 사용한 정확한 체크포인트. 공개 다운로드(무료)."
-  },
-  "text_encoders/qwen3-vl-4b-heretic_int8.safetensors": {
-    "name": "Qwen3-VL 4B Heretic (int8) text encoder",
-    "version": "heretic int8",
-    "base_model": "Krea 2",
-    "thumbnail_url": null,
-    "civitai_url": "https://huggingface.co/DreamFast/Qwen3-VL-4b-Heretic-ComfyUI/resolve/main/qwen3-vl-4b-heretic_int8.safetensors",
-    "source_url": "https://huggingface.co/DreamFast/Qwen3-VL-4b-Heretic-ComfyUI/resolve/main/qwen3-vl-4b-heretic_int8.safetensors",
-    "tags": [
-      "krea2",
-      "pornmaster",
-      "text_encoder",
-      "qwen3vl",
-      "uncensored"
-    ],
-    "note": "PornMaster 워크플로우 전용 무검열(abliterated) int8 CLIP. CLIPLoader type=krea2."
-  },
-  "vae/wan_2.1_vae.safetensors": {
-    "name": "Wan 2.1 VAE",
-    "version": "wan_2.1_vae",
-    "base_model": "Wan 2.1",
-    "thumbnail_url": null,
-    "civitai_url": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors",
-    "source_url": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors",
-    "tags": [
-      "pornmaster",
-      "vae",
-      "wan"
-    ],
-    "note": "원본 PornMaster 워크플로우가 사용한 VAE(원본은 wan2.1_vae.safetensors로 리네임). 동일 파일."
-  },
-  "loras/Realistic Snapshot (Z-Image-Turbo + Krea 2).safetensors": {
-    "name": "Realistic Snapshot (Z-Image-Turbo + Krea 2)",
-    "version": "Krea2 (v0.5)",
-    "base_model": "Krea 2",
-    "civitai_url": "https://civitai.red/models/2268008/realistic-snapshot-z-image-turbo-krea-2?modelVersionId=3084537",
-    "source_url": "https://civitai.red/models/2268008/realistic-snapshot-z-image-turbo-krea-2?modelVersionId=3084537"
-  },
-  "checkpoints/10Eros_v1.4_bf16.safetensors": {
-    "name": "10Eros (LTX 2.3 A/V checkpoint)",
-    "version": "v1.4 bf16",
-    "base_model": "LTXV 2.3",
-    "thumbnail_url": null,
-    "civitai_url": "https://civitai.red/models/2447875?modelVersionId=3109610",
-    "source_url": "https://civitai.com/api/download/models/3109610?type=Other&format=SafeTensor&fp=bf16",
-    "tags": [
-      "ltx23",
-      "checkpoint",
-      "video",
-      "audio",
-      "nsfw"
-    ],
-    "note": "확인됨: Civitai 10Eros v1.4 (bf16). 파일명이 civitai에서는 ltx2310eros_v14.safetensors 이므로 다운로드 후 10Eros_v1.4_bf16.safetensors 로 배치 필요"
-  },
-  "diffusion_models/ltx-2.3-22b-dev_transformer_only_bf16.safetensors": {
-    "name": "LTX-Video 2.3 22B (transformer only, bf16)",
-    "version": "dev bf16",
-    "base_model": "LTXV 2.3",
+  "model_patches/ltx-2.5-duration-head-bf16.safetensors": {
+    "name": "LTX-2.5 duration head (bf16)",
+    "version": "bf16",
+    "base_model": "LTXV 2.5",
     "thumbnail_url": null,
     "civitai_url": null,
-    "source_url": "https://huggingface.co/Kijai/LTX2.3_comfy/resolve/main/diffusion_models/ltx-2.3-22b-dev_transformer_only_bf16.safetensors",
+    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/model_patches/ltx-2.5-duration-head-bf16.safetensors",
     "tags": [
-      "ltx23",
-      "diffusion",
-      "transformer",
-      "video"
+      "ltx25",
+      "duration",
+      "patch"
     ],
-    "note": "확인됨: Kijai/LTX2.3_comfy"
+    "note": "확인됨: Lightricks/LTX-2.5 공식. 자동 길이 예측 head(선택)."
   },
-  "vae/taeltx2_3.safetensors": {
-    "name": "TAE LTX 2.3 (tiny autoencoder)",
-    "version": "2.3",
-    "base_model": "LTXV 2.3",
+  "pulid/ip-adapter_pulid_sdxl_fp16.safetensors": {
+    "name": "PuLID SDXL (IPAdapter layout)",
+    "version": "fp16",
+    "base_model": "SDXL",
     "thumbnail_url": null,
-    "civitai_url": null,
-    "source_url": "https://huggingface.co/Kijai/LTX2.3_comfy/resolve/main/vae/taeltx2_3.safetensors",
+    "source_url": "https://huggingface.co/huchenlei/ipadapter_pulid/resolve/main/ip-adapter_pulid_sdxl_fp16.safetensors?download=true",
     "tags": [
-      "ltx23",
-      "vae",
-      "taesd"
+      "pulid",
+      "character-reference"
     ],
-    "note": "확인됨: Kijai/LTX2.3_comfy (23.5MB TAE)"
+    "note": "PuLID_ComfyUI(cubiq) IDEncoder용. src/lib/pulid-assets.ts PULID_WEIGHT와 동일"
   },
   "text_encoders/gemma_3_12B_it_fp8_scaled.safetensors": {
     "name": "Gemma 3 12B IT (fp8 scaled) text encoder",
@@ -7895,302 +8758,6 @@
       "gemma"
     ],
     "note": "확인됨: Comfy-Org/ltx-2"
-  },
-  "loras/ltx2_3/ltx-2.3-22b-distilled-lora-fro90_ceil72.safetensors": {
-    "name": "LTX-Video 2.3 22B distilled LoRA",
-    "version": "fro90 ceil72",
-    "base_model": "LTXV 2.3",
-    "thumbnail_url": null,
-    "civitai_url": null,
-    "source_url": "https://huggingface.co/TenStrip/LTX2.3_Distilled_Lora_1.1_Experiments/resolve/main/ltx-2.3-22b-distilled-lora-fro90_ceil72.safetensors",
-    "tags": [
-      "ltx23",
-      "lora",
-      "distilled",
-      "speed"
-    ],
-    "note": "확인됨(정확): TenStrip/LTX2.3_Distilled_Lora_1.1_Experiments. SulphurAI/Sulphur-2-base 에도 동일계열 존재"
-  },
-  "upscale_models/ltx-2.3-spatial-upscaler-x2-1.1.safetensors": {
-    "name": "LTX-Video 2.3 spatial upscaler x2",
-    "version": "v1.1",
-    "base_model": "LTXV 2.3",
-    "thumbnail_url": null,
-    "civitai_url": null,
-    "source_url": "https://huggingface.co/Lightricks/LTX-2.3/resolve/main/ltx-2.3-spatial-upscaler-x2-1.1.safetensors",
-    "tags": [
-      "ltx23",
-      "upscaler",
-      "spatial"
-    ],
-    "note": "확인됨: Lightricks/LTX-2.3 (공식)"
-  },
-  "loras/LTX2.3-MysticXXX.safetensors": {
-    "name": "LTX2.3 MysticXXX",
-    "version": "LTX2.3",
-    "base_model": "LTXV 2.3",
-    "thumbnail_url": null,
-    "civitai_url": null,
-    "source_url": null,
-    "tags": [
-      "ltx23",
-      "lora",
-      "nsfw"
-    ],
-    "note": "런너블 버전에서 제거됨(워크플로우 node 922 미참조). 공개 LTX2.3판 없음, strength 0.40 저강도라 영향 미미. 원본 확보 시 <lora:LTX2.3-MysticXXX:0.40:0.40> 태그 복원 가능"
-  },
-  "loras/ltx23_nsfw_helper_multi_concept_lora_v2.safetensors": {
-    "name": "LTX2.3 NSFW Helper (multi-concept)",
-    "version": "v2",
-    "base_model": "LTXV 2.3",
-    "thumbnail_url": null,
-    "civitai_url": null,
-    "source_url": "https://huggingface.co/cdkkkk/setup/resolve/main/ltx2/ltx23_nsfw_helper_multi_concept_lora_v1.safetensors",
-    "tags": [
-      "ltx23",
-      "lora",
-      "nsfw",
-      "helper"
-    ],
-    "note": "대체(v2 미발견): HF에는 v1만 존재 → cdkkkk/setup/ltx2 의 v1 사용. 원본 v2는 Civitai에서 별도 확인 필요"
-  },
-  "loras/LTX2.3_Breasts_Jiggle_Physics.safetensors": {
-    "name": "LTX2.3 Breasts Jiggle Physics",
-    "version": "LTX2.3",
-    "base_model": "LTXV 2.3",
-    "thumbnail_url": null,
-    "civitai_url": null,
-    "source_url": "https://huggingface.co/Sentinel7/ltxv/resolve/main/2536021/2850154/LTX2.3_Breasts_Jiggle_Physics.safetensors",
-    "tags": [
-      "ltx23",
-      "lora",
-      "nsfw",
-      "physics"
-    ],
-    "note": "확인됨(정확): Sentinel7/ltxv (674MB, main 브랜치)"
-  },
-  "loras/SynthPussy_01_rank32.safetensors": {
-    "name": "SynthPussy 01 (rank32)",
-    "version": "rank32",
-    "base_model": "LTXV 2.3",
-    "thumbnail_url": null,
-    "civitai_url": null,
-    "source_url": "https://huggingface.co/BoyoDiffusion/sharedmodelscivit/resolve/main/SynthPussy_01_rank32.safetensors",
-    "tags": [
-      "ltx23",
-      "lora",
-      "nsfw"
-    ],
-    "note": "확인됨(정확): BoyoDiffusion/sharedmodelscivit"
-  },
-  "loras/SexGod_FingeringDildo_LTX23_v1.safetensors": {
-    "name": "SexGod Fingering/Dildo LTX23",
-    "version": "v1",
-    "base_model": "LTXV 2.3",
-    "thumbnail_url": null,
-    "civitai_url": null,
-    "source_url": "https://huggingface.co/cdkkkk/setup/resolve/main/ltx2/SexGod_FingeringDildo_LTX23_v1.safetensors",
-    "tags": [
-      "ltx23",
-      "lora",
-      "nsfw"
-    ],
-    "note": "확인됨(정확): cdkkkk/setup/ltx2 (2.7GB)"
-  },
-  "loras/Ltx23_RemoteOrgasm_v1.safetensors": {
-    "name": "LTX23 Remote Orgasm",
-    "version": "v1",
-    "base_model": "LTXV 2.3",
-    "thumbnail_url": null,
-    "civitai_url": null,
-    "source_url": "https://huggingface.co/Sentinel7/ltxv/resolve/main/2176039/2775805/LTX-2.3%20-%20Orgasm.safetensors",
-    "tags": [
-      "ltx23",
-      "lora",
-      "nsfw"
-    ],
-    "note": "치환(런너블): 원본 RemoteOrgasm은 공개 미발견 → Sentinel7/ltxv 'LTX-2.3 - Orgasm.safetensors'(805MB)로 다운로드. 저장 파일명은 워크플로우가 참조하는 Ltx23_RemoteOrgasm_v1.safetensors 로 지정할 것"
-  },
-  "loras/epic_cumshots-V1-LTX_2_3-CUMSH0T.safetensors": {
-    "name": "Epic Cumshots (LTX 2.3)",
-    "version": "V1 CUMSH0T",
-    "base_model": "LTXV 2.3",
-    "thumbnail_url": null,
-    "civitai_url": null,
-    "source_url": "https://huggingface.co/cdkkkk/setup/resolve/main/ltx2/epic_cumshots-V1-LTX_2_3-CUMSH0T.safetensors",
-    "tags": [
-      "ltx23",
-      "lora",
-      "nsfw"
-    ],
-    "note": "확인됨(정확): cdkkkk/setup/ltx2 (428MB)"
-  },
-  "loras/PornMaster_Krea2_Realism_slider_V1.safetensors": {
-    "name": "PornMaster Krea2 Realism slider",
-    "version": "V1",
-    "base_model": "Krea 2",
-    "civitai_url": "https://civitai.red/models/2742129/pornmaster-krea2-realism-slider?modelVersionId=3083986",
-    "source_url": "https://civitai.red/models/2742129/pornmaster-krea2-realism-slider?modelVersionId=3083986",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/df6dcd35-0774-46b9-9688-2536abcec786/original=true/135311091.jpeg",
-    "tags": []
-  },
-  "loras/PornMaster_Krea2_Asian_slider_V1.safetensors": {
-    "name": "PornMaster Krea2 Asian slider",
-    "version": "V1",
-    "base_model": "Krea 2",
-    "civitai_url": "https://civitai.red/models/2756475/pornmaster-krea2-asian-slider?modelVersionId=3101650",
-    "source_url": "https://civitai.red/models/2756475/pornmaster-krea2-asian-slider?modelVersionId=3101650",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/41a30feb-0368-4f8d-9f8c-f5370a26f4f8/original=true/135901174.jpeg",
-    "tags": []
-  },
-  "loras/PornMaster_Flat_chest_&_Innie_pussy_krea2_V1.safetensors": {
-    "name": "PornMaster Krea2 Flat chest & Innie pussy",
-    "version": "V1",
-    "base_model": "Krea 2",
-    "civitai_url": "https://civitai.red/models/2769967/pornmaster-krea2-flat-chest-innie-pussy?modelVersionId=3118444",
-    "source_url": "https://civitai.red/models/2769967/pornmaster-krea2-flat-chest-innie-pussy?modelVersionId=3118444",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/9ae1eb18-d378-4cde-931a-491a813febf1/original=true/136363569.jpeg",
-    "tags": [
-      "her genitals were just a slit,",
-      "she has small areolas, nipples visible.",
-      "she has no areolas. nipples visible."
-    ]
-  },
-  "diffusion_models/Pornmaster_krea2_Turbo_fp8_v2.safetensors": {
-    "name": "PornMaster 色情大師-Krea2",
-    "version": "V2 Turbo int8",
-    "base_model": "Krea 2",
-    "civitai_url": "https://civitai.red/models/2735032/pornmaster-krea2?modelVersionId=3119653",
-    "source_url": "https://civitai.red/models/2735032/pornmaster-krea2?modelVersionId=3119653",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/3ecec6f0-be2a-4cf5-b77d-309bea01a96d/original=true/136398602.jpeg",
-    "tags": []
-  },
-  "loras/RealisticAnimeIXL_v2.safetensors": {
-    "name": "CAT - Citron Styles",
-    "version": "Real Anime IXL",
-    "base_model": "Illustrious",
-    "civitai_url": "https://civitai.red/models/362745/cat-citron-styles?modelVersionId=1169083",
-    "source_url": "https://civitai.red/models/362745/cat-citron-styles?modelVersionId=1169083",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/228c9265-00ff-48c9-bc21-47ea17b800ab/original=true/45767032.jpeg",
-    "tags": [
-      "bokeh, luminescent background,"
-    ]
-  },
-  "loras/Akali OgiIllustriousLoRA.safetensors": {
-    "name": "Akali from League of Legends | Illustrious",
-    "version": "v1.0",
-    "base_model": "Illustrious",
-    "civitai_url": "https://civitai.red/models/1265593/akali-from-league-of-legends-illustrious?modelVersionId=1427327",
-    "source_url": "https://civitai.red/models/1265593/akali-from-league-of-legends-illustrious?modelVersionId=1427327",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/91f0398b-3ef2-4823-bb2f-4934bef54ca5/original=true/58427089.jpeg",
-    "tags": [
-      "dual wielding, holding kunai, Holding scythe",
-      "back tattoo, dragon tattoo"
-    ]
-  },
-  "checkpoints/illustrijEVO_lvl3.safetensors": {
-    "name": "Illustrij EVO",
-    "version": "LVL3",
-    "base_model": "Illustrious",
-    "civitai_url": "https://civitai.red/models/1772230/illustrij-evo?modelVersionId=2182724",
-    "source_url": "https://civitai.red/models/1772230/illustrij-evo?modelVersionId=2182724",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/53dad236-fab9-48a6-85e6-1e3a797be4cf/original=true/125808645.jpeg",
-    "tags": []
-  },
-  "loras/sweatill 222.safetensors": {
-    "name": "Sweaty / Steamy / Musky (Anima/Illustrious)",
-    "version": "v7.0",
-    "base_model": "Illustrious",
-    "civitai_url": "https://civitai.red/models/1335716/sweaty-steamy-musky-anima-illustrious?modelVersionId=2926356",
-    "source_url": "https://civitai.red/models/1335716/sweaty-steamy-musky-anima-illustrious?modelVersionId=2926356",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/b657e01c-9c1c-46e5-804a-80f52542a215/original=true/129975451.jpeg",
-    "tags": [
-      "sweat, sweatdrop, sweaty",
-      "wet skin, smell, visible breath, steaming body, steamy"
-    ]
-  },
-  "diffusion_models/ltx-2.5-22b-distilled-transformer-bf16.safetensors": {
-    "name": "LTX-2.5 22B distilled transformer (bf16)",
-    "version": "distilled bf16",
-    "base_model": "LTXV 2.5",
-    "thumbnail_url": null,
-    "civitai_url": null,
-    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/diffusion_models/ltx-2.5-22b-distilled-transformer-bf16.safetensors",
-    "tags": [
-      "ltx25",
-      "diffusion",
-      "transformer",
-      "video",
-      "distilled"
-    ],
-    "note": "확인됨: Lightricks/LTX-2.5 공식. 42.0GB. 고품질 i2v 기본 transformer(distilled, 2-stage). bf16는 80GB급 GPU 권장."
-  },
-  "diffusion_models/ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors": {
-    "name": "LTX-2.5 22B distilled transformer (ComfyUI int8)",
-    "version": "distilled int8-convrot",
-    "base_model": "LTXV 2.5",
-    "thumbnail_url": null,
-    "civitai_url": null,
-    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/diffusion_models/ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors",
-    "tags": [
-      "ltx25",
-      "diffusion",
-      "transformer",
-      "video",
-      "distilled",
-      "int8"
-    ],
-    "note": "확인됨: Lightricks/LTX-2.5 공식. 21.5GB. 48GB GPU에 적합한 int8 양자화(ComfyUI 전용)."
-  },
-  "diffusion_models/ltx-2.5-22b-dev-transformer-bf16.safetensors": {
-    "name": "LTX-2.5 22B dev transformer (bf16)",
-    "version": "dev bf16",
-    "base_model": "LTXV 2.5",
-    "thumbnail_url": null,
-    "civitai_url": null,
-    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/diffusion_models/ltx-2.5-22b-dev-transformer-bf16.safetensors",
-    "tags": [
-      "ltx25",
-      "diffusion",
-      "transformer",
-      "video",
-      "dev"
-    ],
-    "note": "확인됨: Lightricks/LTX-2.5 공식. 42.0GB. dev/trainable(파인튜닝·최대품질). distilled LoRA와 함께 사용 가능."
-  },
-  "diffusion_models/ltx-2.5-22b-dev-transformer-comfy-int8-convrot.safetensors": {
-    "name": "LTX-2.5 22B dev transformer (ComfyUI int8)",
-    "version": "dev int8-convrot",
-    "base_model": "LTXV 2.5",
-    "thumbnail_url": null,
-    "civitai_url": null,
-    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/diffusion_models/ltx-2.5-22b-dev-transformer-comfy-int8-convrot.safetensors",
-    "tags": [
-      "ltx25",
-      "diffusion",
-      "transformer",
-      "video",
-      "dev",
-      "int8"
-    ],
-    "note": "확인됨: Lightricks/LTX-2.5 공식. 21.5GB."
-  },
-  "diffusion_models/ltx-2.5-22b-distilled-transformer-nvfp4.safetensors": {
-    "name": "LTX-2.5 22B distilled transformer (nvfp4)",
-    "version": "distilled nvfp4",
-    "base_model": "LTXV 2.5",
-    "thumbnail_url": null,
-    "civitai_url": null,
-    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/diffusion_models/ltx-2.5-22b-distilled-transformer-nvfp4.safetensors",
-    "tags": [
-      "ltx25",
-      "diffusion",
-      "transformer",
-      "video",
-      "distilled",
-      "nvfp4"
-    ],
-    "note": "확인됨: Lightricks/LTX-2.5 공식. 18.7GB. Blackwell(RTX 50xx/B200) fp4 전용."
   },
   "text_encoders/gemma4-12b-with-proj-ltx-2.5-bf16.safetensors": {
     "name": "Gemma4 12B w/ proj (LTX-2.5 text encoder, bf16)",
@@ -8221,6 +8788,201 @@
     ],
     "note": "확인됨: Lightricks/LTX-2.5 공식. 15.4GB. 48GB GPU용 int8 인코더."
   },
+  "text_encoders/qwen_3_06b_base.safetensors": {
+    "name": "qwen_3_06b_base.safetensors",
+    "version": "",
+    "base_model": "",
+    "thumbnail_url": null,
+    "civitai_url": "https://huggingface.co/circlestone-labs/Anima/resolve/main/split_files/text_encoders/qwen_3_06b_base.safetensors",
+    "source_url": "https://huggingface.co/circlestone-labs/Anima/resolve/main/split_files/text_encoders/qwen_3_06b_base.safetensors",
+    "tags": []
+  },
+  "text_encoders/qwen_3_4b.safetensors": {
+    "name": "qwen_3_4b.safetensors",
+    "version": "",
+    "base_model": "",
+    "thumbnail_url": null,
+    "civitai_url": "https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/text_encoders/qwen_3_4b.safetensors",
+    "source_url": "https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/text_encoders/qwen_3_4b.safetensors",
+    "tags": []
+  },
+  "text_encoders/qwen3-vl-4b-heretic_int8.safetensors": {
+    "name": "Qwen3-VL 4B Heretic (int8) text encoder",
+    "version": "heretic int8",
+    "base_model": "Krea 2",
+    "thumbnail_url": null,
+    "civitai_url": "https://huggingface.co/DreamFast/Qwen3-VL-4b-Heretic-ComfyUI/resolve/main/qwen3-vl-4b-heretic_int8.safetensors",
+    "source_url": "https://huggingface.co/DreamFast/Qwen3-VL-4b-Heretic-ComfyUI/resolve/main/qwen3-vl-4b-heretic_int8.safetensors",
+    "tags": [
+      "krea2",
+      "pornmaster",
+      "text_encoder",
+      "qwen3vl",
+      "uncensored"
+    ],
+    "note": "PornMaster 워크플로우 전용 무검열(abliterated) int8 CLIP. CLIPLoader type=krea2."
+  },
+  "text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors": {
+    "name": "Qwen3-VL 32B MiniMax H3 text encoder (nvfp4 awq)",
+    "version": "nvfp4 awq",
+    "base_model": "MiniMax H3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+    "tags": [
+      "minimax-h3",
+      "text-encoder",
+      "video"
+    ],
+    "note": "확인됨: Comfy-Org/MiniMax-H3 공식. 15.69GB. NVFP4는 Hopper(H100)에서 소프트웨어 디퀀트로 동작(로드 에러 시 같은 저장소의 int8_convrot 27GB로 교체)."
+  },
+  "text_encoders/qwen3vl_4b_fp8_scaled.safetensors": {
+    "name": "Qwen3-VL 4B (fp8 scaled) text encoder",
+    "version": "fp8 scaled",
+    "base_model": "Krea 2",
+    "thumbnail_url": null,
+    "civitai_url": "https://huggingface.co/Comfy-Org/Krea-2/resolve/main/text_encoders/qwen3vl_4b_fp8_scaled.safetensors",
+    "source_url": "https://huggingface.co/Comfy-Org/Krea-2/resolve/main/text_encoders/qwen3vl_4b_fp8_scaled.safetensors",
+    "tags": [
+      "krea2",
+      "text_encoder",
+      "qwen3vl"
+    ],
+    "note": "Krea 2 필수 text encoder (CLIPLoader type=krea2). PornMaster/Krea2 워크플로우 공용."
+  },
+  "ultralytics/bbox/face_yolov8n_v2.pt": {
+    "name": "bbox/face_yolov8n_v2.pt",
+    "version": "",
+    "base_model": "",
+    "thumbnail_url": null,
+    "civitai_url": "https://huggingface.co/Bingsu/adetailer/resolve/main/face_yolov8n_v2.pt",
+    "source_url": "https://huggingface.co/Bingsu/adetailer/resolve/main/face_yolov8n_v2.pt",
+    "tags": []
+  },
+  "upscale_models/4x-UltraSharp.pth": {
+    "name": "4x-Ultrasharp",
+    "version": "4x-UltraSharp v1.0",
+    "base_model": "Upscaler",
+    "civitai_url": "https://civitai.red/models/116225/4x-ultrasharp?modelVersionId=125843",
+    "source_url": "https://civitai.red/models/116225/4x-ultrasharp?modelVersionId=125843",
+    "thumbnail_url": null,
+    "tags": []
+  },
+  "upscale_models/4xNomosWebPhoto_RealPLKSR.safetensors": {
+    "name": "4xNomosWebPhoto_RealPLKSR.safetensors",
+    "version": "",
+    "base_model": "",
+    "thumbnail_url": null,
+    "civitai_url": "https://huggingface.co/Phips/4xNomosWebPhoto_RealPLKSR/resolve/49d5da19489e645e870eb076ea84815471f27ef4/4xNomosWebPhoto_RealPLKSR.safetensors",
+    "source_url": "https://huggingface.co/Phips/4xNomosWebPhoto_RealPLKSR/resolve/49d5da19489e645e870eb076ea84815471f27ef4/4xNomosWebPhoto_RealPLKSR.safetensors",
+    "tags": []
+  },
+  "upscale_models/ltx-2.3-spatial-upscaler-x2-1.1.safetensors": {
+    "name": "LTX-Video 2.3 spatial upscaler x2",
+    "version": "v1.1",
+    "base_model": "LTXV 2.3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Lightricks/LTX-2.3/resolve/main/ltx-2.3-spatial-upscaler-x2-1.1.safetensors",
+    "tags": [
+      "ltx23",
+      "upscaler",
+      "spatial"
+    ],
+    "note": "확인됨: Lightricks/LTX-2.3 (공식)"
+  },
+  "upscale_models/RealESRGAN_x4plus_anime_6B.pth": {
+    "name": "RealESRGAN_x4Plus Anime 6B",
+    "version": "v1",
+    "base_model": "Upscaler",
+    "thumbnail_url": null,
+    "civitai_url": "https://civitai.red/models/147821/realesrgan-x4plus-anime-6b?modelVersionId=164904",
+    "source_url": "https://civitai.red/models/147821/realesrgan-x4plus-anime-6b?modelVersionId=164904",
+    "tags": []
+  },
+  "upscale_models/RealESRGAN_x4plus.pth": {
+    "name": "RealESRGAN_x4Plus",
+    "version": "v1",
+    "base_model": "Upscaler",
+    "thumbnail_url": null,
+    "civitai_url": "https://civitai.red/models/147817/realesrgan-x4plus?modelVersionId=164898",
+    "source_url": "https://civitai.red/models/147817/realesrgan-x4plus?modelVersionId=164898",
+    "tags": []
+  },
+  "upscale_models/remacri_original.safetensors": {
+    "name": "Remacri",
+    "version": "Original",
+    "base_model": "Upscaler",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/b6b3d1d9-6467-4719-9136-877732b4c3aa/original=true/2566828.jpeg",
+    "civitai_url": "https://civitai.red/models/147759/remacri?modelVersionId=164821",
+    "tags": [
+      "base model"
+    ],
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "RentCivit",
+        "Rent",
+        "Image",
+        "Sell"
+      ]
+    },
+    "source_url": "https://civitai.red/models/147759/remacri?modelVersionId=164821"
+  },
+  "vae_approx/taeh3.safetensors": {
+    "name": "MiniMax H3 tiny VAE (taeh3)",
+    "version": "Kijai",
+    "base_model": "MiniMax H3",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Kijai/MiniMax-H3-TAE/resolve/main/vae_approx/taeh3.safetensors",
+    "tags": [
+      "minimax-h3",
+      "vae-approx",
+      "preview"
+    ],
+    "note": "확인됨: Kijai/MiniMax-H3-TAE. 10MB. ModelPreviewOverrideKJ 실시간 프리뷰 전용(최종 품질과 무관)."
+  },
+  "vae/ae.safetensors": {
+    "name": "ae.safetensors",
+    "version": "",
+    "base_model": "",
+    "thumbnail_url": null,
+    "civitai_url": "https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/vae/ae.safetensors",
+    "source_url": "https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/vae/ae.safetensors",
+    "tags": []
+  },
+  "vae/animevae.pt": {
+    "name": "NovelAI anime VAE (animevae.pt)",
+    "version": "",
+    "base_model": "SD 1.5",
+    "thumbnail_url": null,
+    "source_url": "https://huggingface.co/a1079602570/animefull-final-pruned/resolve/main/animevae.pt",
+    "tags": [
+      "vae"
+    ]
+  },
+  "vae/ltx-2.5-audio-vae-bf16.safetensors": {
+    "name": "LTX-2.5 audio VAE (bf16)",
+    "version": "bf16",
+    "base_model": "LTXV 2.5",
+    "thumbnail_url": null,
+    "civitai_url": null,
+    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/vae/ltx-2.5-audio-vae-bf16.safetensors",
+    "tags": [
+      "ltx25",
+      "vae",
+      "audio"
+    ],
+    "note": "확인됨: Lightricks/LTX-2.5 공식. 0.36GB. 오디오 VAE(A/V 동시 생성)."
+  },
   "vae/ltx-2.5-video-vae-bf16.safetensors": {
     "name": "LTX-2.5 video VAE (bf16)",
     "version": "bf16",
@@ -8249,640 +9011,19 @@
     ],
     "note": "확인됨: Lightricks/LTX-2.5 공식. 1.45GB. 경량/빠른 conv VAE."
   },
-  "vae/ltx-2.5-audio-vae-bf16.safetensors": {
-    "name": "LTX-2.5 audio VAE (bf16)",
-    "version": "bf16",
-    "base_model": "LTXV 2.5",
+  "vae/MiniMaxH3/minimax_h3_audio_vae_fp32.safetensors": {
+    "name": "MiniMax H3 audio VAE (fp32)",
+    "version": "fp32",
+    "base_model": "MiniMax H3",
     "thumbnail_url": null,
     "civitai_url": null,
-    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/vae/ltx-2.5-audio-vae-bf16.safetensors",
+    "source_url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/vae/minimax_h3_audio_vae_fp32.safetensors",
     "tags": [
-      "ltx25",
+      "minimax-h3",
       "vae",
       "audio"
     ],
-    "note": "확인됨: Lightricks/LTX-2.5 공식. 0.36GB. 오디오 VAE(A/V 동시 생성)."
-  },
-  "latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors": {
-    "name": "LTX-2.5 latent spatial upscaler x2 (bf16)",
-    "version": "v1.0 bf16",
-    "base_model": "LTXV 2.5",
-    "thumbnail_url": null,
-    "civitai_url": null,
-    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
-    "tags": [
-      "ltx25",
-      "upscaler",
-      "spatial",
-      "latent"
-    ],
-    "note": "확인됨: Lightricks/LTX-2.5 공식. 2-stage 정제 패스의 공간 x2 업스케일러."
-  },
-  "latent_upscale_models/ltx-2.5-latent-temporal-upscaler-x2-bf16-1.0.safetensors": {
-    "name": "LTX-2.5 latent temporal upscaler x2 (bf16)",
-    "version": "v1.0 bf16",
-    "base_model": "LTXV 2.5",
-    "thumbnail_url": null,
-    "civitai_url": null,
-    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/latent_upscale_models/ltx-2.5-latent-temporal-upscaler-x2-bf16-1.0.safetensors",
-    "tags": [
-      "ltx25",
-      "upscaler",
-      "temporal",
-      "latent"
-    ],
-    "note": "확인됨: Lightricks/LTX-2.5 공식. 시간축 x2 업스케일러(프레임 보간, 선택)."
-  },
-  "loras/ltx-2.5-22b-distilled-lora-450-bf16.safetensors": {
-    "name": "LTX-2.5 22B distilled LoRA (450, bf16)",
-    "version": "450 bf16",
-    "base_model": "LTXV 2.5",
-    "thumbnail_url": null,
-    "civitai_url": null,
-    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/loras/ltx-2.5-22b-distilled-lora-450-bf16.safetensors",
-    "tags": [
-      "ltx25",
-      "lora",
-      "distilled",
-      "speed"
-    ],
-    "note": "확인됨: Lightricks/LTX-2.5 공식. dev transformer에 얹어 distilled 속도를 얻는 LoRA."
-  },
-  "model_patches/ltx-2.5-duration-head-bf16.safetensors": {
-    "name": "LTX-2.5 duration head (bf16)",
-    "version": "bf16",
-    "base_model": "LTXV 2.5",
-    "thumbnail_url": null,
-    "civitai_url": null,
-    "source_url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/model_patches/ltx-2.5-duration-head-bf16.safetensors",
-    "tags": [
-      "ltx25",
-      "duration",
-      "patch"
-    ],
-    "note": "확인됨: Lightricks/LTX-2.5 공식. 자동 길이 예측 head(선택)."
-  },
-  "loras/v1.0.safetensors": {
-    "name": "v1.0",
-    "version": "V1",
-    "base_model": "SD 1.5",
-    "civitai_url": "https://civitai.red/models/1336410/v1-0?modelVersionId=1509122",
-    "source_url": "https://civitai.red/models/1336410/v1-0?modelVersionId=1509122",
-    "thumbnail_url": null,
-    "tags": []
-  },
-  "loras/illustrious_masterpieces_v3.safetensors": {
-    "name": "Aesthetic Quality Modifiers - Masterpiece",
-    "version": "v3.0 [illustrious]",
-    "base_model": "Illustrious",
-    "civitai_url": "https://civitai.red/models/929497/aesthetic-quality-modifiers-masterpiece?modelVersionId=2247497",
-    "source_url": "https://civitai.red/models/929497/aesthetic-quality-modifiers-masterpiece?modelVersionId=2247497",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/c412dec5-ab50-4cc1-8b7b-1526e771fdf3/original=true/102155669.jpeg",
-    "tags": [
-      "masterpiece, best quality, very aesthetic"
-    ]
-  },
-  "loras/MGBODYTYPEO2IL.safetensors": {
-    "name": "Puffy Nipples / MG Body Type O for Realistic Illustious",
-    "version": "v1.0",
-    "base_model": "Illustrious",
-    "civitai_url": "https://civitai.red/models/2003137/puffy-nipples-mg-body-type-o-for-realistic-illustious?modelVersionId=2267333",
-    "source_url": "https://civitai.red/models/2003137/puffy-nipples-mg-body-type-o-for-realistic-illustious?modelVersionId=2267333",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/8f18b58a-8b64-4509-a620-42d450afb425/original=true/103329478.jpeg",
-    "tags": [
-      "(breasts, nipples, perky breasts)"
-    ]
-  },
-  "checkpoints/duchesse_v30.safetensors": {
-    "name": "Duchesse",
-    "version": "v3.0",
-    "base_model": "Illustrious",
-    "civitai_url": "https://civitai.red/models/1798332/duchesse?modelVersionId=2370371",
-    "source_url": "https://civitai.red/models/1798332/duchesse?modelVersionId=2370371",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/7511df6d-9db4-4db3-ac86-57a893f4d171/original=true/108667096.jpeg"
-  },
-  "loras/iLLC0lorL1nes.safetensors": {
-    "name": "Velvet's Mythic Fantasy Styles | Flux + Pony + illustrious + ZiT + Anima + Krea2",
-    "version": "illustrious Colorful Line",
-    "base_model": "Illustrious",
-    "civitai_url": "https://civitai.red/models/599757/velvet-s-mythic-fantasy-styles-flux-pony-illustrious-zit-anima-krea2?modelVersionId=2620790",
-    "source_url": "https://civitai.red/models/599757/velvet-s-mythic-fantasy-styles-flux-pony-illustrious-zit-anima-krea2?modelVersionId=2620790",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/2b51113d-1a94-4635-9651-fe5778760f54/original=true/118378407.jpeg",
-    "tags": [
-      "C0lorL1nes"
-    ]
-  },
-  "loras/Rembrandt Lighting style illu v1.safetensors": {
-    "name": "Rembrandt (Low-Key) Lighting Style XL + SD1.5 + F1D + Illu + Pony + zit",
-    "version": "Rembrandt Illu v1.0",
-    "base_model": "Illustrious",
-    "civitai_url": "https://civitai.red/models/280454/rembrandt-low-key-lighting-style-xl-sd1-5-f1d-illu-pony-zit?modelVersionId=1806931",
-    "source_url": "https://civitai.red/models/280454/rembrandt-low-key-lighting-style-xl-sd1-5-f1d-illu-pony-zit?modelVersionId=1806931"
-  },
-  "loras/RealSkin_xxXL_v1.safetensors": {
-    "name": "Real Skin Slider",
-    "version": "v1.0",
-    "base_model": "Pony",
-    "civitai_url": "https://civitai.red/models/1486921/real-skin-slider?modelVersionId=1681921",
-    "source_url": "https://civitai.red/models/1486921/real-skin-slider?modelVersionId=1681921"
-  },
-  "diffusion_models/krea2Turbo_v10.safetensors": {
-    "name": "Krea 2 Turbo",
-    "version": "v1.0",
-    "base_model": "Krea 2",
-    "civitai_url": "https://civitai.red/models/2732656/krea-2-turbo?modelVersionId=3072332",
-    "source_url": "https://civitai.red/models/2732656/krea-2-turbo?modelVersionId=3072332",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/2d6c922c-af6e-41f7-8ca4-a91da06ece68/original=true/135352641.jpeg",
-    "tags": []
-  },
-  "loras/ass_krea2_loraholic.safetensors": {
-    "name": "Ass and Thighs Slider - (Krea-2 + ZIT)",
-    "version": "Krea-2_v1",
-    "base_model": "Krea 2",
-    "civitai_url": "https://civitai.red/models/2554616/ass-and-thighs-slider-krea-2-zit?modelVersionId=3072964",
-    "source_url": "https://civitai.red/models/2554616/ass-and-thighs-slider-krea-2-zit?modelVersionId=3072964",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/81b11f8a-7ff0-40c7-a6dd-8c9cc2bdf794/original=true/134964430.jpeg"
-  },
-  "loras/areola_size_krea2_loraholic.safetensors": {
-    "name": "Areola Size Slider - (Krea2 + ZIT)",
-    "version": "Krea2_v1",
-    "base_model": "Krea 2",
-    "civitai_url": "https://civitai.red/models/2554618/areola-size-slider-krea2-zit?modelVersionId=3120387",
-    "source_url": "https://civitai.red/models/2554618/areola-size-slider-krea2-zit?modelVersionId=3120387",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/290e24e7-d6a1-41a1-9233-ce3d3ed68c6b/original=true/136418837.jpeg"
-  },
-  "loras/breast_size_v2_krea2_loraholic.safetensors": {
-    "name": "Breast Size Slider  - (Krea-2 + ZIT)",
-    "version": "Krea-2_v2",
-    "base_model": "Krea 2",
-    "civitai_url": "https://civitai.red/models/2540187/breast-size-slider-krea-2-zit?modelVersionId=3131773",
-    "source_url": "https://civitai.red/models/2540187/breast-size-slider-krea-2-zit?modelVersionId=3131773",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/c3c7667e-f0c2-4c77-b1c5-731b5b145571/original=true/136772816.jpeg"
-  },
-  "loras/krea2-bloomgirls-realism-step00004000.safetensors": {
-    "name": "[Krea 2] BloomGirls UltraRealism",
-    "version": "v1.0 (Main)",
-    "base_model": "Krea 2",
-    "civitai_url": "https://civitai.red/models/2735553/krea-2-bloomgirls-ultrarealism?modelVersionId=3191538",
-    "source_url": "https://civitai.red/models/2735553/krea-2-bloomgirls-ultrarealism?modelVersionId=3191538",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/6e9d3fe6-76ac-48db-8331-e7404af29331/original=true/138554654.jpeg",
-    "tags": [
-      "bl00m"
-    ]
-  },
-  "loras/Private_Style_v11.safetensors": {
-    "name": "Private Style",
-    "version": "v1.1",
-    "base_model": "Krea 2",
-    "civitai_url": "https://civitai.red/models/2833524/private-style?modelVersionId=3214549",
-    "source_url": "https://civitai.red/models/2833524/private-style?modelVersionId=3214549",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/2324e005-cb6c-49a9-8646-e717f46dcec6/original=true/139274138.jpeg"
-  },
-  "ultralytics/bbox/face_yolov8n_v2.pt": {
-    "name": "bbox/face_yolov8n_v2.pt",
-    "version": "",
-    "base_model": "",
-    "thumbnail_url": null,
-    "civitai_url": "https://huggingface.co/Bingsu/adetailer/resolve/main/face_yolov8n_v2.pt",
-    "source_url": "https://huggingface.co/Bingsu/adetailer/resolve/main/face_yolov8n_v2.pt",
-    "tags": []
-  },
-  "loras/hina_krea2Turbo_lora_tqd_v4.0.safetensors": {
-    "name": "[Krea2 Turbo] AsianMix Lora",
-    "version": "v4.0 - TQD",
-    "base_model": "Krea 2",
-    "civitai_url": "https://civitai.red/models/2746042/krea2-turbo-asianmix-lora?modelVersionId=3203007",
-    "source_url": "https://civitai.red/models/2746042/krea2-turbo-asianmix-lora?modelVersionId=3203007",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/57487454-3a00-4be6-8273-dbfd11e052d3/original=true/138912695.jpeg",
-    "tags": [
-      "asian woman"
-    ]
-  },
-  "diffusion_models/krea2_turbo_int8_convrot.safetensors": {
-    "name": "Krea 2 Turbo Official Comfy-Org Checkpoints (Krea2)",
-    "version": "krea2_turbo_int8_convrot",
-    "base_model": "Krea 2",
-    "civitai_url": "https://civitai.red/models/2726029/krea-2-turbo-official-comfy-org-checkpoints-krea2?modelVersionId=3091481",
-    "source_url": "https://civitai.red/models/2726029/krea-2-turbo-official-comfy-org-checkpoints-krea2?modelVersionId=3091481",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/8940b90b-7d94-435f-9b1a-7551b8aef713/original=true/135529120.jpeg",
-    "tags": []
-  },
-  "diffusion_models/krea2TurboOfficialComfy_krea2TurboInt8.safetensors": {
-    "name": "Krea 2 Turbo Official Comfy-Org Checkpoints (Krea2)",
-    "version": "krea2_turbo_int8_convrot",
-    "base_model": "Krea 2",
-    "civitai_url": "https://civitai.red/models/2726029/krea-2-turbo-official-comfy-org-checkpoints-krea2?modelVersionId=3091481",
-    "source_url": "https://civitai.red/models/2726029/krea-2-turbo-official-comfy-org-checkpoints-krea2?modelVersionId=3091481",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/8940b90b-7d94-435f-9b1a-7551b8aef713/original=true/135529120.jpeg",
-    "tags": []
-  },
-  "loras/Nijireol Krea2 v1 Ep5.safetensors": {
-    "name": "NijiReol | Semi-realistic Niji Style [Anima/Krea2/NAI/Z-Image]",
-    "version": "Krea2 v1.0",
-    "base_model": "Krea 2",
-    "civitai_url": "https://civitai.red/models/2384767/nijireol-semi-realistic-niji-style-anima-krea2-nai-z-image?modelVersionId=3146836",
-    "source_url": "https://civitai.red/models/2384767/nijireol-semi-realistic-niji-style-anima-krea2-nai-z-image?modelVersionId=3146836",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/67020358-423d-4256-ba05-b695243c3543/original=true/137254220.jpeg",
-    "tags": [
-      "Nijireol"
-    ]
-  },
-  "loras/1SR9GTB6V2FV7S1C5VW8HJD7T0.safetensors": {
-    "name": "Intimate Kiss Anime Men",
-    "version": "V1",
-    "base_model": "Anima",
-    "civitai_url": "https://civitai.red/models/2717644/intimate-kiss-anime-men?modelVersionId=3053748",
-    "source_url": "https://civitai.red/models/2717644/intimate-kiss-anime-men?modelVersionId=3053748",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/a18284f5-f22f-4c18-b397-5b4012df3d0e/original=true/134386433.jpeg",
-    "tags": [
-      "ikamn"
-    ]
-  },
-  "checkpoints/postbanixl_v2.safetensors": {
-    "name": "PostBanIXL",
-    "version": "V2",
-    "base_model": "Illustrious",
-    "civitai_url": "https://civitai.red/models/1947875/postbanixl?modelVersionId=2322440",
-    "source_url": "https://civitai.red/models/1947875/postbanixl?modelVersionId=2322440",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/c8094130-fd94-499f-b7e0-c5e41ad8b86e/original=true/106472900.jpeg",
-    "tags": []
-  },
-  "text_encoders/qwen_3_06b_base.safetensors": {
-    "name": "qwen_3_06b_base.safetensors",
-    "version": "",
-    "base_model": "",
-    "thumbnail_url": null,
-    "civitai_url": "https://huggingface.co/circlestone-labs/Anima/resolve/main/split_files/text_encoders/qwen_3_06b_base.safetensors",
-    "source_url": "https://huggingface.co/circlestone-labs/Anima/resolve/main/split_files/text_encoders/qwen_3_06b_base.safetensors",
-    "tags": []
-  },
-  "loras/Implants2.safetensors": {
-    "name": "Breast Implants - PonyXL",
-    "version": "v1.0",
-    "base_model": "Pony",
-    "civitai_url": "https://civitai.red/models/536195/breast-implants-ponyxl?modelVersionId=596072",
-    "source_url": "https://civitai.red/models/536195/breast-implants-ponyxl?modelVersionId=596072",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/4cac77fb-fe77-4f6a-bb8d-738fa113a2c0/original=true/17052392.jpeg",
-    "tags": [
-      "breast implants",
-      "fake tits",
-      "unaligned breasts",
-      "perfectly round breasts"
-    ]
-  },
-  "loras/FLMFX.safetensors": {
-    "name": "[BSS] - Styles for illustrious - FilmFX (Realism)",
-    "version": "v1.0",
-    "base_model": "Illustrious",
-    "civitai_url": "https://civitai.red/models/1747744/bss-styles-for-illustrious-filmfx-realism?modelVersionId=1978018",
-    "source_url": "https://civitai.red/models/1747744/bss-styles-for-illustrious-filmfx-realism?modelVersionId=1978018",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/9507dc78-23ac-4b73-a1bd-ab69df0c35f5/original=true/92105595.mp4",
-    "tags": []
-  },
-  "checkpoints/divingIllustriousReal_proVAE.safetensors": {
-    "name": "Diving-Illustrious Real-Asian",
-    "version": "Pro+VAE",
-    "base_model": "Illustrious",
-    "civitai_url": "https://civitai.red/models/1562047/diving-illustrious-real-asian?modelVersionId=2359917",
-    "source_url": "https://civitai.red/models/1562047/diving-illustrious-real-asian?modelVersionId=2359917",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/c3642bcb-de37-4ce9-9d62-4ee986ebbf9c/original=true/108200847.jpeg",
-    "tags": []
-  },
-  "loras/Yuri_유리 - (Not Real).safetensors": {
-    "name": "Yuri \"유리\" - (Not Real)",
-    "version": "Yuri \"유리\" - (Not Real) V1",
-    "base_model": "SDXL 1.0",
-    "civitai_url": "https://civitai.red/models/2837515/yuri-not-real?modelVersionId=3202647",
-    "source_url": "https://civitai.red/models/2837515/yuri-not-real?modelVersionId=3202647",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/f36a5c75-c804-4cc7-abb2-13c3d2c53087/original=true/139317590.jpeg",
-    "tags": []
-  },
-  "loras/Add_color_PDXLv1.safetensors": {
-    "name": "Add Color - Slider",
-    "version": "Pony",
-    "base_model": "Pony",
-    "thumbnail_url": null,
-    "civitai_url": "https://civitai.red/models/1327644/add-color-slider?modelVersionId=1498957",
-    "source_url": "https://civitai.red/models/1327644/add-color-slider?modelVersionId=1498957",
-    "tags": []
-  },
-  "loras/Midjourney Image Enhancer XL v1.safetensors": {
-    "name": "Midjourney Image Enhancer XL/ILL Extreme",
-    "version": "XL v1.0",
-    "base_model": "SDXL 1.0",
-    "thumbnail_url": null,
-    "civitai_url": "https://civitai.red/models/542447/midjourney-image-enhancer-xl-ill-extreme?modelVersionId=603123",
-    "source_url": "https://civitai.red/models/542447/midjourney-image-enhancer-xl-ill-extreme?modelVersionId=603123",
-    "tags": []
-  },
-  "checkpoints/moody-pro-signature-004_00001_.safetensors": {
-    "name": "Moody Pro Mix",
-    "version": "Collector's Edition: 典藏版",
-    "base_model": "ZImageTurbo",
-    "civitai_url": "https://civitai.red/models/620406/moody-pro-mix?modelVersionId=3161628",
-    "source_url": "https://civitai.red/models/620406/moody-pro-mix?modelVersionId=3161628",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/a6fa6d2d-21fc-4801-ab90-5e0334e77a61/original=true/137713342.mp4",
-    "tags": []
-  },
-  "checkpoints/moodyProMix_collectorsEdition.safetensors": {
-    "name": "Moody Pro Mix",
-    "version": "Collector's Edition: 典藏版",
-    "base_model": "ZImageTurbo",
-    "civitai_url": "https://civitai.red/models/620406/moody-pro-mix?modelVersionId=3161628",
-    "source_url": "https://civitai.red/models/620406/moody-pro-mix?modelVersionId=3161628",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/a6fa6d2d-21fc-4801-ab90-5e0334e77a61/original=true/137713342.mp4",
-    "tags": []
-  },
-  "loras/MYD6GFCHY25BF3G7WNRH7ZM450.safetensors": {
-    "name": "Jubjub pro",
-    "version": "V1",
-    "base_model": "ZImageTurbo",
-    "civitai_url": "https://civitai.red/models/2834209/jubjub-pro?modelVersionId=3198437",
-    "source_url": "https://civitai.red/models/2834209/jubjub-pro?modelVersionId=3198437",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/72574ca3-1293-403f-b2f1-0c4361cd4328/original=true/139095431.jpeg",
-    "tags": [
-      "jubjub"
-    ]
-  },
-  "checkpoints/z_image_turbo_bf16.safetensors": {
-    "name": "Z Image Turbo",
-    "version": "Turbo",
-    "base_model": "ZImageTurbo",
-    "civitai_url": "https://civitai.red/models/2168935/z-image-turbo?modelVersionId=2442439",
-    "source_url": "https://civitai.red/models/2168935/z-image-turbo?modelVersionId=2442439",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/41150b54-1830-470c-a98e-f46a2e908122/original=true/111679195.jpeg",
-    "tags": []
-  },
-  "vae/ae.safetensors": {
-    "name": "ae.safetensors",
-    "version": "",
-    "base_model": "",
-    "thumbnail_url": null,
-    "civitai_url": "https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/vae/ae.safetensors",
-    "source_url": "https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/vae/ae.safetensors",
-    "tags": []
-  },
-  "text_encoders/qwen_3_4b.safetensors": {
-    "name": "qwen_3_4b.safetensors",
-    "version": "",
-    "base_model": "",
-    "thumbnail_url": null,
-    "civitai_url": "https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/text_encoders/qwen_3_4b.safetensors",
-    "source_url": "https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/text_encoders/qwen_3_4b.safetensors",
-    "tags": []
-  },
-  "loras/lenovo_krea2.safetensors": {
-    "name": "Lenovo UltraReal",
-    "version": "v1.0 Krea2",
-    "base_model": "Krea 2",
-    "thumbnail_url": null,
-    "civitai_url": "https://civitai.red/models/1662740/lenovo-ultrareal?modelVersionId=3075606",
-    "source_url": "https://civitai.red/models/1662740/lenovo-ultrareal?modelVersionId=3075606",
-    "tags": []
-  },
-  "loras/Purple_Grainy_Kr2_AM.safetensors": {
-    "name": "Purple Grainy || Photography lora",
-    "version": "v1.0 Krea 2",
-    "base_model": "Krea 2",
-    "thumbnail_url": null,
-    "civitai_url": "https://civitai.red/models/2329053/purple-grainy-photography-lora?modelVersionId=3110766",
-    "source_url": "https://civitai.red/models/2329053/purple-grainy-photography-lora?modelVersionId=3110766",
-    "tags": []
-  },
-  "diffusion_models/z_image_turbo_bf16.safetensors": {
-    "name": "Z Image Turbo",
-    "version": "Turbo",
-    "base_model": "ZImageTurbo",
-    "civitai_url": "https://civitai.red/models/2168935/z-image-turbo?modelVersionId=2442439",
-    "source_url": "https://civitai.red/models/2168935/z-image-turbo?modelVersionId=2442439",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/41150b54-1830-470c-a98e-f46a2e908122/original=true/111679195.jpeg",
-    "tags": []
-  },
-  "loras/ElfinSmoothAnime.safetensors": {
-    "name": "ElfinSmooth",
-    "version": "Classic",
-    "base_model": "Illustrious",
-    "civitai_url": "https://civitai.red/models/1719319/elfinsmooth?modelVersionId=1945697",
-    "source_url": "https://civitai.red/models/1719319/elfinsmooth?modelVersionId=1945697",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/95019131-6d6f-4e6d-9cda-88d14556d8a3/original=true/88633592.jpeg",
-    "tags": [
-      "\"ElfinSmooth\""
-    ]
-  },
-  "loras/ade-nikke-richy-v2_ixl.safetensors": {
-    "name": "Ade (NIKKE) SDXL LoRA [Illustrious] | 3 Outfits",
-    "version": "ade-nikke-richy-v2_ixl",
-    "base_model": "Illustrious",
-    "civitai_url": "https://civitai.red/models/1008601/ade-nikke-sdxl-lora-illustrious-3-outfits?modelVersionId=2212577",
-    "source_url": "https://civitai.red/models/1008601/ade-nikke-sdxl-lora-illustrious-3-outfits?modelVersionId=2212577",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/9f2db3f0-4d73-4733-b02b-cfc5538d8cf8/original=true/100147361.jpeg",
-    "tags": []
-  },
-  "loras/SantaDress_Doaxvv_v1.safetensors": {
-    "name": "サンタ / Santa Dress - DOAXVV Outfit (Illustrious)",
-    "version": "v1.0",
-    "base_model": "Illustrious",
-    "civitai_url": "https://civitai.red/models/2208066/santa-dress-doaxvv-outfit-illustrious?modelVersionId=2486068",
-    "source_url": "https://civitai.red/models/2208066/santa-dress-doaxvv-outfit-illustrious?modelVersionId=2486068",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/dec3be26-6ff2-4229-a657-6d84fa8e623d/original=true/113234446.jpeg",
-    "tags": []
-  },
-  "loras/gpt-image-2_anima-base1_v1-1.safetensors": {
-    "name": "Style > gpt-image-2",
-    "version": "Anima-base1 v1.1",
-    "base_model": "Anima",
-    "civitai_url": "https://civitai.red/models/2564225/style-gpt-image-2?modelVersionId=2998634",
-    "source_url": "https://civitai.red/models/2564225/style-gpt-image-2?modelVersionId=2998634",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/eb04c719-1d9e-4309-9f06-c49b2cc6ba1f/original=true/132699696.jpeg",
-    "tags": [
-      "@gpt-image-2,"
-    ]
-  },
-  "checkpoints/animij_ai.safetensors": {
-    "name": "Animij",
-    "version": "AI",
-    "base_model": "Anima",
-    "civitai_url": "https://civitai.red/models/1353314/animij?modelVersionId=3166879",
-    "source_url": "https://civitai.red/models/1353314/animij?modelVersionId=3166879",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/132002ab-8b85-4c3e-8240-7cc57ba6ac40/original=true/137957663.mp4",
-    "tags": []
-  },
-  "checkpoints/amanesseWorks_v20.safetensors": {
-    "name": "Amanesse Works",
-    "version": "v2.0",
-    "base_model": "Illustrious",
-    "civitai_url": "https://civitai.red/models/1965943/amanesse-works?modelVersionId=2414241",
-    "source_url": "https://civitai.red/models/1965943/amanesse-works?modelVersionId=2414241",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/faf39b7d-059b-43e6-b534-f245fadbbbfb/original=true/110679365.jpeg",
-    "tags": []
-  },
-  "checkpoints/pieModels_mango.safetensors": {
-    "name": "Pie - Models 🥧",
-    "version": "Mango",
-    "base_model": "Illustrious",
-    "civitai_url": "https://civitai.red/models/1593793/pie-models?modelVersionId=2913030",
-    "source_url": "https://civitai.red/models/1593793/pie-models?modelVersionId=2913030",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/2a7511fa-a5f7-4a01-8f8b-c02be6a7cb58/original=true/129400918.jpeg",
-    "tags": []
-  },
-  "checkpoints/perfectAsian_perfectAsian.safetensors": {
-    "name": "Perfect Asian",
-    "version": "Perfect Asian",
-    "base_model": "Illustrious",
-    "civitai_url": "https://civitai.red/models/2131682/perfect-asian?modelVersionId=2411362",
-    "source_url": "https://civitai.red/models/2131682/perfect-asian?modelVersionId=2411362",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/f57ffcfe-94c0-42be-9c04-8c319af537e4/original=true/110398252.jpeg",
-    "tags": []
-  },
-  "loras/Realistic_Asian_Beauty.safetensors": {
-    "name": "Realistic Asian Beauty Enhancer",
-    "version": "V1",
-    "base_model": "Illustrious",
-    "civitai_url": "https://civitai.red/models/2098342/realistic-asian-beauty-enhancer?modelVersionId=2374085",
-    "source_url": "https://civitai.red/models/2098342/realistic-asian-beauty-enhancer?modelVersionId=2374085",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/553011bb-091d-4808-927d-d8c14b81af79/original=true/111447737.mp4",
-    "tags": []
-  },
-  "checkpoints/moodyRealMix_zitV7.safetensors": {
-    "name": "Moody Real Mix",
-    "version": "ZIT V7",
-    "base_model": "ZImageTurbo",
-    "civitai_url": "https://civitai.red/models/621441/moody-real-mix?modelVersionId=3005060",
-    "source_url": "https://civitai.red/models/621441/moody-real-mix?modelVersionId=3005060",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/9afcc4e3-f67e-4342-a42b-6f0e1dbc849b/original=true/132824809.mp4"
-  },
-  "diffusion_models/moodyAmateurMixKrea2_v10.safetensors": {
-    "name": "Moody Amateur Mix (Krea2 Uncensored)",
-    "version": "v1.0",
-    "base_model": "Krea 2",
-    "civitai_url": "https://civitai.red/models/2859971/moody-amateur-mix-krea2-uncensored?modelVersionId=3230531",
-    "source_url": "https://civitai.red/models/2859971/moody-amateur-mix-krea2-uncensored?modelVersionId=3230531",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/dd1ab4a5-bb1f-467a-944c-a5bafc34dde6/original=true/139759609.mp4",
-    "tags": []
-  },
-  "upscale_models/RealESRGAN_x4plus.pth": {
-    "name": "RealESRGAN_x4Plus",
-    "version": "v1",
-    "base_model": "Upscaler",
-    "thumbnail_url": null,
-    "civitai_url": "https://civitai.red/models/147817/realesrgan-x4plus?modelVersionId=164898",
-    "source_url": "https://civitai.red/models/147817/realesrgan-x4plus?modelVersionId=164898",
-    "tags": []
-  },
-  "upscale_models/RealESRGAN_x4plus_anime_6B.pth": {
-    "name": "RealESRGAN_x4Plus Anime 6B",
-    "version": "v1",
-    "base_model": "Upscaler",
-    "thumbnail_url": null,
-    "civitai_url": "https://civitai.red/models/147821/realesrgan-x4plus-anime-6b?modelVersionId=164904",
-    "source_url": "https://civitai.red/models/147821/realesrgan-x4plus-anime-6b?modelVersionId=164904",
-    "tags": []
-  },
-  "upscale_models/4xNomosWebPhoto_RealPLKSR.safetensors": {
-    "name": "4xNomosWebPhoto_RealPLKSR.safetensors",
-    "version": "",
-    "base_model": "",
-    "thumbnail_url": null,
-    "civitai_url": "https://huggingface.co/Phips/4xNomosWebPhoto_RealPLKSR/resolve/49d5da19489e645e870eb076ea84815471f27ef4/4xNomosWebPhoto_RealPLKSR.safetensors",
-    "source_url": "https://huggingface.co/Phips/4xNomosWebPhoto_RealPLKSR/resolve/49d5da19489e645e870eb076ea84815471f27ef4/4xNomosWebPhoto_RealPLKSR.safetensors",
-    "tags": []
-  },
-  "checkpoints/gloamingMonolith_obsidianCore.safetensors": {
-    "name": "Gloaming Monolith",
-    "version": "Obsidian Core",
-    "base_model": "Illustrious",
-    "civitai_url": "https://civitai.red/models/2386011/gloaming-monolith?modelVersionId=2683000",
-    "source_url": "https://civitai.red/models/2386011/gloaming-monolith?modelVersionId=2683000",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/240305a0-c9af-4fbe-b938-67981b2b5d53/original=true/120830085.jpeg",
-    "tags": []
-  },
-  "loras/moyong-ran.safetensors": {
-    "name": "moyong-ran",
-    "version": "자체 학습 · 2026-08-23",
-    "base_model": "Illustrious",
-    "thumbnail_url": "/api/models/thumbnail?folder=loras&file=moyong-ran.preview.png",
-    "civitai_url": null,
-    "source_url": null,
-    "tags": [
-      "self-trained",
-      "자체 학습",
-      "character",
-      "moyong-ran"
-    ]
-  },
-  "loras/[Yue]Nijistyle①.safetensors": {
-    "name": "Niji-male-style①",
-    "version": "v1.0",
-    "base_model": "Illustrious",
-    "civitai_url": "https://civitai.red/models/1028032/niji-male-style?modelVersionId=1152969",
-    "source_url": "https://civitai.red/models/1028032/niji-male-style?modelVersionId=1152969",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/2e834f10-0522-4512-b09b-198f14c263c2/original=true/44947989.jpeg"
-  },
-  "loras/u3nomigi.safetensors": {
-    "name": "Uenomigi | Style LoRa",
-    "version": "v1.0",
-    "base_model": "Illustrious",
-    "civitai_url": "https://civitai.red/models/1173637/uenomigi-style-lora?modelVersionId=1320597",
-    "source_url": "https://civitai.red/models/1173637/uenomigi-style-lora?modelVersionId=1320597",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/a747958b-f515-4407-abe8-e63e05c3ebd7/original=true/53442140.jpeg",
-    "tags": [
-      "u3nomigi_illu",
-      "abstract,abstract shapes,halftone"
-    ]
-  },
-  "loras/Flat_colors_-_NikaStyle.safetensors": {
-    "name": "Flat colors, soft shading, chibi art– NikaStyle",
-    "version": "ILL",
-    "base_model": "Illustrious",
-    "civitai_url": "https://civitai.red/models/1940918/flat-colors-soft-shading-chibi-art-nikastyle?modelVersionId=2196722",
-    "source_url": "https://civitai.red/models/1940918/flat-colors-soft-shading-chibi-art-nikastyle?modelVersionId=2196722",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/52c6792f-a50e-4ff8-8d47-8406a5509e7a/original=true/99316911.jpeg",
-    "tags": [
-      "FlatNika,"
-    ]
-  },
-  "loras/coworker-girl.safetensors": {
-    "name": "coworker-girl",
-    "version": "자체 학습 · 2026-08-24",
-    "base_model": "Illustrious",
-    "thumbnail_url": "/api/models/thumbnail?folder=loras&file=coworker-girl.preview.png",
-    "civitai_url": null,
-    "source_url": null,
-    "tags": [
-      "self-trained",
-      "자체 학습",
-      "character",
-      "coworker-girl"
-    ]
-  },
-  "diffusion_models/DasiwaMinimaxH3_dasiwaREF2VAHybridV1.safetensors": {
-    "name": "DaSiWa MiniMax H3 REF2VA Hybrid",
-    "version": "v1.0 bf16",
-    "base_model": "MiniMax H3",
-    "thumbnail_url": null,
-    "civitai_url": null,
-    "source_url": "https://huggingface.co/frauleinpiss/DasiwaH3mirror/resolve/main/DasiwaMinimaxH3_dasiwaREF2VAHybridV1.safetensors",
-    "tags": [
-      "minimax-h3",
-      "diffusion",
-      "video",
-      "hybrid"
-    ],
-    "note": "확인됨: fl2va+ref2va 병합 하이브리드. 2026-09-04부터 bf16(34.0GB, SHA256 ddd1641d…04c4d, frauleinpiss/DasiwaH3mirror). 이전 int8 미러(yamanakaaa2015/mymodel, 19.53GiB, SHA256 71c61492…b7121c)는 비공개 전환되어 접근 불가. 원본 civitai 모델(2877206)은 삭제됨."
-  },
-  "text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors": {
-    "name": "Qwen3-VL 32B MiniMax H3 text encoder (nvfp4 awq)",
-    "version": "nvfp4 awq",
-    "base_model": "MiniMax H3",
-    "thumbnail_url": null,
-    "civitai_url": null,
-    "source_url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
-    "tags": [
-      "minimax-h3",
-      "text-encoder",
-      "video"
-    ],
-    "note": "확인됨: Comfy-Org/MiniMax-H3 공식. 15.69GB. NVFP4는 Hopper(H100)에서 소프트웨어 디퀀트로 동작(로드 에러 시 같은 저장소의 int8_convrot 27GB로 교체)."
+    "note": "확인됨: Comfy-Org/MiniMax-H3 공식. 0.61GB. I2VA 오디오 생성 경로에 필요."
   },
   "vae/MiniMaxH3/minimax_h3_video_vae_fp16.safetensors": {
     "name": "MiniMax H3 video VAE (fp16)",
@@ -8898,141 +9039,82 @@
     ],
     "note": "확인됨: Comfy-Org/MiniMax-H3 공식. 5.21GB. 워크플로우는 vae/MiniMaxH3/ 하위 경로로 로드하므로 targetPath 그대로 받을 것."
   },
-  "vae/MiniMaxH3/minimax_h3_audio_vae_fp32.safetensors": {
-    "name": "MiniMax H3 audio VAE (fp32)",
-    "version": "fp32",
-    "base_model": "MiniMax H3",
+  "vae/qwen_image_vae.safetensors": {
+    "name": "Qwen-Image VAE",
+    "version": "Qwen_Image_VAE",
+    "base_model": "Qwen",
+    "civitai_url": "https://civitai.red/models/1912333/qwen-image-vae?modelVersionId=2164481",
+    "source_url": "https://civitai.red/models/1912333/qwen-image-vae?modelVersionId=2164481",
     "thumbnail_url": null,
-    "civitai_url": null,
-    "source_url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/vae/minimax_h3_audio_vae_fp32.safetensors",
+    "tags": []
+  },
+  "vae/sdxlVAE_sdxlVAE.safetensors": {
+    "name": "SDXL VAE",
+    "version": "SDXL-VAE",
+    "base_model": "SDXL 1.0",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/78a2f5a9-3e6f-4af5-819c-98fa1dc54049/original=true/6370787.jpeg",
+    "civitai_url": "https://civitai.red/models/296576/sdxl-vae?modelVersionId=333245",
+    "source_url": "https://civitai.red/models/296576/sdxl-vae?modelVersionId=333245",
     "tags": [
-      "minimax-h3",
+      "style",
       "vae",
-      "audio"
+      "sdxl",
+      "sdxl vae"
     ],
-    "note": "확인됨: Comfy-Org/MiniMax-H3 공식. 0.61GB. I2VA 오디오 생성 경로에 필요."
+    "risk": {
+      "level": "OK",
+      "reason": "Rent 허용 + 특이사항 없음",
+      "allow_commercial_use": "Y"
+    },
+    "license": {
+      "allowNoCredit": true,
+      "allowDerivatives": true,
+      "allowDifferentLicense": true,
+      "allowCommercialUse": [
+        "Image",
+        "RentCivit",
+        "Rent",
+        "Sell"
+      ]
+    }
   },
-  "vae_approx/taeh3.safetensors": {
-    "name": "MiniMax H3 tiny VAE (taeh3)",
-    "version": "Kijai",
-    "base_model": "MiniMax H3",
+  "vae/taeltx2_3.safetensors": {
+    "name": "TAE LTX 2.3 (tiny autoencoder)",
+    "version": "2.3",
+    "base_model": "LTXV 2.3",
     "thumbnail_url": null,
     "civitai_url": null,
-    "source_url": "https://huggingface.co/Kijai/MiniMax-H3-TAE/resolve/main/vae_approx/taeh3.safetensors",
+    "source_url": "https://huggingface.co/Kijai/LTX2.3_comfy/resolve/main/vae/taeltx2_3.safetensors",
     "tags": [
-      "minimax-h3",
-      "vae-approx",
-      "preview"
+      "ltx23",
+      "vae",
+      "taesd"
     ],
-    "note": "확인됨: Kijai/MiniMax-H3-TAE. 10MB. ModelPreviewOverrideKJ 실시간 프리뷰 전용(최종 품질과 무관)."
+    "note": "확인됨: Kijai/LTX2.3_comfy (23.5MB TAE)"
   },
-  "loras/MysticXXX_MMH3-V3.safetensors": {
-    "name": "[MMH3] Mystic XXX",
-    "version": "v3.0",
-    "base_model": "MiniMax H3",
+  "vae/vaeKlF8Anime2_klF8Anime2VAE.safetensors": {
+    "name": "VAE-kl-f8-anime2",
+    "version": "vkl-f8-anime2 VAE",
+    "base_model": "SD 1.5",
+    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/cef0de43-694a-4b02-38bb-68f861596c00/original=true/576872.jpeg",
+    "risk": {
+      "level": "MEDIUM",
+      "reason": "Civitai 조회 실패 — 수동확인",
+      "allow_commercial_use": "N"
+    }
+  },
+  "vae/wan_2.1_vae.safetensors": {
+    "name": "Wan 2.1 VAE",
+    "version": "wan_2.1_vae",
+    "base_model": "Wan 2.1",
     "thumbnail_url": null,
-    "civitai_url": "https://civitai.red/models/2856467?modelVersionId=3260276",
-    "source_url": "https://huggingface.co/Kutches/minmax/resolve/main/MysticXXX_MMH3-V3.safetensors",
+    "civitai_url": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors",
+    "source_url": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors",
     "tags": [
-      "minimax-h3",
-      "lora",
-      "nsfw",
-      "video"
+      "pornmaster",
+      "vae",
+      "wan"
     ],
-    "note": "확인됨: civitai 2856467 v3.0 (0.28GB). DaSiWa MiniMax H3 파이프라인의 유일한 활성 LoRA(strength 0.9, workflow에 baked)."
-  },
-  "loras/minimax_h3_fl2v_lightx2v_turbo_8step_v1.0_resized_avg_rank_24_bf16.safetensors": {
-    "name": "MiniMax H3 lightx2v Turbo 8-step (rank 24)",
-    "version": "v1.0",
-    "base_model": "MiniMax H3",
-    "thumbnail_url": null,
-    "civitai_url": null,
-    "source_url": "https://huggingface.co/Kijai/MiniMax-H3_comfy/resolve/main/loras/minimax_h3_fl2v_lightx2v_turbo_8step_v1.0_resized_avg_rank_24_bf16.safetensors",
-    "tags": [
-      "minimax-h3",
-      "lora",
-      "turbo",
-      "distill"
-    ],
-    "note": "확인됨: Kijai/MiniMax-H3_comfy (0.36GB, lightx2v 원본의 rank-24 축소판). DaSiWa 파이프라인 Turbo LoRA 컨트롤의 8-step 옵션. 권장: strength 1.0 + steps 8."
-  },
-  "loras/minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy_resized_avg_rank_21_bf16.safetensors": {
-    "name": "MiniMax H3 lightx2v Turbo 4-step (rank 21)",
-    "version": "v0.1",
-    "base_model": "MiniMax H3",
-    "thumbnail_url": null,
-    "civitai_url": null,
-    "source_url": "https://huggingface.co/Kijai/MiniMax-H3_comfy/resolve/main/loras/minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy_resized_avg_rank_21_bf16.safetensors",
-    "tags": [
-      "minimax-h3",
-      "lora",
-      "turbo",
-      "distill"
-    ],
-    "note": "확인됨: Kijai/MiniMax-H3_comfy (0.31GB). DaSiWa 파이프라인 Turbo LoRA 컨트롤의 4-step 옵션. 권장: strength 0.75 + steps 4~12 + res_multistep(참조 영상 세팅: 0.75 / 12 steps)."
-  },
-  "loras/Deepthroat slider IXLR3_alpha16.0_rank32_full_last.safetensors": {
-    "name": "Deepthroat slider Pony/IllustriousXL",
-    "version": "IXL",
-    "base_model": "Illustrious",
-    "civitai_url": "https://civitai.red/models/871004/deepthroat-slider-pony-illustriousxl?modelVersionId=1498821",
-    "source_url": "https://civitai.red/models/871004/deepthroat-slider-pony-illustriousxl?modelVersionId=1498821",
-    "thumbnail_url": null,
-    "tags": [
-      "fellatio"
-    ]
-  },
-  "checkpoints/novaFurryXL_ilV170.safetensors": {
-    "name": "Nova Furry XL",
-    "version": "IL v17.0",
-    "base_model": "Illustrious",
-    "civitai_url": "https://civitai.red/models/503815/nova-furry-xl?modelVersionId=2792241",
-    "source_url": "https://civitai.red/models/503815/nova-furry-xl?modelVersionId=2792241",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/251bc5bd-bdb4-4676-a791-6366c40307e4/original=true/124939697.jpeg"
-  },
-  "loras/Fox burrow style 1 (Anima) v1.safetensors": {
-    "name": "Fox Burrow's Styles",
-    "version": "Fox Burrow Style 1",
-    "base_model": "Anima",
-    "civitai_url": "https://civitai.red/models/2779451/fox-burrow-s-styles?modelVersionId=3130169",
-    "source_url": "https://civitai.red/models/2779451/fox-burrow-s-styles?modelVersionId=3130169",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/27dad494-04f8-4124-9d9d-af3f75279d6b/original=true/136720716.jpeg",
-    "tags": [
-      "@foxburrow"
-    ]
-  },
-  "checkpoints/ramthrustsNSFWPINK_v31RAMSDelicious.safetensors": {
-    "name": "RAMTHRUST'S-NSFW-PINK-ALCHEMY-ANIMA 🩷",
-    "version": "v3.1-RAMS-Delicious-Mango",
-    "base_model": "Anima",
-    "civitai_url": "https://civitai.red/models/2578175/ramthrust-s-nsfw-pink-alchemy-anima?modelVersionId=3278527",
-    "source_url": "https://civitai.red/models/2578175/ramthrust-s-nsfw-pink-alchemy-anima?modelVersionId=3278527",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/80b60e1c-d43a-46b6-8d15-04ec8b20fa6d/original=true/141306274.mp4"
-  },
-  "loras/sable_anima_3283137_epoch_10.safetensors": {
-    "name": "Sable - Time's oc",
-    "version": "Sable v1",
-    "base_model": "Anima",
-    "civitai_url": "https://civitai.red/models/2903749/sable-time-s-oc?modelVersionId=3283640",
-    "source_url": "https://civitai.red/models/2903749/sable-time-s-oc?modelVersionId=3283640",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/25ae39dd-372c-4668-b8a0-a01b99d37ded/original=true/141393391.jpeg",
-    "tags": [
-      "flame bra",
-      "white skin, colored skin"
-    ]
-  },
-  "loras/Hand Milking (Anima) v1.safetensors": {
-    "name": "Hand milking",
-    "version": "Anima - v1.0",
-    "base_model": "Anima",
-    "civitai_url": "https://civitai.red/models/2480423/hand-milking?modelVersionId=3332509",
-    "source_url": "https://civitai.red/models/2480423/hand-milking?modelVersionId=3332509",
-    "thumbnail_url": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/210eaa03-7caa-4da2-a955-fefbc878e0ed/original=true/142981374.jpeg",
-    "tags": [
-      "hand milking",
-      "grabbing another's breast",
-      "lactation",
-      "projectile lactation"
-    ]
+    "note": "원본 PornMaster 워크플로우가 사용한 VAE(원본은 wan2.1_vae.safetensors로 리네임). 동일 파일."
   }
 }
