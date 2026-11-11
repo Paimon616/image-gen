@@ -113,6 +113,12 @@ export interface GenerationParams {
    */
   character_face_image?: string | null;
   /**
+   * Krea 2: what character_image shows. "back" = a back view; the edit prompt
+   * then asks for the person seen from behind with the face hidden instead of
+   * "keep the exact face" (which turned the head toward the camera).
+   */
+  character_reference_view?: "back" | null;
+  /**
    * SDXL: an explicit IP-Adapter identity reference sent by the caller (the
    * consistency sheet GPU engine). Same graph as character_sheet_image, which
    * stays route-controlled.

@@ -45,22 +45,27 @@ test("back views use the back reference, with the face only when it shows", () =
   assert.deepEqual(directionalReference("back", set), {
     character_image: set.back,
     character_face_image: null,
+    character_reference_view: "back",
   });
   assert.deepEqual(directionalReference("back_face", set), {
     character_image: set.back,
     character_face_image: set.face,
+    character_reference_view: null,
   });
   assert.deepEqual(directionalReference("side", set), {
     character_image: set.side,
     character_face_image: null,
+    character_reference_view: null,
   });
   assert.deepEqual(directionalReference("side_face", set), {
     character_image: set.side,
     character_face_image: set.face,
+    character_reference_view: null,
   });
   assert.deepEqual(directionalReference("front", set), {
     character_image: set.front,
     character_face_image: null,
+    character_reference_view: null,
   });
 });
 
@@ -70,11 +75,13 @@ test("missing sheet views fall back to the front reference alone", () => {
     assert.deepEqual(directionalReference(view, front), {
       character_image: set.front,
       character_face_image: null,
+      character_reference_view: null,
     });
   }
   // A back view without a face crop still beats the front reference.
   assert.deepEqual(directionalReference("back_face", { front: set.front, back: set.back }), {
     character_image: set.back,
     character_face_image: null,
+    character_reference_view: null,
   });
 });

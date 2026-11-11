@@ -247,6 +247,7 @@ export function UrlReferenceImport({
       const settings: Partial<GenerationParams> = {
         character_image: imageUrl,
         character_face_image: null,
+        character_reference_view: null,
         negative_prompt: screen.negative_prompt?.trim() || VARIATION_NEGATIVE_PROMPT,
         generation_mode: "text_to_image",
         source_image: null,

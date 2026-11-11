@@ -2232,9 +2232,10 @@ async function addKrea2IdentityEditNodes(
 
   const faceRef = params.character_face_image?.trim();
   if (faceRef) {
-    // Same person twice (body view + face close-up): both refs beside the
-    // canvas so neither pins the layout, the body on the first inputs and the
-    // face on the _b inputs (the boosted "subject" slot).
+    // Same person twice (body view + face close-up): the body view on the
+    // first inputs pinned to the layout (aligned) so it carries the direction —
+    // with both beside, the face pulled the body round to face the camera —
+    // and the face on the _b inputs beside the canvas. Tuned 2026-11-11.
     const faceImage = await resolveControlNetImage(faceRef, options);
     workflow["45"] = { class_type: "LoadImage", inputs: { image: faceImage } };
     workflow["46"] = {
@@ -2255,7 +2256,7 @@ async function addKrea2IdentityEditNodes(
         ref_boost: refBoost,
         ref_boost_a: refBoost,
         ref_position: "beside (right of target)",
-        ref_position_a: "beside (right of target)",
+        ref_position_a: "aligned (trained)",
       },
     };
     workflow["44"] = {
@@ -2292,7 +2293,10 @@ async function addKrea2IdentityEditNodes(
     class_type: "Krea2EditGroundedEncode",
     inputs: {
       clip: clipRef,
-      prompt: params.character_reference_restage
+      prompt: params.character_reference_view === "back"
+        ? `Create an image of this person seen from behind. ${params.prompt.trim()}. ` +
+          "Keep the hairstyle, hair accessories and outfit from the reference image, in the same illustration style. The face is not visible."
+        : params.character_reference_restage
         ? `Create an image of this person. ${params.prompt.trim()}. ` +
           "Keep the person's face, hairstyle and outfit from the reference image, but take the pose, " +
           "facial expression, camera angle, framing and lighting from this description, not from the reference."

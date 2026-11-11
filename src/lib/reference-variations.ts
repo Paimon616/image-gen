@@ -237,24 +237,27 @@ export interface DirectionalReferenceSet {
 export function directionalReference(
   view: VariationView,
   set: DirectionalReferenceSet
-): { character_image: string; character_face_image: string | null } {
+): {
+  character_image: string;
+  character_face_image: string | null;
+  character_reference_view: "back" | null;
+} {
   const side = set.side || null;
   const back = set.back || null;
   const face = set.face || null;
+  const front = { character_image: set.front, character_face_image: null, character_reference_view: null };
   switch (view) {
     case "side":
-      return { character_image: side ?? set.front, character_face_image: null };
+      return side ? { ...front, character_image: side } : front;
     case "side_face":
-      return side
-        ? { character_image: side, character_face_image: face }
-        : { character_image: set.front, character_face_image: null };
+      return side ? { ...front, character_image: side, character_face_image: face } : front;
     case "back":
-      return { character_image: back ?? set.front, character_face_image: null };
+      // Tuned 2026-11-11: "keep the exact face" turned the head round; the
+      // back-view prompt kept it hidden.
+      return back ? { ...front, character_image: back, character_reference_view: "back" } : front;
     case "back_face":
-      return back
-        ? { character_image: back, character_face_image: face }
-        : { character_image: set.front, character_face_image: null };
+      return back ? { ...front, character_image: back, character_face_image: face } : front;
     default:
-      return { character_image: set.front, character_face_image: null };
+      return front;
   }
 }
