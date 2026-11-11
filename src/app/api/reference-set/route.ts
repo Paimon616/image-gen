@@ -98,10 +98,18 @@ export async function POST(req: Request) {
         // Head and neck only: the head-to-chest square also holds the front of
         // the outfit (a neckline ribbon), which a back view then copied onto
         // the back of the blouse.
+        // Also kept inside the front figure's columns: the square is wider than
+        // a standing figure and caught the neighbouring view's face.
         const rect = squareCropRect(W, H, found.frontUpper);
         const height = Math.max(16, Math.round(rect.height * FACE_SHARE_OF_SQUARE));
+        let left = rect.left;
+        let right = rect.left + rect.width;
+        if (found.frontFull) {
+          left = Math.max(left, Math.round(found.frontFull.x * W));
+          right = Math.min(right, Math.round((found.frontFull.x + found.frontFull.w) * W));
+        }
         return save(
-          { left: rect.left, top: rect.top, width: rect.width, height },
+          { left, top: rect.top, width: Math.max(16, right - left), height },
           FACE_MIN_HEIGHT
         );
       })()
