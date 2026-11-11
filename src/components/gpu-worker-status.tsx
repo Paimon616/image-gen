@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import type { RunpodMissingFile } from "@/lib/generation-queue-store";
+import { importedCivitaiResources, type RunpodMissingFile } from "@/lib/generation-queue-store";
 import {
   RUNPOD_DOWNLOAD_FINISHED_EVENT,
   useRunpodDownloadStore,
@@ -249,7 +249,9 @@ export function GpuWorkerStatus({
       const res = await fetch(`/api/runpod/pods/${checkWorkerId}/check`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ params, resources: [] }),
+        // Civitai-imported resources make a missing checkpoint/LoRA downloadable
+        // on the worker itself (it fetches from Civitai with the app's key).
+        body: JSON.stringify({ params, resources: importedCivitaiResources() }),
       });
       const data = (await res.json()) as { missing?: RunpodMissingFile[]; error?: string };
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);

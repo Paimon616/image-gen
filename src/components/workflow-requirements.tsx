@@ -5,7 +5,7 @@ import { AlertTriangle, CheckCircle2, DownloadCloud, Loader2 } from "lucide-reac
 
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
-import { useGenerationQueueStore } from "@/lib/generation-queue-store";
+import { importedCivitaiResources, useGenerationQueueStore } from "@/lib/generation-queue-store";
 import { useRunpodDownloadStore } from "@/lib/runpod-download-store";
 import type { RunpodMissingFile } from "@/lib/generation-queue-store";
 import type { GenerationParams } from "@/lib/types";
@@ -26,7 +26,7 @@ async function fetchRunpodMissing(podId: string, params: GenerationParams) {
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ params }),
+      body: JSON.stringify({ params, resources: importedCivitaiResources() }),
     }
   );
   const data = (await response.json()) as {

@@ -2204,8 +2204,11 @@ export default function Home() {
 
           <EditorSection title={ko ? "가져오기" : "Import"} description={ko ? "이미지 URL, Civitai URL, 이미지 메타데이터에서 레퍼런스 · 프롬프트 · 설정을 가져옵니다." : "Import prompts and settings from Civitai or image metadata."}>
           <UrlReferenceImport onGenerate={(next) => enqueueGeneration(next)} />
-          <CivitaiImport generationTarget={pickerTarget} />
-          <MetadataImport generationTarget={pickerTarget} />
+          {/* Missing resources download to this machine only in the local
+              target; for RunPod and GPU workers the remote's own missing-file
+              panel downloads them straight onto that machine. */}
+          <CivitaiImport generationTarget={generationTarget === "local" ? "local" : "runpod"} />
+          <MetadataImport generationTarget={generationTarget === "local" ? "local" : "runpod"} />
           </EditorSection>
 
           <EditorSection title={ko ? "모델" : "Models"} description={ko ? "기본 모델과 LoRA, 임베딩을 선택합니다." : "Choose the base model, LoRA, and embeddings."}>
