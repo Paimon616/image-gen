@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getCivitaiApiKey } from "@/lib/settings";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import {
   IMAGE_SIZE_CONSTRAINTS,
@@ -396,6 +397,41 @@ async function fetchGenerationDataFromPage(imageId: number, origin: string) {
   return extractGenerationDataFromPageHtml(await response.text());
 }
 
+// The generation data query the image page runs. Civitai now answers it only
+// for signed-in callers (401 "Please use the public API instead" without a
+// key), and the public /api/v1/images often omits `meta` — so with the user's
+// Civitai key this is the reliable source of the prompt and resources.
+async function fetchGenerationDataFromTrpc(
+  imageId: number,
+  origin: string,
+  apiKey: string
+): Promise<CivitaiPageGenerationData | null> {
+  if (!apiKey) return null;
+  const input = encodeURIComponent(JSON.stringify({ json: { id: imageId } }));
+  const response = await fetch(`${origin}/api/trpc/image.getGenerationData?input=${input}`, {
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${apiKey}`,
+      "User-Agent": "image-gen-civitai-import/1.0",
+    },
+    next: { revalidate: 0 },
+  }).catch(() => null);
+  if (!response?.ok) return null;
+
+  const body = recordValue(await response.json().catch(() => null));
+  const data = body ? recordValue(getNestedRecord(body, ["result", "data", "json"])) : null;
+  if (!data) return null;
+  const meta = recordValue(data.meta);
+  const resources = Array.isArray(data.resources)
+    ? data.resources.filter(
+        (resource): resource is CivitaiPageResource =>
+          Boolean(resource && typeof resource === "object" && !Array.isArray(resource))
+      )
+    : [];
+  if (!meta && resources.length === 0) return null;
+  return { meta, resources, importedTags: [], image: {} };
+}
+
 async function fetchGenerationDataFromPageOrigins(imageId: number, origin: string) {
   const origins = Array.from(new Set([origin, DEFAULT_CIVITAI_ORIGIN]));
 
@@ -408,6 +444,12 @@ async function fetchGenerationDataFromPageOrigins(imageId: number, origin: strin
     if (pageGenerationData?.meta || (pageGenerationData?.resources?.length ?? 0) > 0) {
       return pageGenerationData;
     }
+  }
+
+  const apiKey = await getCivitaiApiKey().catch(() => "");
+  for (const currentOrigin of origins) {
+    const trpcData = await fetchGenerationDataFromTrpc(imageId, currentOrigin, apiKey);
+    if (trpcData) return trpcData;
   }
 
   return null;
