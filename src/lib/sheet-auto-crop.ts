@@ -51,11 +51,13 @@ const SIDE_OFFSET = 0.16;
 
 export function isSkinTone(r: number, g: number, b: number) {
   // Light anime skin, e.g. (250,225,210). Excludes white/grey (r-b small),
-  // pink hair (b > g), blonde hair (b/r low) and saturated reds (g/r low).
+  // pink hair (b > g), blonde hair (b/r low, and yellow: g far above b — its
+  // highlights reach skin's b/r, e.g. (253,230,180)) and saturated reds (g/r low).
   return (
     r > 170 &&
     r - b > 18 &&
     g >= b - 4 &&
+    g - b <= 35 &&
     g / r >= 0.74 &&
     g / r <= 0.97 &&
     b / r >= 0.68 &&
@@ -207,6 +209,22 @@ function analyze(rgb: Uint8Array, width: number, height: number) {
     return comp.minY;
   };
 
+  // An isolated standing figure: tall, narrow, and narrow at the bottom (legs
+  // and feet), unlike an expression column whose last row is a whole face.
+  const standingFigure = (comp: Component) => {
+    const compH = comp.maxY - comp.minY + 1;
+    const compW = comp.maxX - comp.minX + 1;
+    if (compH < height * FULL_BODY_MIN_HEIGHT || compW > compH * 0.5) return false;
+    const from = comp.maxY - Math.max(1, Math.round(compH * 0.2));
+    let rows = 0;
+    let fgSum = 0;
+    for (let y = from; y <= comp.maxY; y++) {
+      for (let x = comp.minX; x <= comp.maxX; x++) if (labels[y * width + x] === comp.label) fgSum++;
+      rows++;
+    }
+    return fgSum / rows <= compW * 0.55;
+  };
+
   // 3. Faces: skin column runs in the head band, judged per head.
   const facesOf = (comp: Component): Face[] => {
     const { compH, bandEnd, skinCols, fgCols } = bandOf(comp);
@@ -255,7 +273,15 @@ function analyze(rgb: Uint8Array, width: number, height: number) {
           rowGap = 0;
         }
       }
-      const stacked = faceRows >= 3 || (torsoFg > 0 && torsoSkin / torsoFg > 0.18);
+      // A standing figure in an off-shoulder top or swimwear shows skin below
+      // the head (shoulders, arms, legs) and is still one body. So a figure we
+      // can see standing — tall, figure-narrow, and narrow at the bottom where
+      // the legs are (an expression column ends in a full-width face) — is
+      // never an expression column. Other blobs (touching figures, a sheet on
+      // a non-white background, face grids) keep the skin-based tests.
+      const stacked = standingFigure(comp)
+        ? false
+        : faceRows >= 3 || (torsoFg > 0 && torsoSkin / torsoFg > 0.18);
       // The head this face belongs to: the foreground run around it in the band.
       let hairFrom = face.from;
       let hairTo = face.to;

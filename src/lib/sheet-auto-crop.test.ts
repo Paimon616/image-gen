@@ -45,6 +45,8 @@ test("isSkinTone accepts light skin, rejects white, pink hair, blonde, red", () 
   assert.equal(isSkinTone(245, 245, 245), false);
   assert.equal(isSkinTone(250, 185, 205), false);
   assert.equal(isSkinTone(250, 230, 160), false);
+  // blonde highlight: skin-like b/r but clearly yellow
+  assert.equal(isSkinTone(253, 230, 180), false);
   assert.equal(isSkinTone(220, 40, 50), false);
 });
 
@@ -116,4 +118,33 @@ test("findSheetRegions leaves side and back empty when the sheet has none", () =
   assert.ok(regions.frontFull);
   assert.equal(regions.side, null);
   assert.equal(regions.back, null);
+});
+
+const BLONDE: Rgb = [253, 230, 180];
+
+/** Front figure in an off-shoulder top: skin on the face AND the shoulders/arms. */
+function bareShoulderFigure(rgb: Uint8Array, x: number, hair: Rgb) {
+  fill(rgb, x, 4, x + 30, 14, hair);
+  fill(rgb, x + 2, 14, x + 28, 30, SKIN);
+  fill(rgb, x, 30, x + 30, 60, SKIN);
+  fill(rgb, x, 60, x + 30, 120, CLOTH);
+  fill(rgb, x + 6, 120, x + 24, 196, LEGS);
+}
+
+/** Back view with blonde hair covering the head band. */
+function blondeBack(rgb: Uint8Array, x: number) {
+  fill(rgb, x, 4, x + 30, 60, BLONDE);
+  fill(rgb, x, 60, x + 30, 120, CLOTH);
+  fill(rgb, x + 6, 120, x + 24, 196, LEGS);
+}
+
+test("a bare-shouldered front figure beats a blonde back view", () => {
+  const rgb = canvas();
+  bareShoulderFigure(rgb, 20, BLONDE);
+  bareShoulderFigure(rgb, 80, BLONDE);
+  blondeBack(rgb, 200);
+  const regions = findSheetRegions(rgb, W, H);
+  const center = regions.frontFull ? (regions.frontFull.x + regions.frontFull.w / 2) * W : NaN;
+  assert.ok(center < 120, `front ${center}`);
+  assert.ok(regions.back && Math.abs((regions.back.x + regions.back.w / 2) * W - 215) < 8);
 });
