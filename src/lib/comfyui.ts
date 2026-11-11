@@ -866,7 +866,7 @@ async function buildKrea2Workflow(
   await assertKrea2SupportFiles(checkpoint, "generic", options);
 
   const loras = cleanLoras(params.loras);
-  const vaeName = (await resolveAvailableVaeName(params.vae_name, options)) || KREA2_VAE_NAME;
+  const vaeName = (await resolveLatent16VaeName(params.vae_name, options)) || KREA2_VAE_NAME;
   const seed = normalizeGenerationSeed(params.seed);
   // The "moody" finish reproduces the Moody-family author's own published recipe
   // (verified against the generation metadata embedded in that model's Civitai
@@ -1321,7 +1321,7 @@ async function buildKrea2PornmasterWorkflow(
   const loras = cleanLoras(params.loras);
   // Faithful to the original: the abliterated int8 Qwen3-VL text encoder and the
   // Wan 2.1 VAE. The VAE stays overridable from the UI VAE picker.
-  const vaeName = (await resolveAvailableVaeName(params.vae_name, options)) || PORNMASTER_VAE_NAME;
+  const vaeName = (await resolveLatent16VaeName(params.vae_name, options)) || PORNMASTER_VAE_NAME;
   const seed = normalizeGenerationSeed(params.seed);
 
   const workflow: Record<string, unknown> = {
@@ -1847,7 +1847,10 @@ async function resolveZImageSupportNames(
     // Qwen3-4B in any precision; exclude Qwen3-VL, which is a different encoder.
     clipNames.find((name) => /qwen[-_ ]?3[-_ ]?4b/i.test(name) && !/vl/i.test(name)) ??
     ZIMAGE_CLIP_NAME;
-  const requestedVae = params.vae_name.trim();
+  // Z-Image decodes 16-channel latents (FLUX AE): an SD VAE override is ignored.
+  const requestedVae = /^ae[._-]|flux|z[-_ ]?image|qwen|wan[_-]?2/i.test(params.vae_name)
+    ? params.vae_name.trim()
+    : "";
   const vaeName =
     (requestedVae && (vaeNames.length === 0 || vaeNames.includes(requestedVae))
       ? requestedVae
@@ -2856,6 +2859,16 @@ async function getComfyObjectInputOptions(
   }
 
   return [];
+}
+
+// Krea 2 (and its PornMaster recipe) decode 16-channel latents: only the Qwen
+// Image / Wan 2.1 VAEs fit. The UI VAE picker is shared with SD/SDXL, so a
+// 4-channel VAE left over from an SD1.5 import (animevae.pt) used to reach the
+// Krea graph and fail in VAEDecode ("expected 4 channels, got 16").
+const LATENT16_VAE_PATTERN = /qwen[_-]?image|wan[_-]?2|krea/i;
+
+async function resolveLatent16VaeName(vaeName: string, options?: ComfyClientOptions) {
+  return LATENT16_VAE_PATTERN.test(vaeName) ? resolveAvailableVaeName(vaeName, options) : "";
 }
 
 async function resolveAvailableVaeName(
