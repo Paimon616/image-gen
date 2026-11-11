@@ -119,7 +119,24 @@ const T = {
     ko: "생성에 30초~수분 소요. 1K 한 장에 약 $0.22, 해상도와 레퍼런스 수에 따라 올라갑니다.",
     en: "Takes 30s–minutes. ~$0.22 per 1K sheet; more with resolution and references.",
   },
+  engine: { ko: "생성 엔진", en: "Engine" },
+  engineFal: { ko: "GPT-Image-2", en: "GPT-Image-2" },
+  engineFalSub: { ko: "fal.ai · 유료", en: "fal.ai · paid" },
+  engineGpu: { ko: "Krea 2", en: "Krea 2" },
+  engineGpuSub: { ko: "사내 GPU · 무료", en: "own GPU · free" },
+  gpuTargetWorkers: { ko: "GPU 워커 (3060 등)", en: "GPU workers" },
+  gpuTargetLocal: { ko: "이 PC", en: "This PC" },
+  gpuCostHint: {
+    ko: "무료 (사내 GPU). 3060 기준 장당 1~2분.",
+    en: "Free (our GPUs). ~1–2 min per image on the 3060.",
+  },
+  gpuHint: {
+    ko: "크기 고정(시트 1024×1024, 장면 768×1344). 레퍼런스는 첫 장만 사용. 장면은 캐릭터 시트 + 배경 시트만 사용(복장 참조 제외).",
+    en: "Fixed size (sheet 1024², scene 768×1344). First reference only; scenes use the character + background sheets (no outfit).",
+  },
   galleryTitle: { ko: "시트 갤러리", en: "Sheet gallery" },
+  gallerySheets: { ko: "시트", en: "Sheets" },
+  galleryScenes: { ko: "장면", en: "Scenes" },
   empty: {
     ko: "아직 생성한 시트가 없습니다. 왼쪽에서 레퍼런스와 프롬프트를 설정하고 생성하세요.",
     en: "No sheets yet. Set references and a prompt on the left.",
@@ -182,6 +199,16 @@ async function toDataUrl(src: File | string): Promise<string> {
   }
 }
 
+type GalleryKind = "sheets" | "scenes";
+
+function galleryKindOf(mode: ConsistencySheetParams["mode"]): GalleryKind {
+  return mode === "scene" ? "scenes" : "sheets";
+}
+
+function isSceneImage(image: ConsistencySheetImage) {
+  return image.params?.mode === "scene";
+}
+
 export default function ConsistencySheetPage() {
   const language = useStore((s) => s.language) as Lang;
 
@@ -231,14 +258,46 @@ export default function ConsistencySheetPage() {
       .catch(() => {});
   }, [setImages]);
 
+  // Scene renders are saved next to the sheets, so the gallery splits them:
+  // sheets are what the scene slots pick from, scenes are finished pictures.
+  // It follows the mode tab (a scene run lands where it can be seen) and can
+  // still be switched by hand.
+  // A hand-picked tab holds until the mode tab changes again.
+  const [manualKind, setManualKind] = useState<{
+    mode: ConsistencySheetParams["mode"];
+    kind: GalleryKind;
+  } | null>(null);
+  const galleryKind =
+    manualKind && manualKind.mode === params.mode
+      ? manualKind.kind
+      : galleryKindOf(params.mode);
+  const setGalleryKind = (kind: GalleryKind) =>
+    setManualKind({ mode: params.mode, kind });
+
   // The gallery shows only the sheets in the active workspace; `null` is
   // everything and UNGROUPED matches the sheets with no workspace at all.
-  const visibleImages = useMemo(
+  const workspaceImages = useMemo(
     () =>
       images.filter((image) =>
         fileMatchesWorkspace(image.workspaces, activeWorkspaceId)
       ),
     [images, activeWorkspaceId]
+  );
+  const kindCounts = useMemo(() => {
+    let scenes = 0;
+    for (const image of workspaceImages) if (isSceneImage(image)) scenes++;
+    return { sheets: workspaceImages.length - scenes, scenes };
+  }, [workspaceImages]);
+  const visibleImages = useMemo(
+    () =>
+      workspaceImages.filter(
+        (image) => isSceneImage(image) === (galleryKind === "scenes")
+      ),
+    [workspaceImages, galleryKind]
+  );
+  const visiblePending = useMemo(
+    () => pending.filter((card) => isSceneImage(card) === (galleryKind === "scenes")),
+    [pending, galleryKind]
   );
 
   const patch = useCallback(
@@ -570,7 +629,61 @@ export default function ConsistencySheetPage() {
             />
           </div>
 
-          {/* Resolution */}
+          {/* Engine: paid GPT-Image-2 or Krea 2 on our own GPUs */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">{tr("engine", language)}</Label>
+            <div className="grid grid-cols-2 gap-1">
+              {(["fal", "gpu"] as const).map((engine) => (
+                <button
+                  key={engine}
+                  type="button"
+                  onClick={() => patch({ engine })}
+                  className={cn(
+                    "rounded-md border px-2.5 py-1.5 text-xs font-semibold transition-colors",
+                    params.engine === engine
+                      ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                      : "border-border bg-card/60 text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {tr(engine === "fal" ? "engineFal" : "engineGpu", language)}
+                  <span className="block text-[10px] font-normal opacity-80">
+                    {tr(engine === "fal" ? "engineFalSub" : "engineGpuSub", language)}
+                  </span>
+                </button>
+              ))}
+            </div>
+            {params.engine === "gpu" && (
+              <>
+                <div className="grid grid-cols-2 gap-1">
+                  {(["workers", "local"] as const).map((target) => (
+                    <button
+                      key={target}
+                      type="button"
+                      onClick={() => patch({ gpuTarget: target })}
+                      className={cn(
+                        "rounded-md border px-2.5 py-1 text-[11px] font-semibold transition-colors",
+                        params.gpuTarget === target
+                          ? "border-primary/60 bg-primary/10 text-foreground"
+                          : "border-border bg-card/60 text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {tr(target === "workers" ? "gpuTargetWorkers" : "gpuTargetLocal", language)}
+                    </button>
+                  ))}
+                </div>
+                <GpuModelPicker
+                  target={params.gpuTarget}
+                  value={params.gpuModel}
+                  onChange={(gpuModel) => patch({ gpuModel })}
+                  lang={language}
+                />
+                <p className="text-[11px] leading-4 text-muted-foreground">{tr("gpuHint", language)}</p>
+              </>
+            )}
+          </div>
+
+          {/* Resolution (GPT-Image-2 only; Krea 2 runs at a fixed ~1 MP) */}
+          {params.engine !== "gpu" && (
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold">
               {tr(
@@ -599,6 +712,7 @@ export default function ConsistencySheetPage() {
               ))}
             </div>
           </div>
+          )}
 
           {/* Save target */}
           <div className="space-y-1.5">
@@ -643,7 +757,7 @@ export default function ConsistencySheetPage() {
             {tr(params.mode === "scene" ? "generateScene" : "generate", language)}
           </Button>
           <p className="text-center text-[10.5px] leading-tight text-muted-foreground">
-            {tr("costHint", language)}
+            {params.engine === "gpu" ? tr("gpuCostHint", language) : tr("costHint", language)}
           </p>
         </div>
       </aside>
@@ -654,6 +768,26 @@ export default function ConsistencySheetPage() {
           <div className="flex items-center gap-3">
             <IdCard className="h-4 w-4 text-muted-foreground" />
             <h2 className="text-sm font-semibold">{tr("galleryTitle", language)}</h2>
+            <div className="flex rounded-md border border-border p-0.5" role="tablist">
+              {(["sheets", "scenes"] as const).map((kind) => (
+                <button
+                  key={kind}
+                  type="button"
+                  role="tab"
+                  aria-selected={galleryKind === kind}
+                  onClick={() => setGalleryKind(kind)}
+                  className={cn(
+                    "rounded px-2 py-0.5 text-xs transition-colors",
+                    galleryKind === kind
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {tr(kind === "sheets" ? "gallerySheets" : "galleryScenes", language)}{" "}
+                  {kindCounts[kind]}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <span className="whitespace-nowrap text-xs text-muted-foreground">
@@ -676,7 +810,7 @@ export default function ConsistencySheetPage() {
         <WorkspaceBar media="consistencySheet" onDownloaded={refreshImages} />
 
         <div className="flex-1 overflow-y-auto p-6">
-          {pending.length === 0 && visibleImages.length === 0 ? (
+          {visiblePending.length === 0 && visibleImages.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-muted-foreground">
               <IdCard className="h-10 w-10 opacity-40" />
               <p className="max-w-xs text-sm">{tr("empty", language)}</p>
@@ -689,7 +823,7 @@ export default function ConsistencySheetPage() {
                   "repeat(auto-fill, minmax(min(100%, 240px), 1fr))",
               }}
             >
-              {pending.map((card) => (
+              {visiblePending.map((card) => (
                 <PendingCard
                   key={card.id}
                   lang={language}
@@ -962,9 +1096,13 @@ function SheetCard({
                     ? lang === "ko"
                       ? "캐릭터"
                       : "Character"
-                    : lang === "ko"
-                      ? "배경"
-                      : "Background",
+                    : image.params.mode === "scene"
+                      ? lang === "ko"
+                        ? "장면"
+                        : "Scene"
+                      : lang === "ko"
+                        ? "배경"
+                        : "Background",
                   image.params.resolution?.toUpperCase(),
                 ]
                   .filter(Boolean)
@@ -1012,3 +1150,112 @@ function SheetCard({
     </div>
   );
 }
+
+interface GpuModelOption {
+  name: string;
+  family: "krea2" | "sdxl" | "zimage" | "anima";
+  person: boolean;
+  place: boolean;
+}
+
+const GPU_FAMILY_LABEL: Record<GpuModelOption["family"], string> = {
+  krea2: "Krea 2",
+  sdxl: "SDXL",
+  zimage: "Z-Image",
+  anima: "Anima",
+};
+
+// Image models installed on the chosen GPU target (GPU workers or this PC),
+// with what each can use as references in the 일관성 시트 GPU engine.
+function GpuModelPicker({
+  target,
+  value,
+  onChange,
+  lang,
+}: {
+  target: "workers" | "local";
+  value: string;
+  onChange: (model: string) => void;
+  lang: Lang;
+}) {
+  const [state, setState] = useState<{
+    target: string;
+    models: GpuModelOption[];
+    defaultModel: string;
+    error: string;
+  } | null>(null);
+
+  useEffect(() => {
+    let stopped = false;
+    fetch(`/api/consistency-sheet/gpu-models?target=${target}`, { cache: "no-store" })
+      .then(async (res) => {
+        const data = (await res.json()) as {
+          models?: GpuModelOption[];
+          defaultModel?: string;
+          error?: string;
+        };
+        if (stopped) return;
+        setState({
+          target,
+          models: data.models ?? [],
+          defaultModel: data.defaultModel ?? "",
+          error: res.ok ? "" : data.error || `HTTP ${res.status}`,
+        });
+      })
+      .catch((err: unknown) => {
+        if (!stopped) {
+          setState({ target, models: [], defaultModel: "", error: err instanceof Error ? err.message : String(err) });
+        }
+      });
+    return () => {
+      stopped = true;
+    };
+  }, [target]);
+
+  const loading = !state || state.target !== target;
+  const models = loading ? [] : state.models;
+  // The saved choice when it is installed here, else the Krea 2 default, else the first.
+  const effective =
+    models.find((m) => m.name === value)?.name ??
+    models.find((m) => m.name === state?.defaultModel)?.name ??
+    models[0]?.name ??
+    "";
+  const current = models.find((m) => m.name === effective);
+
+  useEffect(() => {
+    if (!loading && effective && effective !== value) onChange(effective);
+  }, [loading, effective, value, onChange]);
+
+  const refs = current
+    ? current.person && current.place
+      ? lang === "ko" ? "참조: 캐릭터 + 배경" : "References: character + place"
+      : current.person
+        ? lang === "ko" ? "참조: 캐릭터만 (IP-Adapter), 배경 시트는 안 씀" : "References: character only (IP-Adapter)"
+        : lang === "ko" ? "참조 없음, 프롬프트만" : "No references, prompt only"
+    : "";
+
+  return (
+    <div className="space-y-1">
+      <select
+        value={effective}
+        onChange={(event) => onChange(event.target.value)}
+        disabled={loading || models.length === 0}
+        className="h-8 w-full rounded-md border border-border bg-card px-2 text-xs"
+        aria-label={lang === "ko" ? "GPU 모델" : "GPU model"}
+      >
+        {loading && <option value="">{lang === "ko" ? "모델 확인 중..." : "Checking models..."}</option>}
+        {!loading && models.length === 0 && (
+          <option value="">{lang === "ko" ? "사용할 수 있는 모델 없음" : "No models available"}</option>
+        )}
+        {models.map((model) => (
+          <option key={model.name} value={model.name}>
+            {GPU_FAMILY_LABEL[model.family]} · {model.name}
+          </option>
+        ))}
+      </select>
+      {!loading && state?.error && <p className="text-[11px] text-destructive">{state.error}</p>}
+      {refs && <p className="text-[11px] text-muted-foreground">{refs}</p>}
+    </div>
+  );
+}
+

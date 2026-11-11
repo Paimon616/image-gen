@@ -17,6 +17,8 @@ import {
   normalizeSheetCrop,
   squareCropRect,
   pickIpAdapterFiles,
+  pickSheetRegion,
+  normalizeSheetRegions,
   sheetCandidateSeeds,
   shouldApplyReferenceSheet,
 } from "./character-sheet.ts";
@@ -106,6 +108,7 @@ test("normalizeReferenceSheet accepts only app-served images", () => {
     strength: 1.5,
     confirmedAt: undefined,
     crop: null,
+    regions: [],
   });
   // Unconfirmed by default, explicit off honoured.
   const off = normalizeReferenceSheet({ url: "/api/images/x.png", filename: "x.png", enabled: false });
@@ -300,4 +303,38 @@ test("squareCropRect makes an in-bounds pixel square", () => {
   assert.equal(edge.top + edge.height, 832);
   // Never larger than the short side.
   assert.equal(squareCropRect(1216, 832, { x: 0, y: 0, size: 1 }).width, 832);
+});
+
+test("pickSheetRegion follows the scene's framing and view", () => {
+  const region = (kind: string) => ({ kind, url: `/api/images/sheetref-${kind}.png`, filename: `sheetref-${kind}.png`, x: 0, y: 0, w: 0.3, h: 0.9 });
+  const sheet = {
+    url: "/api/images/sheet.png",
+    crop: { url: "/api/images/sheetref-crop.png", filename: "sheetref-crop.png", x: 0, y: 0, w: 0.25, h: 0.36 },
+    regions: normalizeSheetRegions([region("front_upper"), region("front_full"), region("side"), region("back")]),
+  };
+  assert.equal(pickSheetRegion("1girl, walking, full body, airport", sheet).kind, "front_full");
+  assert.equal(pickSheetRegion("She sits by the window, seen from the side, upper body", sheet).kind, "side");
+  assert.equal(pickSheetRegion("standing, from behind, looking back", sheet).kind, "back");
+  // Explicit upper body beats "standing"; it is the user's 참조 영역.
+  const upper = pickSheetRegion("standing, upper body, smile", sheet);
+  assert.deepEqual(upper, { kind: "front_upper", url: "/api/images/sheetref-crop.png" });
+  assert.equal(pickSheetRegion("sitting in a cafe", sheet).url, "/api/images/sheetref-crop.png");
+  assert.equal(pickSheetRegion("전신, 걷는 모습", sheet).kind, "front_full");
+  // A view the sheet lacks falls back to the 참조 영역.
+  const noSide = { ...sheet, regions: sheet.regions.filter((r) => r.kind !== "side") };
+  assert.equal(pickSheetRegion("profile, from side", noSide).kind, "front_upper");
+  // No crop, no regions: the whole sheet (legacy).
+  assert.deepEqual(pickSheetRegion("full body", { url: "/api/images/sheet.png" }), { kind: null, url: "/api/images/sheet.png" });
+});
+
+test("normalizeSheetRegions drops unknown kinds, duplicates and bad urls", () => {
+  const ok = { kind: "side", url: "/api/images/a.png", filename: "a.png", x: 0.1, y: 0, w: 0.3, h: 1 };
+  const regions = normalizeSheetRegions([
+    ok,
+    { ...ok, url: "/api/images/b.png", filename: "b.png" },
+    { ...ok, kind: "face" },
+    { ...ok, kind: "back", url: "https://evil.example/x.png" },
+    null,
+  ]);
+  assert.deepEqual(regions.map((r) => [r.kind, r.filename]), [["side", "a.png"]]);
 });

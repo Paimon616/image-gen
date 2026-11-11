@@ -175,3 +175,38 @@ Krea 2는 SDXL이 아니라 IP-Adapter 기준 시트가 적용되지 않음. 대
 - 화질은 같은 시드에서 구도, 디테일이 거의 같음. 눈에 띄는 열화 없음.
 - 결론: 3060에서는 fp8 유지. Q5는 모델 로드가 빠르고(첫 장 −7초) 파일이 작은 정도의 이점.
 
+### Krea 2 페인터리 애니 (R26) · 장면별 참조 영역 (R27), RTX 3060
+
+R26: 시트를 Krea 2로 "Anime-style illustration with soft painterly shading and warm color grading" 화풍으로 생성. 장면은 같은 화풍 문장 + 긴 자연어, 복장은 "flight attendant / nurse uniform"만. 장면마다 표정 지정(하품, 놀람, 윙크, 긴장 등).
+
+| 항목 | 참조 없음 | 시트 참조 |
+| --- | --- | --- |
+| 승무원 모자, 빨간 스카프, 남색 재킷 | 0/6 (조끼, 줄무늬 스카프) | 6/6 |
+| 간호모, 흰 앞치마 + 빨간 깃 | 0/6, 1/6 | 6/6 |
+| 지정한 표정 | 따름 | 따름 (표정을 문장으로 적으면 참조 미소로 쏠리지 않음) |
+| "seen from the side" 장면 | 옆모습 | 카메라 쪽으로 돌아섬 (참조가 정면 상반신뿐이라서) |
+
+R27: 시트 확정 시 정면 상반신, 정면 전신, 측면, 뒷모습 영역을 자동 탐지(`findSheetRegions`)해 `referenceSheet.regions`에 저장. 장면 프롬프트로 고름(`pickSheetRegion`: from behind/뒷모습 → back, from side/profile/옆모습 → side, upper body/close-up/상반신 → 참조 영역, full body/walking/standing/전신 → front_full, 그 외 참조 영역). Krea 2는 고른 영역을 캐릭터 참조로 자동 연결. 실제 앱 경로(characterId)로 비교.
+- 승무원(측면, 뒷모습 탐지됨): 측면 장면이 진짜 옆모습 전신, 뒷모습 장면이 진짜 뒷모습. 정면 영역만 쓸 때는 둘 다 카메라를 향함. 전신 장면은 스타킹, 구두까지 시트와 일치.
+- 간호사(측면, 뒷모습 미탐지): 전신 장면에 흰 니삭스, 신발이 추가로 맞음. 측면, 뒷모습 장면은 참조 영역으로 대체되어 정면을 봄(탐지 실패 시 예상 동작).
+- 탐지 정확도(실제 시트 21장): 정면 18/21. 측면, 뒷모습은 Krea 2 시트에서 대체로 정확, SDXL 표정 모음 시트에서는 못 찾는 경우가 많음(오탐 대신 미탐지).
+
+## 일관성 시트 GPU 엔진 (Krea 2)
+
+일관성 시트 페이지의 `생성 엔진`에서 `Krea 2 (사내 GPU · 무료)`를 고르면 GPT-Image-2(fal.ai, 유료) 대신 Krea 2로 생성. 앱의 일반 생성 경로(`/api/generate/stream`)를 그대로 타므로 GPU 워커 배정, 모델 확인, 업로드가 이미지 생성 탭과 같음. 결과는 같은 시트 갤러리에 저장(`model: krea2_... (GPU)`).
+- 대상: `GPU 워커 (3060 등)` 또는 `이 PC`(앱을 띄운 PC의 ComfyUI).
+- 캐릭터, 배경 시트: 프롬프트로 생성. 레퍼런스가 있으면 첫 장만 Krea 2 캐릭터 참조로 사용(노드가 참조를 최대 2장 받음).
+- 장면: 캐릭터 시트는 정면 전신 영역을 자동으로 잘라 인물 참조, 배경 시트는 4분할의 첫 칸을 장소 참조로 써서 Krea 2 두 참조 편집(장소 aligned, 인물 beside)으로 "이 인물을 이 장소에". 복장 참조는 쓰지 않음.
+- 크기 고정: 시트 1024×1024, 장면 768×1344(Krea 2는 약 1MP 학습). 3060 기준 시트 약 1분, 장면 약 2분.
+- 모델 선택: 대상(GPU 워커 / 이 PC)에 실제 설치된 이미지 모델 목록(`GET /api/consistency-sheet/gpu-models?target=`)에서 고름. 기본은 `CONSISTENCY_SHEET_GPU_MODEL`(기본 `krea2_turbo_fp8_scaled.safetensors`).
+  - Krea 2: 캐릭터 + 배경 참조(위 방식).
+  - SDXL / Illustrious: 캐릭터 참조만, IP-Adapter(`identity_reference_image`, 0.6). 배경 시트는 쓰지 않음. 3060 기준 시트 약 30초, 장면 약 35초.
+  - Z-Image, Anima: 참조 없이 프롬프트만.
+
+### 로컬 GPU(예: RTX 4080 PC)에서 쓰기
+1. 그 PC에 image-gen과 ComfyUI 설치(이미지 생성 탭 로컬 생성과 같은 준비).
+2. `install-local-models.bat`(기본 그룹 image, krea2): Krea 2 Turbo fp8, Qwen3-VL fp8 인코더, VAE, Identity Edit LoRA, `comfyui-krea2edit` 노드를 받음. Civitai 키 필요(LoRA).
+3. 앱에서 일관성 시트 → 생성 엔진 `Krea 2` → `이 PC`. 이미지 생성 탭도 대상 `로컬`로 Krea 2 사용 가능.
+4. 4080은 VRAM 16GB라 fp8 본체가 통째로 올라가고 fp8 연산도 지원해 3060보다 훨씬 빠를 것으로 예상(미측정).
+- 그 PC를 사내 공용 GPU 워커로 붙이려면 `worker-kit/windows` 키트를 설치하면 됨(docs/gpu-workers.md). 그러면 다른 맥에서도 `GPU 워커` 대상으로 그 4080을 씀.
+

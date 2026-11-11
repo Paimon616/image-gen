@@ -70,9 +70,16 @@ export async function startConsistencySheetGeneration(
     timestamp: Date.now(),
     contentType: "image/png",
     prompt: source.prompt,
-    // The finished sheet's params come back with the run; the pending card only
-    // ever shows the prompt, and the model is picked server-side.
-    params: null,
+    // The finished sheet's params come back with the run. The pending card
+    // carries the mode only so the gallery can file it under sheets or scenes;
+    // the model is picked server-side.
+    params: {
+      mode: source.mode,
+      prompt: source.prompt,
+      resolution: source.resolution,
+      model: "",
+      referenceCount: 0,
+    },
     status: {
       state: "queued",
       progress: 0.04,
@@ -114,7 +121,17 @@ export async function startConsistencySheetGeneration(
           continue;
         }
 
-        if (event === "tick") {
+        if (event === "tick" && data.state === "GPU") {
+          // GPU engine: the generation route's own progress messages.
+          const percent = typeof data.progress === "number" ? data.progress : null;
+          updatePending(clientId, {
+            status: {
+              state: "generating",
+              progress: percent !== null ? Math.min(0.95, Math.max(0.05, percent / 100)) : 0.1,
+              message: String(data.message || STATUS_LABEL.running[language]),
+            },
+          });
+        } else if (event === "tick") {
           // One tick per queue poll, carrying fal's own queue state.
           tickCount += 1;
           const progress = Math.min(0.9, 0.1 + tickCount * 0.03);

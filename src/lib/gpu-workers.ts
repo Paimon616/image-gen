@@ -137,6 +137,13 @@ function listWorkerModels(worker: GpuWorkerConfig, folder: string) {
   return value;
 }
 
+/** Model files in a folder across every enabled GPU worker (union, de-duplicated). */
+export async function listGpuWorkerModelFiles(folder: string) {
+  const workers = (await getGpuWorkers()).filter((worker) => worker.enabled);
+  const lists = await Promise.all(workers.map((worker) => listWorkerModels(worker, folder)));
+  return [...new Set(lists.flatMap((list) => list ?? []))];
+}
+
 /** Drop cached model lists, e.g. after the worker synced new files. */
 export function invalidateGpuWorkerModels(workerId?: string) {
   for (const key of pool.modelLists.keys()) {

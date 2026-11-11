@@ -98,6 +98,18 @@ export interface GenerationParams {
   character_reference_layout?: "aligned" | "beside";
   /** Krea 2: ask to keep face/hair/outfit only and follow the prompt for pose, expression, camera. */
   character_reference_restage?: boolean;
+  /**
+   * Krea 2: a place to put the character_image person into (two-reference
+   * edit: scene on the first inputs, person on the _b inputs).
+   */
+  scene_reference_image?: string | null;
+  /**
+   * SDXL: an explicit IP-Adapter identity reference sent by the caller (the
+   * consistency sheet GPU engine). Same graph as character_sheet_image, which
+   * stays route-controlled.
+   */
+  identity_reference_image?: string | null;
+  identity_reference_strength?: number;
   // BETA 캐릭터 기준 시트: the character's confirmed reference sheet image. Set
   // server-side (api/generate/stream) for renders of a sheet-confirmed character
   // when the beta is on; applied as IP-Adapter conditioning on the SDXL workflow.
@@ -110,6 +122,8 @@ export interface GenerationParams {
   // the sheet for this render; strength_override null = use the character's.
   character_sheet_disabled?: boolean;
   character_sheet_strength_override?: number | null;
+  /** Which sheet view the route used for this render (set server-side, for metadata). */
+  character_sheet_region?: SheetRegionKind | null;
   // IP-Adapter weight for style_image (0–1.5, default 0.8, "style transfer").
   style_image_strength?: number;
   source_image: string | null;
@@ -282,6 +296,15 @@ export interface CharacterReferenceSheet {
   // IP-Adapter sees instead of the whole multi-view sheet (which leaks extra
   // figures into scenes). Region is normalized to the sheet's width/height.
   crop?: CharacterReferenceSheetCrop | null;
+  // Views found on the sheet (front full body, side, back...). Each scene uses
+  // the one its prompt asks for (pickSheetRegion); missing ones fall back to crop.
+  regions?: CharacterReferenceSheetRegion[];
+}
+
+export type SheetRegionKind = "front_upper" | "front_full" | "side" | "back";
+
+export interface CharacterReferenceSheetRegion extends CharacterReferenceSheetCrop {
+  kind: SheetRegionKind;
 }
 
 export interface CharacterReferenceSheetCrop {
