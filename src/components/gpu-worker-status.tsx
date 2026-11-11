@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import type { RunpodMissingFile } from "@/lib/generation-queue-store";
+import { importedCivitaiResources, type RunpodMissingFile } from "@/lib/generation-queue-store";
 import {
   RUNPOD_DOWNLOAD_FINISHED_EVENT,
   useRunpodDownloadStore,
@@ -55,7 +55,15 @@ function formatBytes(bytes: number) {
   return `${Math.round(bytes / 1024)}KB`;
 }
 
-function DownloadRow({ item, ko }: { item: WorkerDownload; ko: boolean }) {
+function DownloadRow({
+  item,
+  ko,
+  onDelete,
+}: {
+  item: WorkerDownload;
+  ko: boolean;
+  onDelete?: (path: string) => void;
+}) {
   const name = item.path.split("/").pop() ?? item.path;
   const size = item.total
     ? `${formatBytes(item.downloaded)} / ${formatBytes(item.total)}`
@@ -78,7 +86,19 @@ function DownloadRow({ item, ko }: { item: WorkerDownload; ko: boolean }) {
     <li className="space-y-0.5">
       <div className="flex justify-between gap-2">
         <span className="truncate" title={item.path}>{name}</span>
-        <span className="shrink-0 text-muted-foreground">{label}</span>
+        <span className="flex shrink-0 items-center gap-1.5 text-muted-foreground">
+          {label}
+          {onDelete && item.state !== "downloading" && (
+            <button
+              type="button"
+              className="rounded px-1 text-[10px] text-destructive hover:bg-destructive/10"
+              title={ko ? "워커에서 이 파일을 지웁니다 (잘못 받은 파일을 다시 받을 때)" : "Delete this file on the worker (to fetch it again)"}
+              onClick={() => onDelete(item.path)}
+            >
+              {ko ? "삭제" : "Delete"}
+            </button>
+          )}
+        </span>
       </div>
       {item.state !== "done" && (
         <div className="h-1 overflow-hidden rounded bg-muted">
@@ -249,7 +269,9 @@ export function GpuWorkerStatus({
       const res = await fetch(`/api/runpod/pods/${checkWorkerId}/check`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ params, resources: [] }),
+        // Civitai-imported resources make a missing checkpoint/LoRA downloadable
+        // on the worker itself (it fetches from Civitai with the app's key).
+        body: JSON.stringify({ params, resources: importedCivitaiResources() }),
       });
       const data = (await res.json()) as { missing?: RunpodMissingFile[]; error?: string };
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
@@ -269,6 +291,46 @@ export function GpuWorkerStatus({
       setChecking(false);
     }
   }, [checkWorkerId, ko, onMissingChange, params]);
+
+  // Removes a (wrong or broken) model file on the worker, then re-checks so the
+  // missing-files list offers it again from its proper source.
+  const deleteOnWorker = useCallback(
+    async (workerId: string, path: string) => {
+      const name = path.split("/").pop() ?? path;
+      const ok = window.confirm(
+        ko
+          ? `워커에서 ${name} 파일을 지울까요? 지운 뒤 '확인'을 다시 눌러 올바른 파일을 받을 수 있습니다.`
+          : `Delete ${name} on the worker? Check again afterwards to download the right file.`
+      );
+      if (!ok) return;
+      setCheckMessage(ko ? `${name} 삭제 중...` : `Deleting ${name}...`);
+      try {
+        const res = await fetch("/api/gpu-workers/delete-models", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ workerId, files: [path] }),
+        });
+        const data = (await res.json()) as {
+          results?: { deleted: boolean; bytes?: number; error?: string }[];
+          error?: string;
+        };
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        const result = data.results?.[0];
+        if (!result?.deleted) throw new Error(result?.error || (ko ? "파일이 없습니다" : "no such file"));
+        setCheckMessage(
+          ko
+            ? `${name} 삭제됨 (${formatBytes(result.bytes ?? 0)}). 다시 확인 중...`
+            : `Deleted ${name} (${formatBytes(result.bytes ?? 0)}). Re-checking...`
+        );
+        if (workerId === checkWorkerId) await checkFiles();
+      } catch (err) {
+        setCheckMessage(
+          (ko ? "삭제 실패: " : "Delete failed: ") + (err instanceof Error ? err.message : String(err))
+        );
+      }
+    },
+    [checkFiles, checkWorkerId, ko]
+  );
 
   // Re-check once a download batch for this worker settles.
   useEffect(() => {
@@ -406,7 +468,12 @@ export function GpuWorkerStatus({
               <ul key={worker.id} className="space-y-1.5">
                 {workers.length > 1 && <li className="font-medium">{worker.label}</li>}
                 {worker.downloads!.map((item) => (
-                  <DownloadRow key={item.path} item={item} ko={ko} />
+                  <DownloadRow
+                    key={item.path}
+                    item={item}
+                    ko={ko}
+                    onDelete={(path) => void deleteOnWorker(worker.id, path)}
+                  />
                 ))}
               </ul>
             ))}

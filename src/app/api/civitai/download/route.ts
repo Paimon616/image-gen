@@ -5,6 +5,7 @@ import { COMFYUI_MODELS_DIR } from "@/lib/comfyui-model-files";
 import { normalizeCivitaiModelUrl, parseCivitaiUrlIds } from "@/lib/civitai-url";
 import { parseCivitaiLicense } from "@/lib/civitai-license";
 import type { CivitaiLicenseInfo, ImportedCivitaiResource } from "@/lib/types";
+import { getCivitaiApiKey } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -370,11 +371,13 @@ async function streamDownload(
 }
 
 export async function POST(req: NextRequest) {
-  const token = process.env.CIVITAI_API_TOKEN?.trim();
+  // Settings > Civitai key first, then the CIVITAI_API_TOKEN env fallback.
+  // Reading only the env var failed for keys entered in the app.
+  const token = await getCivitaiApiKey();
 
   if (!token) {
     return NextResponse.json(
-      { error: "CIVITAI_API_TOKEN is not configured" },
+      { error: "Civitai API 키가 없습니다. 설정 > Civitai에 키를 넣으세요. (CIVITAI_API_TOKEN is not configured)" },
       { status: 401 }
     );
   }

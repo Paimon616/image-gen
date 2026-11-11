@@ -137,7 +137,10 @@ function parseSseEvent(rawEvent: string) {
   };
 }
 
-function importedCivitaiResources(): ImportedCivitaiResource[] {
+// Resources the last Civitai import found missing on this machine. Remote file
+// checks (RunPod, GPU workers) take them so the remote can download them
+// straight from Civitai instead of needing a local copy first.
+export function importedCivitaiResources(): ImportedCivitaiResource[] {
   return useStore
     .getState()
     .civitaiImport.missingResources.map((resource): ImportedCivitaiResource => ({

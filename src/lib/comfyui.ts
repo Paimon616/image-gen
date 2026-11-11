@@ -866,7 +866,7 @@ async function buildKrea2Workflow(
   await assertKrea2SupportFiles(checkpoint, "generic", options);
 
   const loras = cleanLoras(params.loras);
-  const vaeName = (await resolveAvailableVaeName(params.vae_name, options)) || KREA2_VAE_NAME;
+  const vaeName = (await resolveLatent16VaeName(params.vae_name, options)) || KREA2_VAE_NAME;
   const seed = normalizeGenerationSeed(params.seed);
   // The "moody" finish reproduces the Moody-family author's own published recipe
   // (verified against the generation metadata embedded in that model's Civitai
@@ -1321,7 +1321,7 @@ async function buildKrea2PornmasterWorkflow(
   const loras = cleanLoras(params.loras);
   // Faithful to the original: the abliterated int8 Qwen3-VL text encoder and the
   // Wan 2.1 VAE. The VAE stays overridable from the UI VAE picker.
-  const vaeName = (await resolveAvailableVaeName(params.vae_name, options)) || PORNMASTER_VAE_NAME;
+  const vaeName = (await resolveLatent16VaeName(params.vae_name, options)) || PORNMASTER_VAE_NAME;
   const seed = normalizeGenerationSeed(params.seed);
 
   const workflow: Record<string, unknown> = {
@@ -1847,7 +1847,10 @@ async function resolveZImageSupportNames(
     // Qwen3-4B in any precision; exclude Qwen3-VL, which is a different encoder.
     clipNames.find((name) => /qwen[-_ ]?3[-_ ]?4b/i.test(name) && !/vl/i.test(name)) ??
     ZIMAGE_CLIP_NAME;
-  const requestedVae = params.vae_name.trim();
+  // Z-Image decodes 16-channel latents (FLUX AE): an SD VAE override is ignored.
+  const requestedVae = /^ae[._-]|flux|z[-_ ]?image|qwen|wan[_-]?2/i.test(params.vae_name)
+    ? params.vae_name.trim()
+    : "";
   const vaeName =
     (requestedVae && (vaeNames.length === 0 || vaeNames.includes(requestedVae))
       ? requestedVae
@@ -2230,6 +2233,51 @@ async function addKrea2IdentityEditNodes(
     return { modelRef: ["43", 0], positiveRef: ["44", 0] };
   }
 
+  const faceRef = params.character_face_image?.trim();
+  if (faceRef) {
+    // Same person twice (body view + face close-up): the body view on the
+    // first inputs pinned to the layout (aligned) so it carries the direction —
+    // with both beside, the face pulled the body round to face the camera —
+    // and the face on the _b inputs beside the canvas. Tuned 2026-11-11.
+    const faceImage = await resolveControlNetImage(faceRef, options);
+    workflow["45"] = { class_type: "LoadImage", inputs: { image: faceImage } };
+    workflow["46"] = {
+      class_type: "VAEEncode",
+      inputs: { pixels: ["45", 0], vae: vaeRef },
+    };
+    workflow["43"] = {
+      class_type: "Krea2EditModelPatch",
+      inputs: {
+        model: ["40", 0],
+        source_latent: ["42", 0],
+        source_image: ["41", 0],
+        source_latent_b: ["46", 0],
+        source_image_b: ["45", 0],
+        vae: vaeRef,
+        target_latent: targetLatentRef,
+        fit_mode: "fit",
+        ref_boost: refBoost,
+        ref_boost_a: refBoost,
+        ref_position: "beside (right of target)",
+        ref_position_a: "aligned (trained)",
+      },
+    };
+    workflow["44"] = {
+      class_type: "Krea2EditGroundedEncode",
+      inputs: {
+        clip: clipRef,
+        prompt:
+          "The first image shows this person's body and outfit, and the second image shows the same person's face. " +
+          `Create an image of this one person. ${params.prompt.trim()}. ` +
+          "Keep the face from the second image and the hairstyle, accessories and outfit from the first image, in the same illustration style.",
+        image: ["41", 0],
+        image_b: ["45", 0],
+        grounding_px: 768,
+      },
+    };
+    return { modelRef: ["43", 0], positiveRef: ["44", 0] };
+  }
+
   workflow["43"] = {
     class_type: "Krea2EditModelPatch",
     inputs: {
@@ -2248,7 +2296,10 @@ async function addKrea2IdentityEditNodes(
     class_type: "Krea2EditGroundedEncode",
     inputs: {
       clip: clipRef,
-      prompt: params.character_reference_restage
+      prompt: params.character_reference_view === "back"
+        ? `Create an image of this person seen from behind. ${params.prompt.trim()}. ` +
+          "Keep the hairstyle, hair accessories and outfit from the reference image, in the same illustration style. The face is not visible."
+        : params.character_reference_restage
         ? `Create an image of this person. ${params.prompt.trim()}. ` +
           "Keep the person's face, hairstyle and outfit from the reference image, but take the pose, " +
           "facial expression, camera angle, framing and lighting from this description, not from the reference."
@@ -2808,6 +2859,16 @@ async function getComfyObjectInputOptions(
   }
 
   return [];
+}
+
+// Krea 2 (and its PornMaster recipe) decode 16-channel latents: only the Qwen
+// Image / Wan 2.1 VAEs fit. The UI VAE picker is shared with SD/SDXL, so a
+// 4-channel VAE left over from an SD1.5 import (animevae.pt) used to reach the
+// Krea graph and fail in VAEDecode ("expected 4 channels, got 16").
+const LATENT16_VAE_PATTERN = /qwen[_-]?image|wan[_-]?2|krea/i;
+
+async function resolveLatent16VaeName(vaeName: string, options?: ComfyClientOptions) {
+  return LATENT16_VAE_PATTERN.test(vaeName) ? resolveAvailableVaeName(vaeName, options) : "";
 }
 
 async function resolveAvailableVaeName(

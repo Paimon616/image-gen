@@ -392,6 +392,41 @@ export async function requestGpuWorkerUpdate(worker: GpuWorkerConfig) {
   }
 }
 
+export interface GpuWorkerDeleteResult {
+  path: string;
+  deleted: boolean;
+  bytes?: number;
+  error?: string;
+}
+
+/**
+ * Remove model files on a worker (worker token), e.g. a wrong file saved under
+ * the name a workflow needs, so the missing-files check offers it again.
+ */
+export async function deleteGpuWorkerModels(
+  worker: GpuWorkerConfig,
+  files: string[]
+): Promise<GpuWorkerDeleteResult[]> {
+  const token = gpuWorkerToken();
+  if (!token) throw new Error("GPU_WORKER_TOKEN not set (.local/gpu-worker-depot.env)");
+  const res = await fetch(`${helperUrlForWorker(worker)}/api/worker/delete-models`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ files }),
+    cache: "no-store",
+    signal: AbortSignal.timeout(20_000),
+  }).catch((error: unknown) => {
+    throw new Error(errorMessage(error));
+  });
+  const data = (await res.json().catch(() => ({}))) as {
+    results?: GpuWorkerDeleteResult[];
+    error?: string;
+  };
+  if (res.status === 404) throw new Error("워커 킷이 오래돼 삭제를 지원하지 않습니다. 워커를 업데이트하세요.");
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data.results ?? [];
+}
+
 export const GPU_WORKER_LOG_KINDS = ["watch", "comfyui", "comfyui-err", "helper", "helper-err"] as const;
 export type GpuWorkerLogKind = (typeof GPU_WORKER_LOG_KINDS)[number];
 

@@ -8,6 +8,7 @@
   ],
   "models": [
     "checkpoints/hassakuXLIllustrious_v22.safetensors",
+    "ultralytics/bbox/face_yolov8n_v2.pt",
     "pulid/ip-adapter_pulid_sdxl_fp16.safetensors",
     "insightface/models/antelopev2/1k3d68.onnx",
     "insightface/models/antelopev2/2d106det.onnx",

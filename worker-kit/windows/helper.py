@@ -14,6 +14,10 @@ installed still comes only from the depot manifest.
 
 GET /api/worker/logs[?name=watch|comfyui|comfyui-err|helper|helper-err&lines=N]
 (same token) returns the tail of the newest kit log of that kind, read-only.
+
+POST /api/worker/delete-models {"files": ["vae/x.pt", ...]} (same token)
+removes those model files (and any partial ".download") inside the models
+folder, so a wrong or broken download can be fetched again.
 """
 
 import argparse
@@ -129,6 +133,37 @@ def model_path(value):
     if os.path.commonpath([full, root]) != root:
         raise ValueError("Path escapes the models folder: %s" % value)
     return full
+
+
+def delete_models(files):
+    """Remove model files (and partial downloads) inside MODELS_DIR only."""
+    if not isinstance(files, list) or len(files) > 50:
+        raise ValueError("files must be a list of up to 50 model paths")
+    results = []
+    for value in files:
+        try:
+            target = model_path(value)
+        except ValueError as error:
+            results.append({"path": str(value), "deleted": False, "error": str(error)})
+            continue
+        if os.path.normpath(os.path.dirname(target)) == os.path.normpath(MODELS_DIR):
+            results.append({"path": str(value), "deleted": False, "error": "not inside a model folder"})
+            continue
+        deleted = False
+        size = 0
+        try:
+            for candidate in (target, target + ".download"):
+                if os.path.isfile(candidate):
+                    size += os.path.getsize(candidate)
+                    os.remove(candidate)
+                    deleted = True
+            with DOWNLOADS_LOCK:
+                DOWNLOADS.pop(_relative(target), None)
+            results.append({"path": str(value), "deleted": deleted, "bytes": size})
+        except OSError as error:
+            # A file ComfyUI has open is locked on Windows.
+            results.append({"path": str(value), "deleted": False, "error": str(error)})
+    return results
 
 
 class _StripAuthOnHostChange(urllib.request.HTTPRedirectHandler):
@@ -416,6 +451,13 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as error:
                 return self._json(500, {"error": "update watcher not running: %s" % error})
             return self._json(202, {"ok": True, "watcherRestarted": restarted, **update_state()})
+        if path == "/api/worker/delete-models":
+            if not self._authorized():
+                return self._json(401, {"error": "bad token"})
+            try:
+                return self._json(200, {"results": delete_models(body.get("files") or [])})
+            except Exception as error:
+                return self._json(400, {"error": str(error)})
         try:
             if path == "/api/runpod/helper/files":
                 files = [str(f) for f in body.get("files") or []]

@@ -119,25 +119,29 @@ const CAMERAS = [
   { angle: "eye level shot", desc: "a medium-long shot from the thighs up with a 50mm lens" },
 ];
 
+// Which way the body faces and whether the face shows. Picks the sheet view to
+// condition each image on (directionalReference).
+export type VariationView = "front" | "side" | "side_face" | "back" | "back_face";
+
 // Body direction plus face angle, a third each front / side / back. Left and right
 // are relative to the picture: "her left" made the model face the same way both
 // times, while "toward the left edge of the frame" separates them reliably.
-const VIEWS = [
+const VIEWS: { view: VariationView; text: string }[] = [
   // front
-  "Her body faces the viewer. Her face is turned straight to the camera, a symmetrical frontal view with both eyes looking into the lens",
-  "Her body faces the viewer. Her face is in a three-quarter view turned toward the LEFT side of the picture, her nose pointing to the left of the frame",
-  "Her body faces the viewer. Her face is in a three-quarter view turned toward the RIGHT side of the picture, her nose pointing to the right of the frame",
-  "Her body faces the viewer. Her head is tilted back and she looks up, her chin raised",
-  "Her body faces the viewer. Her head is bowed and she looks down, eyes lowered",
+  { view: "front", text: "Her body faces the viewer. Her face is turned straight to the camera, a symmetrical frontal view with both eyes looking into the lens" },
+  { view: "front", text: "Her body faces the viewer. Her face is in a three-quarter view turned toward the LEFT side of the picture, her nose pointing to the left of the frame" },
+  { view: "front", text: "Her body faces the viewer. Her face is in a three-quarter view turned toward the RIGHT side of the picture, her nose pointing to the right of the frame" },
+  { view: "front", text: "Her body faces the viewer. Her head is tilted back and she looks up, her chin raised" },
+  { view: "front", text: "Her body faces the viewer. Her head is bowed and she looks down, eyes lowered" },
   // side
-  "Her whole body is seen from the side, facing the LEFT edge of the picture. Her face is an exact side profile: nose, lips and chin point to the left side of the frame and the back of her head is on the right side",
-  "Her whole body is seen from the side, facing the RIGHT edge of the picture. Her face is an exact side profile: nose, lips and chin point to the right side of the frame and the back of her head is on the left side",
-  "Her body is seen from the side, facing the LEFT edge of the picture, and she turns her face toward the camera in a three-quarter view",
-  "Her body is seen from the side, facing the RIGHT edge of the picture, and she turns her face toward the camera in a three-quarter view",
+  { view: "side", text: "Her whole body is seen from the side, facing the LEFT edge of the picture. Her face is an exact side profile: nose, lips and chin point to the left side of the frame and the back of her head is on the right side" },
+  { view: "side", text: "Her whole body is seen from the side, facing the RIGHT edge of the picture. Her face is an exact side profile: nose, lips and chin point to the right side of the frame and the back of her head is on the left side" },
+  { view: "side_face", text: "Her body is seen from the side, facing the LEFT edge of the picture, and she turns her face toward the camera in a three-quarter view" },
+  { view: "side_face", text: "Her body is seen from the side, facing the RIGHT edge of the picture, and she turns her face toward the camera in a three-quarter view" },
   // back
-  "She is seen from behind: her back faces the camera and she looks back over her LEFT shoulder toward the camera, her face in profile",
-  "She is seen from behind: her back faces the camera and she looks back over her RIGHT shoulder toward the camera, her face in three-quarter view",
-  "She is seen from behind: her back and the back of her head face the camera and her face is not visible, she looks into the scene",
+  { view: "back_face", text: "She is seen from behind: her back faces the camera and she looks back over her LEFT shoulder toward the camera, her face in profile" },
+  { view: "back_face", text: "She is seen from behind: her back faces the camera and she looks back over her RIGHT shoulder toward the camera, her face in three-quarter view" },
+  { view: "back", text: "She is seen from behind: her back and the back of her head face the camera and her face is not visible, she looks into the scene" },
 ];
 
 function shuffled<T>(items: readonly T[]) {
@@ -174,7 +178,12 @@ function toMale(text: string) {
     .replace(/\bher\b/g, "his");
 }
 
-export function buildVariationPrompts(plan: VariationPlan, count: number) {
+export interface VariationShot {
+  prompt: string;
+  view: VariationView;
+}
+
+export function buildVariationShots(plan: VariationPlan, count: number): VariationShot[] {
   const pose = deck(plan.poses.length >= 4 ? plan.poses : POSES);
   const expression = deck(plan.expressions.length >= 4 ? plan.expressions : EXPRESSIONS);
   const camera = deck(CAMERAS);
@@ -186,11 +195,11 @@ export function buildVariationPrompts(plan: VariationPlan, count: number) {
     const direction = view();
     let shot = camera();
     // A back view has no face to frame; swap a face close-up for the next camera.
-    if (/from behind/.test(direction) && /close-up/.test(shot.desc)) shot = camera();
+    if (/from behind/.test(direction.text) && /close-up/.test(shot.desc)) shot = camera();
     const variation =
       `${shot.angle}. ` +
       sentence(`Pose: ${pose()}`) +
-      sentence(`Direction: ${direction}`) +
+      sentence(`Direction: ${direction.text}`) +
       sentence(`Expression: ${expression()}`) +
       sentence(`Camera: ${shot.desc}`) +
       sentence(
@@ -199,6 +208,56 @@ export function buildVariationPrompts(plan: VariationPlan, count: number) {
           : `Background: ${background()}`
       ) +
       "One person only, clean anatomy with five fingers on each hand, no text, no watermark.";
-    return `${base} ${plan.gender === "male" ? toMale(variation) : variation}`.trim();
+    return {
+      prompt: `${base} ${plan.gender === "male" ? toMale(variation) : variation}`.trim(),
+      view: direction.view,
+    };
   });
+}
+
+export function buildVariationPrompts(plan: VariationPlan, count: number) {
+  return buildVariationShots(plan, count).map((shot) => shot.prompt);
+}
+
+/** Views cut from a character sheet. `front` is the on-screen reference. */
+export interface DirectionalReferenceSet {
+  front: string;
+  side?: string | null;
+  back?: string | null;
+  face?: string | null;
+}
+
+/**
+ * The references for one image of the batch. Evaluated 2026-11-11 on Krea 2
+ * (back view looking over the shoulder, 4 images each): the front reference
+ * alone turned the big back bow into the small side ribbon of the front view;
+ * back view + face close-up kept both; one side-by-side composite drew two
+ * people, so views are never merged into one image.
+ */
+export function directionalReference(
+  view: VariationView,
+  set: DirectionalReferenceSet
+): {
+  character_image: string;
+  character_face_image: string | null;
+  character_reference_view: "back" | null;
+} {
+  const side = set.side || null;
+  const back = set.back || null;
+  const face = set.face || null;
+  const front = { character_image: set.front, character_face_image: null, character_reference_view: null };
+  switch (view) {
+    case "side":
+      return side ? { ...front, character_image: side } : front;
+    case "side_face":
+      return side ? { ...front, character_image: side, character_face_image: face } : front;
+    case "back":
+      // Tuned 2026-11-11: "keep the exact face" turned the head round; the
+      // back-view prompt kept it hidden.
+      return back ? { ...front, character_image: back, character_reference_view: "back" } : front;
+    case "back_face":
+      return back ? { ...front, character_image: back, character_face_image: face } : front;
+    default:
+      return front;
+  }
 }

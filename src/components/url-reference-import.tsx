@@ -16,11 +16,14 @@ import type { GeneratedImage, GenerationParams } from "@/lib/types";
 import { ImageLibraryPicker } from "@/components/image-library-picker";
 import {
   ANALYSIS_VERSION,
-  buildVariationPrompts,
+  buildVariationShots,
+  directionalReference,
   VARIATION_COUNTS,
   VARIATION_NEGATIVE_PROMPT,
   type VariationPlan,
+  type VariationView,
 } from "@/lib/reference-variations";
+import type { ConsistencySheetImage } from "@/lib/consistency-sheet";
 import { FieldHelp } from "@/components/field-help";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,6 +57,37 @@ function copySize(width: number, height: number) {
   };
 }
 
+// 방향별 참조: views cut from a character sheet, swapped in per image of the
+// varied batch (back view → back reference, ...). Krea 2 only — its Identity
+// Edit takes a second image for the face; PuLID / IP-Adapter need a face in
+// every reference, which a back view does not have.
+interface DirectionalSet {
+  sheetUrl: string;
+  sheetThumb: string;
+  front: string | null;
+  side: string | null;
+  back: string | null;
+  face: string | null;
+}
+
+const isKrea2Model = (modelName: string) => /krea[-_ ]?2/i.test(modelName);
+
+function absoluteUrl(value: string) {
+  try {
+    return new URL(value, window.location.href).href;
+  } catch {
+    return value;
+  }
+}
+
+const VIEW_LABEL: Record<VariationView, { ko: string; en: string }> = {
+  front: { ko: "정면", en: "front" },
+  side: { ko: "옆", en: "side" },
+  side_face: { ko: "옆+얼굴", en: "side+face" },
+  back: { ko: "뒤", en: "back" },
+  back_face: { ko: "뒤+얼굴", en: "back+face" },
+};
+
 export function UrlReferenceImport({
   onGenerate,
 }: {
@@ -67,6 +101,10 @@ export function UrlReferenceImport({
   const analysisCache = useRef<{ key: string; analysis: VariationPlan } | null>(null);
   const [status, setStatus] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [directional, setDirectional] = useState<DirectionalSet | null>(null);
+  const [sheetPickerOpen, setSheetPickerOpen] = useState(false);
+  const [sheets, setSheets] = useState<ConsistencySheetImage[] | null>(null);
+  const [setBusyState, setSetBusyState] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchReference = async (describe: boolean) => {
@@ -204,33 +242,134 @@ export function UrlReferenceImport({
       // pressed: the model the user picked, its LoRAs, sampler, steps, reference
       // strength and face fix. Only the mode is pinned to text-to-image, since a
       // source image would hold every variation to its pose and background.
-      const prompts = buildVariationPrompts(analysis, count);
+      const shots = buildVariationShots(analysis, count);
       const screen = useStore.getState().params;
       const settings: Partial<GenerationParams> = {
         character_image: imageUrl,
+        character_face_image: null,
+        character_reference_view: null,
         negative_prompt: screen.negative_prompt?.trim() || VARIATION_NEGATIVE_PROMPT,
         generation_mode: "text_to_image",
         source_image: null,
         seed: null,
       };
       const base = { ...screen, ...settings };
-      for (let index = 0; index < prompts.length; index += 1) {
+      // The on-screen reference stays the front view (it is what the user chose
+      // and styles every image); the sheet only adds the views it cannot show.
+      const useDirectional = Boolean(directional) && isKrea2Model(screen.model_name ?? "");
+      const refSet = directional
+        ? {
+            front: imageUrl,
+            side: directional.side ? absoluteUrl(directional.side) : null,
+            back: directional.back ? absoluteUrl(directional.back) : null,
+            face: directional.face ? absoluteUrl(directional.face) : null,
+          }
+        : null;
+      const used: Partial<Record<VariationView, number>> = {};
+      for (let index = 0; index < shots.length; index += 1) {
         setStatus(
           ko
             ? `대기열에 넣는 중... ${index + 1}/${count}`
             : `Queueing... ${index + 1}/${count}`
         );
-        await onGenerate({ ...base, prompt: prompts[index] });
+        const shot = shots[index];
+        const refs =
+          useDirectional && refSet ? directionalReference(shot.view, refSet) : null;
+        if (refs && refs.character_image !== imageUrl) {
+          const key: VariationView = refs.character_face_image
+            ? shot.view
+            : shot.view === "back_face" || shot.view === "back"
+              ? "back"
+              : "side";
+          used[key] = (used[key] ?? 0) + 1;
+        }
+        await onGenerate({ ...base, ...(refs ?? {}), prompt: shot.prompt });
       }
+      const usedText = Object.entries(used)
+        .map(([view, n]) => `${VIEW_LABEL[view as VariationView][ko ? "ko" : "en"]} ${n}`)
+        .join(" · ");
+      const directionalNote = directional
+        ? useDirectional
+          ? ko
+            ? usedText
+              ? ` 시트 방향별 참조: ${usedText}장.`
+              : " 시트 방향별 참조: 이번 묶음엔 정면만 나왔습니다."
+            : usedText
+              ? ` Sheet views used: ${usedText}.`
+              : " Sheet views: only front views this time."
+          : ko
+            ? " 방향별 참조는 Krea 2 모델에서만 쓰여 이번엔 적용하지 않았습니다."
+            : " Directional references only apply to Krea 2 models, so they were not used."
+        : "";
       setStatus(
-        ko
+        (ko
           ? `${count}장을 대기열에 넣었습니다 (화면 모델 · 설정 · 프롬프트 그대로). 장마다 포즈 · 표정 · 카메라 · 배경만 다릅니다${analysis.setting ? ` (배경: ${analysis.setting})` : ""}.`
-          : `Queued ${count} images (on-screen model, settings and prompt). Only the pose, expression, camera and background change per image.`
+          : `Queued ${count} images (on-screen model, settings and prompt). Only the pose, expression, camera and background change per image.`) +
+          directionalNote
       );
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
     } finally {
       setBusy(null);
+    }
+  };
+
+  const openSheetPicker = async () => {
+    setSheetPickerOpen(true);
+    if (sheets) return;
+    try {
+      const res = await fetch("/api/consistency-sheet/images", { cache: "no-store" });
+      const data = (await res.json().catch(() => ({}))) as { images?: ConsistencySheetImage[] };
+      setSheets((data.images ?? []).filter((image) => image.params?.mode === "character"));
+    } catch {
+      setSheets([]);
+    }
+  };
+
+  const pickSheet = async (sheet: ConsistencySheetImage) => {
+    setSheetPickerOpen(false);
+    setSetBusyState(true);
+    setStatus(ko ? "시트에서 정면 · 옆 · 뒤 · 얼굴을 찾는 중..." : "Finding the front, side, back and face on the sheet...");
+    try {
+      const res = await fetch("/api/reference-set", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: sheet.url }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        front?: string | null;
+        side?: string | null;
+        back?: string | null;
+        face?: string | null;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(data.error || "reference-set failed");
+      setDirectional({
+        sheetUrl: sheet.url,
+        sheetThumb: sheet.url,
+        front: data.front ?? null,
+        side: data.side ?? null,
+        back: data.back ?? null,
+        face: data.face ?? null,
+      });
+      const missing = [
+        !data.side && (ko ? "옆" : "side"),
+        !data.back && (ko ? "뒤" : "back"),
+        !data.face && (ko ? "얼굴" : "face"),
+      ].filter(Boolean);
+      setStatus(
+        missing.length
+          ? ko
+            ? `시트를 연결했습니다. ${missing.join(" · ")}은(는) 시트에서 찾지 못해 그 방향은 정면 참조를 씁니다.`
+            : `Sheet linked. No ${missing.join(" / ")} found; those views use the front reference.`
+          : ko
+            ? "시트를 연결했습니다. 뒷모습 · 옆모습 장면에 해당 방향 참조가 자동으로 들어갑니다."
+            : "Sheet linked. Back and side shots now get the matching view."
+      );
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+    } finally {
+      setSetBusyState(false);
     }
   };
 
@@ -447,9 +586,119 @@ export function UrlReferenceImport({
             {ko ? "먼저 캐릭터 참조 이미지를 넣으세요." : "Set a character reference first."}
           </p>
         )}
+        <div className="space-y-1.5 rounded-md border border-border p-2">
+          <div className="flex items-center justify-between gap-2">
+            <FieldHelp
+              label={ko ? "방향별 참조 (시트)" : "Directional references (sheet)"}
+              help={
+                ko
+                  ? "일관성 시트(캐릭터)를 연결하면, 다양하게 뽑기에서 뒷모습 장면엔 시트의 뒷모습을, 옆모습 장면엔 옆모습을 참조로 넣습니다. 돌아보는 뒷모습처럼 얼굴도 보이는 장면은 뒷모습 + 얼굴 두 장을 함께 넣습니다. 정면 장면은 화면의 캐릭터 참조를 그대로 씁니다. Krea 2 모델에서만 적용됩니다."
+                  : "Link a character consistency sheet and the varied batch conditions back shots on the sheet's back view and side shots on its side view. Shots that also show the face (looking back over the shoulder) get the view plus a face close-up. Front shots keep the on-screen reference. Krea 2 models only."
+              }
+            />
+            <div className="flex shrink-0 gap-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => void openSheetPicker()}
+                disabled={setBusyState || busy !== null}
+              >
+                {setBusyState ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Layers className="h-3.5 w-3.5" />}
+                {directional ? (ko ? "바꾸기" : "Change") : ko ? "시트 연결" : "Link sheet"}
+              </Button>
+              {directional && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2"
+                  onClick={() => setDirectional(null)}
+                  aria-label={ko ? "시트 연결 해제" : "Unlink sheet"}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+          </div>
+          {directional && (
+            <div className="grid grid-cols-4 gap-1.5">
+              {(
+                [
+                  ["front", ko ? "정면 (참고)" : "Front (info)", directional.front],
+                  ["side", ko ? "옆" : "Side", directional.side],
+                  ["back", ko ? "뒤" : "Back", directional.back],
+                  ["face", ko ? "얼굴" : "Face", directional.face],
+                ] as const
+              ).map(([key, label, src]) => (
+                <div key={key} className="space-y-0.5">
+                  <div className="flex aspect-[3/4] items-center justify-center overflow-hidden rounded border border-border bg-background">
+                    {src ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={src} alt={label} className="h-full w-full object-contain" />
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground">{ko ? "없음" : "none"}</span>
+                    )}
+                  </div>
+                  <p className="truncate text-center text-[10px] text-muted-foreground">{label}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          {directional && !isKrea2Model(params.model_name ?? "") && (
+            <p className="text-[11px] text-amber-600 dark:text-amber-400">
+              {ko
+                ? "지금 모델은 Krea 2가 아니라 방향별 참조가 적용되지 않습니다."
+                : "The current model is not Krea 2, so directional references are not applied."}
+            </p>
+          )}
+        </div>
       </div>
 
       {status && <p className="text-xs text-muted-foreground">{status}</p>}
+      {sheetPickerOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setSheetPickerOpen(false)}
+          role="presentation"
+        >
+          <div
+            className="max-h-[80vh] w-full max-w-3xl overflow-auto rounded-lg border border-border bg-card p-4 shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-label={ko ? "연결할 캐릭터 시트" : "Character sheet to link"}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold">{ko ? "연결할 캐릭터 시트" : "Character sheet to link"}</h3>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setSheetPickerOpen(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            {sheets === null ? (
+              <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />
+            ) : sheets.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {ko ? "일관성 시트 화면에서 캐릭터 시트를 먼저 만드세요." : "Make a character sheet on the consistency sheet screen first."}
+              </p>
+            ) : (
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                {sheets.map((sheet) => (
+                  <button
+                    key={sheet.id}
+                    type="button"
+                    onClick={() => void pickSheet(sheet)}
+                    className="overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-primary"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={sheet.url} alt={sheet.prompt || "sheet"} className="aspect-square w-full object-contain" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {pickerOpen && (
         <ImageLibraryPicker
           title={ko ? "가져올 이미지" : "Image to import"}

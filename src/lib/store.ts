@@ -326,6 +326,10 @@ const createAppState: StateCreator<AppState> = (set) => ({
             params: {
               ...DEFAULT_PARAMS,
               ...image.params,
+              // Per-image only (the varied batch picks it per view); there is no
+              // field for it on screen, so it must not ride along into later renders.
+              character_face_image: null,
+              character_reference_view: null,
               ...(image.sizeSemantics === "final" ||
               !image.params.hires_upscale ||
               image.params.hires_upscale <= 1

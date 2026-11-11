@@ -62,6 +62,11 @@ function stripModelExtension(value: string) {
   return value.replace(/\.(safetensors|ckpt|pt|pth)$/i, "");
 }
 
+function fileExtension(name: string) {
+  const match = /\.([a-z0-9]+)$/i.exec(name.trim());
+  return match ? match[1].toLowerCase() : "";
+}
+
 function normalize(value: string) {
   return stripModelExtension(value)
     .toLowerCase()
@@ -127,6 +132,12 @@ function candidateScore(
     ?.map((file) => file.name ?? "")
     .filter(Boolean) ?? [];
   if (fileNames.some((name) => normalize(name) === target)) return 100;
+
+  // A name-only match must at least ship a file of the same kind: the download
+  // is saved under the requested filename, and a .safetensors saved as ".pt"
+  // breaks torch.load ("animevae.pt" once matched a 5 GB MiniMax H3 video VAE).
+  const ext = fileExtension(filename);
+  if (ext && !fileNames.some((name) => fileExtension(name) === ext)) return 0;
 
   const modelName = normalize(model.name ?? "");
   const versionName = normalize(version.name ?? "");
