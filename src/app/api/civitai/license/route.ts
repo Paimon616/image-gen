@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { CivitaiLicenseInfo } from "@/lib/types";
 import { parseCivitaiLicense } from "@/lib/civitai-license";
+import { getCivitaiApiKey } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -64,7 +65,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const token = process.env.CIVITAI_API_TOKEN?.trim();
+  const token = (await getCivitaiApiKey()) || undefined;
   const entries = await Promise.all(
     modelIds.map(async (modelId) => [modelId, await fetchLicense(modelId, token)] as const)
   );
