@@ -326,12 +326,14 @@ function analyze(rgb: Uint8Array, width: number, height: number) {
           to: run.to,
           top: topOf(comp, run.from, run.to),
           skinShare: skinSum / run.sum,
-          stacked: torsoFg > 0 && torsoSkin / torsoFg > 0.1,
+          // A standing figure's bare shoulders and arms are not stacked faces
+          // (same exemption as facesOf).
+          stacked: standingFigure(comp) ? false : torsoFg > 0 && torsoSkin / torsoFg > 0.1,
         };
       });
   };
 
-  return { components, facesOf, headsOf };
+  return { components, facesOf, headsOf, standingFigure };
 }
 
 function round(value: number) {
@@ -345,7 +347,7 @@ function round(value: number) {
 export function findSheetRegions(rgb: Uint8Array, width: number, height: number): SheetRegions {
   const none: SheetRegions = { frontUpper: null, frontFull: null, side: null, back: null };
   if (width < 16 || height < 16 || rgb.length < width * height * 3) return none;
-  const { components, facesOf, headsOf } = analyze(rgb, width, height);
+  const { components, facesOf, headsOf, standingFigure } = analyze(rgb, width, height);
   if (components.length === 0) return none;
 
   const isTall = (c: Component) => c.maxY - c.minY + 1 >= height * FULL_BODY_MIN_HEIGHT;
@@ -402,7 +404,12 @@ export function findSheetRegions(rgb: Uint8Array, width: number, height: number)
   // Side view: another standing figure whose face skin sits off its head's
   // centre. Expression heads and oversized close-ups are not figures.
   // Conservative: no side view beats a wrong one (callers fall back to front).
-  const side = pick(fullBody, 0.03, (comp, face) => {
+  // An isolated standing figure is one person: a second skin run on the front
+  // figure itself (an ear, a shoulder) is not a side view.
+  const sideCandidates = standingFigure(front.comp)
+    ? fullBody.filter((comp) => comp !== front.comp)
+    : fullBody;
+  const side = pick(sideCandidates, 0.03, (comp, face) => {
     const compH = comp.maxY - comp.minY + 1;
     const plausible =
       !face.stacked &&
@@ -412,14 +419,19 @@ export function findSheetRegions(rgb: Uint8Array, width: number, height: number)
     return plausible ? face.offset : 0;
   });
 
-  // Back view: a full-body head with hair but (almost) no skin.
+  // Back view: a full-body head with hair but (almost) no skin. "Almost" is
+  // relative to the front face: light blonde hair puts a few skin-toned pixels
+  // in every head band (back heads ~0.06 next to faces ~0.16-0.22), so a fixed
+  // 3 % missed them. Capped at 10 %, below any side view's face (≥ ~0.15).
+  const backSkinMax = Math.min(0.1, Math.max(0.03, front.face.ratio * 0.4));
   let back: { centerX: number; top: number; bottom: number; width: number } | null = null;
   for (const comp of fullBody) {
     const compH = comp.maxY - comp.minY + 1;
     for (const head of headsOf(comp)) {
-      if (head.skinShare > 0.03 || head.stacked || head.to - head.from + 1 > compH * 0.2) continue;
+      if (head.skinShare > backSkinMax || head.stacked || head.to - head.from + 1 > compH * 0.2) continue;
       const centerX = (head.from + head.to) / 2;
       if (Math.abs(centerX - front.face.centerX) < width * 0.03) continue;
+      if (side && Math.abs(centerX - side.face.centerX) < width * 0.03) continue;
       const headW = head.to - head.from + 1;
       if (!back || headW > back.width) back = { centerX, top: head.top, bottom: comp.maxY, width: headW };
     }

@@ -2230,6 +2230,50 @@ async function addKrea2IdentityEditNodes(
     return { modelRef: ["43", 0], positiveRef: ["44", 0] };
   }
 
+  const faceRef = params.character_face_image?.trim();
+  if (faceRef) {
+    // Same person twice (body view + face close-up): both refs beside the
+    // canvas so neither pins the layout, the body on the first inputs and the
+    // face on the _b inputs (the boosted "subject" slot).
+    const faceImage = await resolveControlNetImage(faceRef, options);
+    workflow["45"] = { class_type: "LoadImage", inputs: { image: faceImage } };
+    workflow["46"] = {
+      class_type: "VAEEncode",
+      inputs: { pixels: ["45", 0], vae: vaeRef },
+    };
+    workflow["43"] = {
+      class_type: "Krea2EditModelPatch",
+      inputs: {
+        model: ["40", 0],
+        source_latent: ["42", 0],
+        source_image: ["41", 0],
+        source_latent_b: ["46", 0],
+        source_image_b: ["45", 0],
+        vae: vaeRef,
+        target_latent: targetLatentRef,
+        fit_mode: "fit",
+        ref_boost: refBoost,
+        ref_boost_a: refBoost,
+        ref_position: "beside (right of target)",
+        ref_position_a: "beside (right of target)",
+      },
+    };
+    workflow["44"] = {
+      class_type: "Krea2EditGroundedEncode",
+      inputs: {
+        clip: clipRef,
+        prompt:
+          "The first image shows this person's body and outfit, and the second image shows the same person's face. " +
+          `Create an image of this one person. ${params.prompt.trim()}. ` +
+          "Keep the face from the second image and the hairstyle, accessories and outfit from the first image, in the same illustration style.",
+        image: ["41", 0],
+        image_b: ["45", 0],
+        grounding_px: 768,
+      },
+    };
+    return { modelRef: ["43", 0], positiveRef: ["44", 0] };
+  }
+
   workflow["43"] = {
     class_type: "Krea2EditModelPatch",
     inputs: {

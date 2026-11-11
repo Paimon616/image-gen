@@ -104,6 +104,15 @@ export interface GenerationParams {
    */
   scene_reference_image?: string | null;
   /**
+   * Krea 2: a face close-up of the SAME person as character_image, for views
+   * where character_image cannot show the face (a back view looking over the
+   * shoulder). Two-reference edit: body on the first inputs, face on the _b
+   * inputs, both placed beside the canvas. Ignored when scene_reference_image is
+   * set. Evaluated 2026-11-11 (back view + face kept the back ribbon and the
+   * face; a single side-by-side composite drew two people).
+   */
+  character_face_image?: string | null;
+  /**
    * SDXL: an explicit IP-Adapter identity reference sent by the caller (the
    * consistency sheet GPU engine). Same graph as character_sheet_image, which
    * stays route-controlled.

@@ -660,6 +660,11 @@ export function ImageViewer() {
           url: params.character_image,
         },
         {
+          key: "character_face_image",
+          label: ko ? "캐릭터 얼굴" : "Character face",
+          url: params.character_face_image ?? null,
+        },
+        {
           key: "character_sheet_image",
           label: ko ? "기준 시트 (BETA)" : "Reference sheet (BETA)",
           url: params.character_sheet_image ?? null,
