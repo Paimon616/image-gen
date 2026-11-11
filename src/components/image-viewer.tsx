@@ -288,6 +288,7 @@ export function ImageViewer() {
     filename: string;
   } | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [zoomedReference, setZoomedReference] = useState<{ url: string; label: string } | null>(null);
   const [workflowOpen, setWorkflowOpen] = useState(false);
   const [workflowText, setWorkflowText] = useState<string | null>(null);
   const [workflowStatus, setWorkflowStatus] = useState<
@@ -1433,13 +1434,20 @@ export function ImageViewer() {
                     <div className="mt-3 grid grid-cols-2 gap-3">
                       {referenceImages.map((reference) => (
                         <div key={reference.key} className="space-y-1.5">
-                          <div className="overflow-hidden rounded-md border border-border bg-background">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setZoomedReference({ url: reference.url as string, label: reference.label })
+                            }
+                            className="block w-full cursor-zoom-in overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-primary"
+                            aria-label={ko ? `${reference.label} 크게 보기` : `Enlarge ${reference.label}`}
+                          >
                             <img
                               src={reference.url as string}
                               alt={reference.label}
                               className="aspect-square w-full object-contain"
                             />
-                          </div>
+                          </button>
                           <div className="truncate text-xs font-medium text-muted-foreground">
                             {reference.label}
                           </div>
@@ -1576,6 +1584,27 @@ export function ImageViewer() {
             </Button>
           </DialogFooter>
         </form>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog open={!!zoomedReference} onOpenChange={(open) => { if (!open) setZoomedReference(null); }}>
+      <DialogContent className="!block h-[94vh] max-h-[94vh] w-[96vw] max-w-[96vw] overflow-hidden p-0 sm:max-w-[96vw]">
+        <DialogTitle className="sr-only">{zoomedReference?.label}</DialogTitle>
+        {zoomedReference && (
+          <button
+            type="button"
+            onClick={() => setZoomedReference(null)}
+            className="flex h-full w-full cursor-zoom-out flex-col items-center justify-center gap-3 bg-background bg-[radial-gradient(circle_at_1px_1px,color-mix(in_oklch,var(--border)_55%,transparent)_1px,transparent_0)] p-6 [background-size:24px_24px]"
+            aria-label={ko ? "닫기" : "Close"}
+          >
+            <img
+              src={zoomedReference.url}
+              alt={zoomedReference.label}
+              className="min-h-0 max-w-full flex-1 rounded-md bg-card object-contain shadow-lg"
+            />
+            <span className="text-sm font-medium text-muted-foreground">{zoomedReference.label}</span>
+          </button>
+        )}
       </DialogContent>
     </Dialog>
 
