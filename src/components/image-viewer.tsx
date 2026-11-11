@@ -1437,7 +1437,7 @@ export function ImageViewer() {
                             <img
                               src={reference.url as string}
                               alt={reference.label}
-                              className="aspect-square w-full object-cover"
+                              className="aspect-square w-full object-contain"
                             />
                           </div>
                           <div className="truncate text-xs font-medium text-muted-foreground">
