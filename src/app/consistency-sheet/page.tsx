@@ -135,6 +135,8 @@ const T = {
     en: "Fixed size (sheet 1024², scene 768×1344). First reference only; scenes use the character + background sheets (no outfit).",
   },
   galleryTitle: { ko: "시트 갤러리", en: "Sheet gallery" },
+  gallerySheets: { ko: "시트", en: "Sheets" },
+  galleryScenes: { ko: "장면", en: "Scenes" },
   empty: {
     ko: "아직 생성한 시트가 없습니다. 왼쪽에서 레퍼런스와 프롬프트를 설정하고 생성하세요.",
     en: "No sheets yet. Set references and a prompt on the left.",
@@ -197,6 +199,16 @@ async function toDataUrl(src: File | string): Promise<string> {
   }
 }
 
+type GalleryKind = "sheets" | "scenes";
+
+function galleryKindOf(mode: ConsistencySheetParams["mode"]): GalleryKind {
+  return mode === "scene" ? "scenes" : "sheets";
+}
+
+function isSceneImage(image: ConsistencySheetImage) {
+  return image.params?.mode === "scene";
+}
+
 export default function ConsistencySheetPage() {
   const language = useStore((s) => s.language) as Lang;
 
@@ -246,14 +258,46 @@ export default function ConsistencySheetPage() {
       .catch(() => {});
   }, [setImages]);
 
+  // Scene renders are saved next to the sheets, so the gallery splits them:
+  // sheets are what the scene slots pick from, scenes are finished pictures.
+  // It follows the mode tab (a scene run lands where it can be seen) and can
+  // still be switched by hand.
+  // A hand-picked tab holds until the mode tab changes again.
+  const [manualKind, setManualKind] = useState<{
+    mode: ConsistencySheetParams["mode"];
+    kind: GalleryKind;
+  } | null>(null);
+  const galleryKind =
+    manualKind && manualKind.mode === params.mode
+      ? manualKind.kind
+      : galleryKindOf(params.mode);
+  const setGalleryKind = (kind: GalleryKind) =>
+    setManualKind({ mode: params.mode, kind });
+
   // The gallery shows only the sheets in the active workspace; `null` is
   // everything and UNGROUPED matches the sheets with no workspace at all.
-  const visibleImages = useMemo(
+  const workspaceImages = useMemo(
     () =>
       images.filter((image) =>
         fileMatchesWorkspace(image.workspaces, activeWorkspaceId)
       ),
     [images, activeWorkspaceId]
+  );
+  const kindCounts = useMemo(() => {
+    let scenes = 0;
+    for (const image of workspaceImages) if (isSceneImage(image)) scenes++;
+    return { sheets: workspaceImages.length - scenes, scenes };
+  }, [workspaceImages]);
+  const visibleImages = useMemo(
+    () =>
+      workspaceImages.filter(
+        (image) => isSceneImage(image) === (galleryKind === "scenes")
+      ),
+    [workspaceImages, galleryKind]
+  );
+  const visiblePending = useMemo(
+    () => pending.filter((card) => isSceneImage(card) === (galleryKind === "scenes")),
+    [pending, galleryKind]
   );
 
   const patch = useCallback(
@@ -724,6 +768,26 @@ export default function ConsistencySheetPage() {
           <div className="flex items-center gap-3">
             <IdCard className="h-4 w-4 text-muted-foreground" />
             <h2 className="text-sm font-semibold">{tr("galleryTitle", language)}</h2>
+            <div className="flex rounded-md border border-border p-0.5" role="tablist">
+              {(["sheets", "scenes"] as const).map((kind) => (
+                <button
+                  key={kind}
+                  type="button"
+                  role="tab"
+                  aria-selected={galleryKind === kind}
+                  onClick={() => setGalleryKind(kind)}
+                  className={cn(
+                    "rounded px-2 py-0.5 text-xs transition-colors",
+                    galleryKind === kind
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {tr(kind === "sheets" ? "gallerySheets" : "galleryScenes", language)}{" "}
+                  {kindCounts[kind]}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <span className="whitespace-nowrap text-xs text-muted-foreground">
@@ -746,7 +810,7 @@ export default function ConsistencySheetPage() {
         <WorkspaceBar media="consistencySheet" onDownloaded={refreshImages} />
 
         <div className="flex-1 overflow-y-auto p-6">
-          {pending.length === 0 && visibleImages.length === 0 ? (
+          {visiblePending.length === 0 && visibleImages.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-muted-foreground">
               <IdCard className="h-10 w-10 opacity-40" />
               <p className="max-w-xs text-sm">{tr("empty", language)}</p>
@@ -759,7 +823,7 @@ export default function ConsistencySheetPage() {
                   "repeat(auto-fill, minmax(min(100%, 240px), 1fr))",
               }}
             >
-              {pending.map((card) => (
+              {visiblePending.map((card) => (
                 <PendingCard
                   key={card.id}
                   lang={language}
@@ -1032,9 +1096,13 @@ function SheetCard({
                     ? lang === "ko"
                       ? "캐릭터"
                       : "Character"
-                    : lang === "ko"
-                      ? "배경"
-                      : "Background",
+                    : image.params.mode === "scene"
+                      ? lang === "ko"
+                        ? "장면"
+                        : "Scene"
+                      : lang === "ko"
+                        ? "배경"
+                        : "Background",
                   image.params.resolution?.toUpperCase(),
                 ]
                   .filter(Boolean)

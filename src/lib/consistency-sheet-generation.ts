@@ -70,9 +70,16 @@ export async function startConsistencySheetGeneration(
     timestamp: Date.now(),
     contentType: "image/png",
     prompt: source.prompt,
-    // The finished sheet's params come back with the run; the pending card only
-    // ever shows the prompt, and the model is picked server-side.
-    params: null,
+    // The finished sheet's params come back with the run. The pending card
+    // carries the mode only so the gallery can file it under sheets or scenes;
+    // the model is picked server-side.
+    params: {
+      mode: source.mode,
+      prompt: source.prompt,
+      resolution: source.resolution,
+      model: "",
+      referenceCount: 0,
+    },
     status: {
       state: "queued",
       progress: 0.04,
