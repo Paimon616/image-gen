@@ -47,7 +47,24 @@ function AssetThumbnail({
   );
 }
 
-function AssetText({ asset }: { asset: LocalModelAsset }) {
+// Where the selected model must exist for this target. Local: this machine's
+// files (asset.exists). RunPod / GPU worker: the remote's own model list.
+interface AssetPresence {
+  label: string;
+  paths: Set<string> | null;
+}
+
+function missingNote(asset: LocalModelAsset, presence?: AssetPresence) {
+  if (presence) {
+    if (!presence.paths) return "";
+    return presence.paths.has(asset.path.replaceAll("\\", "/").toLowerCase())
+      ? ""
+      : `${presence.label}에 없음`;
+  }
+  return asset.exists === false ? "현재 로컬에 없음" : "";
+}
+
+function AssetText({ asset, presence }: { asset: LocalModelAsset; presence?: AssetPresence }) {
   return (
     <div className="min-w-0">
       <div className="flex min-w-0 items-center gap-1.5">
@@ -58,7 +75,7 @@ function AssetText({ asset }: { asset: LocalModelAsset }) {
         {[
           asset.version,
           asset.base_model,
-          asset.exists === false ? "현재 로컬에 없음" : "",
+          missingNote(asset, presence),
         ].filter(Boolean).join(" · ") || asset.path}
       </div>
     </div>
@@ -71,12 +88,14 @@ export function AssetChoiceButton({
   fallbackLabel,
   fallbackDescription,
   onClick,
+  presence,
 }: {
   asset: LocalModelAsset | undefined;
   placeholder: string;
   fallbackLabel?: string;
   fallbackDescription?: string;
   onClick: () => void;
+  presence?: AssetPresence;
 }) {
   const hasFallback = Boolean(!asset && fallbackLabel?.trim());
 
@@ -92,7 +111,7 @@ export function AssetChoiceButton({
     >
       <AssetThumbnail asset={asset} className="h-12 w-12" />
       {asset ? (
-        <AssetText asset={asset} />
+        <AssetText asset={asset} presence={presence} />
       ) : hasFallback ? (
         <div className="min-w-0">
           <div className="truncate text-sm font-medium text-primary">
@@ -124,6 +143,7 @@ export function AssetPickerDialog({
   onSelect,
   runpodMode = false,
   runpodPaths = null,
+  remoteLabel = "RunPod",
 }: {
   title: string;
   description: string;
@@ -137,6 +157,7 @@ export function AssetPickerDialog({
   // filenames present on the pod (null while unknown / not a RunPod target).
   runpodMode?: boolean;
   runpodPaths?: Set<string> | null;
+  remoteLabel?: string;
 }) {
   const [query, setQuery] = useState("");
   const [locationFilter, setLocationFilter] = useState<AssetLocationFilter>(
@@ -160,7 +181,7 @@ export function AssetPickerDialog({
   const locationFilters: Array<{ key: AssetLocationFilter; label: string }> = [
     { key: "all", label: "All" },
     { key: "local", label: "Local" },
-    { key: "runpod", label: "RunPod" },
+    { key: "runpod", label: remoteLabel },
   ];
 
   const filteredAssets = assets.filter((asset) => {
@@ -368,14 +389,18 @@ export function ModelSelector({
   generationTarget = "local",
   runpodPodId = "",
 }: {
-  generationTarget?: "local" | "runpod";
+  generationTarget?: "local" | "runpod" | "workers";
   runpodPodId?: string;
 } = {}) {
   const { params, setParams, language } = useStore();
   const ko = language === "ko";
   const currentModel = getModelConfig(params.model);
   const isLocal = currentModel.provider === "comfyui";
-  const runpodMode = generationTarget === "runpod" && Boolean(runpodPodId);
+  // RunPod pods and LAN GPU workers both answer the pod model-catalog route, so
+  // the picker and the "missing" note follow the machine that will generate.
+  const runpodMode =
+    (generationTarget === "runpod" || generationTarget === "workers") && Boolean(runpodPodId);
+  const remoteLabel = generationTarget === "workers" ? (ko ? "GPU 워커" : "GPU worker") : "RunPod";
   const [pickerTarget, setPickerTarget] = useState<PickerTarget>(null);
   // Models physically present on the pod, resolved to picker assets server-side.
   const [runpodCatalog, setRunpodCatalog] = useState<{
@@ -529,6 +554,8 @@ export function ModelSelector({
         embeddings: toPathSet(runpodCatalog.embeddings),
       }
     : null;
+  const presenceFor = (kind: "checkpoints" | "loras" | "embeddings"): AssetPresence | undefined =>
+    runpodMode ? { label: remoteLabel, paths: runpodPathSets?.[kind] ?? null } : undefined;
 
   const addEmptyLora = () => {
     setParams({ loras: [...params.loras, { path: "", scale: DEFAULT_LORA_SCALE }] });
@@ -738,6 +765,7 @@ export function ModelSelector({
             fallbackLabel={params.model_name}
             fallbackDescription="Imported checkpoint"
             onClick={() => setPickerTarget({ type: "checkpoint" })}
+            presence={presenceFor("checkpoints")}
           />
         ) : (
           <Input
@@ -794,6 +822,7 @@ export function ModelSelector({
                         fallbackLabel={lora.path}
                         fallbackDescription="Imported LoRA"
                         onClick={() => setPickerTarget({ type: "lora", index: i })}
+                        presence={presenceFor("loras")}
                       />
                       <LoraScaleSlider
                         value={lora.scale}
@@ -904,6 +933,7 @@ export function ModelSelector({
                         onClick={() =>
                           setPickerTarget({ type: "embedding", index: i })
                         }
+                        presence={presenceFor("embeddings")}
                       />
                     ) : (
                       <Input
@@ -968,6 +998,7 @@ export function ModelSelector({
         assets={pickerAssets}
         selectedPath={pickerSelectedPath}
         runpodMode={runpodMode}
+        remoteLabel={remoteLabel}
         runpodPaths={pickerRunpodPaths}
         open={pickerTarget !== null}
         onOpenChange={(open) => {

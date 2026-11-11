@@ -2213,8 +2213,14 @@ export default function Home() {
 
           <EditorSection title={ko ? "모델" : "Models"} description={ko ? "기본 모델과 LoRA, 임베딩을 선택합니다." : "Choose the base model, LoRA, and embeddings."}>
             <ModelSelector
-              generationTarget={pickerTarget}
-              runpodPodId={generationTarget === "runpod" ? selectedRunpodPodId : ""}
+              generationTarget={generationTarget}
+              runpodPodId={
+                generationTarget === "runpod"
+                  ? selectedRunpodPodId
+                  : generationTarget === "workers"
+                    ? workerCheckId ?? ""
+                    : ""
+              }
             />
           </EditorSection>
 
