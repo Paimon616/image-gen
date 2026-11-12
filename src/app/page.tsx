@@ -205,7 +205,12 @@ export default function Home() {
   // True from the moment Generate is pressed until the pending gallery card is
   // registered. On the RunPod path an async file check sits in that gap, so the
   // button shows a "registering card" state instead of looking unresponsive.
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Cards still being registered (remote file check in flight). A counter, not
+  // a flag: Generate stays clickable meanwhile so quick successive presses each
+  // queue their own card — the button used to be disabled during the worker
+  // file check and silently dropped those clicks.
+  const [submittingCount, setSubmittingCount] = useState(0);
+  const isSubmitting = submittingCount > 0;
   // Always start with the deterministic default so the server-rendered HTML and
   // the client's first render match. The persisted value is read after mount
   // (see the useEffect below) to avoid a hydration mismatch.
@@ -1370,7 +1375,7 @@ export default function Home() {
     ) => {
       // Flag the "registering card" state up front; the finally below clears it
       // once the pending card exists (or an early return bails out).
-      setIsSubmitting(true);
+      setSubmittingCount((count) => count + 1);
       try {
         await enqueueGenerationJob(sourceParams, meta, {
           onRunpodBusy: setRunpodBusy,
@@ -1381,7 +1386,7 @@ export default function Home() {
           },
         });
       } finally {
-        setIsSubmitting(false);
+        setSubmittingCount((count) => Math.max(0, count - 1));
       }
     },
     [enqueueGenerationJob]
@@ -2681,7 +2686,6 @@ export default function Home() {
               size="lg"
               onClick={generate}
               disabled={
-                isSubmitting ||
                 !params.prompt.trim() ||
                 Boolean(generationModeError) ||
                 runpodTargetMissing
@@ -2691,7 +2695,9 @@ export default function Home() {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    {ko ? "카드 등록 중..." : "Registering card..."}
+                    {ko
+                      ? `카드 등록 중${submittingCount > 1 ? ` (${submittingCount})` : ""}... 더 눌러도 쌓입니다`
+                      : `Registering card${submittingCount > 1 ? ` (${submittingCount})` : ""}... more presses queue too`}
                   </>
                 ) : isGenerating || queuedJobCount > 0 ? (
                   "Add to Queue"

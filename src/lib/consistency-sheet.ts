@@ -128,12 +128,29 @@ export function consistencySheetReferences(
 
 // The sheet layout each mode asks for. The user's own description leads the
 // final prompt (never truncate the user's words in favor of the template).
+// Evaluated 2026-11-11 (Krea 2 GPU, a mature soft-glossy SD1.5 reference):
+//  - Without an explicit "keep age, proportions and art style", the sheet
+//    redrew the character as a rounder, younger, flat cel-shaded default anime
+//    girl, and everything generated from the sheet inherited that.
+//  - "a turnaround plus a row of face studies" let the face row overlap the
+//    legs (feet hidden), and the four "studies" came out near-identical.
+//    Two separated rows, figures sized to fit the upper part, and an ordered
+//    list of clearly different expressions fixed both.
 const CHARACTER_SHEET_TEMPLATE = [
-  "Character consistency reference sheet, one single character, identity kept",
+  "Character consistency reference sheet of ONE single character, identity kept",
   "exactly consistent with the reference images in every view.",
-  "Layout on one sheet: a full-body turnaround — front view, side view, back",
-  "view — standing in the same neutral pose, plus a row of four face studies:",
-  "neutral expression, soft smile, wide laughing smile, frowning face.",
+  "Keep the character's apparent age, face shape, eye shape, body proportions",
+  "and the exact art style, line quality, shading and rendering of the reference",
+  "images — do not make the character look younger, cuter or more generic, and do",
+  "not simplify the style.",
+  "Layout: two separate rows with a wide white gap between them. Upper row: a",
+  "full-body turnaround — front view, side view, back view — in the same neutral",
+  "standing pose, each figure drawn small enough to fit completely inside the upper",
+  "60 percent of the sheet, from the top of the head down to the shoes, with white",
+  "space under the shoes. Lower row: four head-and-shoulders portraits that sit",
+  "entirely below the full-body figures and never overlap them, with clearly",
+  "different expressions in this order: neutral, gentle smile, big open-mouthed",
+  "laugh, surprised with wide eyes. Same eye colour in every portrait.",
   "Same outfit, same hairstyle and same proportions in every view.",
   "Plain solid white background only — no scenery, no props, no other people,",
   "no text, no labels, no watermark. Even neutral studio lighting.",

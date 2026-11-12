@@ -2498,10 +2498,14 @@ async function namesForParams(
     });
   };
   const checkpointName = params.model_name.trim();
+  // Krea 2 / Z-Image graphs ignore an SD-family VAE pick (16-channel latents), so
+  // it must not be reported as a file the job needs.
+  let latent16Family = false;
   if (checkpointName) {
     // Same family resolution buildDefaultWorkflow uses (filename, then catalog
     // base_model), so the support files we require match the workflow that will run.
     const family = await resolveCheckpointFamily(checkpointName);
+    latent16Family = family === "krea2" || family === "zimage";
     push("checkpoint", checkpointFolder, checkpointName);
     if (family === "krea2") {
       // "generic" and "refined" share the official Krea 2 stack (qwen3vl CLIP + qwen
@@ -2543,7 +2547,7 @@ async function namesForParams(
       push("embedding", "embeddings", embedding.path.trim());
     }
   });
-  if (params.vae_name.trim()) {
+  if (params.vae_name.trim() && !latent16Family) {
     push("vae", "vae", params.vae_name.trim());
   }
   // Params saved from Civitai/A1111 metadata can hold a display label rather than a
