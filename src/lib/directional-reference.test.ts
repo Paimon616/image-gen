@@ -49,7 +49,7 @@ test("Krea 2 keeps the on-screen reference as the front and swaps views", () => 
   assert.equal(turned?.identity_reference_image, null);
 });
 
-test("SDXL: IP-Adapter view only where it helps, PuLID when a face shows", () => {
+test("SDXL: IP-Adapter only for a face-hidden back view, PuLID when a face shows", () => {
   const back = directionalParams("back", sheet, "sdxl", screen);
   assert.equal(back?.identity_reference_image, sheet.back);
   assert.equal(back?.identity_reference_strength, SDXL_VIEW_IPADAPTER_STRENGTH);
@@ -61,9 +61,9 @@ test("SDXL: IP-Adapter view only where it helps, PuLID when a face shows", () =>
   assert.equal(turned?.character_image, screen);
   assert.equal(turned?.character_reference_strength, SDXL_FACE_PULID_STRENGTH);
 
+  // Side: IP-Adapter even at 0.15 copied the sheet's blank backdrop; face only.
   const side = directionalParams("side", sheet, "sdxl", screen);
-  assert.equal(side?.identity_reference_image, sheet.side);
-  assert.equal(side?.identity_reference_strength, 0.45);
+  assert.equal(side?.identity_reference_image, null);
   assert.equal(side?.character_image, screen);
 
   // Front: the sheet's standing pose would freeze the scene; face only.
