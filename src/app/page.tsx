@@ -21,6 +21,9 @@ import { ImageUpload } from "@/components/image-upload";
 import { GenerationParams } from "@/components/generation-params";
 import { ModelSelector } from "@/components/model-selector";
 import { CivitaiImport } from "@/components/civitai-import";
+import { DirectionalSheetPicker } from "@/components/directional-sheet-picker";
+import { classifyPromptView, directionalFamily, directionalParams } from "@/lib/directional-reference";
+import { useDirectionalReferenceStore } from "@/lib/directional-reference-store";
 import { MetadataImport } from "@/components/metadata-import";
 import { UrlReferenceImport } from "@/components/url-reference-import";
 import { Gallery } from "@/components/gallery";
@@ -1387,11 +1390,23 @@ export default function Home() {
     [enqueueGenerationJob]
   );
 
-  // Manual Generate press uses the current form params.
-  const generate = useCallback(
-    () => enqueueGeneration(params),
-    [enqueueGeneration, params]
-  );
+  // Manual Generate press uses the current form params. With a sheet linked for
+  // 방향별 참조, the view the prompt describes (from behind, side, ...) picks
+  // the sheet references for this image.
+  const generate = useCallback(() => {
+    const { linked, enabled } = useDirectionalReferenceStore.getState();
+    const family = directionalFamily(params.model_name ?? "");
+    const refs =
+      linked && enabled && family !== "none"
+        ? directionalParams(
+            classifyPromptView(params.prompt ?? ""),
+            linked,
+            family,
+            params.character_image
+          )
+        : null;
+    return enqueueGeneration(refs ? { ...params, ...refs } : params);
+  }, [enqueueGeneration, params]);
 
   const selectedRunpodPod = useMemo(
     () => runpodPods.find((pod) => pod.id === selectedRunpodPodId),
@@ -2559,6 +2574,7 @@ export default function Home() {
                         />
                       </div>
                     )}
+                    <DirectionalSheetPicker />
                   </div>
                 )}
               </div>

@@ -363,6 +363,8 @@ function normalizeParams(rawParams: Record<string, unknown>) {
     character_image: stringValue(rawParams.character_image) || null,
     character_face_image: stringValue(rawParams.character_face_image) || null,
     character_reference_view: rawParams.character_reference_view === "back" ? "back" : null,
+    identity_reference_image: stringValue(rawParams.identity_reference_image) || null,
+    identity_reference_strength: numberValue(rawParams.identity_reference_strength) ?? undefined,
     character_reference_strength:
       numberValue(rawParams.character_reference_strength) ??
       DEFAULT_PARAMS.character_reference_strength,

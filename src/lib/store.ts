@@ -330,6 +330,7 @@ const createAppState: StateCreator<AppState> = (set) => ({
               // field for it on screen, so it must not ride along into later renders.
               character_face_image: null,
               character_reference_view: null,
+              identity_reference_image: null,
               ...(image.sizeSemantics === "final" ||
               !image.params.hires_upscale ||
               image.params.hires_upscale <= 1

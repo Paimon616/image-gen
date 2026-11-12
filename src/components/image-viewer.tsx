@@ -660,6 +660,11 @@ export function ImageViewer() {
           url: params.character_image,
         },
         {
+          key: "identity_reference_image",
+          label: ko ? "몸 참조 (IP-Adapter)" : "Body reference (IP-Adapter)",
+          url: params.identity_reference_image ?? null,
+        },
+        {
           key: "character_face_image",
           label: ko ? "캐릭터 얼굴" : "Character face",
           url: params.character_face_image ?? null,
