@@ -2574,10 +2574,12 @@ export default function Home() {
                         />
                       </div>
                     )}
-                    <DirectionalSheetPicker />
                   </div>
                 )}
               </div>
+              {/* Full width under both reference slots: it feeds whichever
+                  reference path the model uses, not just the character slot. */}
+              {currentModel.supports.face_id && <DirectionalSheetPicker />}
             </>
           )}
           </EditorSection>

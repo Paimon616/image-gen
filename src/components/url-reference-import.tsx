@@ -256,14 +256,14 @@ export function UrlReferenceImport({
         ? useDirectional
           ? ko
             ? usedText
-              ? ` 시트 방향별 참조: ${usedText}장.`
-              : " 시트 방향별 참조: 이번 묶음엔 정면만 나왔습니다."
+              ? ` 일관성 시트: ${usedText}장.`
+              : " 일관성 시트: 이번 묶음엔 정면만 나왔습니다."
             : usedText
               ? ` Sheet views used: ${usedText}.`
               : " Sheet views: only front views this time."
           : ko
-            ? " 지금 모델은 참조 이미지를 쓰지 않아 방향별 참조를 적용하지 않았습니다."
-            : " The current model takes no reference images, so directional references were not used."
+            ? " 지금 모델은 참조 이미지를 쓰지 않아 일관성 시트를 적용하지 않았습니다."
+            : " The current model takes no reference images, so the consistency sheet was not used."
         : "";
       setStatus(
         (ko

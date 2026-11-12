@@ -59,7 +59,7 @@ function formatDate(timestamp: number, ko: boolean) {
 }
 
 /**
- * 방향별 참조 (시트): links a character sheet whose views (front, side, back,
+ * 일관성 시트: links a character consistency sheet whose views (front, side, back,
  * face) are swapped in per image by the direction the shot faces. Sits under
  * the character reference on the generator; shows which views the current
  * prompt will use.
@@ -159,14 +159,14 @@ export function DirectionalSheetPicker() {
         : null;
 
   return (
-    <div className="mt-4 space-y-2">
+    <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
         <FieldHelp
-          label={ko ? "방향별 참조" : "Directional references"}
+          label={ko ? "일관성 시트" : "Consistency sheet"}
           help={
             ko
-              ? "캐릭터 시트를 연결하면 장면 방향에 맞는 칸을 참조로 넣습니다. 프롬프트에 from behind / 뒷모습이면 뒷모습, from side / profile / 옆모습이면 옆모습 칸을 쓰고, looking back처럼 얼굴도 보이면 얼굴을 함께 씁니다. 생성 버튼과 '레퍼런스로 다양하게 뽑기' 모두에 적용됩니다."
-              : "Link a character sheet and each image gets the view that matches its direction: from behind → back view, from side / profile → side view, plus the face when it shows (looking back). Applies to Generate and the varied batch."
+              ? "일관성 시트(캐릭터)를 연결하면 장면 방향에 맞는 칸을 참조로 넣습니다. 프롬프트에 from behind / 뒷모습이면 뒷모습, from side / profile / 옆모습이면 옆모습 칸을 쓰고, looking back처럼 얼굴도 보이면 얼굴을 함께 씁니다. 생성 버튼과 '레퍼런스로 다양하게 뽑기' 모두에 적용됩니다."
+              : "Link a consistency sheet (character) and each image gets the view that matches its direction: from behind → back view, from side / profile → side view, plus the face when it shows (looking back). Applies to Generate and the varied batch."
           }
         />
         {linked && (
@@ -190,7 +190,7 @@ export function DirectionalSheetPicker() {
             </span>
             <span className="min-w-0">
               <span className="block text-sm font-medium">
-                {busy ? (ko ? "시트를 나누는 중…" : "Cutting the sheet…") : ko ? "캐릭터 시트 연결" : "Link a character sheet"}
+                {busy ? (ko ? "시트를 나누는 중…" : "Cutting the sheet…") : ko ? "일관성 시트 연결" : "Link a consistency sheet"}
               </span>
               <span className="block text-xs text-muted-foreground">
                 {ko
@@ -210,7 +210,7 @@ export function DirectionalSheetPicker() {
               className="h-11 w-11 shrink-0 rounded-md border border-border bg-background object-contain"
             />
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-medium">{ko ? "연결된 캐릭터 시트" : "Linked character sheet"}</div>
+              <div className="truncate text-sm font-medium">{ko ? "연결된 일관성 시트" : "Linked consistency sheet"}</div>
               {methodText && <div className="truncate text-xs text-muted-foreground">{methodText}</div>}
             </div>
             <Button
@@ -312,10 +312,10 @@ export function DirectionalSheetPicker() {
       <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
         <DialogContent className="max-h-[85vh] overflow-hidden sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle>{ko ? "캐릭터 시트 선택" : "Choose a character sheet"}</DialogTitle>
+            <DialogTitle>{ko ? "일관성 시트 선택" : "Choose a consistency sheet"}</DialogTitle>
             <DialogDescription>
               {ko
-                ? "일관성 시트에서 만든 캐릭터 시트입니다. 고르면 정면 · 옆 · 뒤 · 얼굴로 나눠 연결합니다."
+                ? "일관성 시트 화면에서 만든 캐릭터 시트입니다. 고르면 정면 · 옆 · 뒤 · 얼굴로 나눠 연결합니다."
                 : "Character sheets made on the consistency sheet screen. Picking one cuts it into front, side, back and face."}
             </DialogDescription>
           </DialogHeader>
@@ -327,7 +327,7 @@ export function DirectionalSheetPicker() {
             ) : sheets.length === 0 ? (
               <div className="flex h-40 flex-col items-center justify-center gap-1 text-center text-sm text-muted-foreground">
                 <Layers className="h-6 w-6" />
-                {ko ? "아직 캐릭터 시트가 없습니다. 일관성 시트 화면에서 먼저 만드세요." : "No character sheets yet. Make one on the consistency sheet screen first."}
+                {ko ? "아직 일관성 시트가 없습니다. 일관성 시트 화면에서 캐릭터 시트를 먼저 만드세요." : "No consistency sheets yet. Make a character sheet on the consistency sheet screen first."}
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
