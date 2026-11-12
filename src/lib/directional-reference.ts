@@ -60,18 +60,20 @@ export function classifyPromptView(prompt: string): VariationView {
 //    on a looking-back shot it turned the figure fully away (no face).
 //  - On a back view with the face hidden it is the only thing that keeps the
 //    back of the hair (teal inner layer), the pants and the shoes right.
-//  - On a side view 0.45 + PuLID kept the silhouette and outfit without
-//    freezing the walk.
-// So: front and looking-back → PuLID face only; side → IP-Adapter 0.45 +
-// PuLID; back (face hidden) → IP-Adapter 0.6, no PuLID.
+//  - On a side view it also pins the sheet's plain backdrop: re-tested in the
+//    web UI (autumn park, same seed) at 0.45 / 0.3 / 0.2 / 0.15, every one
+//    dropped the park for a blank wall; PuLID alone kept the park and still got
+//    the teal inner hair and the outfit right.
+// So: IP-Adapter only for a back view with the face hidden (0.6, no PuLID);
+// every view with a face → PuLID face only.
 export const SDXL_FACE_PULID_STRENGTH = 0.7;
 const SDXL_VIEW_RULES: Record<
   VariationView,
   { view: "front" | "side" | "back" | null; ipadapter: number; face: boolean }
 > = {
   front: { view: null, ipadapter: 0, face: true },
-  side: { view: "side", ipadapter: 0.45, face: true },
-  side_face: { view: "side", ipadapter: 0.45, face: true },
+  side: { view: null, ipadapter: 0, face: true },
+  side_face: { view: null, ipadapter: 0, face: true },
   back: { view: "back", ipadapter: 0.6, face: false },
   back_face: { view: null, ipadapter: 0, face: true },
 };

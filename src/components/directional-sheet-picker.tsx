@@ -154,8 +154,8 @@ export function DirectionalSheetPicker() {
         : "Krea 2 · Identity Edit"
       : family === "sdxl"
         ? ko
-          ? "SDXL · 방향은 IP-Adapter, 얼굴은 PuLID"
-          : "SDXL · IP-Adapter for the view, PuLID for the face"
+          ? "SDXL · 뒷모습은 IP-Adapter, 얼굴은 PuLID"
+          : "SDXL · IP-Adapter for the back view, PuLID for the face"
         : null;
 
   return (
@@ -165,8 +165,8 @@ export function DirectionalSheetPicker() {
           label={ko ? "일관성 시트" : "Consistency sheet"}
           help={
             ko
-              ? "일관성 시트(캐릭터)를 연결하면 장면 방향에 맞는 칸을 참조로 넣습니다. 프롬프트에 from behind / 뒷모습이면 뒷모습, from side / profile / 옆모습이면 옆모습 칸을 쓰고, looking back처럼 얼굴도 보이면 얼굴을 함께 씁니다. 생성 버튼과 '레퍼런스로 다양하게 뽑기' 모두에 적용됩니다."
-              : "Link a consistency sheet (character) and each image gets the view that matches its direction: from behind → back view, from side / profile → side view, plus the face when it shows (looking back). Applies to Generate and the varied batch."
+              ? "일관성 시트(캐릭터)를 연결하면 장면 방향에 맞는 칸을 참조로 넣습니다. 프롬프트에 from behind / 뒷모습이면 뒷모습, from side / profile / 옆모습이면 옆모습 칸을 쓰고, looking back처럼 얼굴도 보이면 얼굴을 함께 씁니다. SDXL(하사쿠 등)은 시트의 흰 배경이 따라오지 않도록 얼굴이 안 보이는 뒷모습에만 시트 칸을 쓰고, 나머지는 얼굴만 참조합니다. 생성 버튼과 '레퍼런스로 다양하게 뽑기' 모두에 적용됩니다."
+              : "Link a consistency sheet (character) and each image gets the view that matches its direction: from behind → back view, from side / profile → side view, plus the face when it shows (looking back). SDXL (Hassaku etc.) uses a sheet view only for a face-hidden back shot, so the sheet's blank backdrop doesn't carry over; other shots reference the face only. Applies to Generate and the varied batch."
           }
         />
         {linked && (
