@@ -2811,6 +2811,14 @@ export async function queueComfyPrompt(
   return { ...queued, workflow: prompt };
 }
 
+/**
+ * The API-format graph queueComfyPrompt would submit for these params, without
+ * queueing it (style export). Reference images are the caller's to strip.
+ */
+export async function buildComfyWorkflow(params: GenerationParams, options?: ComfyClientOptions) {
+  return buildDefaultWorkflow(params, options);
+}
+
 async function getHistory(promptId: string, options?: ComfyClientOptions) {
   const res = await comfyFetch(`/history/${encodeURIComponent(promptId)}`, undefined, options);
   return (await res.json()) as Record<string, ComfyHistoryItem>;

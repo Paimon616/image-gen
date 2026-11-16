@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { StyleExportButton } from "@/components/style-export-dialog";
 import { getModelConfig, type GenerationParams } from "@/lib/types";
 
 interface LocalModelAsset {
@@ -829,6 +830,7 @@ export function ImageViewer() {
                 <FileJson className="h-4 w-4" />
                 Metadata
               </Button>
+              <StyleExportButton image={selectedImage} />
               <Button
                 size="sm"
                 variant="outline"

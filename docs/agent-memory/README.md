@@ -29,6 +29,7 @@ metadata:
 - [Z-Image pipeline](zimage-pipeline.md) — Z-Image loaders, support files, turbo recipe
 - [Character reference sheet (BETA)](character-reference-sheet.md) — sheet confirmed per character; generate route injects `character_sheet_image`; IP-Adapter pins live in 3 places
 - [ComfyUI blueprints as recipe source](comfyui-blueprints-recipe-source.md) — `ComfyUI/blueprints/*.json` are the official per-family recipes; validate via local `/prompt`
+- [Style spec export](style-spec-export.md) — portable ComfyUI style JSON for ONEchat; `/api/styles/export`, `npm run style:run`
 
 ## New machine / new account checklist
 
