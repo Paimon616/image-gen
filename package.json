@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "node --test \"src/**/*.test.ts\"",
+    "style:run": "node scripts/run-style.ts",
     "local": "bash scripts/start-local.sh",
     "local:win": "powershell -ExecutionPolicy Bypass -File scripts/start-local.ps1",
     "setup:comfyui": "bash scripts/setup-comfyui.sh",
