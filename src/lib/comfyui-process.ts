@@ -26,10 +26,15 @@ export function isLocalComfy() {
 
 // ComfyUI is installed when both the entrypoint and its venv python exist. This
 // matches the check the launcher uses before offering to run setup.
+export function comfyBaseUrl() {
+  return COMFYUI_BASE_URL;
+}
+
 export function isComfyInstalled() {
   return (
     existsSync(join(COMFYUI_DIR, "main.py")) &&
-    existsSync(join(COMFYUI_DIR, "venv", "bin", "python"))
+    (existsSync(join(COMFYUI_DIR, "venv", "bin", "python")) ||
+      existsSync(join(COMFYUI_DIR, "venv", "Scripts", "python.exe")))
   );
 }
 
@@ -48,7 +53,12 @@ export async function isComfyUp(timeoutMs = 3_000) {
 
 // Track whether we have already asked ComfyUI to launch so overlapping status
 // polls / clicks don't each spawn their own process.
-let launching: { child: ChildProcess; logPath: string } | null = null;
+let launching: { child: ChildProcess; logPath: string; startedAt: number } | null = null;
+
+export function getComfyLaunch() {
+  if (!launching || launching.child.exitCode !== null) return null;
+  return { pid: launching.child.pid ?? null, startedAt: launching.startedAt, logPath: launching.logPath };
+}
 
 function comfyLogPath() {
   const logDir = process.env.LOG_DIR || join(process.cwd(), ".local", "logs");
@@ -83,7 +93,9 @@ function spawnComfy() {
       ? ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script]
       : [script],
     {
-      detached: true,
+      // On Windows a detached (console-less) powershell exits at once with no output.
+      detached: process.platform !== "win32",
+      windowsHide: true,
       stdio: ["ignore", fd, fd],
       cwd: process.cwd(),
       // Keep host/port consistent with COMFYUI_BASE_URL even if it was overridden.
@@ -92,17 +104,18 @@ function spawnComfy() {
           const url = new URL(COMFYUI_BASE_URL);
           return {
             ...process.env,
+            PYTHONUNBUFFERED: "1",
             COMFYUI_HOST: url.hostname,
             COMFYUI_PORT: url.port || "8188",
           };
         } catch {
-          return process.env;
+          return { ...process.env, PYTHONUNBUFFERED: "1" };
         }
       })(),
     }
   );
   child.unref();
-  return { child, logPath };
+  return { child, logPath, startedAt: Date.now() };
 }
 
 export interface ComfyStatus {

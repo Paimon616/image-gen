@@ -7,6 +7,7 @@ param(
   [string]$ComfyUIDir = "",
   [string]$A1111Host = "127.0.0.1",
   [int]$A1111Port = 7860,
+  [int]$ForgePort = 7861,
   [string]$A1111Dir = "",
   [string]$LoraRunnerDir = "",
   [string]$LogDir = ""
@@ -222,49 +223,49 @@ function Stop-ExistingLocalServers {
   Stop-LocalPort -Name "Image Gen" -Port $ImageGenPort
   Stop-LocalPort -Name "ComfyUI" -Port $ComfyUIPort
   Stop-LocalPort -Name "A1111" -Port $A1111Port
+  Stop-LocalPort -Name "Forge" -Port $ForgePort
 }
 
-function Wait-ForPort {
-  param(
-    [string]$Name,
-    [string]$HostName,
-    [int]$Port,
-    [System.Diagnostics.Process]$Process,
-    [string]$StdOutLog,
-    [string]$StdErrLog
-  )
-
-  for ($i = 0; $i -lt 120; $i++) {
-    if (Test-Port -HostName $HostName -Port $Port) {
-      if ($Process) {
-        Start-Sleep -Seconds 2
-        if ($Process.HasExited) {
-          Write-Error "$Name stopped after opening port $Port. Logs: $StdOutLog / $StdErrLog"
+# Which engines to start with the launcher. Edited from the app's launcher
+# panel (Local tab of the image page) - see src/lib/local-services.ts.
+function Read-LauncherConfig {
+  $Config = @{ comfyui = $true; a1111 = $false; forge = $false }
+  $ConfigPath = Join-Path $RootDir ".local\launcher-config.json"
+  if (Test-Path $ConfigPath) {
+    try {
+      $Raw = Get-Content -Raw -LiteralPath $ConfigPath | ConvertFrom-Json
+      foreach ($Key in @("comfyui", "a1111", "forge")) {
+        if ($Raw.autoStart -and ($null -ne $Raw.autoStart.$Key)) {
+          $Config[$Key] = [bool]$Raw.autoStart.$Key
         }
       }
-      Write-Host "$Name is ready on port $Port."
-      return
+    } catch {
+      Write-Warning "Could not read $ConfigPath; using defaults."
     }
-
-    if ($Process -and $Process.HasExited) {
-      Write-Error "$Name stopped before port $Port became ready. Logs: $StdOutLog / $StdErrLog"
-    }
-
-    Start-Sleep -Seconds 1
   }
-
-  Write-Error "Timed out waiting for $Name on port $Port. Logs: $StdOutLog / $StdErrLog"
+  return $Config
 }
 
-function Start-LocalService {
+# PIDs the launcher started, so the app panel can show "starting" and stop them.
+$LauncherState = @{
+  launcher = @{ pid = $PID; startedAt = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() }
+  services = @{}
+}
+
+function Save-LauncherState {
+  $StatePath = Join-Path $RootDir ".local\launcher-state.json"
+  $Json = $script:LauncherState | ConvertTo-Json -Depth 5
+  [IO.File]::WriteAllText($StatePath, $Json, (New-Object System.Text.UTF8Encoding($false)))
+}
+
+# Start a server hidden with its output in .local/logs, without waiting for it.
+function Start-Background {
   param(
     [string]$Name,
-    [string]$HostName,
-    [int]$Port,
-    [string[]]$Arguments
+    [string]$FilePath,
+    [string[]]$Arguments,
+    [string]$StateKey = ""
   )
-
-  $NpmCommand = Ensure-Npm
 
   $SafeName = $Name.ToLowerInvariant().Replace(" ", "-")
   $StdOutLog = Join-Path $LogDir "$SafeName.out.log"
@@ -272,7 +273,7 @@ function Start-LocalService {
 
   Write-Host "Starting $Name..."
   $Process = Start-Process `
-    -FilePath $NpmCommand `
+    -FilePath $FilePath `
     -ArgumentList $Arguments `
     -WorkingDirectory $RootDir `
     -RedirectStandardOutput $StdOutLog `
@@ -282,61 +283,40 @@ function Start-LocalService {
 
   $StartedProcesses.Add($Process) | Out-Null
   Add-ProcessToLauncherJob -Process $Process
-  Wait-ForPort -Name $Name -HostName $HostName -Port $Port -Process $Process -StdOutLog $StdOutLog -StdErrLog $StdErrLog
-}
-
-function Wait-ForHttp {
-  param(
-    [string]$Name,
-    [string]$Url,
-    [System.Diagnostics.Process]$Process,
-    [string]$StdOutLog,
-    [string]$StdErrLog
-  )
-
-  for ($i = 0; $i -lt 120; $i++) {
-    try {
-      $Response = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 5
-      if ([int]$Response.StatusCode -ge 200 -and [int]$Response.StatusCode -lt 500) {
-        Write-Host "$Name is responding at $Url."
-        return
-      }
-    } catch {
+  if ($StateKey) {
+    $script:LauncherState.services[$StateKey] = @{
+      pid = $Process.Id
+      startedAt = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
     }
-
-    if ($Process -and $Process.HasExited) {
-      Write-Error "$Name stopped before $Url responded. Logs: $StdOutLog / $StdErrLog"
-    }
-
-    Start-Sleep -Seconds 1
+    Save-LauncherState
   }
-
-  Write-Error "Timed out waiting for $Name at $Url. Logs: $StdOutLog / $StdErrLog"
+  return $Process
 }
 
-function Start-ImageGen {
-  $NpmCommand = Ensure-Npm
+function Wait-ForImageGenPort {
+  param([System.Diagnostics.Process]$Process)
 
-  $StdOutLog = Join-Path $LogDir "image-gen.out.log"
-  $StdErrLog = Join-Path $LogDir "image-gen.err.log"
+  $Deadline = (Get-Date).AddSeconds(120)
+  while ((Get-Date) -lt $Deadline) {
+    if (Test-Port -HostName $ImageGenHost -Port $ImageGenPort) {
+      return
+    }
+    if ($Process.HasExited) {
+      Write-Error "Image Gen stopped before port $ImageGenPort opened. Logs: $(Join-Path $LogDir 'image-gen.out.log')"
+    }
+    Start-Sleep -Milliseconds 250
+  }
+  Write-Error "Timed out waiting for Image Gen on port $ImageGenPort."
+}
 
-  Write-Host "Starting Image Gen dev server..."
-  $Process = Start-Process `
-    -FilePath $NpmCommand `
-    -ArgumentList @("run", "dev", "--", "--hostname", $ImageGenHost, "--port", [string]$ImageGenPort) `
-    -WorkingDirectory $RootDir `
-    -RedirectStandardOutput $StdOutLog `
-    -RedirectStandardError $StdErrLog `
-    -PassThru `
-    -WindowStyle Hidden
-
-  $StartedProcesses.Add($Process) | Out-Null
-  Add-ProcessToLauncherJob -Process $Process
-  Wait-ForPort -Name "Image Gen" -HostName $ImageGenHost -Port $ImageGenPort -Process $Process -StdOutLog $StdOutLog -StdErrLog $StdErrLog
-  Wait-ForHttp -Name "Image Gen" -Url $ImageGenUrl -Process $Process -StdOutLog $StdOutLog -StdErrLog $StdErrLog
+function Get-ScriptArgument {
+  param([string]$ScriptName)
+  return '"' + (Join-Path $PSScriptRoot $ScriptName) + '"'
 }
 
 try {
+  $LaunchClock = [Diagnostics.Stopwatch]::StartNew()
+
   if (-not (Test-Path (Join-Path $RootDir "node_modules"))) {
     Write-Host "Node dependencies are missing. Running npm install..."
     $NpmCommand = Ensure-Npm
@@ -350,16 +330,20 @@ try {
 
   New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
   Stop-ExistingLocalServers
+  $AutoStart = Read-LauncherConfig
 
   $env:COMFYUI_HOST = $ComfyUIHost
   $env:COMFYUI_PORT = [string]$ComfyUIPort
   $env:COMFYUI_DIR = $ComfyUIDir
   $env:A1111_DIR = $A1111Dir
   $env:LORA_RUNNER_DIR = $LoraRunnerDir
+  # Flush Python logs immediately so the app panel can show boot progress live.
+  $env:PYTHONUNBUFFERED = "1"
 
+  # Setup is only needed on a fresh machine; these are cheap file checks.
   $ComfyMain = Join-Path $ComfyUIDir "main.py"
   $ComfyPython = Join-Path $ComfyUIDir "venv\Scripts\python.exe"
-  if ((-not (Test-Path $ComfyMain)) -or (-not (Test-Path $ComfyPython))) {
+  if ($AutoStart.comfyui -and ((-not (Test-Path $ComfyMain)) -or (-not (Test-Path $ComfyPython)))) {
     Write-Host "ComfyUI is missing. Running setup..."
     $NpmCommand = Ensure-Npm
     Push-Location $RootDir
@@ -374,9 +358,11 @@ try {
   $A1111Python = Join-Path $A1111Dir "venv\Scripts\python.exe"
   $A1111ADetailer = Join-Path $A1111Dir "extensions\adetailer\scripts\!adetailer.py"
   if (
-    (-not (Test-Path $A1111Launch)) -or
-    (-not (Test-Path $A1111Python)) -or
-    (-not (Test-Path $A1111ADetailer))
+    $AutoStart.a1111 -and (
+      (-not (Test-Path $A1111Launch)) -or
+      (-not (Test-Path $A1111Python)) -or
+      (-not (Test-Path $A1111ADetailer))
+    )
   ) {
     Write-Host "A1111 or its ADetailer extension is missing. Running setup..."
     $NpmCommand = Ensure-Npm
@@ -401,27 +387,66 @@ try {
     }
   }
 
-  Start-LocalService `
-    -Name "ComfyUI" `
-    -HostName $ComfyUIHost `
-    -Port $ComfyUIPort `
-    -Arguments @("run", "comfyui:win", "--", "-HostName", $ComfyUIHost, "-Port", [string]$ComfyUIPort)
+  Save-LauncherState
 
-  Start-LocalService `
-    -Name "A1111" `
-    -HostName $A1111Host `
-    -Port $A1111Port `
-    -Arguments @("run", "a1111:win", "--", "-HostName", $A1111Host, "-Port", [string]$A1111Port)
+  # Everything starts in parallel. The browser opens as soon as Image Gen is
+  # listening; ComfyUI/A1111 keep booting and the Local tab's launcher panel
+  # shows their progress (and starts/stops them later).
+  $NodeCommand = (Get-Command node -ErrorAction SilentlyContinue).Source
+  $NextBin = Join-Path $RootDir "node_modules\next\dist\bin\next"
+  if ($NodeCommand -and (Test-Path $NextBin)) {
+    # Skip the npm wrapper: one less process and a faster start.
+    $ImageGenProcess = Start-Background -Name "Image Gen" -FilePath $NodeCommand `
+      -Arguments @(('"' + $NextBin + '"'), "dev", "--hostname", $ImageGenHost, "--port", [string]$ImageGenPort)
+  } else {
+    $ImageGenProcess = Start-Background -Name "Image Gen" -FilePath (Ensure-Npm) `
+      -Arguments @("run", "dev", "--", "--hostname", $ImageGenHost, "--port", [string]$ImageGenPort)
+  }
 
-  Start-ImageGen
+  $PowerShellExe = (Get-Process -Id $PID).Path
+  $ComfyProcess = $null
+  if ($AutoStart.comfyui) {
+    $ComfyProcess = Start-Background -Name "ComfyUI" -FilePath $PowerShellExe -StateKey "comfyui" -Arguments @(
+      "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Get-ScriptArgument "run-comfyui.ps1"),
+      "-HostName", $ComfyUIHost, "-Port", [string]$ComfyUIPort
+    )
+  } else {
+    Write-Host "ComfyUI auto-start is off (start it from the Local tab's launcher panel)."
+  }
+  if ($AutoStart.a1111) {
+    Start-Background -Name "A1111" -FilePath $PowerShellExe -StateKey "a1111" -Arguments @(
+      "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Get-ScriptArgument "run-a1111.ps1"),
+      "-HostName", $A1111Host, "-Port", [string]$A1111Port
+    ) | Out-Null
+  }
+  if ($AutoStart.forge) {
+    Start-Background -Name "Forge" -FilePath $PowerShellExe -StateKey "forge" -Arguments @(
+      "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Get-ScriptArgument "run-forge.ps1"),
+      "-HostName", $A1111Host, "-Port", [string]$ForgePort
+    ) | Out-Null
+  }
 
-  Write-Host "Opening $ImageGenUrl"
+  Wait-ForImageGenPort -Process $ImageGenProcess
+  Write-Host ("Image Gen is ready on port {0} ({1:N1}s). Opening {2}" -f $ImageGenPort, $LaunchClock.Elapsed.TotalSeconds, $ImageGenUrl)
   Start-Process $ImageGenUrl
 
-  if ($StartedProcesses.Count -gt 0) {
-    Write-Host ""
-    Write-Host "Servers are running. Keep this window open; press Ctrl-C or close it to stop servers started by this launcher."
-    Wait-Process -Id ($StartedProcesses | ForEach-Object { $_.Id })
+  Write-Host ""
+  Write-Host "Servers are running. Keep this window open; press Ctrl-C or close it to stop servers started by this launcher."
+
+  # Stay alive while Image Gen runs. Engines can be stopped/restarted from the
+  # app without ending the launcher.
+  $ComfyAnnounced = -not $ComfyProcess
+  while (-not $ImageGenProcess.HasExited) {
+    if (-not $ComfyAnnounced) {
+      if (Test-Port -HostName $ComfyUIHost -Port $ComfyUIPort) {
+        Write-Host ("ComfyUI is ready on port {0} ({1:N1}s)." -f $ComfyUIPort, $LaunchClock.Elapsed.TotalSeconds)
+        $ComfyAnnounced = $true
+      } elseif ($ComfyProcess.HasExited) {
+        Write-Warning "ComfyUI stopped during startup. Logs: $(Join-Path $LogDir 'comfyui.err.log')"
+        $ComfyAnnounced = $true
+      }
+    }
+    Start-Sleep -Seconds 1
   }
 } finally {
   if ($StartedProcesses.Count -gt 0) {
@@ -429,10 +454,13 @@ try {
     Write-Host "Stopping local servers..."
     foreach ($Process in $StartedProcesses) {
       if (-not $Process.HasExited) {
-        Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue
+        & taskkill /PID $Process.Id /T /F 2>$null | Out-Null
       }
     }
   }
+
+  $StatePath = Join-Path $RootDir ".local\launcher-state.json"
+  Remove-Item -LiteralPath $StatePath -Force -ErrorAction SilentlyContinue
 
   if ($script:LauncherJob) {
     [ImageGenLauncher.NativeMethods]::CloseHandle($script:LauncherJob) | Out-Null

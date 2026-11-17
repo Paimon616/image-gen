@@ -120,7 +120,59 @@
 .gallery-generation-scan { animation: gallery-generation-scan 2.6s ease-in-out infinite; }
 .gallery-generation-orb { animation: gallery-generation-orb 3.2s ease-in-out infinite; }
 
+/* Launcher panel boot progress: moving stripes + a light sweep inside the fill
+   and a breathing glow at its leading edge, so a stalled stage still reads as
+   "working". */
+@keyframes boot-progress-stripes {
+  from { background-position: 0 0; }
+  to { background-position: 16px 0; }
+}
+
+@keyframes boot-progress-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+
+@keyframes boot-progress-head {
+  0%, 100% { opacity: 0.55; transform: translate(-50%, -50%) scale(0.8); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+}
+
+.boot-progress-fill {
+  background-color: var(--primary);
+  background-image: repeating-linear-gradient(
+    -45deg,
+    color-mix(in oklch, white 22%, transparent) 0 4px,
+    transparent 4px 8px
+  );
+  background-size: 16px 100%;
+  animation: boot-progress-stripes 0.9s linear infinite;
+}
+
+.boot-progress-sweep {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklch, white 55%, transparent),
+    transparent
+  );
+  animation: boot-progress-sweep 1.8s ease-in-out infinite;
+}
+
+.boot-progress-head {
+  background: var(--primary);
+  box-shadow: 0 0 6px 2px color-mix(in oklch, var(--primary) 60%, transparent);
+  animation: boot-progress-head 1.4s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .gallery-generation-scan,
-  .gallery-generation-orb { animation: none; }
+  .gallery-generation-orb,
+  .boot-progress-fill,
+  .boot-progress-sweep,
+  .boot-progress-head { animation: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boot-progress-head { transform: translate(-50%, -50%); }
 }

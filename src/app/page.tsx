@@ -31,6 +31,7 @@ import { WorkspaceBar } from "@/components/workspace-bar";
 import { ImageViewer } from "@/components/image-viewer";
 import { AppSidebar } from "@/components/app-sidebar";
 import { GpuWorkerStatus } from "@/components/gpu-worker-status";
+import { LauncherPanel } from "@/components/launcher-panel";
 import { EditorSection } from "@/components/editor-section";
 import { FieldHelp } from "@/components/field-help";
 import { PaimonChat, type PaimonAttachment } from "@/components/paimon-chat";
@@ -72,7 +73,6 @@ import {
   Loader2,
   PanelLeftClose,
   PanelLeftOpen,
-  Power,
   RefreshCw,
   ScanLine,
   Server,
@@ -220,15 +220,6 @@ export default function Home() {
   const [generationTarget, setGenerationTarget] = useState<GenerationTarget>("local");
   const [workerSlots, setWorkerSlots] = useState(2);
   const [workerCheckId, setWorkerCheckId] = useState("");
-  // Local ComfyUI backend state. The launcher no longer starts ComfyUI; the app
-  // offers to start it on demand via a banner when in local mode (see below).
-  const [comfy, setComfy] = useState<{
-    running: boolean;
-    starting: boolean;
-    local: boolean;
-    installed: boolean;
-  }>({ running: true, starting: false, local: true, installed: true });
-  const [comfyStartError, setComfyStartError] = useState("");
   const [runpodPods, setRunpodPods] = useState<RunpodPodOption[]>([]);
   const [selectedRunpodPodId, setSelectedRunpodPodId] = useState("");
   const [runpodStatus, setRunpodStatus] = useState("");
@@ -591,66 +582,6 @@ export default function Home() {
     void autoSelectRunningRunpodPod();
   }, [autoSelectRunningRunpodPod, generationTarget, runpodPods]);
 
-  const refreshComfyStatus = useCallback(async () => {
-    try {
-      const res = await fetch("/api/comfyui/status", { cache: "no-store" });
-      if (!res.ok) return;
-      const data = (await res.json()) as {
-        running: boolean;
-        starting: boolean;
-        local: boolean;
-        installed: boolean;
-      };
-      // Only update when something changed so the poll doesn't re-render the
-      // whole page on every tick.
-      setComfy((prev) =>
-        prev.running === data.running &&
-        prev.starting === data.starting &&
-        prev.local === data.local &&
-        prev.installed === data.installed
-          ? prev
-          : data
-      );
-    } catch {
-      // Transient fetch error; leave the last known status in place.
-    }
-  }, []);
-
-  const startComfy = useCallback(async () => {
-    setComfyStartError("");
-    setComfy((prev) => ({ ...prev, starting: true }));
-    try {
-      const res = await fetch("/api/comfyui/start", { method: "POST" });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setComfyStartError(
-          (data as { error?: string })?.error || "Failed to start ComfyUI."
-        );
-        setComfy((prev) => ({ ...prev, starting: false }));
-        return;
-      }
-      setComfy(data as typeof comfy);
-    } catch {
-      setComfyStartError("Failed to start ComfyUI.");
-      setComfy((prev) => ({ ...prev, starting: false }));
-    }
-  }, []);
-
-  // Poll the local ComfyUI status while in local mode. Poll quickly until it is
-  // up (so the banner clears promptly once it boots), then back off.
-  useEffect(() => {
-    if (generationTarget !== "local") return;
-    let active = true;
-    const tick = () => {
-      if (active) void refreshComfyStatus();
-    };
-    tick();
-    const interval = setInterval(tick, comfy.running ? 15_000 : 3_000);
-    return () => {
-      active = false;
-      clearInterval(interval);
-    };
-  }, [generationTarget, refreshComfyStatus, comfy.running]);
 
   useEffect(() => {
     runpodConnectionRef.current = runpodConnection;
@@ -1750,54 +1681,7 @@ export default function Home() {
               onMissingChange={setRunpodMissingFiles}
             />
           )}
-          {generationTarget === "local" && comfy.local && !comfy.running && (
-            <div className="space-y-2 rounded-md border border-sky-500/40 bg-sky-500/10 p-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex min-w-0 items-center gap-2">
-                  <Server className="h-4 w-4 shrink-0 text-sky-600" />
-                  <span className="text-sm font-semibold text-sky-700">
-                    {ko ? "ComfyUI가 실행 중이 아닙니다" : "ComfyUI is not running"}
-                  </span>
-                </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  className="h-7 gap-1 px-3 text-xs"
-                  disabled={comfy.starting || !comfy.installed}
-                  onClick={() => void startComfy()}
-                >
-                  {comfy.starting ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Power className="h-3.5 w-3.5" />
-                  )}
-                  {comfy.starting
-                    ? ko
-                      ? "시작 중..."
-                      : "Starting..."
-                    : ko
-                      ? "ComfyUI 켜기"
-                      : "Start ComfyUI"}
-                </Button>
-              </div>
-              <p className="text-xs text-sky-700/90">
-                {!comfy.installed
-                  ? ko
-                    ? "ComfyUI가 설치되어 있지 않습니다. 터미널에서 npm run setup:comfyui 를 실행하세요."
-                    : "ComfyUI is not installed. Run npm run setup:comfyui in a terminal."
-                  : comfy.starting
-                    ? ko
-                      ? "ComfyUI를 시작하는 중입니다. 첫 실행은 시간이 걸릴 수 있습니다."
-                      : "Starting ComfyUI. The first launch can take a little while."
-                    : ko
-                      ? "로컬 생성을 하려면 ComfyUI가 실행 중이어야 합니다."
-                      : "Local generation needs ComfyUI running."}
-              </p>
-              {comfyStartError && (
-                <p className="text-xs text-red-600">{comfyStartError}</p>
-              )}
-            </div>
-          )}
+          {generationTarget === "local" && <LauncherPanel ko={ko} />}
           {generationTarget === "runpod" &&
             (runpodMissingNodePacks.length > 0 || nodeInstallStatus) && (
               <div className="space-y-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3">
