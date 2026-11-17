@@ -65,6 +65,43 @@ function webUiBaseUrl(backend: GenerationParams["backend"]) {
 // requests don't each spawn their own WebUI process.
 const webUiLaunching = new Set<string>();
 
+// WebUI processes this server spawned (from a generation request or from the
+// launcher panel). Lets the panel report "starting" and avoids double spawns.
+const webUiChildren = new Map<
+  string,
+  { child: ChildProcess; logPath: string; startedAt: number }
+>();
+
+function liveWebUiChild(backend: string) {
+  const entry = webUiChildren.get(backend);
+  if (entry && entry.child.exitCode === null) return entry;
+  webUiChildren.delete(backend);
+  return null;
+}
+
+export function webUiUrlFor(backend: "a1111" | "forge") {
+  return webUiBaseUrl(backend);
+}
+
+export async function isWebUiReady(backend: "a1111" | "forge") {
+  return isWebUiUp(webUiBaseUrl(backend));
+}
+
+// Spawned-by-this-server launch info, or null when nothing is booting here.
+export function getWebUiLaunch(backend: "a1111" | "forge") {
+  const entry = liveWebUiChild(backend);
+  return entry ? { pid: entry.child.pid ?? null, startedAt: entry.startedAt, logPath: entry.logPath } : null;
+}
+
+// Non-blocking start used by the launcher panel; callers poll isWebUiReady().
+export async function startWebUiInBackground(backend: "a1111" | "forge") {
+  if (await isWebUiUp(webUiBaseUrl(backend))) return { started: false };
+  if (liveWebUiChild(backend)) return { started: false };
+  const launched = launchWebUi(backend);
+  webUiChildren.set(backend, { ...launched, startedAt: Date.now() });
+  return { started: true };
+}
+
 async function isWebUiUp(baseUrl: string) {
   // Require the scripts registry to be populated, not just the HTTP server to
   // answer. Forge/A1111 respond to /internal/ping before alwayson scripts (e.g.
@@ -106,9 +143,12 @@ function launchWebUi(backend: GenerationParams["backend"]) {
       ? ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", customCommand]
       : ["-lc", customCommand];
     child = spawn(command, args, {
-      detached: true,
+      // On Windows a detached (console-less) powershell exits at once with no output.
+      detached: process.platform !== "win32",
+      windowsHide: true,
       stdio: ["ignore", fd, fd],
       cwd: process.cwd(),
+      env: { ...process.env, PYTHONUNBUFFERED: "1" },
     });
   } else {
     const windows = process.platform === "win32";
@@ -134,9 +174,12 @@ function launchWebUi(backend: GenerationParams["backend"]) {
         ? ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script]
         : [script],
       {
-        detached: true,
+        // On Windows a detached (console-less) powershell exits at once with no output.
+        detached: process.platform !== "win32",
+        windowsHide: true,
         stdio: ["ignore", fd, fd],
         cwd: process.cwd(),
+        env: { ...process.env, PYTHONUNBUFFERED: "1" },
       }
     );
   }
@@ -165,11 +208,14 @@ async function ensureWebUiReady(
 
   if (await isWebUiUp(baseUrl)) return;
 
-  let launched: ReturnType<typeof launchWebUi> | null = null;
-  if (!webUiLaunching.has(backend)) {
+  let launched: ReturnType<typeof launchWebUi> | null = liveWebUiChild(backend);
+  if (launched) {
+    onStatus?.("Waiting for " + label + " to start...");
+  } else if (!webUiLaunching.has(backend)) {
     webUiLaunching.add(backend);
     try {
       launched = launchWebUi(backend);
+      webUiChildren.set(backend, { ...launched, startedAt: Date.now() });
       onStatus?.("Starting " + label + "...");
     } catch (error) {
       webUiLaunching.delete(backend);

@@ -48,3 +48,4 @@ for the davinci `da:*` plugin, `semble-routing.md` for the semble MCP) are user
 config, not project config — reinstall the davinci plugin on the new account if
 you want them.
 - [krea2-on-3060.md](krea2-on-3060.md) — Krea 2 files, nodes, fp8 vs GGUF speed, identity-edit pitfalls on the 3060 worker
+- [Local launcher + 실행 관리 panel](local-launcher.md) — parallel start, `.local/launcher-config.json` auto-start, Windows `detached` spawn exits instantly
